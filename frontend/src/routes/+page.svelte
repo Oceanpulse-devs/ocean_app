@@ -2,9 +2,9 @@
   import LandingPage from './LandingPage.svelte';
   import { goto } from '$app/navigation';
   
-  function navigateToFeed() {
-    goto('/feed');
+  function navigateToSignup() {
+    goto('/signup');
   }
 </script>
 
-<LandingPage onGetStarted={navigateToFeed} />
+<LandingPage onGetStarted={navigateToSignup} />

@@ -25,6 +25,11 @@ This document outlines the step-by-step implementation plan for building the fro
 - [ ] Auctions Page
 - [ ] Upload Page
 - [ ] Settings Page
+- [ ] Email Verification Page
+  - Verify email tokens
+  - Handle resend verification email
+  - Show success/error states
+  - Redirect to appropriate pages
 
 ---
 

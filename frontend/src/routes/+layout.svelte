@@ -2,15 +2,22 @@
   import { page } from '$app/stores';
   import Navbar from '$lib/components/Navbar.svelte';
   
-  // Determine if we're on the landing page
-  $: isLandingPage = $page.url.pathname === '/';
+  // Pages that use transparent navbar (landing) or no navbar (auth pages)
+  const specialNavbarRoutes = ['/'];
+  const noNavbarRoutes = ['/login', '/signup', '/forgot-password', '/verify-email'];
+  
+  // Determine if we're on a special page
+  $: isLandingPage = specialNavbarRoutes.includes($page.url.pathname);
+  $: shouldShowNavbar = !noNavbarRoutes.includes($page.url.pathname);
   
   // Get the current route for active page highlighting
   $: activePage = $page.url.pathname.split('/')[1] || 'home';
 </script>
 
 <div class="app-container">
-  <Navbar {activePage} {isLandingPage} />
+  {#if shouldShowNavbar}
+    <Navbar {activePage} {isLandingPage} />
+  {/if}
   
   <main>
     <slot />

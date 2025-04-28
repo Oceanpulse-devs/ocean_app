@@ -1,5 +1,6 @@
 <script>
   import { slide } from 'svelte/transition';
+  import { goto } from '$app/navigation';
   
   export let activePage = "home";
   export let isLandingPage = false;
@@ -19,11 +20,13 @@
     isMenuOpen = !isMenuOpen;
   }
   
-  // Landing page auth states
-  let isSignUp = false;
+  // Landing page auth navigation
+  function navigateToLogin() {
+    goto('/login');
+  }
   
-  function toggleAuthMode() {
-    isSignUp = !isSignUp;
+  function navigateToSignup() {
+    goto('/signup');
   }
 </script>
 
@@ -67,12 +70,8 @@
     {:else}
       <!-- Landing page nav options -->
       <div class="auth-buttons">
-        <button class="btn-secondary" on:click={toggleAuthMode}>
-          {isSignUp ? 'Sign In' : 'Sign Up'}
-        </button>
-        <button class="btn-primary" on:click={toggleAuthMode}>
-          {isSignUp ? 'Sign Up' : 'Sign In'}
-        </button>
+        <button class="btn-secondary" on:click={navigateToLogin}>Sign In</button>
+        <button class="btn-primary" on:click={navigateToSignup}>Sign Up</button>
       </div>
     {/if}
   </div>
@@ -90,8 +89,8 @@
 
 <style>
   .navbar {
-    background-color: white;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    background-color: #faf9f6;  /* Warmer white */
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
     position: sticky;
     top: 0;
     width: 100%;
@@ -138,6 +137,8 @@
     border: 1px solid #e5e7eb;
     border-radius: 9999px;
     font-size: 0.875rem;
+    background-color: #ffffff;
+    color: #4b5563;
   }
   
   .search-button {
@@ -210,6 +211,7 @@
     flex-direction: column;
     padding: 1rem;
     border-top: 1px solid #e5e7eb;
+    background-color: #faf9f6;  /* Match navbar background */
   }
   
   .mobile-menu a {
