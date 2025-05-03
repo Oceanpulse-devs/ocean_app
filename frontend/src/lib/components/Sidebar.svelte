@@ -76,16 +76,15 @@
 
 <style>
   .sidebar {
-    background-color: #faf9f6;
-    border-right: 1px solid rgba(0, 0, 0, 0.05);
-    padding: 2rem;
-    position: sticky;
-    top: 0;
+    width: 250px;
+    min-width: 250px;
+    flex: 0 0 250px;
+    background: white;
     height: 100vh;
-    overflow-y: auto;
   }
 
   .profile-section {
+    flex-shrink: 0;
     text-align: center;
     margin-bottom: 2rem;
   }
@@ -97,7 +96,7 @@
   }
 
   .avatar {
-    width: 100%;
+    width: 90%;
     height: 100%;
     border-radius: 50%;
     object-fit: cover;
@@ -139,6 +138,7 @@
   }
 
   .sidebar-nav {
+    flex: 1;
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
@@ -170,6 +170,7 @@
   }
 
   .ocean-logo {
+    flex-shrink: 0;
     margin-top: auto;
     padding-top: 2rem;
     text-align: center;

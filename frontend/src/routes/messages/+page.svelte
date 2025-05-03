@@ -99,17 +99,28 @@
     </div>
 
     <div class="chat-input">
-      <button class="attach-btn">
-        <svg xmlns="http://www.w3.org/2000/svg" class="icon" viewBox="0 0 24 24">
-          <path d="M16.5 6v11.5c0 2.21-1.79 4-4 4s-4-1.79-4-4V5c0-1.38 1.12-2.5 2.5-2.5s2.5 1.12 2.5 2.5v10.5c0 .55-.45 1-1 1s-1-.45-1-1V6H10v9.5c0 1.38 1.12 2.5 2.5 2.5s2.5-1.12 2.5-2.5V5c0-2.21-1.79-4-4-4S7 2.79 7 5v12.5c0 3.04 2.46 5.5 5.5 5.5s5.5-2.46 5.5-5.5V6h-1.5z"/>
-        </svg>
-      </button>
-      <input type="text" placeholder="Type a message..." />
       <button class="emoji-btn">
         <svg xmlns="http://www.w3.org/2000/svg" class="icon" viewBox="0 0 24 24">
           <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm3.5-9c.83 0 1.5-.67 1.5-1.5S16.33 8 15.5 8 14 8.67 14 9.5s.67 1.5 1.5 1.5zm-7 0c.83 0 1.5-.67 1.5-1.5S9.33 8 8.5 8 7 8.67 7 9.5 7.67 11 8.5 11zm3.5 6.5c2.33 0 4.31-1.46 5.11-3.5H6.89c.8 2.04 2.78 3.5 5.11 3.5z"/>
         </svg>
       </button>
+      <button class="attach-btn">
+        <svg xmlns="http://www.w3.org/2000/svg" class="icon" viewBox="0 0 24 24">
+          <path d="M16.5 6v11.5c0 2.21-1.79 4-4 4s-4-1.79-4-4V5c0-1.38 1.12-2.5 2.5-2.5s2.5 1.12 2.5 2.5v10.5c0 .55-.45 1-1 1s-1-.45-1-1V6H10v9.5c0 1.38 1.12 2.5 2.5 2.5s2.5-1.12 2.5-2.5V5c0-2.21-1.79-4-4-4S7 2.79 7 5v12.5c0 3.04 2.46 5.5 5.5 5.5s5.5-2.46 5.5-5.5V6h-1.5z"/>
+        </svg>
+      </button>
+      <div class="input-wrapper">
+        <textarea 
+          placeholder="Type a message..." 
+          rows="1"
+          on:input={(e) => {
+            const textarea = e.target as HTMLTextAreaElement;
+            // Auto-expand the textarea
+            textarea.style.height = 'auto';
+            textarea.style.height = Math.min(textarea.scrollHeight, 150) + 'px';
+          }}
+        ></textarea>
+      </div>
       <button class="send-btn">
         <svg xmlns="http://www.w3.org/2000/svg" class="icon" viewBox="0 0 24 24">
           <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
@@ -150,18 +161,21 @@
 <style>
   .messages-layout {
     display: grid;
-    grid-template-columns: 280px 1fr 300px;
+    grid-template-columns: 250px 1fr 280px;
     height: 100vh;
     background-color: #f8f7f4;
   }
 
-  /* Chat Area Styles */
+  :global(.sidebar) {
+    background-color: white;
+  }
+
   .chat-area {
+    background-color: #faf9f6;
+    position: relative;
+    height: 100vh;
     display: flex;
     flex-direction: column;
-    background-color: #faf9f6;
-    border-right: 1px solid rgba(0, 0, 0, 0.05);
-    height: 100vh;
   }
 
   .chat-header {
@@ -171,7 +185,6 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    flex-shrink: 0;
   }
 
   .chat-user {
@@ -191,7 +204,7 @@
     margin: 0;
     font-size: 1rem;
     font-weight: 600;
-    color: #2d3748;
+    color: #e9edef;
   }
 
   .status {
@@ -199,18 +212,18 @@
     align-items: center;
     gap: 0.5rem;
     font-size: 0.875rem;
-    color: #718096;
+    color: #8696a0;
   }
 
   .status-dot {
     width: 8px;
     height: 8px;
     border-radius: 50%;
-    background-color: #cbd5e0;
+    background-color: #2f3b43;
   }
 
   .status-dot.online {
-    background-color: #48bb78;
+    background-color: #00a884;
   }
 
   .chat-actions {
@@ -221,7 +234,7 @@
   .action-btn {
     background: none;
     border: none;
-    color: #718096;
+    color: #8696a0;
     cursor: pointer;
     padding: 0.5rem;
     border-radius: 0.375rem;
@@ -229,8 +242,8 @@
   }
 
   .action-btn:hover {
-    background-color: rgba(0, 0, 0, 0.05);
-    color: #4299e1;
+    background-color: rgba(255, 255, 255, 0.05);
+    color: #e9edef;
   }
 
   .action-btn .icon {
@@ -240,16 +253,17 @@
 
   .chat-messages {
     flex: 1;
-    overflow-y: auto;
-    padding: 1rem;
+    padding: 1.5rem;
     display: flex;
     flex-direction: column;
-    gap: 1rem;
+    gap: 1.5rem;
+    overflow-y: auto;
   }
 
   .message {
     display: flex;
-    max-width: 70%;
+    max-width: 65%;
+    box-sizing: border-box;
   }
 
   .message.sent {
@@ -265,6 +279,7 @@
     border-radius: 1rem;
     background-color: white;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    width: 100%;
   }
 
   .sent .message-content {
@@ -291,23 +306,41 @@
   .chat-input {
     background-color: white;
     border-top: 1px solid rgba(0, 0, 0, 0.05);
-    padding: 1rem;
+    padding: 0.75rem;
     display: flex;
     gap: 0.5rem;
-    align-items: center;
-    flex-shrink: 0;
+    align-items: flex-end;
+    position: sticky;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    min-height: 62px;
   }
 
-  .chat-input input {
+  .input-wrapper {
     flex: 1;
+    min-height: 40px;
+    max-height: 150px;
+    display: flex;
+    align-items: flex-end;
+  }
+
+  .chat-input textarea {
+    width: 100%;
     padding: 0.75rem;
     border: 1px solid rgba(0, 0, 0, 0.1);
-    border-radius: 9999px;
+    border-radius: 20px;
     font-size: 0.95rem;
     outline: none;
+    resize: none;
+    line-height: 1.4;
+    max-height: 150px;
+    min-height: 40px;
+    font-family: inherit;
+    background-color: white;
   }
 
-  .chat-input input:focus {
+  .chat-input textarea:focus {
     border-color: #4299e1;
   }
 
@@ -321,6 +354,12 @@
     padding: 0.5rem;
     border-radius: 50%;
     transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    flex-shrink: 0;
   }
 
   .attach-btn:hover,
@@ -335,6 +374,16 @@
   .send-btn .icon {
     width: 1.5rem;
     height: 1.5rem;
+  }
+
+  .send-btn {
+    background-color: #4299e1;
+    color: white;
+  }
+
+  .send-btn:hover {
+    background-color: #3182ce;
+    color: white;
   }
 
   /* Contacts List Styles */
@@ -367,6 +416,7 @@
     border-radius: 9999px;
     font-size: 0.95rem;
     outline: none;
+    background-color: white;
   }
 
   .search-icon {
@@ -449,7 +499,7 @@
 
   @media (max-width: 1280px) {
     .messages-layout {
-      grid-template-columns: 280px 1fr;
+      grid-template-columns: 250px 1fr;
     }
 
     .contacts-list {
@@ -462,7 +512,7 @@
       grid-template-columns: 1fr;
     }
 
-    .sidebar {
+    :global(.sidebar) {
       display: none;
     }
   }
