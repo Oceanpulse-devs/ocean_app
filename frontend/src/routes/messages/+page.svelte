@@ -9,7 +9,7 @@
 
   let selectedChat = {
     name: 'Cody Fisher',
-    avatar: '/avatars/cody.jpg',
+    avatar: '/test.jpg.jpg',
     online: true
   };
 
@@ -29,21 +29,21 @@
   let contacts = [
     {
       name: "Mariam Tipsy",
-      avatar: "/avatars/mariam.jpg",
+      avatar: "/test.jpg.jpg",
       lastMessage: "The products are shipped from...",
       time: "2m",
       unread: true
     },
     {
       name: "Cody Fisher",
-      avatar: "/avatars/cody.jpg",
+      avatar: "/wrigglyLine2.png",
       lastMessage: "The products are shipped from...",
       time: "5m",
       unread: false
     },
     {
       name: "Esther Howard",
-      avatar: "/avatars/esther.jpg",
+      avatar: "/test.jpg.jpg",
       lastMessage: "Have you gone through...",
       time: "10m",
       unread: false
@@ -164,18 +164,21 @@
     grid-template-columns: 250px 1fr 280px;
     height: 100vh;
     background-color: #f8f7f4;
+    overflow: hidden;
   }
 
   :global(.sidebar) {
     background-color: white;
+    height: 100vh;
+    overflow-y: auto;
   }
 
   .chat-area {
     background-color: #faf9f6;
-    position: relative;
     height: 100vh;
     display: flex;
     flex-direction: column;
+    overflow: hidden;
   }
 
   .chat-header {
@@ -253,11 +256,11 @@
 
   .chat-messages {
     flex: 1;
-    padding: 1.5rem;
+    overflow-y: auto;
+    padding: 1rem;
     display: flex;
     flex-direction: column;
     gap: 1.5rem;
-    overflow-y: auto;
   }
 
   .message {
@@ -306,14 +309,10 @@
   .chat-input {
     background-color: white;
     border-top: 1px solid rgba(0, 0, 0, 0.05);
-    padding: 0.75rem;
+    padding: 1rem;
     display: flex;
     gap: 0.5rem;
     align-items: flex-end;
-    position: sticky;
-    bottom: 0;
-    left: 0;
-    right: 0;
     min-height: 62px;
   }
 
@@ -389,13 +388,17 @@
   /* Contacts List Styles */
   .contacts-list {
     background-color: white;
+    border-left: 1px solid rgba(0, 0, 0, 0.05);
+    height: 100vh;
     display: flex;
     flex-direction: column;
+    overflow: hidden;
   }
 
   .contacts-header {
     padding: 1rem;
     border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    background: white;
   }
 
   .contacts-header h2 {
@@ -432,7 +435,7 @@
   .contacts-scroll {
     flex: 1;
     overflow-y: auto;
-    padding: 1rem;
+    padding: 0.5rem;
   }
 
   .contact-item {

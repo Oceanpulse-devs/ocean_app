@@ -10,7 +10,7 @@
   let feedPost = {
     author: {
       name: 'MBT CEO',
-      avatar: '/avatars/mbt.jpg',
+      avatar: '/test.jpg.jpg',
       timestamp: '1st February, 03:PM'
     },
     product: {
@@ -20,9 +20,8 @@
       brand: 'Nike'
     },
     images: [
-      '/products/sneakers-1.jpg',
-      '/products/sneakers-2.jpg',
-      '/products/sneakers-3.jpg'
+      '/wrigglyLine2.png',
+      '/test.jpg.jpg'
     ],
     description: 'Step up your style with top-quality sneakers! 🔥 From classic kicks to the latest trends, I\'ve got the perfect pair for you. Comfort, style, and affordability—all in one place!',
     engagement: {
