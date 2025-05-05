@@ -1,6 +1,4 @@
 <script lang="ts">
-  import Sidebar from '$lib/components/Sidebar.svelte';
-
   let userStats = {
     posts: 46,
     followers: '2.8K',
@@ -101,144 +99,125 @@
   }
 </script>
 
-<div class="page-wrapper">
-  <Sidebar {userStats} />
-  
-  <main class="main-content">
-    <div class="search-section">
-      <div class="search-box">
-        <div class="search-input-wrapper">
-          <input 
-            type="text" 
-            placeholder="Search by text or image" 
-            bind:value={searchQuery}
-          />
-          <div class="search-type" on:click={toggleSearchOptions}>
-            <span class="selected-option">
-              {searchOptions.find(opt => opt.id === selectedSearchOption)?.label}
-            </span>
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="dropdown-icon">
-              <path d="M7 10l5 5 5-5z"/>
-            </svg>
-          </div>
-          <button class="camera-btn">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-              <path d="M12 15.2a3.2 3.2 0 100-6.4 3.2 3.2 0 000 6.4z"/>
-              <path d="M9 3L7.17 5H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2h-3.17L15 3H9zm3 15c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5z"/>
-            </svg>
-          </button>
+<div class="products-wrapper">
+  <div class="search-section">
+    <div class="search-box">
+      <div class="search-input-wrapper">
+        <input 
+          type="text" 
+          placeholder="Search by text or image" 
+          bind:value={searchQuery}
+        />
+        <div class="search-type" on:click={toggleSearchOptions}>
+          <span class="selected-option">
+            {searchOptions.find(opt => opt.id === selectedSearchOption)?.label}
+          </span>
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="dropdown-icon">
+            <path d="M7 10l5 5 5-5z"/>
+          </svg>
         </div>
+        <button class="camera-btn">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M12 15.2a3.2 3.2 0 100-6.4 3.2 3.2 0 000 6.4z"/>
+            <path d="M9 3L7.17 5H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2h-3.17L15 3H9zm3 15c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5z"/>
+          </svg>
+        </button>
+      </div>
+      
+      {#if showSearchOptions}
+        <div class="search-options">
+          {#each searchOptions as option}
+            <button 
+              class="option-btn" 
+              class:selected={selectedSearchOption === option.id}
+              on:click={() => selectSearchOption(option.id)}
+            >
+              {option.label}
+            </button>
+          {/each}
+        </div>
+      {/if}
+    </div>
+
+    <div class="filters">
+      <div class="category-dropdown">
+        <button class="category-btn" on:click={toggleCategories}>
+          <span class="category-label">
+            {categories.find(cat => cat.id === selectedCategory)?.name || 'Select Category'}
+          </span>
+          <svg xmlns="http://www.w3.org/2000/svg" class="dropdown-icon" class:open={showCategories} viewBox="0 0 24 24">
+            <path d="M7 10l5 5 5-5z"/>
+          </svg>
+        </button>
         
-        {#if showSearchOptions}
-          <div class="search-options">
-            {#each searchOptions as option}
+        {#if showCategories}
+          <div class="categories-dropdown">
+            {#each categories as category}
               <button 
-                class="option-btn" 
-                class:selected={selectedSearchOption === option.id}
-                on:click={() => selectSearchOption(option.id)}
+                class="category-option" 
+                class:selected={selectedCategory === category.id}
+                on:click={() => selectCategory(category.id)}
               >
-                {option.label}
+                <span class="category-icon">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                    <path d={category.icon} />
+                  </svg>
+                </span>
+                {category.name}
               </button>
             {/each}
           </div>
         {/if}
       </div>
 
-      <div class="filters">
-        <div class="category-dropdown">
-          <button class="category-btn" on:click={toggleCategories}>
-            <span class="category-label">
-              {categories.find(cat => cat.id === selectedCategory)?.name || 'Select Category'}
-            </span>
-            <svg xmlns="http://www.w3.org/2000/svg" class="dropdown-icon" class:open={showCategories} viewBox="0 0 24 24">
-              <path d="M7 10l5 5 5-5z"/>
-            </svg>
-          </button>
-          
-          {#if showCategories}
-            <div class="categories-dropdown">
-              {#each categories as category}
-                <button 
-                  class="category-option" 
-                  class:selected={selectedCategory === category.id}
-                  on:click={() => selectCategory(category.id)}
-                >
-                  <span class="category-icon">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                      <path d={category.icon} />
-                    </svg>
-                  </span>
-                  {category.name}
-                </button>
-              {/each}
-            </div>
-          {/if}
-        </div>
-
-        <button class="filter-btn">
-          Brand
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-            <path d="M7 10l5 5 5-5z"/>
-          </svg>
-        </button>
-        <button class="filter-btn">
-          Price
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-            <path d="M7 10l5 5 5-5z"/>
-          </svg>
-        </button>
-      </div>
+      <button class="filter-btn">
+        Brand
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+          <path d="M7 10l5 5 5-5z"/>
+        </svg>
+      </button>
+      <button class="filter-btn">
+        Price
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+          <path d="M7 10l5 5 5-5z"/>
+        </svg>
+      </button>
     </div>
+  </div>
 
-    <div class="products-grid">
-      {#each products as product}
-        <div class="product-card">
-          <img src={product.image} alt={product.name} />
-          <div class="product-info">
-            <h3>{product.name}</h3>
-            <p class="seller">{product.seller}</p>
-            <div class="price-row">
-              <span class="price">${product.price}</span>
-              <button class="bookmark-btn">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                  <path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z"/>
-                </svg>
-              </button>
-            </div>
-            <button class="view-btn">View</button>
+  <div class="products-grid">
+    {#each products as product}
+      <div class="product-card">
+        <img src={product.image} alt={product.name} />
+        <div class="product-info">
+          <h3>{product.name}</h3>
+          <p class="seller">{product.seller}</p>
+          <div class="price-row">
+            <span class="price">${product.price}</span>
+            <button class="bookmark-btn">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                <path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z"/>
+              </svg>
+            </button>
           </div>
+          <button class="view-btn">View</button>
         </div>
-      {/each}
-    </div>
-  </main>
+      </div>
+    {/each}
+  </div>
 </div>
 
 <style>
-  .page-wrapper {
-    display: grid;
-    grid-template-columns: 250px 1fr;
+  .products-wrapper {
     height: 100vh;
-    background-color: #f8f7f4;
-    overflow: hidden;
-    position: fixed;
-    width: 100%;
-    top: 0;
-    left: 0;
-  }
-
-  .main-content {
-    padding: 3rem 2rem 4rem 2rem;
-    background-color: #faf9f6;
-    height: 100vh;
-    overflow-y: auto;
     display: flex;
     flex-direction: column;
+    overflow: hidden;
   }
 
   .search-section {
+    padding: 3rem 2rem 1.5rem 2rem;
     background-color: #faf9f6;
-    padding: 1rem 0;
-    margin-bottom: 2rem;
   }
 
   .search-box {
@@ -448,10 +427,12 @@
   }
 
   .products-grid {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem 2rem 8rem 2rem;
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
     gap: 2rem;
-    padding-top: 1rem;
   }
 
   .product-card {
@@ -520,18 +501,33 @@
     cursor: pointer;
   }
 
+  /* Custom Scrollbar Styling */
+  .products-grid::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  .products-grid::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .products-grid::-webkit-scrollbar-thumb {
+    background-color: rgba(203, 213, 225, 0.4);
+    border-radius: 20px;
+  }
+
+  .products-grid::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(148, 163, 184, 0.5);
+  }
+
+  /* Firefox */
+  .products-grid {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(203, 213, 225, 0.4) transparent;
+  }
+
   @media (max-width: 1024px) {
-    .page-wrapper {
-      grid-template-columns: 1fr;
+    .products-wrapper {
       position: fixed;
-    }
-
-    :global(.sidebar) {
-      display: none;
-    }
-
-    .main-content {
-      padding: 1rem;
     }
 
     .search-box,

@@ -94,7 +94,7 @@
   </nav>
 
   <div class="ocean-logo">
-    <img src="/logo.svg" alt="Ocean" />
+    <img src="/wrigglyLine2.png" alt="Ocean" />
   </div>
 </aside>
 
@@ -105,13 +105,37 @@
     flex: 0 0 250px;
     background: white;
     height: 100vh;
+    overflow-y: auto;
+  }
+
+  /* Custom Scrollbar Styling */
+  .sidebar::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  .sidebar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .sidebar::-webkit-scrollbar-thumb {
+    background-color: rgba(203, 213, 225, 0.4);
+    border-radius: 20px;
+  }
+
+  .sidebar::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(148, 163, 184, 0.5);
+  }
+
+  /* Firefox */
+  .sidebar {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(203, 213, 225, 0.4) transparent;
   }
 
   .profile-section {
     flex-shrink: 0;
     text-align: center;
-    margin-bottom: 2rem;
-    padding-top: 2rem;
+    padding: 2rem 1rem;
   }
 
   .avatar-container {
@@ -119,6 +143,7 @@
     height: 100px;
     margin: 0 auto 1rem;
     position: relative;
+    overflow: hidden;
   }
 
   .avatar {
@@ -231,10 +256,16 @@
   }
 
   .ocean-logo {
-    flex-shrink: 0;
-    margin-top: auto;
-    padding-top: 2rem;
-    text-align: center;
+    padding: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .ocean-logo img {
+    width: 40px;
+    height: 40px;
+    object-fit: contain;
   }
 
   @media (max-width: 1024px) {

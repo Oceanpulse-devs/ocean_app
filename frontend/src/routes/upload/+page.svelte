@@ -1,6 +1,4 @@
 <script lang="ts">
-  import Sidebar from '$lib/components/Sidebar.svelte';
-  
   let selectedImages: string[] = [];
   let productName = '';
   let category = '';
@@ -57,183 +55,157 @@
   const minEndDate = tomorrow.toISOString().split('T')[0];
 </script>
 
-<div class="upload-container">
-  <Sidebar />
-  
-  <main class="upload-content">
-    <div class="upload-header">
-      <h1>Upload Product</h1>
-      <div class="header-actions">
-        <button class="uploaded-btn">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
-            <polyline points="17 8 12 3 7 8"/>
-            <line x1="12" y1="3" x2="12" y2="15"/>
-          </svg>
-          Uploaded
-        </button>
-        <button class="upload-btn">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
-            <polyline points="17 8 12 3 7 8"/>
-            <line x1="12" y1="3" x2="12" y2="15"/>
-          </svg>
-          Upload
-        </button>
+<div class="upload-content">
+  <div class="upload-header">
+    <h1>Upload Product</h1>
+    <button class="preview-btn">Preview</button>
+  </div>
+
+  <div class="upload-form">
+    <div class="image-upload-section">
+      <h2>Add Image</h2>
+      <p class="upload-hint">Add minimum of 5 images and maximum of 20</p>
+      
+      <div class="image-grid">
+        <label class="image-upload-box" for="image-input">
+          <input
+            type="file"
+            id="image-input"
+            accept="image/jpeg,image/png"
+            multiple
+            on:change={handleImageUpload}
+            style="display: none;"
+          />
+          <div class="upload-placeholder">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 5v14M5 12h14"/>
+            </svg>
+          </div>
+        </label>
+
+        {#each selectedImages as image, i}
+          <div class="image-preview">
+            <img src={image} alt="Product preview" />
+            <button class="remove-image" on:click={() => removeImage(i)}>×</button>
+          </div>
+        {/each}
       </div>
+      
+      <p class="format-hint">Supported format is jpg and png</p>
     </div>
 
-    <div class="upload-form">
-      <div class="image-upload-section">
-        <h2>Add Image</h2>
-        <p class="upload-hint">Add minimum of 5 images and maximum of 20</p>
-        
-        <div class="image-grid">
-          <label class="image-upload-box" for="image-input">
-            <input
-              type="file"
-              id="image-input"
-              accept="image/jpeg,image/png"
-              multiple
-              on:change={handleImageUpload}
-              style="display: none;"
-            />
-            <div class="upload-placeholder">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M12 5v14M5 12h14"/>
-              </svg>
-            </div>
-          </label>
-
-          {#each selectedImages as image, i}
-            <div class="image-preview">
-              <img src={image} alt="Product preview" />
-              <button class="remove-image" on:click={() => removeImage(i)}>×</button>
-            </div>
-          {/each}
-        </div>
-        
-        <p class="format-hint">Supported format is jpg and png</p>
+    <div class="product-details">
+      <div class="form-group">
+        <input type="text" bind:value={productName} placeholder="Product Name" />
       </div>
 
-      <div class="product-details">
+      <div class="form-row">
         <div class="form-group">
-          <input type="text" bind:value={productName} placeholder="Product Name" />
+          <select bind:value={category}>
+            <option value="" disabled selected>Category</option>
+            <option value="electronics">Electronics</option>
+            <option value="fashion">Fashion</option>
+            <option value="home">Home</option>
+          </select>
         </div>
-
-        <div class="form-row">
-          <div class="form-group">
-            <select bind:value={category}>
-              <option value="" disabled selected>Category</option>
-              <option value="electronics">Electronics</option>
-              <option value="fashion">Fashion</option>
-              <option value="home">Home</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <input type="number" bind:value={price} placeholder="Price" />
-          </div>
-        </div>
-
-        <div class="form-row">
-          <div class="form-group">
-            <input type="text" bind:value={brand} placeholder="Brand" />
-          </div>
-          <div class="form-group">
-            <select bind:value={location}>
-              <option value="" disabled selected>Location</option>
-              <option value="lagos">Lagos</option>
-              <option value="abuja">Abuja</option>
-              <option value="port-harcourt">Port Harcourt</option>
-            </select>
-          </div>
-        </div>
-
         <div class="form-group">
-          <textarea
-            bind:value={description}
-            placeholder="Description"
-            rows="4"
-          ></textarea>
+          <input type="number" bind:value={price} placeholder="Price" />
         </div>
-
-        <div class="form-group auction-toggle">
-          <label>
-            <input type="checkbox" bind:checked={isAuction} />
-            Convert to Auction
-          </label>
-        </div>
-
-        {#if isAuction}
-          <div class="auction-details">
-            <h3>Auction Details</h3>
-            
-            <div class="form-row">
-              <div class="form-group">
-                <input 
-                  type="number" 
-                  bind:value={startingBid} 
-                  placeholder="Starting Bid Price" 
-                  min="0"
-                />
-              </div>
-              <div class="form-group">
-                <input 
-                  type="number" 
-                  bind:value={reservePrice} 
-                  placeholder="Reserve Price (Optional)" 
-                  min="0"
-                />
-              </div>
-            </div>
-
-            <div class="form-row">
-              <div class="form-group">
-                <select bind:value={auctionDuration}>
-                  <option value="3">3 Days</option>
-                  <option value="5">5 Days</option>
-                  <option value="7">7 Days</option>
-                  <option value="10">10 Days</option>
-                  <option value="14">14 Days</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <input 
-                  type="date" 
-                  bind:value={endDate} 
-                  min={minEndDate}
-                  placeholder="End Date"
-                />
-              </div>
-            </div>
-          </div>
-        {/if}
       </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <input type="text" bind:value={brand} placeholder="Brand" />
+        </div>
+        <div class="form-group">
+          <select bind:value={location}>
+            <option value="" disabled selected>Location</option>
+            <option value="lagos">Lagos</option>
+            <option value="abuja">Abuja</option>
+            <option value="port-harcourt">Port Harcourt</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <textarea
+          bind:value={description}
+          placeholder="Description"
+          rows="4"
+        ></textarea>
+      </div>
+
+      <div class="form-group auction-toggle">
+        <label>
+          <input type="checkbox" bind:checked={isAuction} />
+          Convert to Auction
+        </label>
+      </div>
+
+      {#if isAuction}
+        <div class="auction-details">
+          <h3>Auction Details</h3>
+          
+          <div class="form-row">
+            <div class="form-group">
+              <input 
+                type="number" 
+                bind:value={startingBid} 
+                placeholder="Starting Bid Price" 
+                min="0"
+              />
+            </div>
+            <div class="form-group">
+              <input 
+                type="number" 
+                bind:value={reservePrice} 
+                placeholder="Reserve Price (Optional)" 
+                min="0"
+              />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <select bind:value={auctionDuration}>
+                <option value="3">3 Days</option>
+                <option value="5">5 Days</option>
+                <option value="7">7 Days</option>
+                <option value="10">10 Days</option>
+                <option value="14">14 Days</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <input 
+                type="date" 
+                bind:value={endDate} 
+                min={minEndDate}
+                placeholder="End Date"
+              />
+            </div>
+          </div>
+        </div>
+      {/if}
     </div>
-  </main>
+  </div>
 </div>
 
 <style>
-  .upload-container {
-    display: flex;
-    min-height: 100vh;
-    background-color: #FAF9F6;
-    color: #1a1a1a;
-  }
-
   .upload-content {
-    flex: 1;
-    padding: 2rem;
-    max-width: 1200px;
-    margin: 0 auto;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding-bottom: 6rem;
   }
 
   .upload-header {
+    flex-shrink: 0;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 2.5rem;
-    padding: 0 0.5rem;
+    padding: 2rem 2rem 1.5rem 2rem;
+    background-color: #FAF9F6;
   }
 
   .upload-header h1 {
@@ -243,12 +215,7 @@
     letter-spacing: -0.025em;
   }
 
-  .header-actions {
-    display: flex;
-    gap: 1rem;
-  }
-
-  .upload-btn, .uploaded-btn {
+  .preview-btn {
     display: flex;
     align-items: center;
     gap: 0.75rem;
@@ -259,47 +226,60 @@
     cursor: pointer;
     transition: all 0.2s ease-in-out;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-  }
-
-  .upload-btn {
-    background: #6366F1;
-    color: white;
-    border: none;
-  }
-
-  .upload-btn:hover {
-    background: #4F46E5;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 6px -1px rgba(99, 102, 241, 0.2);
-  }
-
-  .uploaded-btn {
     background: white;
     color: #4A5568;
     border: 2px solid #E2E8F0;
   }
 
-  .uploaded-btn:hover {
+  .preview-btn:hover {
     background: #F7FAFC;
     border-color: #CBD5E0;
     transform: translateY(-1px);
   }
 
-  .upload-btn svg, .uploaded-btn svg {
+  .preview-btn svg {
     width: 1.25rem;
     height: 1.25rem;
     transition: transform 0.2s ease;
   }
 
-  .upload-btn:hover svg, .uploaded-btn:hover svg {
+  .preview-btn:hover svg {
     transform: scale(1.1);
   }
 
   .upload-form {
+    flex: 1;
+    overflow-y: auto;
     background: white;
-    border-radius: 1.5rem;
+    border-radius: 1.5rem 1.5rem 0 0;
     padding: 2.5rem;
+    margin: 0 2rem 2rem;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  }
+
+  /* Custom Scrollbar Styling */
+  .upload-form::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .upload-form::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+  }
+
+  .upload-form::-webkit-scrollbar-thumb {
+    background-color: #cbd5e1;
+    border-radius: 4px;
+  }
+
+  .upload-form::-webkit-scrollbar-thumb:hover {
+    background-color: #94a3b8;
+  }
+
+  /* Firefox */
+  .upload-form {
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 #f1f1f1;
   }
 
   .image-upload-section {
@@ -514,18 +494,21 @@
 
   @media (max-width: 768px) {
     .upload-content {
-      padding: 1.5rem;
+      height: 100%;
+      padding: 1rem;
     }
 
     .upload-header {
       flex-direction: column;
       align-items: flex-start;
       gap: 1.25rem;
-      margin-bottom: 2rem;
+      padding: 1rem;
     }
 
     .upload-form {
+      margin: 0;
       padding: 1.5rem;
+      border-radius: 1rem;
     }
 
     .form-row {

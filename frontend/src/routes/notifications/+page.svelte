@@ -21,7 +21,7 @@
       id: 1,
       user: {
         name: 'Lex Murphy',
-        avatar: '/avatars/user1.jpg',
+        avatar: '/test.jpg.jpg',
         action: 'Followed you'
       },
       timestamp: new Date(2024, 2, 20, 9, 42),
@@ -32,7 +32,7 @@
       id: 2,
       user: {
         name: 'Ray Arnold',
-        avatar: '/avatars/user2.jpg',
+        avatar: '/wrigglyLine2.png',
         action: 'left 6 comments on your post'
       },
       timestamp: new Date(2024, 2, 19, 9, 42),
@@ -43,7 +43,7 @@
       id: 3,
       user: {
         name: 'Denise Nedry',
-        avatar: '/avatars/user3.jpg',
+        avatar: '/test.jpg.jpg',
         action: 'replied to MBT CEO'
       },
       content: 'Oh, I finished de-bugging the phones, but the system\'s compiling for eighteen minutes, or twent...',

@@ -1,6 +1,4 @@
 <script lang="ts">
-  import Sidebar from '$lib/components/Sidebar.svelte';
-
   let userStats = {
     posts: 46,
     followers: '2.8K',
@@ -52,11 +50,8 @@
   ];
 </script>
 
-<div class="messages-layout">
-  <Sidebar {userStats} />
-
-  <!-- Chat Area -->
-  <main class="chat-area">
+<div class="messages-wrapper">
+  <div class="chat-area">
     <div class="chat-header">
       <div class="chat-user">
         <img src={selectedChat.avatar} alt={selectedChat.name} class="user-avatar" />
@@ -127,50 +122,19 @@
         </svg>
       </button>
     </div>
-  </main>
+  </div>
 
-  <!-- Contacts List -->
-  <aside class="contacts-list">
-    <div class="contacts-header">
-      <h2>Chats</h2>
-      <div class="search-container">
-        <input type="text" placeholder="Search contacts" />
-        <svg xmlns="http://www.w3.org/2000/svg" class="search-icon" viewBox="0 0 24 24">
-          <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
-        </svg>
-      </div>
-    </div>
-
-    <div class="contacts-scroll">
-      {#each contacts as contact}
-        <div class="contact-item" class:unread={contact.unread}>
-          <img src={contact.avatar} alt={contact.name} class="contact-avatar" />
-          <div class="contact-info">
-            <div class="contact-header">
-              <h3>{contact.name}</h3>
-              <span class="contact-time">{contact.time}</span>
-            </div>
-            <p class="last-message">{contact.lastMessage}</p>
-          </div>
-        </div>
-      {/each}
-    </div>
-  </aside>
+  <div class="chat-details">
+    <!-- ... existing chat details code ... -->
+  </div>
 </div>
 
 <style>
-  .messages-layout {
+  .messages-wrapper {
+    height: 100vh;
     display: grid;
-    grid-template-columns: 250px 1fr 280px;
-    height: 100vh;
-    background-color: #f8f7f4;
+    grid-template-columns: 1fr 280px;
     overflow: hidden;
-  }
-
-  :global(.sidebar) {
-    background-color: white;
-    height: 100vh;
-    overflow-y: auto;
   }
 
   .chat-area {
@@ -385,8 +349,32 @@
     color: white;
   }
 
+  /* Custom Scrollbar Styling */
+  .chat-messages::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  .chat-messages::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .chat-messages::-webkit-scrollbar-thumb {
+    background-color: rgba(203, 213, 225, 0.4);
+    border-radius: 20px;
+  }
+
+  .chat-messages::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(148, 163, 184, 0.5);
+  }
+
+  /* Firefox */
+  .chat-messages {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(203, 213, 225, 0.4) transparent;
+  }
+
   /* Contacts List Styles */
-  .contacts-list {
+  .chat-details {
     background-color: white;
     border-left: 1px solid rgba(0, 0, 0, 0.05);
     height: 100vh;
@@ -501,21 +489,21 @@
   }
 
   @media (max-width: 1280px) {
-    .messages-layout {
-      grid-template-columns: 250px 1fr;
+    .messages-wrapper {
+      grid-template-columns: 1fr;
     }
 
-    .contacts-list {
+    .chat-details {
       display: none;
     }
   }
 
   @media (max-width: 768px) {
-    .messages-layout {
+    .messages-wrapper {
       grid-template-columns: 1fr;
     }
 
-    :global(.sidebar) {
+    .chat-details {
       display: none;
     }
   }

@@ -1,12 +1,5 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import Sidebar from '$lib/components/Sidebar.svelte';
-
-  let userStats = {
-    posts: 46,
-    followers: '2.8K',
-    following: 200
-  };
 
   // Mock data - will be replaced with actual API calls
   let auctions = [
@@ -56,132 +49,128 @@
   }
 </script>
 
-<div class="layout">
-  <Sidebar {userStats} />
-
-  <main class="main-content">
-    <div class="search-bar">
-      <div class="search-input">
-        <svg xmlns="http://www.w3.org/2000/svg" class="search-icon" viewBox="0 0 24 24">
-          <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+<div class="auctions-content">
+  <div class="search-bar">
+    <div class="search-input">
+      <svg xmlns="http://www.w3.org/2000/svg" class="search-icon" viewBox="0 0 24 24">
+        <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+      </svg>
+      <input type="text" placeholder="Search for product by text or image" />
+      <button class="camera-btn">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+          <path d="M12 15.2a3.2 3.2 0 100-6.4 3.2 3.2 0 000 6.4z"/>
+          <path d="M9 3L7.17 5H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2h-3.17L15 3H9zm3 15c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5z"/>
         </svg>
-        <input type="text" placeholder="Search for product by text or image" />
-        <button class="camera-btn">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-            <path d="M12 15.2a3.2 3.2 0 100-6.4 3.2 3.2 0 000 6.4z"/>
-            <path d="M9 3L7.17 5H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2h-3.17L15 3H9zm3 15c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5z"/>
-          </svg>
-        </button>
-      </div>
+      </button>
     </div>
+  </div>
 
-    <div class="auction-post">
-      <!-- Seller Info -->
-      <div class="seller-info">
-        <img src={selectedAuction.seller.avatar} alt={selectedAuction.seller.name} class="seller-avatar" />
-        <div class="seller-details">
-          <div class="seller-name-row">
-            <h2>{selectedAuction.seller.name}</h2>
-            <button class="follow-btn">Follow</button>
-          </div>
-          <span class="timestamp">{selectedAuction.seller.timestamp}</span>
-        </div>
-      </div>
-
-      <!-- Product Details -->
-      <div class="product-details">
-        <div class="info-row">
-          <span class="label">PRODUCT NAME:</span>
-          <span class="value">{selectedAuction.product.name}</span>
-        </div>
-        <div class="info-row">
-          <span class="label">LOCATION:</span>
-          <span class="value">{selectedAuction.product.location}</span>
-        </div>
-        <div class="info-row">
-          <span class="label">BRAND:</span>
-          <span class="value">{selectedAuction.product.brand}</span>
-        </div>
-        <div class="info-row">
-          <span class="label">PRICE:</span>
-          <span class="value">${selectedAuction.product.price}</span>
-        </div>
-      </div>
-
-      <p class="product-description">{selectedAuction.product.description}</p>
-
-      <!-- Product Images and Bidding -->
-      <div class="auction-content">
-        <div class="product-images">
-          <button class="nav-btn prev" on:click={previousImage}>
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-              <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/>
-            </svg>
-          </button>
-          <div class="image-grid">
-            {#each selectedAuction.product.images as image, i}
-              <div class="image-container" class:active={i === currentImageIndex}>
-                <img src={image} alt="Product view {i + 1}" />
-              </div>
-            {/each}
-          </div>
-          <button class="nav-btn next" on:click={nextImage}>
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-              <path d="M8.59 16.59L10 18l6-6-6-6-1.41 1.41L13.17 12z"/>
-            </svg>
-          </button>
-        </div>
-
-        <div class="bidding-section">
-          <div class="current-price">
-            <span class="label">CURRENT PRICE</span>
-            <span class="price">${currentBid}</span>
-          </div>
-
-          <div class="bid-history">
-            <div class="bid-row">
-              <span class="bid-amount">$120</span>
-              <span class="bid-label">BID</span>
+  <div class="auctions-grid">
+    {#each auctions as auction (auction.id)}
+      <div class="auction-post">
+        <!-- Seller Info -->
+        <div class="seller-info">
+          <img src={auction.seller.avatar} alt={auction.seller.name} class="seller-avatar" />
+          <div class="seller-details">
+            <div class="seller-name-row">
+              <h2>{auction.seller.name}</h2>
+              <button class="follow-btn">Follow</button>
             </div>
+            <span class="timestamp">{auction.seller.timestamp}</span>
           </div>
+        </div>
 
-          <div class="place-bid">
-            <div class="bid-input">
-              <span class="currency">$</span>
-              <input 
-                type="number" 
-                bind:value={bidAmount}
-                placeholder="0.0"
-                min={currentBid + 1}
-                step="0.01"
-              />
+        <!-- Product Details -->
+        <div class="product-details">
+          <div class="info-row">
+            <span class="label">PRODUCT NAME:</span>
+            <span class="value">{auction.product.name}</span>
+          </div>
+          <div class="info-row">
+            <span class="label">LOCATION:</span>
+            <span class="value">{auction.product.location}</span>
+          </div>
+          <div class="info-row">
+            <span class="label">BRAND:</span>
+            <span class="value">{auction.product.brand}</span>
+          </div>
+          <div class="info-row">
+            <span class="label">PRICE:</span>
+            <span class="value">${auction.product.price}</span>
+          </div>
+        </div>
+
+        <p class="product-description">{auction.product.description}</p>
+
+        <!-- Product Images and Bidding -->
+        <div class="auction-content">
+          <div class="product-images">
+            <button class="nav-btn prev" on:click={previousImage}>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/>
+              </svg>
+            </button>
+            <div class="image-grid">
+              {#each auction.product.images as image, i}
+                <div class="image-container" class:active={i === currentImageIndex}>
+                  <img src={image} alt="Product view {i + 1}" />
+                </div>
+              {/each}
             </div>
-            <button 
-              class="bid-btn"
-              disabled={!bidAmount || parseFloat(bidAmount) <= currentBid}
-              on:click={handleBid}
-            >
-              Bid Accepted
+            <button class="nav-btn next" on:click={nextImage}>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                <path d="M8.59 16.59L10 18l6-6-6-6-1.41 1.41L13.17 12z"/>
+              </svg>
             </button>
           </div>
+
+          <div class="bidding-section">
+            <div class="current-price">
+              <span class="label">CURRENT PRICE</span>
+              <span class="price">${currentBid}</span>
+            </div>
+
+            <div class="bid-history">
+              <div class="bid-row">
+                <span class="bid-amount">$120</span>
+                <span class="bid-label">BID</span>
+              </div>
+            </div>
+
+            <div class="place-bid">
+              <div class="bid-input">
+                <span class="currency">$</span>
+                <input 
+                  type="number" 
+                  bind:value={bidAmount}
+                  placeholder="0.0"
+                  min={currentBid + 1}
+                  step="0.01"
+                />
+              </div>
+              <button 
+                class="bid-btn"
+                disabled={!bidAmount || parseFloat(bidAmount) <= currentBid}
+                on:click={handleBid}
+              >
+                Bid Accepted
+              </button>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
-  </main>
+    {/each}
+  </div>
 </div>
 
 <style>
-  .layout {
-    display: grid;
-    grid-template-columns: 250px 1fr;
-    min-height: 100vh;
+  .auctions-content {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
     background: #FAF9F6;
-  }
-
-  .main-content {
     padding: 2rem;
-    max-width: 1200px;
-    margin: 0 auto;
   }
 
   .search-bar {
@@ -196,6 +185,8 @@
     align-items: center;
     gap: 0.75rem;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    max-width: 800px;
+    margin: 0 auto;
   }
 
   .search-icon {
@@ -225,11 +216,42 @@
     color: #718096;
   }
 
+  .auctions-grid {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0 1rem 8rem 1rem;
+  }
+
+  /* Custom Scrollbar Styling */
+  .auctions-grid::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  .auctions-grid::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .auctions-grid::-webkit-scrollbar-thumb {
+    background-color: rgba(203, 213, 225, 0.4);
+    border-radius: 20px;
+  }
+
+  .auctions-grid::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(148, 163, 184, 0.5);
+  }
+
+  /* Firefox */
+  .auctions-grid {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(203, 213, 225, 0.4) transparent;
+  }
+
   .auction-post {
     background: white;
     border-radius: 1rem;
     padding: 1.5rem;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    margin-bottom: 2rem;
   }
 
   .seller-info {
@@ -464,10 +486,6 @@
   }
 
   @media (max-width: 1024px) {
-    .layout {
-      grid-template-columns: 1fr;
-    }
-
     .auction-content {
       grid-template-columns: 1fr;
     }

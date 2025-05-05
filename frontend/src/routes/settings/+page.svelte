@@ -1,6 +1,4 @@
 <script lang="ts">
-  import Sidebar from '$lib/components/Sidebar.svelte';
-  
   // Settings state
   let notificationsEnabled = true;
   let emailNotifications = true;
@@ -22,28 +20,28 @@
   const settingsSections = [
     {
       id: 'account',
-      icon: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+      icon: `<svg xmlns="http://www.w3.org/2000/svg" class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
             </svg>`,
       title: 'Account Settings'
     },
     {
       id: 'notifications',
-      icon: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+      icon: `<svg xmlns="http://www.w3.org/2000/svg" class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
             </svg>`,
       title: 'Notifications'
     },
     {
       id: 'privacy',
-      icon: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+      icon: `<svg xmlns="http://www.w3.org/2000/svg" class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8V7a4 4 0 00-8 0v4h8z" />
             </svg>`,
       title: 'Privacy & Security'
     },
     {
       id: 'preferences',
-      icon: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+      icon: `<svg xmlns="http://www.w3.org/2000/svg" class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
             </svg>`,
       title: 'Preferences'
@@ -53,163 +51,152 @@
   let activeSection = 'account';
 </script>
 
-<div class="settings-container">
-  <Sidebar />
-  
-  <main class="settings-content">
-    <div class="settings-header">
-      <h1>Settings</h1>
-      <button class="save-button" on:click={saveSettings}>
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-        </svg>
-        Save Changes
-      </button>
+<div class="settings-content">
+  <div class="settings-header">
+    <h1>Settings</h1>
+    <button class="save-button" on:click={saveSettings}>
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+      </svg>
+      Save Changes
+    </button>
+  </div>
+
+  <div class="settings-container">
+    <nav class="settings-nav">
+      {#each settingsSections as section}
+        <button
+          class="nav-item"
+          class:active={activeSection === section.id}
+          on:click={() => activeSection = section.id}
+        >
+          {@html section.icon}
+          <span>{section.title}</span>
+        </button>
+      {/each}
+    </nav>
+
+    <div class="settings-panel">
+      {#if activeSection === 'account'}
+        <section>
+          <h2>Account Settings</h2>
+          <div class="settings-group">
+            <div class="setting-item">
+              <label for="language">Language</label>
+              <select id="language" bind:value={language}>
+                <option value="english">English</option>
+                <option value="french">French</option>
+                <option value="spanish">Spanish</option>
+              </select>
+            </div>
+            
+            <div class="setting-item">
+              <label for="currency">Currency</label>
+              <select id="currency" bind:value={currency}>
+                <option value="USD">USD ($)</option>
+                <option value="EUR">EUR (€)</option>
+                <option value="GBP">GBP (£)</option>
+              </select>
+            </div>
+
+            <div class="setting-item">
+              <label>Auto-save Drafts</label>
+              <label class="toggle">
+                <input type="checkbox" bind:checked={autoSaveEnabled}>
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+          </div>
+        </section>
+      {/if}
+
+      {#if activeSection === 'notifications'}
+        <section>
+          <h2>Notification Preferences</h2>
+          <div class="settings-group">
+            <div class="setting-item">
+              <label>Push Notifications</label>
+              <label class="toggle">
+                <input type="checkbox" bind:checked={notificationsEnabled}>
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+
+            <div class="setting-item">
+              <label>Email Notifications</label>
+              <label class="toggle">
+                <input type="checkbox" bind:checked={emailNotifications}>
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+
+            <div class="setting-item">
+              <label>Newsletter</label>
+              <label class="toggle">
+                <input type="checkbox" bind:checked={newsletterEnabled}>
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+          </div>
+        </section>
+      {/if}
+
+      {#if activeSection === 'privacy'}
+        <section>
+          <h2>Privacy & Security</h2>
+          <div class="settings-group">
+            <div class="setting-item">
+              <label for="privacy">Profile Privacy</label>
+              <select id="privacy" bind:value={privacyProfile}>
+                <option value="public">Public</option>
+                <option value="private">Private</option>
+                <option value="friends">Friends Only</option>
+              </select>
+            </div>
+
+            <div class="setting-item">
+              <label>Two-Factor Authentication</label>
+              <label class="toggle">
+                <input type="checkbox" bind:checked={twoFactorEnabled}>
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+          </div>
+        </section>
+      {/if}
+
+      {#if activeSection === 'preferences'}
+        <section>
+          <h2>Display Preferences</h2>
+          <div class="settings-group">
+            <div class="setting-item">
+              <label>Dark Mode</label>
+              <label class="toggle">
+                <input type="checkbox" bind:checked={darkMode}>
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+          </div>
+        </section>
+      {/if}
     </div>
-
-    <div class="settings-layout">
-      <nav class="settings-nav">
-        {#each settingsSections as section}
-          <button
-            class="nav-item"
-            class:active={activeSection === section.id}
-            on:click={() => activeSection = section.id}
-          >
-            {@html section.icon}
-            {section.title}
-          </button>
-        {/each}
-      </nav>
-
-      <div class="settings-panel">
-        {#if activeSection === 'account'}
-          <section>
-            <h2>Account Settings</h2>
-            <div class="settings-group">
-              <div class="setting-item">
-                <label for="language">Language</label>
-                <select id="language" bind:value={language}>
-                  <option value="english">English</option>
-                  <option value="french">French</option>
-                  <option value="spanish">Spanish</option>
-                </select>
-              </div>
-              
-              <div class="setting-item">
-                <label for="currency">Currency</label>
-                <select id="currency" bind:value={currency}>
-                  <option value="USD">USD ($)</option>
-                  <option value="EUR">EUR (€)</option>
-                  <option value="GBP">GBP (£)</option>
-                </select>
-              </div>
-
-              <div class="setting-item">
-                <label>Auto-save Drafts</label>
-                <label class="toggle">
-                  <input type="checkbox" bind:checked={autoSaveEnabled}>
-                  <span class="toggle-slider"></span>
-                </label>
-              </div>
-            </div>
-          </section>
-        {/if}
-
-        {#if activeSection === 'notifications'}
-          <section>
-            <h2>Notification Preferences</h2>
-            <div class="settings-group">
-              <div class="setting-item">
-                <label>Push Notifications</label>
-                <label class="toggle">
-                  <input type="checkbox" bind:checked={notificationsEnabled}>
-                  <span class="toggle-slider"></span>
-                </label>
-              </div>
-
-              <div class="setting-item">
-                <label>Email Notifications</label>
-                <label class="toggle">
-                  <input type="checkbox" bind:checked={emailNotifications}>
-                  <span class="toggle-slider"></span>
-                </label>
-              </div>
-
-              <div class="setting-item">
-                <label>Newsletter</label>
-                <label class="toggle">
-                  <input type="checkbox" bind:checked={newsletterEnabled}>
-                  <span class="toggle-slider"></span>
-                </label>
-              </div>
-            </div>
-          </section>
-        {/if}
-
-        {#if activeSection === 'privacy'}
-          <section>
-            <h2>Privacy & Security</h2>
-            <div class="settings-group">
-              <div class="setting-item">
-                <label for="privacy">Profile Privacy</label>
-                <select id="privacy" bind:value={privacyProfile}>
-                  <option value="public">Public</option>
-                  <option value="private">Private</option>
-                  <option value="friends">Friends Only</option>
-                </select>
-              </div>
-
-              <div class="setting-item">
-                <label>Two-Factor Authentication</label>
-                <label class="toggle">
-                  <input type="checkbox" bind:checked={twoFactorEnabled}>
-                  <span class="toggle-slider"></span>
-                </label>
-              </div>
-            </div>
-          </section>
-        {/if}
-
-        {#if activeSection === 'preferences'}
-          <section>
-            <h2>Display Preferences</h2>
-            <div class="settings-group">
-              <div class="setting-item">
-                <label>Dark Mode</label>
-                <label class="toggle">
-                  <input type="checkbox" bind:checked={darkMode}>
-                  <span class="toggle-slider"></span>
-                </label>
-              </div>
-            </div>
-          </section>
-        {/if}
-      </div>
-    </div>
-  </main>
+  </div>
 </div>
 
 <style>
-  .settings-container {
-    display: flex;
-    min-height: 100vh;
-    background-color: #FAF9F6;
-    color: #1a1a1a;
-  }
-
   .settings-content {
-    flex: 1;
-    padding: 2rem;
-    max-width: 1200px;
-    margin: 0 auto;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    background-color: #FAF9F6;
   }
 
   .settings-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 2.5rem;
-    padding: 0 0.5rem;
+    padding: 2rem 2rem 1.5rem 2rem;
+    background-color: #FAF9F6;
   }
 
   .settings-header h1 {
@@ -243,41 +230,39 @@
     height: 1.25rem;
   }
 
-  .settings-layout {
+  .settings-container {
+    flex: 1;
     display: grid;
     grid-template-columns: 250px 1fr;
     gap: 2rem;
-    background: white;
-    border-radius: 1.5rem;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-    overflow: hidden;
+    margin: 0 2rem;
+    min-height: 0;
   }
 
   .settings-nav {
+    background: white;
+    border-radius: 1rem;
     padding: 1.5rem;
-    background: #F8FAFC;
-    border-right: 1px solid #E2E8F0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    height: fit-content;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   }
 
   .nav-item {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
-    width: 100%;
+    gap: 1rem;
     padding: 1rem;
     border: none;
     background: transparent;
     color: #64748B;
-    font-weight: 500;
-    text-align: left;
-    cursor: pointer;
     border-radius: 0.75rem;
+    cursor: pointer;
     transition: all 0.2s ease-in-out;
-  }
-
-  .nav-item svg {
-    width: 1.5rem;
-    height: 1.5rem;
+    width: 100%;
+    text-align: left;
   }
 
   .nav-item:hover {
@@ -286,12 +271,46 @@
   }
 
   .nav-item.active {
-    background: #EEF2FF;
+    background: #F1F5F9;
     color: #6366F1;
   }
 
+  .nav-icon {
+    width: 1.5rem;
+    height: 1.5rem;
+    stroke-width: 1.5;
+  }
+
   .settings-panel {
-    padding: 2rem;
+    background: white;
+    border-radius: 1.5rem;
+    overflow-y: auto;
+    padding: 2.5rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  }
+
+  /* Custom Scrollbar Styling */
+  .settings-panel::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  .settings-panel::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .settings-panel::-webkit-scrollbar-thumb {
+    background-color: rgba(203, 213, 225, 0.4);
+    border-radius: 20px;
+  }
+
+  .settings-panel::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(148, 163, 184, 0.5);
+  }
+
+  /* Firefox */
+  .settings-panel {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(203, 213, 225, 0.4) transparent;
   }
 
   .settings-panel h2 {
@@ -304,7 +323,7 @@
   .settings-group {
     display: flex;
     flex-direction: column;
-    gap: 1.25rem;
+    gap: 1rem;
   }
 
   .setting-item {
@@ -393,21 +412,20 @@
   }
 
   @media (max-width: 768px) {
-    .settings-content {
-      padding: 1rem;
+    .settings-header {
+      padding: 1.5rem 1.5rem 1rem 1.5rem;
     }
 
-    .settings-layout {
+    .settings-container {
+      margin: 0 1.5rem;
       grid-template-columns: 1fr;
+      gap: 1rem;
     }
 
     .settings-nav {
-      border-right: none;
-      border-bottom: 1px solid #E2E8F0;
-      padding: 1rem;
-      display: flex;
+      flex-direction: row;
       overflow-x: auto;
-      gap: 0.5rem;
+      padding: 0.75rem;
     }
 
     .nav-item {
@@ -415,13 +433,12 @@
       padding: 0.75rem;
     }
 
-    .nav-item svg {
-      width: 1.25rem;
-      height: 1.25rem;
+    .nav-item span {
+      display: none;
     }
 
     .settings-panel {
-      padding: 1rem;
+      padding: 1.5rem;
     }
   }
 </style> 
