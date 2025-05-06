@@ -145,28 +145,36 @@
     .desktop-menu {
       display: flex;
       gap: 1.5rem;
+      margin-left: auto;  /* This will push the menu to the right */
+      align-items: center;
     }
     
-    .mobile-menu-btn {
+    .mobile-menu-btn,
+    .mobile-nav {
       display: none;
+    }
+
+    .navbar-container {
+      padding: 0.75rem 2rem;
     }
   }
   
-  .desktop-menu a, .mobile-menu a {
+  .desktop-menu a {
     color: #4b5563;
     text-decoration: none;
     font-size: 0.875rem;
     font-weight: 500;
-    padding: 0.25rem 0.5rem;
+    padding: 0.5rem 0.75rem;
     border-radius: 0.375rem;
-    transition: background-color 0.2s;
+    transition: all 0.2s;
   }
   
-  .desktop-menu a:hover, .mobile-menu a:hover {
+  .desktop-menu a:hover {
     background-color: #f3f4f6;
+    color: #2563eb;
   }
   
-  .desktop-menu a.active, .mobile-menu a.active {
+  .desktop-menu a.active {
     color: #2563eb;
     font-weight: 600;
   }
