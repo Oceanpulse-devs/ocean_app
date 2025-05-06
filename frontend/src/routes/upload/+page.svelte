@@ -215,18 +215,22 @@
 
     .upload-content {
       max-width: none;
+      margin: 0 1rem;
     }
 
     .upload-header {
       padding: 1rem;
       margin-bottom: 1rem;
       background-color: #faf9f6;
+      border-radius: 0.5rem;
+      margin-top: 1rem;
     }
 
     .upload-form {
-      border-radius: 0;
-      padding: 1rem;
-      box-shadow: none;
+      border-radius: 1rem;
+      padding: 1.25rem;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+      background-color: #faf9f6;
     }
 
     .form-row {
@@ -240,7 +244,8 @@
 
     .image-grid {
       grid-template-columns: repeat(2, 1fr);
-      gap: 0.5rem;
+      gap: 0.75rem;
+      padding: 0.5rem;
     }
 
     .image-preview {
@@ -249,6 +254,16 @@
 
     .auction-details {
       padding: 1rem;
+      margin: 1rem -0.25rem;
+      background-color: white;
+      border-radius: 0.75rem;
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+      font-size: 1rem;
+      padding: 0.875rem;
     }
   }
 
