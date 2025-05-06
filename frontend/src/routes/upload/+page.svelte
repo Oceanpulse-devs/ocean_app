@@ -55,235 +55,245 @@
   const minEndDate = tomorrow.toISOString().split('T')[0];
 </script>
 
-<div class="upload-content">
-  <div class="upload-header">
-    <h1>Upload Product</h1>
-    <button class="preview-btn">Preview</button>
-  </div>
-
-  <div class="upload-form">
-    <div class="image-upload-section">
-      <h2>Add Image</h2>
-      <p class="upload-hint">Add minimum of 5 images and maximum of 20</p>
-      
-      <div class="image-grid">
-        <label class="image-upload-box" for="image-input">
-          <input
-            type="file"
-            id="image-input"
-            accept="image/jpeg,image/png"
-            multiple
-            on:change={handleImageUpload}
-            style="display: none;"
-          />
-          <div class="upload-placeholder">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M12 5v14M5 12h14"/>
-            </svg>
-          </div>
-        </label>
-
-        {#each selectedImages as image, i}
-          <div class="image-preview">
-            <img src={image} alt="Product preview" />
-            <button class="remove-image" on:click={() => removeImage(i)}>×</button>
-          </div>
-        {/each}
-      </div>
-      
-      <p class="format-hint">Supported format is jpg and png</p>
-    </div>
-
-    <div class="product-details">
-      <div class="form-group">
-        <input type="text" bind:value={productName} placeholder="Product Name" />
+<div class="page-container">
+  <main class="main-container">
+    <div class="upload-content">
+      <div class="upload-header">
+        <h1>Upload Product</h1>
+        <button class="preview-btn">Preview</button>
       </div>
 
-      <div class="form-row">
-        <div class="form-group">
-          <select bind:value={category}>
-            <option value="" disabled selected>Category</option>
-            <option value="electronics">Electronics</option>
-            <option value="fashion">Fashion</option>
-            <option value="home">Home</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <input type="number" bind:value={price} placeholder="Price" />
-        </div>
-      </div>
-
-      <div class="form-row">
-        <div class="form-group">
-          <input type="text" bind:value={brand} placeholder="Brand" />
-        </div>
-        <div class="form-group">
-          <select bind:value={location}>
-            <option value="" disabled selected>Location</option>
-            <option value="lagos">Lagos</option>
-            <option value="abuja">Abuja</option>
-            <option value="port-harcourt">Port Harcourt</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="form-group">
-        <textarea
-          bind:value={description}
-          placeholder="Description"
-          rows="4"
-        ></textarea>
-      </div>
-
-      <div class="form-group auction-toggle">
-        <label>
-          <input type="checkbox" bind:checked={isAuction} />
-          Convert to Auction
-        </label>
-      </div>
-
-      {#if isAuction}
-        <div class="auction-details">
-          <h3>Auction Details</h3>
+      <div class="upload-form">
+        <div class="image-upload-section">
+          <h2>Add Image</h2>
+          <p class="upload-hint">Add minimum of 5 images and maximum of 20</p>
           
-          <div class="form-row">
-            <div class="form-group">
-              <input 
-                type="number" 
-                bind:value={startingBid} 
-                placeholder="Starting Bid Price" 
-                min="0"
+          <div class="image-grid">
+            <label class="image-upload-box" for="image-input">
+              <input
+                type="file"
+                id="image-input"
+                accept="image/jpeg,image/png"
+                multiple
+                on:change={handleImageUpload}
+                style="display: none;"
               />
-            </div>
-            <div class="form-group">
-              <input 
-                type="number" 
-                bind:value={reservePrice} 
-                placeholder="Reserve Price (Optional)" 
-                min="0"
-              />
-            </div>
+              <div class="upload-placeholder">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 5v14M5 12h14"/>
+                </svg>
+              </div>
+            </label>
+
+            {#each selectedImages as image, i}
+              <div class="image-preview">
+                <img src={image} alt="Product preview" />
+                <button class="remove-image" on:click={() => removeImage(i)}>×</button>
+              </div>
+            {/each}
+          </div>
+          
+          <p class="format-hint">Supported format is jpg and png</p>
+        </div>
+
+        <div class="product-details">
+          <div class="form-group">
+            <input type="text" bind:value={productName} placeholder="Product Name" />
           </div>
 
           <div class="form-row">
             <div class="form-group">
-              <select bind:value={auctionDuration}>
-                <option value="3">3 Days</option>
-                <option value="5">5 Days</option>
-                <option value="7">7 Days</option>
-                <option value="10">10 Days</option>
-                <option value="14">14 Days</option>
+              <select bind:value={category}>
+                <option value="" disabled selected>Category</option>
+                <option value="electronics">Electronics</option>
+                <option value="fashion">Fashion</option>
+                <option value="home">Home</option>
               </select>
             </div>
             <div class="form-group">
-              <input 
-                type="date" 
-                bind:value={endDate} 
-                min={minEndDate}
-                placeholder="End Date"
-              />
+              <input type="number" bind:value={price} placeholder="Price" />
             </div>
           </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <input type="text" bind:value={brand} placeholder="Brand" />
+            </div>
+            <div class="form-group">
+              <select bind:value={location}>
+                <option value="" disabled selected>Location</option>
+                <option value="lagos">Lagos</option>
+                <option value="abuja">Abuja</option>
+                <option value="port-harcourt">Port Harcourt</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <textarea
+              bind:value={description}
+              placeholder="Description"
+              rows="4"
+            ></textarea>
+          </div>
+
+          <div class="form-group auction-toggle">
+            <label>
+              <input type="checkbox" bind:checked={isAuction} />
+              Convert to Auction
+            </label>
+          </div>
+
+          {#if isAuction}
+            <div class="auction-details">
+              <h3>Auction Details</h3>
+              
+              <div class="form-row">
+                <div class="form-group">
+                  <input 
+                    type="number" 
+                    bind:value={startingBid} 
+                    placeholder="Starting Bid Price" 
+                    min="0"
+                  />
+                </div>
+                <div class="form-group">
+                  <input 
+                    type="number" 
+                    bind:value={reservePrice} 
+                    placeholder="Reserve Price (Optional)" 
+                    min="0"
+                  />
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <select bind:value={auctionDuration}>
+                    <option value="3">3 Days</option>
+                    <option value="5">5 Days</option>
+                    <option value="7">7 Days</option>
+                    <option value="10">10 Days</option>
+                    <option value="14">14 Days</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <input 
+                    type="date" 
+                    bind:value={endDate} 
+                    min={minEndDate}
+                    placeholder="End Date"
+                  />
+                </div>
+              </div>
+            </div>
+          {/if}
         </div>
-      {/if}
+      </div>
     </div>
-  </div>
+  </main>
 </div>
 
 <style>
+  .page-container {
+    width: 100%;
+    height: calc(100vh - 65px);
+    overflow-y: auto;
+  }
+
+  .main-container {
+    width: 100%;
+    background-color: #faf9f6;
+    padding: 2rem 2rem 12rem 2rem;
+  }
+
+  @media (max-width: 768px) {
+    .main-container {
+      padding: 0;
+      background-color: white;
+    }
+
+    .upload-content {
+      max-width: none;
+    }
+
+    .upload-header {
+      padding: 1rem;
+      margin-bottom: 1rem;
+      background-color: #faf9f6;
+    }
+
+    .upload-form {
+      border-radius: 0;
+      padding: 1rem;
+      box-shadow: none;
+    }
+
+    .form-row {
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .form-row .form-group {
+      width: 100%;
+    }
+
+    .image-grid {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.5rem;
+    }
+
+    .image-preview {
+      aspect-ratio: 1;
+    }
+
+    .auction-details {
+      padding: 1rem;
+    }
+  }
+
   .upload-content {
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    padding-bottom: 6rem;
+    max-width: 800px;
+    margin: 0 auto;
   }
 
   .upload-header {
-    flex-shrink: 0;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 2rem 2rem 1.5rem 2rem;
-    background-color: #FAF9F6;
+    margin-bottom: 2rem;
   }
 
   .upload-header h1 {
-    font-size: 2rem;
-    font-weight: 700;
-    color: #1a1a1a;
-    letter-spacing: -0.025em;
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #2D3748;
   }
 
   .preview-btn {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    padding: 0.875rem 1.75rem;
-    border-radius: 0.75rem;
-    font-weight: 600;
-    font-size: 0.95rem;
+    padding: 0.5rem 1rem;
+    background: #6366F1;
+    color: white;
+    border: none;
+    border-radius: 0.375rem;
+    font-weight: 500;
     cursor: pointer;
-    transition: all 0.2s ease-in-out;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-    background: white;
-    color: #4A5568;
-    border: 2px solid #E2E8F0;
+    transition: background-color 0.2s;
   }
 
   .preview-btn:hover {
-    background: #F7FAFC;
-    border-color: #CBD5E0;
-    transform: translateY(-1px);
-  }
-
-  .preview-btn svg {
-    width: 1.25rem;
-    height: 1.25rem;
-    transition: transform 0.2s ease;
-  }
-
-  .preview-btn:hover svg {
-    transform: scale(1.1);
+    background: #4F46E5;
   }
 
   .upload-form {
-    flex: 1;
-    overflow-y: auto;
     background: white;
-    border-radius: 1.5rem 1.5rem 0 0;
-    padding: 2.5rem;
-    margin: 0 2rem 2rem;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  }
-
-  /* Custom Scrollbar Styling */
-  .upload-form::-webkit-scrollbar {
-    width: 8px;
-  }
-
-  .upload-form::-webkit-scrollbar-track {
-    background: #f1f1f1;
-    border-radius: 4px;
-  }
-
-  .upload-form::-webkit-scrollbar-thumb {
-    background-color: #cbd5e1;
-    border-radius: 4px;
-  }
-
-  .upload-form::-webkit-scrollbar-thumb:hover {
-    background-color: #94a3b8;
-  }
-
-  /* Firefox */
-  .upload-form {
-    scrollbar-width: thin;
-    scrollbar-color: #cbd5e1 #f1f1f1;
+    border-radius: 1rem;
+    padding: 2rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
   }
 
   .image-upload-section {
-    margin-bottom: 3rem;
+    margin-bottom: 2.5rem;
   }
 
   .image-upload-section h2 {
@@ -301,8 +311,8 @@
 
   .image-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-    gap: 1.25rem;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); /* Reduced size */
+    gap: 1rem;
     margin-bottom: 1.5rem;
   }
 
@@ -392,28 +402,34 @@
   }
 
   .product-details {
-    display: flex;
-    flex-direction: column;
-    gap: 1.75rem;
+    margin-bottom: 2.5rem;
+  }
+
+  .form-group {
+    margin-bottom: 1.5rem;
   }
 
   .form-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1.25rem;
+    display: flex;
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .form-row .form-group {
+    flex: 1;
+    min-width: 200px; /* Reduced from 250px */
   }
 
   .form-group input,
   .form-group select,
   .form-group textarea {
     width: 100%;
-    padding: 0.875rem 1.25rem;
-    border: 2px solid #E2E8F0;
-    border-radius: 0.75rem;
+    padding: 0.75rem 1rem; /* Reduced padding */
+    border: 1px solid #E2E8F0;
+    border-radius: 0.5rem;
     background: #F8FAFC;
     color: #2D3748;
-    font-size: 1rem;
-    transition: all 0.2s ease-in-out;
+    font-size: 0.875rem; /* Slightly smaller font */
   }
 
   .form-group input:hover,
@@ -433,15 +449,12 @@
   }
 
   .form-group textarea {
-    resize: vertical;
-    min-height: 120px;
+    min-height: 100px; /* Reduced from 120px */
+    max-height: 200px;
   }
 
   .auction-toggle {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    padding: 0.5rem 0;
+    margin: 2rem 0;
   }
 
   .auction-toggle label {
@@ -468,10 +481,9 @@
   }
 
   .auction-details {
-    border-top: 2px solid #E2E8F0;
+    margin-top: 2rem;
     padding-top: 2rem;
-    margin-top: 0.5rem;
-    animation: slideDown 0.3s ease-out;
+    border-top: 1px solid #E2E8F0;
   }
 
   .auction-details h3 {
@@ -489,35 +501,6 @@
     to {
       opacity: 1;
       transform: translateY(0);
-    }
-  }
-
-  @media (max-width: 768px) {
-    .upload-content {
-      height: 100%;
-      padding: 1rem;
-    }
-
-    .upload-header {
-      flex-direction: column;
-      align-items: flex-start;
-      gap: 1.25rem;
-      padding: 1rem;
-    }
-
-    .upload-form {
-      margin: 0;
-      padding: 1.5rem;
-      border-radius: 1rem;
-    }
-
-    .form-row {
-      grid-template-columns: 1fr;
-    }
-
-    .image-grid {
-      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-      gap: 1rem;
     }
   }
 </style> 

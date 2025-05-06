@@ -173,6 +173,26 @@
     padding: 2rem;
   }
 
+  @media (max-width: 768px) {
+    .auctions-content {
+      padding: 0;
+    }
+
+    .search-bar {
+      margin-bottom: 1rem;
+      padding: 0.5rem;
+    }
+
+    .auctions-grid {
+      padding: 0;
+    }
+
+    .auction-post {
+      border-radius: 0;
+      margin-bottom: 1rem;
+    }
+  }
+
   .search-bar {
     margin-bottom: 2rem;
   }

@@ -42,6 +42,48 @@
         avatar: "/test.jpg.jpg",
         timestamp: "2nd February, 05 PM"
       }
+    },
+    {
+      id: 3,
+      name: "Air Jordan 1",
+      originalPrice: 150,
+      discountedPrice: 110,
+      location: "Lagos",
+      brand: "Nike",
+      image: "/test.jpg.jpg",
+      seller: {
+        name: "Tola Thompson",
+        avatar: "/test.jpg.jpg",
+        timestamp: "2nd February, 05 PM"
+      }
+    },
+    {
+      id: 4,
+      name: "Air Jordan 1",
+      originalPrice: 150,
+      discountedPrice: 110,
+      location: "Lagos",
+      brand: "Nike",
+      image: "/test.jpg.jpg",
+      seller: {
+        name: "Tola Thompson",
+        avatar: "/test.jpg.jpg",
+        timestamp: "2nd February, 05 PM"
+      }
+    },
+    {
+      id: 5,
+      name: "Air Jordan 1",
+      originalPrice: 150,
+      discountedPrice: 110,
+      location: "Lagos",
+      brand: "Nike",
+      image: "/test.jpg.jpg",
+      seller: {
+        name: "Tola Thompson",
+        avatar: "/test.jpg.jpg",
+        timestamp: "2nd February, 05 PM"
+      }
     }
     // Add more products as needed
   ];
@@ -124,6 +166,34 @@
     overflow: hidden;
     background-color: #FAF9F6;
     padding: 2rem;
+  }
+
+  @media (max-width: 768px) {
+    .distress-content {
+      padding: 0;
+    }
+
+    .search-bar {
+      margin-bottom: 1rem;
+      padding: 0.5rem;
+    }
+
+    .search-input {
+      border-radius: 1rem;
+      padding: 0.5rem 1rem;
+    }
+
+    .products-grid {
+      padding: 0.5rem;
+      gap: 0.5rem;
+      grid-template-columns: 1fr;
+    }
+
+    .product-card {
+      border-radius: 0;
+      margin-bottom: 0.5rem;
+      padding: 1rem;
+    }
   }
 
   .search-bar {
@@ -339,19 +409,5 @@
     width: 1.25rem;
     height: 1.25rem;
     color: #6B7280;
-  }
-
-  @media (max-width: 768px) {
-    .distress-content {
-      padding: 1rem;
-    }
-
-    .products-grid {
-      grid-template-columns: 1fr;
-    }
-
-    .search-input {
-      margin: 0 1rem;
-    }
   }
 </style> 

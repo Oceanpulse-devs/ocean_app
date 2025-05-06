@@ -235,6 +235,77 @@
     background-color: #FAF9F6;
   }
 
+  @media (max-width: 768px) {
+    .profile-page {
+      background-color: white;
+    }
+
+    .profile-header-section {
+      padding: 0;
+    }
+
+    .cover-image {
+      height: 200px;
+    }
+
+    .profile-header {
+      padding: 1rem;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      margin-top: -50px;
+    }
+
+    .profile-avatar-container {
+      margin-bottom: 1rem;
+    }
+
+    .profile-info {
+      width: 100%;
+      padding: 0;
+    }
+
+    .profile-meta {
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .stats-grid {
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.5rem;
+      padding: 1rem 0;
+    }
+
+    .profile-tabs {
+      position: sticky;
+      top: 0;
+      background-color: white;
+      z-index: 20;
+      padding: 0;
+      border-bottom: 1px solid #E2E8F0;
+    }
+
+    .profile-content {
+      padding: 1rem 0;
+    }
+
+    .posts-grid, .products-grid {
+      grid-template-columns: 1fr;
+      gap: 0;
+    }
+
+    .post-card, .product-card, .review-card {
+      border-radius: 0;
+      margin-bottom: 1rem;
+      box-shadow: none;
+      border-bottom: 1px solid #E2E8F0;
+    }
+
+    .review-card {
+      padding: 1rem;
+    }
+  }
+
   .profile-header-section {
     background-color: #FAF9F6;
     position: relative;
@@ -525,33 +596,6 @@
     color: #4A5568;
     line-height: 1.6;
     margin: 0;
-  }
-
-  @media (max-width: 768px) {
-    .profile-page {
-      height: calc(100vh - 64px); /* Adjust based on your navbar height */
-    }
-    
-    .profile-content {
-      padding: 1rem;
-    }
-
-    .profile-header {
-      flex-direction: column;
-      align-items: center;
-      text-align: center;
-      margin-top: -2rem;
-      padding-bottom: 1rem;
-    }
-
-    .profile-tabs {
-      padding: 0.5rem;
-      justify-content: center;
-    }
-
-    .tab-btn {
-      padding: 0.75rem;
-    }
   }
 
   /* Custom Scrollbar Styling */

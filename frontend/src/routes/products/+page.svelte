@@ -127,119 +127,127 @@
   }
 </script>
 
-<div class="products-wrapper">
-  <div class="search-section">
-    <div class="search-box">
-      <div class="search-input-wrapper">
-        <input 
-          type="text" 
-          placeholder="Search by text or image" 
-          bind:value={searchQuery}
-        />
-        <div class="search-type" on:click={toggleSearchOptions}>
-          <span class="selected-option">
-            {searchOptions.find(opt => opt.id === selectedSearchOption)?.label}
-          </span>
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="dropdown-icon">
-            <path d="M7 10l5 5 5-5z"/>
-          </svg>
+<main class="main-container">
+  <div class="products-wrapper">
+    <div class="search-section">
+      <div class="search-box">
+        <div class="search-input-wrapper">
+          <input 
+            type="text" 
+            placeholder="Search by text or image" 
+            bind:value={searchQuery}
+          />
+          <div class="search-type" on:click={toggleSearchOptions}>
+            <span class="selected-option">
+              {searchOptions.find(opt => opt.id === selectedSearchOption)?.label}
+            </span>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="dropdown-icon">
+              <path d="M7 10l5 5 5-5z"/>
+            </svg>
+          </div>
+          <button class="camera-btn">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+              <path d="M12 15.2a3.2 3.2 0 100-6.4 3.2 3.2 0 000 6.4z"/>
+              <path d="M9 3L7.17 5H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2h-3.17L15 3H9zm3 15c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5z"/>
+            </svg>
+          </button>
         </div>
-        <button class="camera-btn">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-            <path d="M12 15.2a3.2 3.2 0 100-6.4 3.2 3.2 0 000 6.4z"/>
-            <path d="M9 3L7.17 5H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2h-3.17L15 3H9zm3 15c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5z"/>
-          </svg>
-        </button>
-      </div>
-      
-      {#if showSearchOptions}
-        <div class="search-options">
-          {#each searchOptions as option}
-            <button 
-              class="option-btn" 
-              class:selected={selectedSearchOption === option.id}
-              on:click={() => selectSearchOption(option.id)}
-            >
-              {option.label}
-            </button>
-          {/each}
-        </div>
-      {/if}
-    </div>
-
-    <div class="filters">
-      <div class="category-dropdown">
-        <button class="category-btn" on:click={toggleCategories}>
-          <span class="category-label">
-            {categories.find(cat => cat.id === selectedCategory)?.name || 'Select Category'}
-          </span>
-          <svg xmlns="http://www.w3.org/2000/svg" class="dropdown-icon" class:open={showCategories} viewBox="0 0 24 24">
-            <path d="M7 10l5 5 5-5z"/>
-          </svg>
-        </button>
         
-        {#if showCategories}
-          <div class="categories-dropdown">
-            {#each categories as category}
+        {#if showSearchOptions}
+          <div class="search-options">
+            {#each searchOptions as option}
               <button 
-                class="category-option" 
-                class:selected={selectedCategory === category.id}
-                on:click={() => selectCategory(category.id)}
+                class="option-btn" 
+                class:selected={selectedSearchOption === option.id}
+                on:click={() => selectSearchOption(option.id)}
               >
-                <span class="category-icon">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                    <path d={category.icon} />
-                  </svg>
-                </span>
-                {category.name}
+                {option.label}
               </button>
             {/each}
           </div>
         {/if}
       </div>
 
-      <button class="filter-btn">
-        Brand
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-          <path d="M7 10l5 5 5-5z"/>
-        </svg>
-      </button>
-      <button class="filter-btn">
-        Price
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-          <path d="M7 10l5 5 5-5z"/>
-        </svg>
-      </button>
-    </div>
-  </div>
-
-  <div class="products-grid">
-    {#each products as product}
-      <div class="product-card">
-        <div class="product-image">
-          <img src={product.image} alt={product.name} />
-        </div>
-        <div class="product-info">
-          <h3 class="product-name">{product.name}</h3>
-          <p class="seller-name">{product.seller}</p>
-          <div class="price">${product.price}</div>
-        </div>
-        <div class="card-actions">
-          <button class="view-btn">View</button>
-          <button class="save-btn">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-              <path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z"/>
+      <div class="filters">
+        <div class="category-dropdown">
+          <button class="category-btn" on:click={toggleCategories}>
+            <span class="category-label">
+              {categories.find(cat => cat.id === selectedCategory)?.name || 'Select Category'}
+            </span>
+            <svg xmlns="http://www.w3.org/2000/svg" class="dropdown-icon" class:open={showCategories} viewBox="0 0 24 24">
+              <path d="M7 10l5 5 5-5z"/>
             </svg>
           </button>
+          
+          {#if showCategories}
+            <div class="categories-dropdown">
+              {#each categories as category}
+                <button 
+                  class="category-option" 
+                  class:selected={selectedCategory === category.id}
+                  on:click={() => selectCategory(category.id)}
+                >
+                  <span class="category-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                      <path d={category.icon} />
+                    </svg>
+                  </span>
+                  {category.name}
+                </button>
+              {/each}
+            </div>
+          {/if}
         </div>
+
+        <button class="filter-btn">
+          Brand
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M7 10l5 5 5-5z"/>
+          </svg>
+        </button>
+        <button class="filter-btn">
+          Price
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M7 10l5 5 5-5z"/>
+          </svg>
+        </button>
       </div>
-    {/each}
+    </div>
+
+    <div class="products-grid">
+      {#each products as product}
+        <div class="product-card">
+          <div class="product-image">
+            <img src={product.image} alt={product.name} />
+          </div>
+          <div class="product-info">
+            <h3 class="product-name">{product.name}</h3>
+            <p class="seller-name">{product.seller}</p>
+            <div class="price">${product.price}</div>
+          </div>
+          <div class="card-actions">
+            <button class="view-btn">View</button>
+            <button class="save-btn">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                <path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      {/each}
+    </div>
   </div>
-</div>
+</main>
 
 <style>
+  .main-container {
+    width: 100%;
+    height: 100%;
+    overflow-y: auto;
+  }
+
   .products-wrapper {
-    min-height: calc(100vh - 65px); /* Changed from height to min-height */
+    min-height: calc(100vh - 65px);
     display: flex;
     flex-direction: column;
     background-color: #faf9f6;
@@ -248,6 +256,9 @@
   .search-section {
     padding: 1.5rem 2rem;
     background-color: #faf9f6;
+    position: sticky;
+    top: 0;
+    z-index: 10;
   }
 
   .search-box {

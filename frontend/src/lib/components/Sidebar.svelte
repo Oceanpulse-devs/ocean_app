@@ -1,12 +1,36 @@
 <script lang="ts">
+  import { isSidebarOpen, closeSidebar } from '$lib/stores/sidebarStore';
+  import { slide } from 'svelte/transition';
+  import { quintOut } from 'svelte/easing';
+  import { browser } from '$app/environment';
+  import { page } from '$app/stores';
+  import { afterNavigate } from '$app/navigation';
+
   export let userStats = {
     posts: 46,
     followers: '2.8K',
     following: 200
   };
+
+  // Close sidebar after navigation on mobile
+  if (browser) {
+    afterNavigate(() => {
+      if (window.innerWidth <= 768) {
+        closeSidebar();
+      }
+    });
+  }
 </script>
 
-<aside class="sidebar">
+{#if $isSidebarOpen}
+  <div 
+    class="sidebar-overlay"
+    on:click={closeSidebar}
+    transition:slide={{duration: 200, easing: quintOut}}
+  ></div>
+{/if}
+
+<aside class="sidebar" class:open={$isSidebarOpen}>
   <div class="ocean-logo">
     <img src="/wrigglyLine2.png" alt="Ocean" />
     <h1 class="ocean-title">OCEAN</h1>
@@ -110,6 +134,38 @@
     padding: 0;
     display: flex;
     flex-direction: column;
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 51;
+    transition: transform 0.3s ease-in-out;
+    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
+  }
+
+  .sidebar-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 50;
+    display: none;
+  }
+
+  @media (max-width: 768px) {
+    .sidebar {
+      transform: translateX(-100%);
+      will-change: transform;
+    }
+
+    .sidebar.open {
+      transform: translateX(0);
+    }
+
+    .sidebar-overlay {
+      display: block;
+    }
   }
 
   /* Custom Scrollbar Styling */
@@ -292,11 +348,5 @@
 
   .logout-btn .icon {
     color: currentColor;
-  }
-
-  @media (max-width: 1024px) {
-    .sidebar {
-      display: none;
-    }
   }
 </style> 

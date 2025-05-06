@@ -52,15 +52,10 @@
   }
   
   .layout {
-    display: grid;
-    grid-template-columns: 1fr;
+    display: flex;
     height: 100vh;
     background-color: #f8f7f4;
     overflow: hidden;
-  }
-
-  .layout.with-sidebar {
-    grid-template-columns: 280px 1fr;
   }
 
   .main-content {
@@ -68,15 +63,20 @@
     height: 100vh;
     position: relative;
     overflow: hidden;
+    flex: 1;
   }
 
   .main-content.scrollable {
     overflow-y: auto;
   }
 
-  @media (max-width: 1280px) {
-    .layout.with-sidebar {
-      grid-template-columns: 1fr;
+  .layout.with-sidebar .main-content {
+    margin-left: 280px;
+  }
+
+  @media (max-width: 768px) {
+    .layout.with-sidebar .main-content {
+      margin-left: 0;
     }
   }
 </style> 

@@ -1,4 +1,7 @@
 <script lang="ts">
+  import { browser } from '$app/environment';
+  import { slide } from 'svelte/transition';
+
   let userStats = {
     posts: 46,
     followers: '2.8K',
@@ -10,6 +13,24 @@
     avatar: '/test.jpg.jpg',
     online: true
   };
+
+  let showContacts = true;
+  let isMobile = false;
+
+  // Check if we're on mobile and update layout accordingly
+  if (browser) {
+    const updateLayout = () => {
+      isMobile = window.innerWidth <= 768;
+      showContacts = !isMobile;
+    };
+    
+    updateLayout();
+    window.addEventListener('resize', updateLayout);
+  }
+
+  function toggleContacts() {
+    showContacts = !showContacts;
+  }
 
   let messages = [
     {
@@ -128,8 +149,23 @@
 </script>
 
 <div class="messages-wrapper">
-  <div class="chat-area">
+  <div class="chat-area" class:full-width={!showContacts}>
     <div class="chat-header">
+      {#if isMobile}
+        <button class="toggle-contacts" on:click={toggleContacts}>
+          {#if showContacts}
+            <!-- Close/X icon when contacts are shown -->
+            <svg xmlns="http://www.w3.org/2000/svg" class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+          {:else}
+            <!-- Back arrow when showing chat -->
+            <svg xmlns="http://www.w3.org/2000/svg" class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M15 19l-7-7 7-7"></path>
+            </svg>
+          {/if}
+        </button>
+      {/if}
       <div class="chat-user">
         <img src={selectedChat.avatar} alt={selectedChat.name} class="user-avatar" />
         <div class="user-info">
@@ -201,32 +237,43 @@
     </div>
   </div>
 
-  <div class="chat-details">
-    <div class="contacts-header">
-      <h2>Contacts</h2>
-      <div class="search-container">
-        <input type="text" placeholder="Search contacts..." />
-        <svg xmlns="http://www.w3.org/2000/svg" class="search-icon" viewBox="0 0 24 24">
-          <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
-        </svg>
+  {#if showContacts}
+    <div class="chat-details" transition:slide={{duration: 200}}>
+      <div class="contacts-header">
+        <div class="contacts-header-top">
+          <h2>Messages</h2>
+          {#if isMobile}
+            <button class="close-contacts" on:click={toggleContacts}>
+              <svg xmlns="http://www.w3.org/2000/svg" class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M6 18L18 6M6 6l12 12"></path>
+              </svg>
+            </button>
+          {/if}
+        </div>
+        <div class="search-container">
+          <input type="text" placeholder="Search messages..." />
+          <svg xmlns="http://www.w3.org/2000/svg" class="search-icon" viewBox="0 0 24 24">
+            <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+          </svg>
+        </div>
+      </div>
+
+      <div class="contacts-scroll">
+        {#each contacts as contact}
+          <div class="contact-item" class:unread={contact.unread}>
+            <img src={contact.avatar} alt={contact.name} class="contact-avatar" />
+            <div class="contact-info">
+              <div class="contact-header">
+                <h3>{contact.name}</h3>
+                <span class="contact-time">{contact.time}</span>
+              </div>
+              <p class="last-message">{contact.lastMessage}</p>
+            </div>
+          </div>
+        {/each}
       </div>
     </div>
-
-    <div class="contacts-scroll">
-      {#each contacts as contact}
-        <div class="contact-item" class:unread={contact.unread}>
-          <img src={contact.avatar} alt={contact.name} class="contact-avatar" />
-          <div class="contact-info">
-            <div class="contact-header">
-              <h3>{contact.name}</h3>
-              <span class="contact-time">{contact.time}</span>
-            </div>
-            <p class="last-message">{contact.lastMessage}</p>
-          </div>
-        </div>
-      {/each}
-    </div>
-  </div>
+  {/if}
 </div>
 
 <style>
@@ -246,8 +293,33 @@
     background-color: #faf9f6;
     display: flex;
     flex-direction: column;
-    min-height: 0; /* Important for Firefox */
+    min-height: 0;
     height: 100%;
+    position: relative;
+    transition: all 0.3s ease;
+  }
+
+  .chat-area.full-width {
+    grid-column: 1 / -1;
+  }
+
+  .toggle-contacts {
+    background: none;
+    border: none;
+    padding: 0.5rem;
+    cursor: pointer;
+    color: #64748b;
+    display: none;
+  }
+
+  .toggle-contacts:hover {
+    color: #1e293b;
+  }
+
+  .toggle-contacts .icon {
+    width: 24px;
+    height: 24px;
+    stroke-width: 2;
   }
 
   .chat-header {
@@ -498,7 +570,7 @@
   }
 
   .contacts-header h2 {
-    margin: 0 0 1rem;
+    margin: 0;
     font-size: 1.25rem;
     font-weight: 600;
     color: #2d3748;
@@ -598,7 +670,73 @@
 
   @media (max-width: 1024px) {
     .messages-wrapper {
-      left: 0; /* Remove sidebar offset on mobile */
+      left: 0;
     }
+  }
+
+  @media (max-width: 768px) {
+    .messages-wrapper {
+      grid-template-columns: 1fr;
+      top: 56px; /* Adjust for smaller mobile navbar */
+    }
+
+    .chat-details {
+      position: fixed;
+      top: 56px;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: white;
+      z-index: 40;
+    }
+
+    .toggle-contacts {
+      display: block;
+    }
+
+    .chat-header {
+      padding: 0.75rem;
+    }
+  }
+
+  .contacts-header-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+  }
+
+  .close-contacts {
+    background: none;
+    border: none;
+    padding: 0.5rem;
+    cursor: pointer;
+    color: #64748b;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .close-contacts:hover {
+    color: #1e293b;
+  }
+
+  .close-contacts .icon {
+    width: 20px;
+    height: 20px;
+  }
+
+  .toggle-contacts .icon {
+    width: 24px;
+    height: 24px;
+    stroke-width: 2;
+  }
+
+  /* Update existing styles */
+  .contacts-header h2 {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #2d3748;
   }
 </style> 

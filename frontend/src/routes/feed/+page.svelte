@@ -136,7 +136,33 @@
     background-color: #f8f7f4;
   }
 
-  
+  @media (max-width: 768px) {
+    .feed-layout {
+      display: block;
+    }
+
+    .main-content {
+      padding: 0;
+      width: 100%;
+      margin-left: 0;
+      position: relative;
+    }
+
+    .feed-posts {
+      padding: 0;
+    }
+
+    .post {
+      border-radius: 0;
+      margin-bottom: 1rem;
+      padding: 1rem;
+    }
+
+    .search-bar {
+      margin: 0;
+      padding: 0.75rem;
+    }
+  }
 
   /* Main Content Styles */
   .main-content {

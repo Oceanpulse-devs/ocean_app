@@ -20,28 +20,28 @@
   const settingsSections = [
     {
       id: 'account',
-      icon: `<svg xmlns="http://www.w3.org/2000/svg" class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      icon: `<svg xmlns="http://www.w3.org/2000/svg" class="settings-nav-icon" width="20" height="20" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
             </svg>`,
       title: 'Account Settings'
     },
     {
       id: 'notifications',
-      icon: `<svg xmlns="http://www.w3.org/2000/svg" class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      icon: `<svg xmlns="http://www.w3.org/2000/svg" class="settings-nav-icon" width="20" height="20" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
             </svg>`,
       title: 'Notifications'
     },
     {
       id: 'privacy',
-      icon: `<svg xmlns="http://www.w3.org/2000/svg" class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      icon: `<svg xmlns="http://www.w3.org/2000/svg" class="settings-nav-icon" width="20" height="20" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8V7a4 4 0 00-8 0v4h8z" />
             </svg>`,
       title: 'Privacy & Security'
     },
     {
       id: 'preferences',
-      icon: `<svg xmlns="http://www.w3.org/2000/svg" class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      icon: `<svg xmlns="http://www.w3.org/2000/svg" class="settings-nav-icon" width="20" height="20" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
             </svg>`,
       title: 'Preferences'
@@ -189,6 +189,7 @@
     display: flex;
     flex-direction: column;
     background-color: #FAF9F6;
+    overflow-y: auto;
   }
 
   .settings-header {
@@ -275,10 +276,10 @@
     color: #6366F1;
   }
 
-  .nav-icon {
-    width: 1.5rem;
-    height: 1.5rem;
-    stroke-width: 1.5;
+  .settings-nav-icon {
+    width: 20px;
+    height: 20px;
+    stroke-width: 2;
   }
 
   .settings-panel {
@@ -412,33 +413,92 @@
   }
 
   @media (max-width: 768px) {
-    .settings-header {
-      padding: 1.5rem 1.5rem 1rem 1.5rem;
+    .settings-content {
+      background-color: white;
+      height: calc(100vh - 65px);
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
     }
 
     .settings-container {
-      margin: 0 1.5rem;
-      grid-template-columns: 1fr;
-      gap: 1rem;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0;
     }
 
     .settings-nav {
-      flex-direction: row;
-      overflow-x: auto;
-      padding: 0.75rem;
+      position: sticky;
+      top: 60px;
+      z-index: 9;
+      background: white;
+      border-radius: 0;
+      padding: 0;
+      box-shadow: none;
+      border-bottom: 1px solid #E2E8F0;
+      display: flex;
+      flex-direction: column;
+      overflow-x: visible;
     }
 
     .nav-item {
       flex: 0 0 auto;
-      padding: 0.75rem;
+      padding: 0.75rem 1rem;
+      border-radius: 0;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 1rem;
+      border-bottom: 1px solid #F1F5F9;
     }
 
     .nav-item span {
-      display: none;
+      display: block;
+      font-size: 0.875rem;
+      color: #64748B;
+    }
+
+    .nav-item.active {
+      background: #F8FAFC;
+      border-left: 2px solid #6366F1;
+    }
+
+    .nav-item.active span {
+      color: #6366F1;
+      font-weight: 500;
+    }
+
+    .settings-nav-icon {
+      width: 18px;
+      height: 18px;
+      stroke-width: 2;
     }
 
     .settings-panel {
-      padding: 1.5rem;
+      padding: 1rem;
+      border-radius: 0;
+      box-shadow: none;
+    }
+
+    .settings-group {
+      padding: 0;
+    }
+
+    .setting-item {
+      padding: 1rem 0;
+      background: transparent;
+      border-radius: 0;
+      border-bottom: 1px solid #E2E8F0;
+    }
+
+    .save-button {
+      padding: 0.5rem 1rem;
+      font-size: 0.875rem;
+    }
+
+    .save-button svg {
+      width: 1rem;
+      height: 1rem;
     }
   }
 </style> 
