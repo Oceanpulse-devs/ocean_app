@@ -67,6 +67,34 @@
       seller: 'MTB CEO',
       price: 200,
       image: '/wrigglyLine2.png'
+    },
+    {
+      id: 7,
+      name: 'Original White Apple earbuds',
+      seller: 'Thompson Stores',
+      price: 200,
+      image: '/wrigglyLine2.png'
+    },
+    {
+      id: 8,
+      name: 'Original White Apple earbuds',
+      seller: 'Thompson Stores',
+      price: 200,
+      image: '/wrigglyLine2.png'
+    },
+    {
+      id: 9,
+      name: 'Original White Apple earbuds',
+      seller: 'Thompson Stores',
+      price: 200,
+      image: '/wrigglyLine2.png'
+    },
+    {
+      id: 10,
+      name: 'Original White Apple earbuds',
+      seller: 'Thompson Stores',
+      price: 200,
+      image: '/wrigglyLine2.png'
     }
   ];
 
@@ -188,19 +216,21 @@
   <div class="products-grid">
     {#each products as product}
       <div class="product-card">
-        <img src={product.image} alt={product.name} />
+        <div class="product-image">
+          <img src={product.image} alt={product.name} />
+        </div>
         <div class="product-info">
-          <h3>{product.name}</h3>
-          <p class="seller">{product.seller}</p>
-          <div class="price-row">
-            <span class="price">${product.price}</span>
-            <button class="bookmark-btn">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                <path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z"/>
-              </svg>
-            </button>
-          </div>
+          <h3 class="product-name">{product.name}</h3>
+          <p class="seller-name">{product.seller}</p>
+          <div class="price">${product.price}</div>
+        </div>
+        <div class="card-actions">
           <button class="view-btn">View</button>
+          <button class="save-btn">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+              <path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z"/>
+            </svg>
+          </button>
         </div>
       </div>
     {/each}
@@ -209,14 +239,14 @@
 
 <style>
   .products-wrapper {
-    height: 100vh;
+    min-height: calc(100vh - 65px); /* Changed from height to min-height */
     display: flex;
     flex-direction: column;
-    overflow: hidden;
+    background-color: #faf9f6;
   }
 
   .search-section {
-    padding: 3rem 2rem 1.5rem 2rem;
+    padding: 1.5rem 2rem;
     background-color: #faf9f6;
   }
 
@@ -427,24 +457,32 @@
   }
 
   .products-grid {
-    flex: 1;
-    overflow-y: auto;
-    padding: 1rem 2rem 8rem 2rem;
+    padding: 1rem 2rem 4rem 2rem;
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 2rem;
+    gap: 1.5rem;
   }
 
   .product-card {
     background-color: white;
-    border-radius: 1rem;
+    border-radius: 0.75rem;
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   }
 
-  .product-card img {
+  .product-image {
+    position: relative;
+    padding-top: 100%; /* Creates a square aspect ratio */
+  }
+
+  .product-image img {
+    position: absolute;
+    top: 0;
+    left: 0;
     width: 100%;
-    height: 200px;
+    height: 100%;
     object-fit: cover;
   }
 
@@ -452,56 +490,72 @@
     padding: 1rem;
   }
 
-  .product-info h3 {
-    margin: 0;
-    font-size: 1rem;
-    color: #2d3748;
-    margin-bottom: 0.5rem;
-  }
-
-  .seller {
-    color: #718096;
+  .product-name {
     font-size: 0.875rem;
-    margin: 0;
+    font-weight: 500;
+    margin: 0 0 0.25rem 0;
+    color: #2D3748;
   }
 
-  .price-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin: 1rem 0;
+  .seller-name {
+    font-size: 0.75rem;
+    color: #718096;
+    margin: 0 0 0.5rem 0;
   }
 
   .price {
-    color: #2d3748;
+    font-size: 1rem;
     font-weight: 600;
+    color: #2D3748;
   }
 
-  .bookmark-btn {
-    background: none;
-    border: none;
-    color: #718096;
-    cursor: pointer;
-    padding: 0.25rem;
-  }
-
-  .bookmark-btn svg {
-    width: 1.25rem;
-    height: 1.25rem;
+  .card-actions {
+    padding: 0.75rem 1rem;
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
   }
 
   .view-btn {
-    width: 100%;
-    padding: 0.75rem;
-    border: none;
-    border-radius: 0.5rem;
-    background-color: #4299e1;
+    flex: 1;
+    padding: 0.5rem;
+    background: #6366F1;
     color: white;
-    font-weight: 500;
+    border: none;
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
     cursor: pointer;
+    transition: background-color 0.2s;
   }
 
-  /* Custom Scrollbar Styling */
+  .view-btn:hover {
+    background: #4F46E5;
+  }
+
+  .save-btn {
+    width: 2rem;
+    height: 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #F3F4F6;
+    border: none;
+    border-radius: 0.375rem;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .save-btn:hover {
+    background: #E5E7EB;
+  }
+
+  .save-btn svg {
+    width: 1.25rem;
+    height: 1.25rem;
+    color: #6B7280;
+  }
+
+  /* Custom Scrollbar for products grid */
   .products-grid::-webkit-scrollbar {
     width: 4px;
   }
@@ -519,7 +573,7 @@
     background-color: rgba(148, 163, 184, 0.5);
   }
 
-  /* Firefox */
+  /* Firefox scrollbar */
   .products-grid {
     scrollbar-width: thin;
     scrollbar-color: rgba(203, 213, 225, 0.4) transparent;

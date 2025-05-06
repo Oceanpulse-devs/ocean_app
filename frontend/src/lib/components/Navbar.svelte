@@ -32,10 +32,6 @@
 
 <nav class="navbar" class:landing-navbar={isLandingPage}>
   <div class="navbar-container">
-    <div class="logo">
-      <a href={isLandingPage ? '/' : '/feed'}>Ocean</a>
-    </div>
-    
     {#if !isLandingPage}
       <div class="search-bar">
         <input type="text" placeholder="Search..." />
@@ -114,6 +110,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: 1rem;
   }
   
   .logo a {
@@ -124,10 +121,8 @@
   }
   
   .search-bar {
-    display: flex;
     flex: 1;
     max-width: 400px;
-    margin: 0 1.5rem;
     position: relative;
   }
   

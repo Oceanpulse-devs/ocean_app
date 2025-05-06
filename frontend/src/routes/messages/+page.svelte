@@ -21,7 +21,35 @@
       text: "Oh, hello! All perfectly. I will check it and get back to you soon",
       timestamp: "04:45 PM",
       isMe: true
-    }
+    },
+    {
+      text: "Oh, hello! All perfectly. I will check it and get back to you soon",
+      timestamp: "04:45 PM",
+      isMe: true
+    },
+    {
+      text: "Oh, hello! All perfectly. I will check it and get back to you soon",
+      timestamp: "04:45 PM",
+      isMe: true
+    },
+    {
+      text: "Oh, hello! All perfectly. I will check it and get back to you soon",
+      timestamp: "04:45 PM",
+      isMe: true
+    },{
+      text: "Oh, hello! All perfectly. I will check it and get back to you soon",
+      timestamp: "04:45 PM",
+      isMe: false
+    },{
+      text: "Oh, hello! All perfectly. I will check it and get back to you soon",
+      timestamp: "04:45 PM",
+      isMe: true
+    },
+    {
+      text: "Oh, hello! All perfectly. I will check it and get back to you soon",
+      timestamp: "04:45 PM",
+      isMe: false
+    },
   ];
 
   let contacts = [
@@ -37,6 +65,13 @@
       avatar: "/wrigglyLine2.png",
       lastMessage: "The products are shipped from...",
       time: "5m",
+      unread: true
+    },
+    {
+      name: "Esther Howard",
+      avatar: "/test.jpg.jpg",
+      lastMessage: "Have you gone through...",
+      time: "10m",
       unread: false
     },
     {
@@ -45,6 +80,48 @@
       lastMessage: "Have you gone through...",
       time: "10m",
       unread: false
+    },
+    {
+      name: "Esther Howard",
+      avatar: "/test.jpg.jpg",
+      lastMessage: "Have you gone through...",
+      time: "10m",
+      unread: false
+    },
+    {
+      name: "Esther Howard",
+      avatar: "/test.jpg.jpg",
+      lastMessage: "Have you gone through...",
+      time: "10m",
+      unread: false
+    },
+    {
+      name: "Esther Howard",
+      avatar: "/test.jpg.jpg",
+      lastMessage: "Have you gone through...",
+      time: "10m",
+      unread: false
+    },
+    {
+      name: "Esther Howard",
+      avatar: "/test.jpg.jpg",
+      lastMessage: "Have you gone through...",
+      time: "10m",
+      unread: false
+    },
+    {
+      name: "Esther Howard",
+      avatar: "/test.jpg.jpg",
+      lastMessage: "Have you gone through...",
+      time: "10m",
+      unread: false
+    },
+    {
+      name: "Esther Howard",
+      avatar: "/test.jpg.jpg",
+      lastMessage: "Have you gone through...",
+      time: "10m",
+      unread: true
     }
     // Add more contacts as needed
   ];
@@ -125,27 +202,56 @@
   </div>
 
   <div class="chat-details">
-    <!-- ... existing chat details code ... -->
+    <div class="contacts-header">
+      <h2>Contacts</h2>
+      <div class="search-container">
+        <input type="text" placeholder="Search contacts..." />
+        <svg xmlns="http://www.w3.org/2000/svg" class="search-icon" viewBox="0 0 24 24">
+          <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+        </svg>
+      </div>
+    </div>
+
+    <div class="contacts-scroll">
+      {#each contacts as contact}
+        <div class="contact-item" class:unread={contact.unread}>
+          <img src={contact.avatar} alt={contact.name} class="contact-avatar" />
+          <div class="contact-info">
+            <div class="contact-header">
+              <h3>{contact.name}</h3>
+              <span class="contact-time">{contact.time}</span>
+            </div>
+            <p class="last-message">{contact.lastMessage}</p>
+          </div>
+        </div>
+      {/each}
+    </div>
   </div>
 </div>
 
 <style>
   .messages-wrapper {
-    height: 100vh;
     display: grid;
     grid-template-columns: 1fr 280px;
     overflow: hidden;
+    position: fixed;
+    top: 65px; /* Account for navbar height */
+    left: 280px; /* Account for sidebar width */
+    right: 0;
+    bottom: 0;
+    background-color: #faf9f6;
   }
 
   .chat-area {
     background-color: #faf9f6;
-    height: 100vh;
     display: flex;
     flex-direction: column;
-    overflow: hidden;
+    min-height: 0; /* Important for Firefox */
+    height: 100%;
   }
 
   .chat-header {
+    flex-shrink: 0;
     background-color: white;
     border-bottom: 1px solid rgba(0, 0, 0, 0.05);
     padding: 1rem;
@@ -225,6 +331,7 @@
     display: flex;
     flex-direction: column;
     gap: 1.5rem;
+    min-height: 0; /* Important for Firefox */
   }
 
   .message {
@@ -271,6 +378,7 @@
   }
 
   .chat-input {
+    flex-shrink: 0;
     background-color: white;
     border-top: 1px solid rgba(0, 0, 0, 0.05);
     padding: 1rem;
@@ -377,10 +485,10 @@
   .chat-details {
     background-color: white;
     border-left: 1px solid rgba(0, 0, 0, 0.05);
-    height: 100vh;
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    min-height: 0; /* Important for Firefox */
   }
 
   .contacts-header {
@@ -488,23 +596,9 @@
     font-weight: 500;
   }
 
-  @media (max-width: 1280px) {
+  @media (max-width: 1024px) {
     .messages-wrapper {
-      grid-template-columns: 1fr;
-    }
-
-    .chat-details {
-      display: none;
-    }
-  }
-
-  @media (max-width: 768px) {
-    .messages-wrapper {
-      grid-template-columns: 1fr;
-    }
-
-    .chat-details {
-      display: none;
+      left: 0; /* Remove sidebar offset on mobile */
     }
   }
 </style> 

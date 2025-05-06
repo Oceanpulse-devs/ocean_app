@@ -6,10 +6,13 @@
   // Pages that use transparent navbar (landing) or no navbar (auth pages)
   const specialNavbarRoutes = ['/'];
   const noNavbarRoutes = ['/login', '/signup', '/forgot-password', '/verify-email'];
+  const noSidebarRoutes = ['/', '/login', '/signup', '/forgot-password', '/verify-email'];
   
   // Determine if we're on a special page
   $: isLandingPage = specialNavbarRoutes.includes($page.url.pathname);
   $: shouldShowNavbar = !noNavbarRoutes.includes($page.url.pathname);
+  $: shouldShowSidebar = !noSidebarRoutes.includes($page.url.pathname);
+  $: shouldScroll = noSidebarRoutes.includes($page.url.pathname);
   
   // Get the current route for active page highlighting
   $: activePage = $page.url.pathname.split('/')[1] || 'home';
@@ -21,9 +24,11 @@
   };
 </script>
 
-<div class="layout">
-  <Sidebar {userStats} />
-  <main class="main-content">
+<div class="layout" class:with-sidebar={shouldShowSidebar}>
+  {#if shouldShowSidebar}
+    <Sidebar {userStats} />
+  {/if}
+  <main class="main-content" class:scrollable={shouldScroll}>
     {#if shouldShowNavbar}
       <Navbar {activePage} {isLandingPage} />
     {/if}
@@ -48,10 +53,14 @@
   
   .layout {
     display: grid;
-    grid-template-columns: 250px 1fr;
+    grid-template-columns: 1fr;
     height: 100vh;
     background-color: #f8f7f4;
     overflow: hidden;
+  }
+
+  .layout.with-sidebar {
+    grid-template-columns: 280px 1fr;
   }
 
   .main-content {
@@ -61,8 +70,12 @@
     overflow: hidden;
   }
 
-  @media (max-width: 1024px) {
-    .layout {
+  .main-content.scrollable {
+    overflow-y: auto;
+  }
+
+  @media (max-width: 1280px) {
+    .layout.with-sidebar {
       grid-template-columns: 1fr;
     }
   }

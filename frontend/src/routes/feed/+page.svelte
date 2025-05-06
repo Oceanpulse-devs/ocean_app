@@ -1,5 +1,5 @@
 <script lang="ts">
-  import Sidebar from '$lib/components/Sidebar.svelte';
+  
 
   let userStats = {
     posts: 46,
@@ -34,7 +34,6 @@
 </script>
 
 <div class="feed-layout">
-  <Sidebar {userStats} />
 
   <!-- Main Content -->
   <main class="main-content">
@@ -137,106 +136,7 @@
     background-color: #f8f7f4;
   }
 
-  /* Sidebar Styles */
-  .sidebar {
-    background-color: #faf9f6;
-    border-right: 1px solid rgba(0, 0, 0, 0.05);
-    padding: 2rem;
-    position: sticky;
-    top: 0;
-    height: 100vh;
-    overflow-y: auto;
-  }
-
-  .profile-section {
-    text-align: center;
-    margin-bottom: 2rem;
-  }
-
-  .avatar-container {
-    width: 100px;
-    height: 100px;
-    margin: 0 auto 1rem;
-  }
-
-  .avatar {
-    width: 100%;
-    height: 100%;
-    border-radius: 50%;
-    object-fit: cover;
-  }
-
-  .profile-name {
-    font-size: 1.25rem;
-    font-weight: 600;
-    color: #2d3748;
-    margin: 0;
-  }
-
-  .profile-username {
-    color: #718096;
-    margin: 0.25rem 0 1.5rem;
-  }
-
-  .stats-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 1rem;
-    margin-bottom: 2rem;
-  }
-
-  .stat-item {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-  }
-
-  .stat-value {
-    font-weight: 600;
-    color: #2d3748;
-  }
-
-  .stat-label {
-    font-size: 0.875rem;
-    color: #718096;
-  }
-
-  .sidebar-nav {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-  }
-
-  .nav-item {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    padding: 0.75rem;
-    color: #4a5568;
-    text-decoration: none;
-    border-radius: 0.5rem;
-    transition: all 0.2s;
-  }
-
-  .nav-item:hover {
-    background-color: rgba(66, 153, 225, 0.1);
-  }
-
-  .nav-item.active {
-    background-color: #4299e1;
-    color: white;
-  }
-
-  .nav-item .icon {
-    width: 1.5rem;
-    height: 1.5rem;
-  }
-
-  .ocean-logo {
-    margin-top: auto;
-    padding-top: 2rem;
-    text-align: center;
-  }
+  
 
   /* Main Content Styles */
   .main-content {
@@ -269,7 +169,7 @@
     padding: 1.5rem 0;
     z-index: 10;
     max-width: 800px;
-    margin: 0 auto 2rem;
+    margin: 2rem auto 2rem;
     width: 100%;
   }
 

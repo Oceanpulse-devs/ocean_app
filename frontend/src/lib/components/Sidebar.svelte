@@ -7,6 +7,11 @@
 </script>
 
 <aside class="sidebar">
+  <div class="ocean-logo">
+    <img src="/wrigglyLine2.png" alt="Ocean" />
+    <h1 class="ocean-title">OCEAN</h1>
+  </div>
+
   <div class="profile-section">
     <div class="avatar-container">
       <img src="/test.jpg.jpg" alt="Abbey Lincoln" class="avatar" />
@@ -92,55 +97,81 @@
       Logout
     </button>
   </nav>
-
-  <div class="ocean-logo">
-    <img src="/wrigglyLine2.png" alt="Ocean" />
-  </div>
 </aside>
 
 <style>
   .sidebar {
-    width: 250px;
-    min-width: 250px;
-    flex: 0 0 250px;
+    width: 280px;
+    min-width: 280px;
+    flex: 0 0 280px;
     background: white;
     height: 100vh;
     overflow-y: auto;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
   }
 
   /* Custom Scrollbar Styling */
   .sidebar::-webkit-scrollbar {
-    width: 4px;
+    width: 6px;
   }
 
   .sidebar::-webkit-scrollbar-track {
-    background: transparent;
+    background: #f1f1f1;
   }
 
   .sidebar::-webkit-scrollbar-thumb {
-    background-color: rgba(203, 213, 225, 0.4);
-    border-radius: 20px;
+    background-color: #cbd5e1;
+    border-radius: 4px;
   }
 
   .sidebar::-webkit-scrollbar-thumb:hover {
-    background-color: rgba(148, 163, 184, 0.5);
+    background-color: #94a3b8;
   }
 
   /* Firefox */
   .sidebar {
     scrollbar-width: thin;
-    scrollbar-color: rgba(203, 213, 225, 0.4) transparent;
+    scrollbar-color: #cbd5e1 #f1f1f1;
+  }
+
+  .ocean-logo {
+    padding: 1.5rem;
+    text-align: left;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    background: linear-gradient(to right, #f8fafc, white);
+    border-bottom: 1px solid #f1f5f9;
+  }
+
+  .ocean-logo img {
+    width: 40px;
+    height: 40px;
+    opacity: 0.9;
+    transition: opacity 0.2s ease;
+  }
+
+  .ocean-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin: 0;
+    letter-spacing: 0.05em;
+  }
+
+  .ocean-logo:hover img {
+    opacity: 1;
   }
 
   .profile-section {
-    flex-shrink: 0;
-    text-align: center;
-    padding: 2rem 1rem;
+    padding: 0.2rem 1.5rem;
   }
 
   .avatar-container {
-    width: 100px;
-    height: 100px;
+    width: 120px;
+    height: 120px;
     margin: 0 auto 1rem;
     position: relative;
     overflow: hidden;
@@ -151,74 +182,83 @@
     height: 100%;
     border-radius: 50%;
     object-fit: cover;
+    border: 3px solid #f8fafc;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
   }
 
   .profile-name {
-    font-size: 1.25rem;
+    font-size: 1.35rem;
     font-weight: 600;
-    color: #2d3748;
+    color: #1e293b;
     margin: 0;
   }
 
   .profile-username {
-    color: #718096;
-    margin: 0.25rem 0 1.5rem;
+    color: #64748b;
+    margin: 0.35rem 0 1.75rem;
+    font-size: 0.95rem;
   }
 
   .stats-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 1rem;
-    margin-bottom: 2rem;
+    gap: 1.25rem;
+    margin-bottom: 1rem;
+    padding: 1rem;
+    background: #f8fafc;
+    border-radius: 1rem;
   }
 
   .stat-item {
     display: flex;
     flex-direction: column;
     align-items: center;
+    gap: 0.35rem;
   }
 
   .stat-value {
     font-weight: 600;
-    color: #2d3748;
+    color: #1e293b;
+    font-size: 1.1rem;
   }
 
   .stat-label {
-    font-size: 0.875rem;
-    color: #718096;
+    font-size: 0.85rem;
+    color: #64748b;
   }
 
   .sidebar-nav {
     flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 0.25rem;
-    padding: 0.5rem 0;
-    margin: 1rem 0;
+    gap: 0.375rem;
+    padding: 0.75rem 0;
+    margin: 0.5rem 0;
   }
 
   .nav-item {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
-    padding: 0.875rem 1rem;
-    color: #4a5568;
+    gap: 0.875rem;
+    padding: 0.875rem 1.25rem;
+    color: #475569;
     text-decoration: none;
     border-radius: 0.75rem;
     transition: all 0.2s ease-in-out;
     font-weight: 500;
-    margin: 0.125rem 0.75rem;
+    margin: 0.125rem 1rem;
+    font-size: 0.95rem;
   }
 
   .nav-item:hover {
-    background-color: #F3F4F6;
-    color: #1E293B;
+    background-color: #f1f5f9;
+    color: #1e293b;
     transform: translateX(4px);
   }
 
   .nav-item.active {
-    background-color: #EEF2FF;
-    color: #6366F1;
+    background-color: #eef2ff;
+    color: #6366f1;
   }
 
   .nav-item .icon {
@@ -229,43 +269,29 @@
 
   .nav-item:hover .icon {
     transform: scale(1.1);
-    color: #6366F1;
+    color: #6366f1;
   }
 
   .nav-item.active .icon {
-    color: #6366F1;
+    color: #6366f1;
   }
 
   .logout-btn {
     margin-top: auto;
     border: none;
     background: none;
-    width: calc(100% - 1.5rem);
+    width: calc(100% - 2rem);
     cursor: pointer;
-    font-size: 1rem;
-    color: #EF4444;
+    font-size: 0.95rem;
+    color: #ef4444;
   }
 
   .logout-btn:hover {
-    background-color: #FEE2E2;
-    color: #DC2626;
+    background-color: #fee2e2;
   }
 
   .logout-btn .icon {
     color: currentColor;
-  }
-
-  .ocean-logo {
-    padding: 1.5rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .ocean-logo img {
-    width: 40px;
-    height: 40px;
-    object-fit: contain;
   }
 
   @media (max-width: 1024px) {

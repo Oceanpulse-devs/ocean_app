@@ -1,6 +1,5 @@
 <script lang="ts">
   import { browser } from '$app/environment';
-  import Sidebar from '$lib/components/Sidebar.svelte';
   import { formatDistanceToNow } from 'date-fns';
 
   interface Notification {
@@ -67,7 +66,7 @@
 </script>
 
 <div class="notifications-container">
-  <Sidebar />
+
   
   <div class="notifications-content">
     <div class="notifications-header">
