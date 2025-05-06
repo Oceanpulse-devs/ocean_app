@@ -157,6 +157,9 @@
     .sidebar {
       transform: translateX(-100%);
       will-change: transform;
+      height: 100%;
+      padding-bottom: 80px; /* Add extra padding at bottom for mobile */
+      -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
     }
 
     .sidebar.open {
@@ -165,6 +168,10 @@
 
     .sidebar-overlay {
       display: block;
+    }
+
+    .sidebar-nav {
+      padding-bottom: 2rem; /* Add padding to nav section */
     }
   }
 
@@ -287,23 +294,35 @@
     flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 0.375rem;
-    padding: 0.75rem 0;
-    margin: 0.5rem 0;
+    padding: 1rem 0.75rem;
   }
 
   .nav-item {
     display: flex;
     align-items: center;
-    gap: 0.875rem;
-    padding: 0.875rem 1.25rem;
-    color: #475569;
+    gap: 1rem;
+    padding: 0.875rem 1rem;
+    color: #64748b;
     text-decoration: none;
-    border-radius: 0.75rem;
-    transition: all 0.2s ease-in-out;
-    font-weight: 500;
-    margin: 0.125rem 1rem;
-    font-size: 0.95rem;
+    border-radius: 0.5rem;
+    transition: all 0.2s;
+    margin-bottom: 0.25rem;
+  }
+
+  .logout-btn {
+    margin-top: auto;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1rem;
+    text-align: left;
+    width: 100%;
+    color: #ef4444;
+  }
+
+  /* Ensure the logout button is always visible */
+  .nav-item:last-child {
+    margin-bottom: 0;
   }
 
   .nav-item:hover {
@@ -330,23 +349,5 @@
 
   .nav-item.active .icon {
     color: #6366f1;
-  }
-
-  .logout-btn {
-    margin-top: auto;
-    border: none;
-    background: none;
-    width: calc(100% - 2rem);
-    cursor: pointer;
-    font-size: 0.95rem;
-    color: #ef4444;
-  }
-
-  .logout-btn:hover {
-    background-color: #fee2e2;
-  }
-
-  .logout-btn .icon {
-    color: currentColor;
   }
 </style> 
