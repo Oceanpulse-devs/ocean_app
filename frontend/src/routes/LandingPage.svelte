@@ -87,11 +87,13 @@
     position: relative;
     width: 100%;
     min-height: 100vh;
-    background: #000;
-    color: white;
+    background: 
+      radial-gradient(ellipse at 30% 0%, rgba(255,255,255,0.85) 0%, rgba(245,247,250,0.7) 60%, rgba(230,230,230,0.3) 100%),
+      linear-gradient(120deg, #f5f7fa 0%, #c3cfe2 100%);
+    color: #111;
     display: flex;
     flex-direction: column;
-    padding-top: 60px; /* Space for the navbar */
+    padding-top: 20px;
     overflow: hidden;
   }
   
@@ -102,7 +104,7 @@
     left: 0;
     width: 100%;
     height: 100%;
-    background: linear-gradient(45deg, #000428, #001e3c, #000c66);
+    background: linear-gradient(45deg, #f5f7fa 0%, #c3cfe2 100%);
     z-index: -2;
   }
   
@@ -210,7 +212,8 @@
     align-items: center;
     justify-content: center;
     text-align: center;
-    min-height: 60vh;
+    min-height: 35vh;
+    margin-bottom: 1.5rem;
   }
   
   .hero-content {
@@ -219,11 +222,11 @@
   }
   
   h1 {
-    font-size: 5.5rem;
-    margin: 0;
+    color: #111;
+    font-size: 4rem;
     font-weight: 900;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
+    margin-bottom: 1rem;
+    text-shadow: none;
   }
   
   .glow {
@@ -252,11 +255,11 @@
   }
   
   .subtitle {
-    font-size: 1.5rem;
-    margin: 1rem 0 2rem;
+    color: #333;
+    font-size: 1.25rem;
+    margin-bottom: 2rem;
+    font-weight: 500;
     opacity: 0.9;
-    font-weight: 300;
-    letter-spacing: 0.05em;
   }
   
   .buttons {
@@ -264,25 +267,21 @@
   }
   
   .primary-btn {
-    background: linear-gradient(90deg, #0052d4, #4364f7, #6fb1fc);
-    color: white;
-    padding: 0.9rem 2.5rem;
-    font-size: 1.2rem;
+    background: #111;
+    color: #fff;
     border: none;
-    border-radius: 4px;
+    font-weight: 700;
+    font-size: 1.1rem;
+    padding: 0.85rem 2.5rem;
+    border-radius: 9999px;
+    box-shadow: 0 2px 8px rgba(66,153,225,0.08);
     cursor: pointer;
-    transition: all 0.3s;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    position: relative;
-    overflow: hidden;
-    box-shadow: 0 4px 15px rgba(65, 132, 234, 0.4);
+    transition: background 0.2s, box-shadow 0.2s, transform 0.2s;
   }
   
   .primary-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(65, 132, 234, 0.6);
+    background: #222;
+    transform: translateY(-2px) scale(1.03);
   }
   
   .primary-btn:active {
@@ -290,26 +289,26 @@
   }
   
   .info-section {
+    background: #f7f7fa;
+    border-radius: 1.5rem;
+    padding: 2rem 1.5rem;
+    margin: 1rem auto 0 auto;
     display: flex;
-    justify-content: center;
     gap: 2rem;
-    padding: 2rem;
-    margin: 0 auto;
-    max-width: 1200px;
-    z-index: 1;
+    justify-content: center;
+    max-width: 900px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.04);
   }
   
   .info-box {
-    background: rgba(15, 23, 42, 0.7);
-    backdrop-filter: blur(10px);
-    padding: 2rem;
-    border-radius: 8px;
+    background: #fff;
+    border-radius: 1rem;
+    padding: 1.5rem 1.25rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
     text-align: center;
     flex: 1;
-    max-width: 300px;
-    transition: transform 0.3s, box-shadow 0.3s;
-    border: 1px solid rgba(63, 137, 251, 0.2);
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    min-width: 180px;
+    color: #111;
   }
   
   .info-box:hover {
@@ -326,14 +325,15 @@
   .info-box h2 {
     margin-top: 0;
     font-size: 1.5rem;
-    color: #4299e1;
+    color: #2563eb;
     margin-bottom: 0.5rem;
   }
   
   .info-box p {
     font-size: 1rem;
     margin: 0.5rem 0 0;
-    opacity: 0.8;
+    opacity: 0.9;
+    color: #333;
   }
   
   .auth-modal {
@@ -342,7 +342,7 @@
     left: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(0, 0, 0, 0.8);
+    background-color: rgba(255,255,255,0.95);
     backdrop-filter: blur(5px);
     display: flex;
     align-items: center;
@@ -351,15 +351,14 @@
   }
   
   .modal-content {
-    background-color: rgba(15, 23, 42, 0.8);
-    backdrop-filter: blur(10px);
-    color: white;
+    background-color: #fff;
+    color: #111;
     padding: 2rem;
     border-radius: 8px;
     width: 90%;
     max-width: 400px;
-    border: 1px solid rgba(63, 137, 251, 0.2);
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    border: 1px solid #2563eb22;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
   }
   
   .form-group {
@@ -369,21 +368,21 @@
   input {
     width: 100%;
     padding: 0.75rem;
-    border: 1px solid rgba(63, 137, 251, 0.3);
-    background-color: rgba(15, 23, 42, 0.6);
+    border: 1px solid #2563eb44;
+    background-color: #f7f7fa;
     border-radius: 4px;
     font-size: 1rem;
-    color: white;
+    color: #111;
     transition: border-color 0.3s;
   }
   
   input:focus {
-    border-color: rgba(63, 137, 251, 0.8);
+    border-color: #2563eb;
     outline: none;
   }
   
   .toggle-text {
-    color: #e2e8f0;
+    color: #333;
     font-size: 0.9rem;
     margin-top: 1rem;
     text-align: center;
@@ -392,7 +391,7 @@
   .text-btn {
     background: none;
     border: none;
-    color: #4299e1;
+    color: #2563eb;
     font-weight: bold;
     cursor: pointer;
     padding: 0;

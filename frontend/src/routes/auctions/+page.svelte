@@ -25,6 +25,111 @@
           "/wrigglyLine2.png"
         ]
       }
+    },
+    {
+      id: 2,
+      seller: {
+        name: "Jessy Stores",
+        avatar: "/wrigglyLine2.png",
+        username: "@jessy",
+        timestamp: "22 February, 10 AM"
+      },
+      product: {
+        name: "Apple AirPods Pro",
+        location: "Lekki",
+        brand: "Apple",
+        price: 200,
+        currentBid: 210,
+        description: "Brand new AirPods Pro, sealed box. Auction ends soon!",
+        images: [
+          "/wrigglyLine2.png",
+          "/test.jpg.jpg"
+        ]
+      }
+    },
+    {
+      id: 3,
+      seller: {
+        name: "Tola Thompson",
+        avatar: "/test.jpg.jpg",
+        username: "@tola",
+        timestamp: "23 February, 2 PM"
+      },
+      product: {
+        name: "Samsung Galaxy S21",
+        location: "Victoria Island",
+        brand: "Samsung",
+        price: 350,
+        currentBid: 370,
+        description: "Slightly used Galaxy S21, comes with box and charger.",
+        images: [
+          "/test.jpg.jpg",
+          "/wrigglyLine2.png"
+        ]
+      }
+    },
+    {
+      id: 4,
+      seller: {
+        name: "Cody Fisher Stores",
+        avatar: "/wrigglyLine2.png",
+        username: "@codyfisher",
+        timestamp: "24 February, 11 AM"
+      },
+      product: {
+        name: "Unisex iPhone 13 Pro Case",
+        location: "Yaba",
+        brand: "Apple",
+        price: 30,
+        currentBid: 35,
+        description: "Trendy iPhone 13 Pro case, fits perfectly. Place your bid!",
+        images: [
+          "/wrigglyLine2.png",
+          "/test.jpg.jpg"
+        ]
+      }
+    },
+    {
+      id: 5,
+      seller: {
+        name: "Thompson Stores",
+        avatar: "/test.jpg.jpg",
+        username: "@thompson",
+        timestamp: "25 February, 4 PM"
+      },
+      product: {
+        name: "Original White Apple Earbuds",
+        location: "Ikeja",
+        brand: "Apple",
+        price: 50,
+        currentBid: 55,
+        description: "Original Apple earbuds, barely used. Auction ends today!",
+        images: [
+          "/test.jpg.jpg",
+          "/wrigglyLine2.png"
+        ]
+      }
+    },
+    {
+      id: 6,
+      seller: {
+        name: "MTB CEO",
+        avatar: "/wrigglyLine2.png",
+        username: "@mbtceo",
+        timestamp: "26 February, 9 AM"
+      },
+      product: {
+        name: "Original White iPhone Charger",
+        location: "Ajah",
+        brand: "Apple",
+        price: 25,
+        currentBid: 28,
+        description: "Genuine iPhone charger, fast charging. Place your bid now!",
+        images: [
+          "/wrigglyLine2.png",
+          "/test.jpg.jpg"
+        ]
+      }
     }
   ];
 
@@ -67,96 +172,24 @@
 
   <div class="auctions-grid">
     {#each auctions as auction (auction.id)}
-      <div class="auction-post">
-        <!-- Seller Info -->
-        <div class="seller-info">
-          <img src={auction.seller.avatar} alt={auction.seller.name} class="seller-avatar" />
-          <div class="seller-details">
-            <div class="seller-name-row">
-              <h2>{auction.seller.name}</h2>
-              <button class="follow-btn">Follow</button>
-            </div>
-            <span class="timestamp">{auction.seller.timestamp}</span>
-          </div>
+      <div class="auction-card">
+        <div class="auction-image">
+          <img src={auction.product.images[0]} alt={auction.product.name} />
         </div>
-
-        <!-- Product Details -->
-        <div class="product-details">
-          <div class="info-row">
-            <span class="label">PRODUCT NAME:</span>
-            <span class="value">{auction.product.name}</span>
+        <div class="auction-info">
+          <div class="auction-title">{auction.product.name}</div>
+          <div class="auction-meta">
+            <span class="current-bid">Current Bid: <b>${auction.product.currentBid}</b></span>
+            <span class="time-left">
+              <svg class="clock-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 1.75A10.25 10.25 0 1 0 22.25 12 10.262 10.262 0 0 0 12 1.75zm0 18.5A8.25 8.25 0 1 1 20.25 12 8.26 8.26 0 0 1 12 20.25zm.75-8.5V7a.75.75 0 0 0-1.5 0v5a.75.75 0 0 0 .44.68l3.5 1.5a.75.75 0 1 0 .58-1.38z"/></svg>
+              <span>Ends in: <b>01:23:45</b></span>
+            </span>
           </div>
-          <div class="info-row">
-            <span class="label">LOCATION:</span>
-            <span class="value">{auction.product.location}</span>
+          <div class="auction-seller">
+            <img src={auction.seller.avatar} alt={auction.seller.name} class="seller-avatar" />
+            <span class="seller-name">{auction.seller.name}</span>
           </div>
-          <div class="info-row">
-            <span class="label">BRAND:</span>
-            <span class="value">{auction.product.brand}</span>
-          </div>
-          <div class="info-row">
-            <span class="label">PRICE:</span>
-            <span class="value">${auction.product.price}</span>
-          </div>
-        </div>
-
-        <p class="product-description">{auction.product.description}</p>
-
-        <!-- Product Images and Bidding -->
-        <div class="auction-content">
-          <div class="product-images">
-            <button class="nav-btn prev" on:click={previousImage}>
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/>
-              </svg>
-            </button>
-            <div class="image-grid">
-              {#each auction.product.images as image, i}
-                <div class="image-container" class:active={i === currentImageIndex}>
-                  <img src={image} alt="Product view {i + 1}" />
-                </div>
-              {/each}
-            </div>
-            <button class="nav-btn next" on:click={nextImage}>
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                <path d="M8.59 16.59L10 18l6-6-6-6-1.41 1.41L13.17 12z"/>
-              </svg>
-            </button>
-          </div>
-
-          <div class="bidding-section">
-            <div class="current-price">
-              <span class="label">CURRENT PRICE</span>
-              <span class="price">${currentBid}</span>
-            </div>
-
-            <div class="bid-history">
-              <div class="bid-row">
-                <span class="bid-amount">$120</span>
-                <span class="bid-label">BID</span>
-              </div>
-            </div>
-
-            <div class="place-bid">
-              <div class="bid-input">
-                <span class="currency">$</span>
-                <input 
-                  type="number" 
-                  bind:value={bidAmount}
-                  placeholder="0.0"
-                  min={currentBid + 1}
-                  step="0.01"
-                />
-              </div>
-              <button 
-                class="bid-btn"
-                disabled={!bidAmount || parseFloat(bidAmount) <= currentBid}
-                on:click={handleBid}
-              >
-                Bid Accepted
-              </button>
-            </div>
-          </div>
+          <button class="view-auction-btn">View Auction</button>
         </div>
       </div>
     {/each}
@@ -166,10 +199,10 @@
 <style>
   .auctions-content {
     height: 100vh;
+    overflow: auto;
     display: flex;
     flex-direction: column;
-    overflow: hidden;
-    background: #FAF9F6;
+    background: linear-gradient(135deg, #fff 80%, #f3f4f6 100%);
     padding: 2rem;
   }
 
@@ -181,6 +214,7 @@
     .search-bar {
       margin-bottom: 1rem;
       padding: 0.5rem;
+      top: 56px;
     }
 
     .auctions-grid {
@@ -195,6 +229,12 @@
 
   .search-bar {
     margin-bottom: 2rem;
+    position: sticky;
+    top: 72px;
+    background: linear-gradient(135deg, #fff 80%, #f3f4f6 100%);
+    z-index: 10;
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
   }
 
   .search-input {
@@ -237,281 +277,133 @@
   }
 
   .auctions-grid {
-    flex: 1;
-    overflow-y: auto;
-    padding: 0 1rem 8rem 1rem;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 2rem;
+    padding: 1rem 1rem 8rem 1rem;
   }
 
-  /* Custom Scrollbar Styling */
-  .auctions-grid::-webkit-scrollbar {
-    width: 4px;
-  }
-
-  .auctions-grid::-webkit-scrollbar-track {
-    background: transparent;
-  }
-
-  .auctions-grid::-webkit-scrollbar-thumb {
-    background-color: rgba(203, 213, 225, 0.4);
-    border-radius: 20px;
-  }
-
-  .auctions-grid::-webkit-scrollbar-thumb:hover {
-    background-color: rgba(148, 163, 184, 0.5);
-  }
-
-  /* Firefox */
-  .auctions-grid {
-    scrollbar-width: thin;
-    scrollbar-color: rgba(203, 213, 225, 0.4) transparent;
-  }
-
-  .auction-post {
+  .auction-card {
     background: white;
     border-radius: 1rem;
-    padding: 1.5rem;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-    margin-bottom: 2rem;
-  }
-
-  .seller-info {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    margin-bottom: 1.5rem;
-  }
-
-  .seller-avatar {
-    width: 48px;
-    height: 48px;
-    border-radius: 50%;
-    object-fit: cover;
-  }
-
-  .seller-details {
-    flex: 1;
-  }
-
-  .seller-name-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-
-  .seller-name-row h2 {
-    margin: 0;
-    font-size: 1.25rem;
-    font-weight: 600;
-    color: #2D3748;
-  }
-
-  .follow-btn {
-    background: #6366F1;
-    color: white;
+    box-shadow: none;
     border: none;
-    padding: 0.5rem 1.5rem;
-    border-radius: 0.5rem;
-    cursor: pointer;
-    font-weight: 500;
-  }
-
-  .timestamp {
-    color: #718096;
-    font-size: 0.875rem;
-  }
-
-  .product-details {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 1rem;
-    margin-bottom: 1.5rem;
-  }
-
-  .info-row {
     display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 1.5rem 1rem 1rem 1rem;
+    transition: transform 0.15s;
+  }
+
+  .auction-card:hover {
+    transform: translateY(-2px) scale(1.02);
+  }
+
+  .auction-image img {
+    width: 100%;
+    height: 160px;
+    object-fit: cover;
+    border-radius: 0.75rem;
+    background: #f7f7fa;
+    margin-bottom: 1rem;
+  }
+
+  .auction-info {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
     gap: 0.5rem;
   }
 
-  .label {
-    color: #6366F1;
-    font-weight: 500;
+  .auction-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #111;
+    margin-bottom: 0.25rem;
   }
 
-  .value {
-    color: #2D3748;
-  }
-
-  .product-description {
-    color: #4A5568;
-    margin-bottom: 1.5rem;
-    line-height: 1.6;
-  }
-
-  .auction-content {
-    display: grid;
-    grid-template-columns: 2fr 1fr;
-    gap: 2rem;
-  }
-
-  .product-images {
-    position: relative;
-    background: #FDF6E3;
-    border-radius: 1rem;
-    padding: 1rem;
-  }
-
-  .image-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 1rem;
-  }
-
-  .image-container {
-    aspect-ratio: 1;
-    border-radius: 0.5rem;
-    overflow: hidden;
-    opacity: 0.7;
-    transition: opacity 0.3s;
-  }
-
-  .image-container.active {
-    opacity: 1;
-  }
-
-  .image-container img {
+  .auction-meta {
+    display: flex;
+    justify-content: space-between;
     width: 100%;
-    height: 100%;
-    object-fit: cover;
+    font-size: 0.95rem;
+    margin-bottom: 0.25rem;
   }
 
-  .nav-btn {
-    position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
-    background: rgba(255, 255, 255, 0.9);
-    border: none;
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
+  .current-bid b {
+    color: orange;
+    font-weight: 700;
+  }
+
+  .time-left b {
+    color: #22c55e;
+    font-weight: 700;
+  }
+
+  .time-left {
     display: flex;
     align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    z-index: 10;
+    gap: 0.25rem;
   }
 
-  .nav-btn svg {
-    width: 24px;
-    height: 24px;
-    fill: #4A5568;
+  .clock-icon {
+    width: 1em;
+    height: 1em;
+    fill: #22c55e;
+    margin-right: 0.15em;
+    flex-shrink: 0;
   }
 
-  .nav-btn.prev {
-    left: 1rem;
-  }
-
-  .nav-btn.next {
-    right: 1rem;
-  }
-
-  .bidding-section {
-    background: white;
-    border-radius: 1rem;
-    padding: 1.5rem;
-    border: 1px solid #E2E8F0;
-  }
-
-  .current-price {
-    text-align: center;
-    margin-bottom: 2rem;
-  }
-
-  .current-price .label {
-    display: block;
+  .auction-seller {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
     margin-bottom: 0.5rem;
   }
 
-  .current-price .price {
-    font-size: 2rem;
-    font-weight: 700;
-    color: #2D3748;
+  .seller-avatar {
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 50%;
+    object-fit: cover;
   }
 
-  .bid-history {
-    margin-bottom: 2rem;
-  }
-
-  .bid-row {
-    display: flex;
-    justify-content: space-between;
-    padding: 0.75rem 0;
-    border-bottom: 1px solid #E2E8F0;
-  }
-
-  .bid-amount {
+  .seller-name {
+    font-size: 0.95rem;
+    color: #444;
     font-weight: 500;
-    color: #2D3748;
   }
 
-  .bid-label {
-    color: #718096;
-  }
-
-  .place-bid {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-  }
-
-  .bid-input {
-    display: flex;
-    align-items: center;
-    background: #F7FAFC;
-    border-radius: 0.5rem;
-    padding: 0.75rem;
-  }
-
-  .currency {
-    color: #718096;
-    margin-right: 0.5rem;
-  }
-
-  .bid-input input {
-    background: none;
-    border: none;
-    color: #2D3748;
-    font-size: 1rem;
+  .view-auction-btn {
+    margin-top: 0.5rem;
     width: 100%;
-    outline: none;
-  }
-
-  .bid-input input::placeholder {
-    color: #A0AEC0;
-  }
-
-  .bid-btn {
-    background: #6366F1;
-    color: white;
+    padding: 0.75rem 0;
+    background: linear-gradient(90deg, #6366F1 0%, #60A5FA 100%);
+    color: #fff;
     border: none;
-    padding: 1rem;
     border-radius: 0.5rem;
-    font-weight: 500;
+    font-weight: 600;
+    font-size: 1rem;
     cursor: pointer;
-    transition: opacity 0.2s;
+    transition: background 0.2s;
   }
 
-  .bid-btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
+  .view-auction-btn:hover {
+    background: linear-gradient(90deg, #60A5FA 0%, #6366F1 100%);
   }
 
-  @media (max-width: 1024px) {
-    .auction-content {
+  @media (max-width: 768px) {
+    .auctions-grid {
       grid-template-columns: 1fr;
+      gap: 1rem;
+      padding: 0.5rem;
     }
-
-    .product-details {
-      grid-template-columns: 1fr;
+    .auction-card {
+      padding: 1rem 0.5rem 0.5rem 0.5rem;
+    }
+    .auction-image img {
+      height: 120px;
     }
   }
 </style> 

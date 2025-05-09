@@ -286,11 +286,11 @@
     left: 280px; /* Account for sidebar width */
     right: 0;
     bottom: 0;
-    background-color: #faf9f6;
+    background: linear-gradient(135deg, #fff 80%, #f3f4f6 100%);
   }
 
   .chat-area {
-    background-color: #faf9f6;
+    background: linear-gradient(135deg, #fff 80%, #f3f4f6 100%);
     display: flex;
     flex-direction: column;
     min-height: 0;
@@ -738,5 +738,14 @@
     font-size: 1.25rem;
     font-weight: 600;
     color: #2d3748;
+  }
+
+  .post {
+    background: #fff;
+    border-radius: 1.5rem;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    color: #111;
   }
 </style> 

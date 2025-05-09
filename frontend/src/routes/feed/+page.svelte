@@ -21,7 +21,12 @@
     },
     images: [
       '/wrigglyLine2.png',
-      '/test.jpg.jpg'
+      '/test.jpg.jpg',
+      '/wrigglyLine2.png',
+      '/test.jpg.jpg',
+      '/wrigglyLine2.png',
+      '/test.jpg.jpg',
+      '/wrigglyLine2.png'
     ],
     description: 'Step up your style with top-quality sneakers! 🔥 From classic kicks to the latest trends, I\'ve got the perfect pair for you. Comfort, style, and affordability—all in one place!',
     engagement: {
@@ -31,6 +36,32 @@
       saved: 15
     }
   };
+
+  // Modal state for image zoom
+  let isModalOpen = false;
+  let modalIndex = 0;
+  function openModal(index: number) {
+    modalIndex = index;
+    isModalOpen = true;
+  }
+  function closeModal() {
+    isModalOpen = false;
+  }
+  function prevImage() {
+    modalIndex = (modalIndex - 1 + feedPost.images.length) % feedPost.images.length;
+  }
+  function nextImage() {
+    modalIndex = (modalIndex + 1) % feedPost.images.length;
+  }
+
+  let isMobile = false;
+  function checkMobile() {
+    isMobile = window.innerWidth <= 768;
+  }
+  if (typeof window !== 'undefined') {
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+  }
 </script>
 
 <div class="feed-layout">
@@ -68,34 +99,63 @@
           </div>
         </div>
 
-        <div class="product-info">
-          <div class="info-row">
-            <span class="label">PRODUCT NAME:</span>
-            <span class="value">{feedPost.product.name}</span>
-          </div>
-          <div class="info-row">
-            <span class="label">LOCATION:</span>
-            <span class="value">{feedPost.product.location}</span>
-          </div>
-          <div class="info-row">
-            <span class="label">PRICE:</span>
-            <span class="value">{feedPost.product.price}</span>
-          </div>
-          <div class="info-row">
-            <span class="label">BRAND:</span>
-            <span class="value">{feedPost.product.brand}</span>
-          </div>
-        </div>
-
-        <div class="image-gallery">
-          {#each feedPost.images as image, i}
-            <div class="gallery-item">
-              <img src={image} alt="Product image {i + 1}" />
+        {#if isMobile}
+          <div class="image-gallery-mobile">
+            <div class="mobile-row">
+              <div class="featured-image" on:click={() => openModal(0)}>
+                <img src={feedPost.images[0]} alt="Featured product image" />
+              </div>
+              {#if feedPost.images.length > 1}
+                <div class="featured-image second" on:click={() => openModal(1)}>
+                  <img src={feedPost.images[1]} alt="Second product image" />
+                  {#if feedPost.images.length > 2}
+                    <div class="more-overlay">+{feedPost.images.length - 2}</div>
+                  {/if}
+                </div>
+              {/if}
             </div>
-          {/each}
-        </div>
+          </div>
+        {:else}
+          <div class="image-gallery-modern">
+            <div class="featured-image" on:click={() => openModal(0)}>
+              <img src={feedPost.images[0]} alt="Featured product image" />
+            </div>
+            <div class="thumbnails">
+              {#each feedPost.images.slice(1, 3) as image, i}
+                <div class="thumbnail-item" on:click={() => openModal(i+1)}>
+                  <img src={image} alt={`Product thumbnail ${i + 2}`} />
+                </div>
+              {/each}
+              {#if feedPost.images.length > 3}
+                <div class="thumbnail-item overlay-item" on:click={() => openModal(2)}>
+                  <img src={feedPost.images[2]} alt="Product thumbnail 3" />
+                  <div class="more-overlay">+{feedPost.images.length - 3}</div>
+                </div>
+              {/if}
+            </div>
+          </div>
+        {/if}
+
+        {#if isModalOpen}
+          <div class="modal-backdrop" on:click={closeModal}></div>
+          <div class="modal">
+            <button class="modal-close" on:click={closeModal}>&times;</button>
+            <button class="modal-nav left" on:click={prevImage}>&lt;</button>
+            <img class="modal-img" src={feedPost.images[modalIndex]} alt="Zoomed image" />
+            <button class="modal-nav right" on:click={nextImage}>&gt;</button>
+            <div class="modal-thumbs">
+              {#each feedPost.images as img, idx}
+                <img src={img} alt={`Thumb ${idx+1}`} class:active-thumb={idx === modalIndex} on:click={() => modalIndex = idx} />
+              {/each}
+            </div>
+          </div>
+        {/if}
 
         <p class="post-description">{feedPost.description}</p>
+        <div class="post-location">
+          <svg class="location-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+          <span class="location-text">Lagos</span>
+        </div>
 
         <div class="post-engagement">
           <button class="engage-btn">
@@ -133,7 +193,7 @@
     display: grid;
     grid-template-columns: 280px 1fr;
     min-height: 100vh;
-    background-color: #f8f7f4;
+    background: linear-gradient(135deg, #fff 80%, #f3f4f6 100%);
   }
 
   @media (max-width: 768px) {
@@ -162,6 +222,11 @@
       margin: 0;
       padding: 0.75rem;
     }
+
+    .product-info {
+      grid-template-columns: 1fr;
+      gap: 0.75rem;
+    }
   }
 
   /* Main Content Styles */
@@ -175,7 +240,7 @@
     position: fixed;
     top: 0;
     right: 0;
-    background-color: #f8f7f4;
+    background: linear-gradient(135deg, #fff 80%, #f3f4f6 100%);
     box-sizing: border-box;
   }
 
@@ -191,7 +256,7 @@
     top: 0;
     left: 0;
     right: 0;
-    background-color: #f8f7f4;
+    background: linear-gradient(135deg, #fff 80%, #f3f4f6 100%);
     padding: 1.5rem 0;
     z-index: 10;
     max-width: 800px;
@@ -208,10 +273,22 @@
   .search-input input {
     width: 100%;
     padding: 0.75rem 3rem;
-    border: 1px solid rgba(0, 0, 0, 0.1);
+    border: 1px solid #e2e8f0;
     border-radius: 9999px;
     font-size: 0.95rem;
-    background-color: white;
+    background-color: #fff;
+    color: #111;
+    transition: all 0.2s ease;
+  }
+
+  .search-input input:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.08);
+  }
+
+  .search-input input::placeholder {
+    color: #a1a1aa;
   }
 
   .search-icon {
@@ -219,7 +296,7 @@
     left: 1rem;
     width: 1.25rem;
     height: 1.25rem;
-    color: #718096;
+    color: #111;
   }
 
   .camera-btn {
@@ -227,9 +304,14 @@
     right: 1rem;
     background: none;
     border: none;
-    color: #718096;
+    color: #111;
     cursor: pointer;
     padding: 0.25rem;
+    transition: color 0.2s ease;
+  }
+
+  .camera-btn:hover {
+    color: #2563eb;
   }
 
   .camera-btn svg {
@@ -237,13 +319,19 @@
     height: 1.25rem;
   }
 
-  /* Post Styles */
+  /* Modern Post Card Styles */
   .post {
-    background-color: white;
-    border-radius: 1rem;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    background: #fff;
+    border-radius: 1.5rem;
     padding: 1.5rem;
     margin-bottom: 2rem;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    color: #111;
+  }
+
+  .post:hover {
+    background: #f7f7fa;
+    transform: translateY(-2px);
   }
 
   .post-header {
@@ -264,93 +352,173 @@
     height: 48px;
     border-radius: 50%;
     object-fit: cover;
+    border: 2px solid #e2e8f0;
+    box-shadow: 0 0 0 2px rgba(37,99,235,0.08);
   }
 
   .author-info h3 {
     margin: 0;
     font-size: 1.1rem;
-    color: #2d3748;
+    color: #111;
+    font-weight: 600;
   }
 
   .timestamp {
     font-size: 0.875rem;
-    color: #718096;
+    color: #64748b;
   }
 
   .post-actions {
     display: flex;
-    gap: 1rem;
+    gap: 0.75rem;
   }
 
   .follow-btn, .message-btn {
     padding: 0.5rem 1rem;
-    border-radius: 0.375rem;
+    border-radius: 0.75rem;
     font-size: 0.875rem;
     font-weight: 500;
     cursor: pointer;
+    transition: all 0.2s ease;
+    color: #fff;
   }
 
   .follow-btn {
     background: none;
-    border: 1px solid #4299e1;
-    color: #4299e1;
+    border: 1px solid #2563eb;
+    color: #2563eb;
+  }
+
+  .follow-btn:hover {
+    background: rgba(37, 99, 235, 0.08);
   }
 
   .message-btn {
-    background-color: #4299e1;
+    background: linear-gradient(135deg, #0EA5E9, #7C3AED);
     border: none;
     color: white;
   }
 
-  .product-info {
-    margin-bottom: 1.5rem;
+  .message-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px -1px rgba(37,99,235,0.12);
   }
 
-  .info-row {
+  .image-gallery-modern {
     display: flex;
-    margin-bottom: 0.5rem;
-  }
-
-  .label {
-    width: 120px;
-    font-size: 0.875rem;
-    color: #718096;
-  }
-
-  .value {
-    font-weight: 500;
-    color: #2d3748;
-  }
-
-  .image-gallery {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
     gap: 1rem;
     margin-bottom: 1.5rem;
   }
-
-  .gallery-item img {
-    width: 100%;
-    height: 300px;
-    object-fit: cover;
-    border-radius: 0.5rem;
+  .featured-image {
+    flex: 2;
+    border-radius: 1rem;
+    overflow: hidden;
+    aspect-ratio: 16/10;
+    box-shadow: 0 2px 8px rgba(37,99,235,0.07);
+    position: relative;
   }
-
-  .gallery-item:first-child {
-    grid-column: 1 / -1;
+  .featured-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+    border-radius: 1rem;
+  }
+  .featured-image:hover img {
+    transform: scale(1.04);
+  }
+  .thumbnails {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    justify-content: stretch;
+  }
+  .thumbnail-item {
+    position: relative;
+    border-radius: 0.75rem;
+    overflow: hidden;
+    aspect-ratio: 16/10;
+    box-shadow: 0 1px 4px rgba(37,99,235,0.05);
+    cursor: pointer;
+    transition: box-shadow 0.2s;
+  }
+  .thumbnail-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 0.75rem;
+    transition: transform 0.2s;
+  }
+  .thumbnail-item:hover img {
+    transform: scale(1.06);
+  }
+  .more-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(30, 41, 59, 0.65);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    font-weight: 600;
+    border-radius: 0.75rem;
+    letter-spacing: 0.03em;
+  }
+  @media (max-width: 768px) {
+    .image-gallery-modern {
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    .featured-image, .thumbnail-item {
+      aspect-ratio: 16/10;
+    }
+    .thumbnails {
+      flex-direction: row;
+      gap: 0.5rem;
+    }
   }
 
   .post-description {
-    color: #4a5568;
+    color: #222;
     line-height: 1.6;
     margin-bottom: 1.5rem;
+    font-size: 0.95rem;
+  }
+
+  .post-location {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #222;
+    font-size: 0.95rem;
+    margin-bottom: 1.25rem;
+    margin-top: -0.5rem;
+    padding-left: 2px;
+  }
+  .location-icon {
+    width: 1.15rem;
+    height: 1.15rem;
+    color: #111;
+    fill: #111;
+    stroke: #111;
+    flex-shrink: 0;
+  }
+  .location-text {
+    font-weight: 500;
+    color: #222;
+    letter-spacing: 0.01em;
   }
 
   .post-engagement {
     display: flex;
     gap: 2rem;
     padding: 1rem 0;
-    border-top: 1px solid rgba(0, 0, 0, 0.05);
+    border-top: 1px solid #e2e8f0;
     margin-bottom: 0;
   }
 
@@ -360,21 +528,33 @@
     gap: 0.5rem;
     background: none;
     border: none;
-    color: #718096;
+    color: #111;
     font-size: 0.875rem;
     cursor: pointer;
     padding: 0.5rem;
-    border-radius: 0.375rem;
-    transition: all 0.2s;
+    border-radius: 0.75rem;
+    transition: all 0.2s ease;
   }
 
   .engage-btn:hover {
-    background-color: rgba(0, 0, 0, 0.05);
+    background-color: #f7f7fa;
+    color: #2563eb;
   }
 
   .engage-btn .icon {
     width: 1.25rem;
     height: 1.25rem;
+    transition: transform 0.2s ease;
+    color: #111;
+    fill: #111;
+    stroke: #111;
+  }
+
+  .engage-btn:hover .icon {
+    transform: scale(1.1);
+    color: #2563eb;
+    fill: #2563eb;
+    stroke: #2563eb;
   }
 
   @media (max-width: 1280px) {
@@ -398,5 +578,198 @@
     .search-bar {
       max-width: 100%;
     }
+  }
+
+  /* Remove product-info styles */
+  .product-info, .info-row, .label, .value {
+    display: none !important;
+  }
+
+  .overlay-item {
+    position: relative;
+    cursor: pointer;
+  }
+  .more-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(30, 41, 59, 0.65);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    font-weight: 600;
+    border-radius: 0.75rem;
+    letter-spacing: 0.03em;
+    z-index: 2;
+  }
+  /* Modal styles */
+  .modal-backdrop {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(30,41,59,0.65);
+    z-index: 1000;
+  }
+  .modal {
+    position: fixed;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    background: #000;
+    border-radius: 1.25rem;
+    box-shadow: 0 8px 32px rgba(30,41,59,0.18);
+    z-index: 1001;
+    padding: 2rem 2.5rem 1.5rem 2.5rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 320px;
+    max-width: 90vw;
+    max-height: 90vh;
+  }
+  .modal-img {
+    max-width: 60vw;
+    max-height: 60vh;
+    border-radius: 1rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 2px 12px rgba(14,165,233,0.08);
+    object-fit: contain;
+    background: #000;
+  }
+  .modal-close {
+    position: absolute;
+    top: 1rem;
+    right: 1.5rem;
+    background: none;
+    border: none;
+    font-size: 2rem;
+    color: #64748B;
+    cursor: pointer;
+    z-index: 2;
+  }
+  .modal-nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(255,255,255,0.8);
+    border: none;
+    font-size: 2rem;
+    color: #0EA5E9;
+    cursor: pointer;
+    z-index: 2;
+    padding: 0.25rem 0.75rem;
+    border-radius: 0.75rem;
+    transition: background 0.2s;
+  }
+  .modal-nav.left { left: 1rem; }
+  .modal-nav.right { right: 1rem; }
+  .modal-thumbs {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+    overflow-x: auto;
+    max-width: 80vw;
+  }
+  .modal-thumbs img {
+    width: 48px;
+    height: 48px;
+    object-fit: cover;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    opacity: 0.7;
+    border: 2px solid transparent;
+    transition: border 0.2s, opacity 0.2s;
+  }
+  .modal-thumbs img.active-thumb {
+    opacity: 1;
+    border: 2px solid #0EA5E9;
+  }
+  @media (max-width: 768px) {
+    .modal {
+      padding: 0;
+      min-width: 0;
+      max-width: 100vw;
+      max-height: 100vh;
+      border-radius: 0;
+      background: #000;
+      box-shadow: none;
+      justify-content: center;
+    }
+    .modal-img {
+      max-width: 100vw;
+      max-height: 100vh;
+      border-radius: 0;
+      margin-bottom: 0;
+      box-shadow: none;
+      background: #000;
+    }
+    .modal-close {
+      top: 0.5rem;
+      right: 1rem;
+      font-size: 2.2rem;
+      color: #fff;
+      background: rgba(30,41,59,0.5);
+      border-radius: 50%;
+      padding: 0.25rem 0.5rem;
+    }
+    .modal-thumbs {
+      display: none;
+    }
+    .modal-nav {
+      background: rgba(30,41,59,0.5);
+      color: #fff;
+      font-size: 2.2rem;
+      border-radius: 50%;
+      padding: 0.25rem 0.7rem;
+    }
+  }
+
+  .image-gallery-mobile {
+    margin-bottom: 1.5rem;
+  }
+  .image-gallery-mobile .mobile-row {
+    display: flex;
+    gap: 0.5rem;
+  }
+  .image-gallery-mobile .featured-image {
+    position: relative;
+    border-radius: 1rem;
+    overflow: hidden;
+    aspect-ratio: 16/10;
+    box-shadow: 0 2px 8px rgba(14, 165, 233, 0.07);
+    cursor: pointer;
+    flex: 1;
+  }
+  .image-gallery-mobile .featured-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 1rem;
+    transition: transform 0.3s ease;
+  }
+  .image-gallery-mobile .featured-image:hover img {
+    transform: scale(1.04);
+  }
+  .image-gallery-mobile .featured-image.second {
+    position: relative;
+  }
+  .image-gallery-mobile .more-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(30, 41, 59, 0.65);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    font-weight: 600;
+    border-radius: 1rem;
+    letter-spacing: 0.03em;
+    z-index: 2;
   }
 </style> 

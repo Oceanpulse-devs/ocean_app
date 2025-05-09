@@ -7,6 +7,7 @@
     location: string;
     brand: string;
     image: string;
+    description: string;
     seller: {
       name: string;
       avatar: string;
@@ -23,6 +24,7 @@
       location: "Ikeja",
       brand: "Nike",
       image: "/test.jpg.jpg",
+      description: "Gently used Nike sneakers, perfect for running and casual wear.",
       seller: {
         name: "MBT CEO",
         avatar: "/wrigglyLine2.png",
@@ -37,6 +39,7 @@
       location: "Lagos",
       brand: "Nike",
       image: "/test.jpg.jpg",
+      description: "Classic Air Jordan 1, lightly worn, still in great condition!",
       seller: {
         name: "Tola Thompson",
         avatar: "/test.jpg.jpg",
@@ -51,6 +54,7 @@
       location: "Lagos",
       brand: "Nike",
       image: "/test.jpg.jpg",
+      description: "Selling my Air Jordans, barely used. DM for more info.",
       seller: {
         name: "Tola Thompson",
         avatar: "/test.jpg.jpg",
@@ -65,6 +69,7 @@
       location: "Lagos",
       brand: "Nike",
       image: "/test.jpg.jpg",
+      description: "Great deal on these Jordans! Only worn a few times.",
       seller: {
         name: "Tola Thompson",
         avatar: "/test.jpg.jpg",
@@ -79,6 +84,7 @@
       location: "Lagos",
       brand: "Nike",
       image: "/test.jpg.jpg",
+      description: "Moving out sale! Grab these Air Jordans at a discount.",
       seller: {
         name: "Tola Thompson",
         avatar: "/test.jpg.jpg",
@@ -116,33 +122,17 @@
           </div>
         </div>
 
-        <div class="product-info">
-          <div class="info-row">
-            <span class="label">PRODUCT NAME:</span>
-            <span class="value">{product.name}</span>
-          </div>
-          <div class="info-row">
-            <span class="label">LOCATION:</span>
-            <span class="value">{product.location}</span>
-          </div>
-          <div class="info-row">
-            <span class="label">BRAND:</span>
-            <span class="value">{product.brand}</span>
-          </div>
-          <div class="info-row">
-            <span class="label">PRICE:</span>
-            <span class="value price">
-              <span class="discounted">${product.discountedPrice}</span>
-              <span class="original">${product.originalPrice}</span>
-            </span>
-          </div>
-        </div>
-
         <div class="product-image">
           <img src={product.image} alt={product.name} />
           <div class="discount-badge">
             {Math.round((1 - product.discountedPrice / product.originalPrice) * 100)}% OFF
           </div>
+        </div>
+
+        <div class="product-description">{product.description}</div>
+        <div class="product-location">
+          <svg class="location-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+          <span>{product.location}</span>
         </div>
 
         <div class="product-actions">
@@ -164,13 +154,15 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    background-color: #FAF9F6;
+    background: linear-gradient(135deg, #fff 80%, #f3f4f6 100%);
     padding: 2rem;
+    padding-top: 88px; /* 72px navbar + 16px gap */
   }
 
   @media (max-width: 768px) {
     .distress-content {
       padding: 0;
+      padding-top: 64px; /* 56px navbar + 8px gap for mobile */
     }
 
     .search-bar {
@@ -277,7 +269,8 @@
     background: white;
     border-radius: 1rem;
     padding: 1.5rem;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    box-shadow: none;
+    border: none;
   }
 
   .seller-info {
@@ -306,38 +299,6 @@
 
   .post-time {
     font-size: 0.875rem;
-    color: #718096;
-  }
-
-  .product-info {
-    margin-bottom: 1.5rem;
-  }
-
-  .info-row {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 0.5rem;
-  }
-
-  .label {
-    color: #6366F1;
-    font-weight: 500;
-    font-size: 0.875rem;
-  }
-
-  .value {
-    color: #2D3748;
-    font-size: 0.875rem;
-  }
-
-  .price .discounted {
-    font-weight: 600;
-    color: #2D3748;
-    margin-right: 0.5rem;
-  }
-
-  .price .original {
-    text-decoration: line-through;
     color: #718096;
   }
 
@@ -409,5 +370,32 @@
     width: 1.25rem;
     height: 1.25rem;
     color: #6B7280;
+  }
+
+  .product-description {
+    margin: 1rem 0 0.5rem 0;
+    color: #444;
+    font-size: 1rem;
+    font-weight: 400;
+    line-height: 1.5;
+    word-break: break-word;
+  }
+
+  .product-location {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #6366F1;
+    font-size: 0.95rem;
+    margin-bottom: 1rem;
+    margin-top: 0.25rem;
+    font-weight: 500;
+  }
+
+  .location-icon {
+    width: 1.1rem;
+    height: 1.1rem;
+    fill: #6366F1;
+    flex-shrink: 0;
   }
 </style> 

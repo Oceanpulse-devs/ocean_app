@@ -113,12 +113,63 @@
 </div>
 
 <style>
+  body, .login-container, .auth-bg {
+    background: #fff !important;
+    color: #111 !important;
+  }
+  .login-container, .auth-form {
+    background: #fff;
+    color: #111;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+    border-radius: 1rem;
+  }
+  input, input[type="email"], input[type="password"] {
+    background: #f7f7fa;
+    color: #111;
+    border: 1px solid #2563eb44;
+    border-radius: 4px;
+    padding: 0.75rem;
+    font-size: 1rem;
+    margin-bottom: 1rem;
+  }
+  input:focus {
+    border-color: #2563eb;
+    outline: none;
+  }
+  .auth-title, h1, h2, h3, h4, h5, h6 {
+    color: #111;
+  }
+  .auth-btn, button[type="submit"] {
+    background: #111;
+    color: #fff;
+    border: none;
+    border-radius: 9999px;
+    font-weight: 700;
+    font-size: 1.1rem;
+    padding: 0.85rem 2.5rem;
+    box-shadow: 0 2px 8px rgba(66,153,225,0.08);
+    cursor: pointer;
+    transition: background 0.2s, box-shadow 0.2s, transform 0.2s;
+  }
+  .auth-btn:hover, button[type="submit"]:hover {
+    background: #222;
+    transform: translateY(-2px) scale(1.03);
+  }
+  .auth-link, a {
+    color: #2563eb;
+    text-decoration: underline;
+  }
+  .auth-link:hover, a:hover {
+    color: #1d4ed8;
+  }
   .auth-page {
     position: relative;
     min-height: 100vh;
     width: 100%;
-    background: #000;
-    color: white;
+    background: 
+      radial-gradient(ellipse at 30% 0%, rgba(255,255,255,0.85) 0%, rgba(245,247,250,0.7) 60%, rgba(230,230,230,0.3) 100%),
+      linear-gradient(120deg, #f5f7fa 0%, #c3cfe2 100%);
+    color: #111;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -131,7 +182,7 @@
     left: 0;
     width: 100%;
     height: 100%;
-    background: linear-gradient(45deg, #000428, #001e3c, #000c66);
+    background: linear-gradient(45deg, #f5f7fa 0%, #c3cfe2 100%);
     z-index: -2;
   }
   
@@ -256,24 +307,24 @@
   }
   
   .auth-form {
-    background: rgba(15, 23, 42, 0.7);
-    backdrop-filter: blur(10px);
+    background: #fff;
+    color: #111;
     padding: 2.5rem;
     border-radius: 10px;
-    border: 1px solid rgba(63, 137, 251, 0.2);
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+    border: 1px solid #2563eb22;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.04);
   }
   
   h2 {
     margin: 0;
     font-size: 1.8rem;
     font-weight: 700;
-    color: white;
+    color: #111;
   }
   
   .subtitle {
     margin: 0.5rem 0 2rem;
-    color: rgba(255, 255, 255, 0.7);
+    color: #333;
     font-size: 1rem;
   }
   
@@ -285,7 +336,7 @@
     display: block;
     margin-bottom: 0.5rem;
     font-size: 0.9rem;
-    color: rgba(255, 255, 255, 0.9);
+    color: #111;
   }
   
   .input-container {
@@ -297,31 +348,31 @@
   .input-container svg {
     position: absolute;
     left: 1rem;
-    color: rgba(255, 255, 255, 0.5);
+    color: #2563eb;
   }
   
   input[type="email"],
   input[type="password"] {
     width: 100%;
     padding: 0.75rem 1rem 0.75rem 2.5rem;
-    border: 1px solid rgba(63, 137, 251, 0.3);
-    background-color: rgba(15, 23, 42, 0.6);
+    border: 1px solid #2563eb44;
+    background-color: #f7f7fa;
     border-radius: 4px;
     font-size: 1rem;
-    color: white;
+    color: #111;
     transition: border-color 0.3s, box-shadow 0.3s;
   }
   
   input[type="email"]::placeholder,
   input[type="password"]::placeholder {
-    color: rgba(255, 255, 255, 0.5);
+    color: #888;
   }
   
   input[type="email"]:focus,
   input[type="password"]:focus {
-    border-color: rgba(63, 137, 251, 0.8);
+    border-color: #2563eb;
     outline: none;
-    box-shadow: 0 0 0 2px rgba(63, 137, 251, 0.2);
+    box-shadow: 0 0 0 2px #2563eb22;
   }
   
   .checkbox-container {
@@ -393,7 +444,7 @@
   .auth-footer {
     text-align: center;
     margin-top: 1rem;
-    color: rgba(255, 255, 255, 0.7);
+    color: #333;
     font-size: 0.9rem;
   }
   
@@ -416,14 +467,14 @@
     display: flex;
     align-items: center;
     text-align: center;
-    color: rgba(255, 255, 255, 0.5);
+    color: #888;
   }
   
   .divider::before,
   .divider::after {
     content: '';
     flex: 1;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    border-bottom: 1px solid #eee;
   }
   
   .divider::before {
@@ -436,11 +487,11 @@
   
   .google-btn {
     width: 100%;
-    background-color: transparent;
-    color: white;
+    background-color: #fff;
+    color: #111;
     padding: 0.75rem;
     font-size: 1rem;
-    border: 1px solid rgba(255, 255, 255, 0.3);
+    border: 1px solid #2563eb44;
     border-radius: 4px;
     cursor: pointer;
     transition: all 0.3s;
@@ -451,7 +502,7 @@
   }
   
   .google-btn:hover {
-    background-color: rgba(255, 255, 255, 0.1);
+    background-color: #f3f4f6;
   }
   
   @media (max-width: 600px) {

@@ -40,8 +40,10 @@
     <div class="avatar-container">
       <img src="/test.jpg.jpg" alt="Abbey Lincoln" class="avatar" />
     </div>
-    <h2 class="profile-name">Abbey Lincoln</h2>
-    <p class="profile-username">@abbeylin</p>
+    <a href="/profile" class="profile-link">
+      <h2 class="profile-name">Abbey Lincoln</h2>
+      <p class="profile-username">@abbeylin</p>
+    </a>
     
     <div class="stats-grid">
       <div class="stat-item">
@@ -125,21 +127,18 @@
 
 <style>
   .sidebar {
-    width: 280px;
-    min-width: 280px;
-    flex: 0 0 280px;
-    background: white;
-    height: 100vh;
-    overflow-y: auto;
-    padding: 0;
-    display: flex;
-    flex-direction: column;
     position: fixed;
     top: 0;
     left: 0;
-    z-index: 51;
-    transition: transform 0.3s ease-in-out;
-    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
+    width: 280px;
+    height: 100vh;
+    background: #fff;
+    box-shadow: 2px 0 16px 0 rgba(0,0,0,0.08);
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    transition: left 0.3s cubic-bezier(0.4,0,0.2,1);
+    overflow-y: auto;
   }
 
   .sidebar-overlay {
@@ -158,8 +157,8 @@
       transform: translateX(-100%);
       will-change: transform;
       height: 100%;
-      padding-bottom: 80px; /* Add extra padding at bottom for mobile */
-      -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+      padding-bottom: 80px;
+      -webkit-overflow-scrolling: touch;
     }
 
     .sidebar.open {
@@ -171,42 +170,43 @@
     }
 
     .sidebar-nav {
-      padding-bottom: 2rem; /* Add padding to nav section */
+      padding-bottom: 2rem;
     }
   }
 
   /* Custom Scrollbar Styling */
   .sidebar::-webkit-scrollbar {
-    width: 6px;
+    width: 8px;
   }
 
   .sidebar::-webkit-scrollbar-track {
-    background: #f1f1f1;
+    background: #f7f7fa;
   }
 
   .sidebar::-webkit-scrollbar-thumb {
-    background-color: #cbd5e1;
-    border-radius: 4px;
+    background: #e2e8f0;
+    border-radius: 8px;
   }
 
   .sidebar::-webkit-scrollbar-thumb:hover {
-    background-color: #94a3b8;
+    background-color: #cbd5e1;
   }
 
   /* Firefox */
   .sidebar {
     scrollbar-width: thin;
-    scrollbar-color: #cbd5e1 #f1f1f1;
+    scrollbar-color: #e2e8f0 #f7f7fa;
   }
 
   .ocean-logo {
-    padding: 1.5rem;
+    padding: 2rem 1.5rem 1.25rem 1.5rem;
     text-align: left;
     display: flex;
     align-items: center;
     gap: 0.75rem;
-    background: linear-gradient(to right, #f8fafc, white);
-    border-bottom: 1px solid #f1f5f9;
+    background: #fff;
+    color: #111;
+    border-bottom: 1px solid #e2e8f0;
   }
 
   .ocean-logo img {
@@ -217,11 +217,13 @@
   }
 
   .ocean-title {
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: #1e293b;
+    font-size: 1.7rem;
+    font-weight: 800;
+    color: #111;
     margin: 0;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-family: 'Montserrat', 'Inter', Arial, sans-serif;
   }
 
   .ocean-logo:hover img {
@@ -229,7 +231,14 @@
   }
 
   .profile-section {
-    padding: 0.2rem 1.5rem;
+    padding: 1.25rem 1rem 1.25rem 1rem;
+    background: #f7f7fa;
+    border-radius: 1.25rem;
+    margin: 1.5rem 1.5rem 1.25rem 1.5rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
   }
 
   .avatar-container {
@@ -243,70 +252,91 @@
   .avatar {
     width: 100%;
     height: 100%;
-    border-radius: 50%;
     object-fit: cover;
-    border: 3px solid #f8fafc;
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    border-radius: 50%;
+    border: 3px solid #fff;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
+
+  .profile-link {
+    text-decoration: none;
+    color: #111;
+    text-align: center;
+    margin-bottom: 1rem;
   }
 
   .profile-name {
-    font-size: 1.35rem;
+    font-size: 1.25rem;
     font-weight: 600;
-    color: #1e293b;
     margin: 0;
+    color: #111;
   }
 
   .profile-username {
+    font-size: 0.875rem;
     color: #64748b;
-    margin: 0.35rem 0 1.75rem;
-    font-size: 0.95rem;
+    margin: 0.25rem 0 0;
   }
 
   .stats-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 1.25rem;
-    margin-bottom: 1rem;
-    padding: 1rem;
-    background: #f8fafc;
-    border-radius: 1rem;
+    gap: 1rem;
+    width: 100%;
+    padding: 0.5rem;
   }
 
   .stat-item {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.35rem;
+    text-align: center;
   }
 
   .stat-value {
+    display: block;
+    font-size: 1.125rem;
     font-weight: 600;
-    color: #1e293b;
-    font-size: 1.1rem;
+    color: #111;
   }
 
   .stat-label {
-    font-size: 0.85rem;
+    display: block;
+    font-size: 0.75rem;
     color: #64748b;
+    margin-top: 0.25rem;
   }
 
   .sidebar-nav {
-    flex: 1;
+    padding: 0 1rem;
     display: flex;
     flex-direction: column;
-    padding: 1rem 0.75rem;
+    gap: 0.5rem;
   }
 
   .nav-item {
     display: flex;
     align-items: center;
-    gap: 1rem;
-    padding: 0.875rem 1rem;
-    color: #64748b;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    color: #111;
     text-decoration: none;
     border-radius: 0.5rem;
-    transition: all 0.2s;
-    margin-bottom: 0.25rem;
+    transition: all 0.2s ease;
+    font-weight: 500;
+  }
+
+  .nav-item:hover {
+    background: #f7f7fa;
+    color: #2563eb;
+  }
+
+  .nav-item.active {
+    background: #f7f7fa;
+    color: #2563eb;
+  }
+
+  .icon {
+    width: 20px;
+    height: 20px;
+    fill: currentColor;
   }
 
   .logout-btn {
@@ -314,40 +344,13 @@
     background: none;
     border: none;
     cursor: pointer;
-    font-size: 1rem;
-    text-align: left;
     width: 100%;
+    text-align: left;
     color: #ef4444;
   }
 
-  /* Ensure the logout button is always visible */
-  .nav-item:last-child {
-    margin-bottom: 0;
-  }
-
-  .nav-item:hover {
-    background-color: #f1f5f9;
-    color: #1e293b;
-    transform: translateX(4px);
-  }
-
-  .nav-item.active {
-    background-color: #eef2ff;
-    color: #6366f1;
-  }
-
-  .nav-item .icon {
-    width: 1.5rem;
-    height: 1.5rem;
-    transition: transform 0.2s ease;
-  }
-
-  .nav-item:hover .icon {
-    transform: scale(1.1);
-    color: #6366f1;
-  }
-
-  .nav-item.active .icon {
-    color: #6366f1;
+  .logout-btn:hover {
+    background: #fef2f2;
+    color: #dc2626;
   }
 </style> 

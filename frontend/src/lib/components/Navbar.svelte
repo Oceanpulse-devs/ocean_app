@@ -5,6 +5,7 @@
   
   export let activePage = "home";
   export let isLandingPage = false;
+  export let isFullWidth = false;
   
   // Define navigation items with icons for mobile
   const navItems = [
@@ -42,8 +43,8 @@
   }
 </script>
 
-<nav class="navbar" class:landing-navbar={isLandingPage}>
-  <div class="navbar-container">
+<nav class="navbar" class:landing-navbar={isLandingPage} class:full-width={isFullWidth}>
+  <div class="navbar-container" class:full-width={isFullWidth}>
     {#if !isLandingPage}
       <!-- Mobile Menu Toggle -->
       <button class="mobile-sidebar-toggle" on:click={toggleSidebar}>
@@ -102,18 +103,31 @@
 
 <style>
   .navbar {
-    background-color: #faf9f6;  /* Warmer white */
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
-    position: sticky;
-    top: 0;
     width: 100%;
-    z-index: 100;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #fff;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    padding: 0 2rem;
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 200;
+    border-bottom: 1px solid #e2e8f0;
+  }
+  
+  .navbar.full-width {
+    left: 0;
+    width: 100%;
   }
   
   .landing-navbar {
     background-color: transparent;
     box-shadow: none;
     position: absolute;
+    border-bottom: none;
   }
   
   .landing-navbar .logo a {
@@ -130,10 +144,18 @@
     gap: 1rem;
   }
   
+  .navbar-container.full-width {
+    max-width: none;
+    margin: 0;
+    padding: 0.75rem 2rem;
+    width: 100%;
+    justify-content: center;
+  }
+  
   .logo a {
     font-size: 1.5rem;
     font-weight: bold;
-    color: #2563eb;
+    color: #111;
     text-decoration: none;
   }
   
@@ -142,11 +164,29 @@
   }
   
   @media (min-width: 768px) {
+    .navbar {
+      left: 280px;
+      width: calc(100% - 280px);
+    }
+    .navbar.full-width {
+      left: 0;
+      width: 100%;
+    }
+    .navbar-container.full-width {
+      max-width: none;
+      margin: 0;
+      padding: 0.75rem 2rem;
+      width: 100%;
+    }
     .desktop-menu {
       display: flex;
       gap: 1.5rem;
-      margin-left: auto;  /* This will push the menu to the right */
       align-items: center;
+    }
+    .navbar-container.full-width .desktop-menu {
+      margin-left: 0;
+      justify-content: center;
+      width: 100%;
     }
     
     .mobile-menu-btn,
@@ -160,7 +200,7 @@
   }
   
   .desktop-menu a {
-    color: #4b5563;
+    color: #111;
     text-decoration: none;
     font-size: 0.875rem;
     font-weight: 500;
@@ -170,7 +210,7 @@
   }
   
   .desktop-menu a:hover {
-    background-color: #f3f4f6;
+    background-color: #f7f7fa;
     color: #2563eb;
   }
   
@@ -188,7 +228,7 @@
   .profile-btn, .mobile-menu-btn {
     background: none;
     border: none;
-    color: #4b5563;
+    color: #111;
     cursor: pointer;
     padding: 0.5rem;
     border-radius: 9999px;
@@ -196,20 +236,26 @@
   }
   
   .profile-btn:hover, .mobile-menu-btn:hover {
-    background-color: #f3f4f6;
+    background-color: #f7f7fa;
   }
   
   .mobile-menu {
     display: flex;
     flex-direction: column;
     padding: 1rem;
-    border-top: 1px solid #e5e7eb;
-    background-color: #faf9f6;  /* Match navbar background */
+    border-top: 1px solid #e2e8f0;
+    background-color: #fff;
   }
   
   .mobile-menu a {
     padding: 0.75rem 1rem;
     border-radius: 0.375rem;
+    color: #111;
+  }
+
+  .mobile-menu a:hover {
+    background-color: #f7f7fa;
+    color: #2563eb;
   }
   
   /* Landing page specific styles */
@@ -246,7 +292,7 @@
     display: none;
     background: none;
     border: none;
-    color: #4b5563;
+    color: #111;
     padding: 0.5rem;
     cursor: pointer;
     margin-right: 0.5rem;
@@ -323,7 +369,7 @@
     }
 
     .mobile-nav a, .mobile-nav button {
-      color: #4b5563;
+      color: #111;
       padding: 0.5rem;
       border-radius: 0.375rem;
       transition: all 0.2s;
@@ -336,7 +382,8 @@
     }
 
     .mobile-nav a:hover, .mobile-nav button:hover {
-      background-color: #f3f4f6;
+      background-color: #f7f7fa;
+      color: #2563eb;
     }
 
     .mobile-nav a.active {
@@ -364,5 +411,9 @@
     .user-actions {
       display: none;
     }
+  }
+
+  .navbar-title, .navbar-link, .navbar-icon {
+    color: #111;
   }
 </style> 

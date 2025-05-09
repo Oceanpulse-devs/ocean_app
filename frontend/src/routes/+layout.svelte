@@ -5,8 +5,8 @@
   
   // Pages that use transparent navbar (landing) or no navbar (auth pages)
   const specialNavbarRoutes = ['/'];
-  const noNavbarRoutes = ['/login', '/signup', '/forgot-password', '/verify-email'];
-  const noSidebarRoutes = ['/', '/login', '/signup', '/forgot-password', '/verify-email'];
+  const noNavbarRoutes = ['/', '/login', '/signup', '/forgot-password', '/verify-email'];
+  const noSidebarRoutes = ['/', '/login', '/signup', '/forgot-password', '/verify-email', '/products'];
   
   // Determine if we're on a special page
   $: isLandingPage = specialNavbarRoutes.includes($page.url.pathname);
@@ -22,6 +22,8 @@
     followers: '2.8K',
     following: 200
   };
+
+  $: isFullWidth = $page.url.pathname === '/products';
 </script>
 
 <div class="layout" class:with-sidebar={shouldShowSidebar}>
@@ -30,7 +32,7 @@
   {/if}
   <main class="main-content" class:scrollable={shouldScroll}>
     {#if shouldShowNavbar}
-      <Navbar {activePage} {isLandingPage} />
+      <Navbar {activePage} {isLandingPage} isFullWidth={isFullWidth} />
     {/if}
     
     <slot />
@@ -72,6 +74,9 @@
 
   .layout.with-sidebar .main-content {
     margin-left: 280px;
+  }
+  .layout:not(.with-sidebar) .main-content {
+    margin-left: 0;
   }
 
   @media (max-width: 768px) {
