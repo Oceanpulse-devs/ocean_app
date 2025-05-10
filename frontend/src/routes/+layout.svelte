@@ -44,27 +44,23 @@
     margin: 0;
     padding: 0;
     font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-    overflow: hidden;
-    height: 100vh;
+    min-height: 100vh;
   }
 
   :global(html) {
-    overflow: hidden;
-    height: 100%;
+    min-height: 100vh;
   }
   
   .layout {
     display: flex;
-    height: 100vh;
-    background-color: #f8f7f4;
-    overflow: hidden;
+    min-height: 100vh;
+    background: linear-gradient(135deg, #fff 60%, #f9fafb 100%);
   }
 
   .main-content {
-    background-color: #faf9f6;
-    height: 100vh;
+    background: transparent;
+    min-height: 100vh;
     position: relative;
-    overflow: hidden;
     flex: 1;
   }
 
@@ -82,6 +78,11 @@
   @media (max-width: 768px) {
     .layout.with-sidebar .main-content {
       margin-left: 0;
+    }
+    :global(body), :global(html), .layout, .main-content {
+      overflow: visible !important;
+      height: auto !important;
+      min-height: 100vh !important;
     }
   }
 </style> 

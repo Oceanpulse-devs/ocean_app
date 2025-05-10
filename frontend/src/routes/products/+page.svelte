@@ -213,6 +213,23 @@
       showBrandFilter = false;
     }
   }
+
+  // Mapping of icon names to SVG path data
+  const iconPaths = {
+    grid: "M3 3h18v18H3V3zm2 2v14h14V5H5zm4 4h6v6H9V9z",
+    home: "M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z",
+    phone: "M6.62 10.79a15.05 15.05 0 006.59 6.59l2.2-2.2a1 1 0 011.11-.27c1.21.49 2.53.76 3.88.76a1 1 0 011 1v3.5a1 1 0 01-1 1A17 17 0 013 5a1 1 0 011-1h3.5a1 1 0 011 1c0 1.35.27 2.67.76 3.88a1 1 0 01-.27 1.11l-2.2 2.2z",
+    shirt: "M16.7 4.29l-2.39-.8a2 2 0 00-1.32 0l-2.39.8A2 2 0 008 6.09V20a1 1 0 001 1h6a1 1 0 001-1V6.09a2 2 0 00-1.3-1.8zM12 2a2 2 0 012 2v2h-4V4a2 2 0 012-2z",
+    heart: "M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41 0.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z",
+    cpu: "M9 9h6v6H9V9zm13 3h-2V8a2 2 0 00-2-2h-4V4a1 1 0 00-2 0v2H6a2 2 0 00-2 2v4H2a1 1 0 000 2h2v4a2 2 0 002 2h4v2a1 1 0 002 0v-2h4a2 2 0 002-2v-4h2a1 1 0 000-2zM6 8h12v8H6V8z",
+    laptop: "M20 18v-8a2 2 0 00-2-2H6a2 2 0 00-2 2v8H0v2a2 2 0 002 2h20a2 2 0 002-2v-2h-4zm-2 0H6v-8h12v8z",
+    'shopping-cart': "M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zm10 0c-1.1 0-1.99.9-1.99 2S15.9 22 17 22s2-.9 2-2-.9-2-2-2zM7.16 14.26l.03-.12L7.9 12h8.45c.75 0 1.41-.41 1.75-1.03l3.24-5.88A1 1 0 0020.45 4H5.21l-.94-2H1v2h2l3.6 7.59-1.35 2.44C4.52 15.37 5.48 17 7 17h12v-2H7.42c-.14 0-.25-.11-.26-.25z",
+    tree: "M12 2C10.34 2 9 3.34 9 5c0 .88.39 1.67 1 2.22V9H7.5C6.12 9 5 10.12 5 11.5c0 .83.34 1.58.88 2.12C5.34 14.42 5 15.17 5 16c0 1.38 1.12 2.5 2.5 2.5h9c1.38 0 2.5-1.12 2.5-2.5 0-.83-.34-1.58-.88-2.12.54-.54.88-1.29.88-2.12C19 10.12 17.88 9 16.5 9H15V7.22c.61-.55 1-1.34 1-2.22 0-1.66-1.34-3-3-3z",
+    car: "M5 16c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm14 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zM18.92 6.01C18.72 5.42 18.15 5 17.5 5h-11c-.65 0-1.22.42-1.42 1.01L3 9v8c0 1.1.9 2 2 2h1c1.1 0 2-.9 2-2v-1h6v1c0 1.1.9 2 2 2h1c1.1 0 2-.9 2-2V9l-1.08-2.99zM6.5 7h11l.94 2.5H5.56L6.5 7z",
+    activity: "M22 12h-4l-3 9L9 3l-3 9H2",
+    gamepad: "M6.94 6.94a8 8 0 1110.12 0M15 12h.01M9 12h.01M12 15v.01M12 9V9.01",
+    baby: "M12 2a5 5 0 00-5 5v1a5 5 0 0010 0V7a5 5 0 00-5-5zm0 14c-4.42 0-8 1.79-8 4v2h16v-2c0-2.21-3.58-4-8-4z"
+  };
 </script>
 
 <main class="main-container shiny-bg">
@@ -223,7 +240,7 @@
         <li class="category-pill" class:selected={selectedCategory === category.id} on:click={() => selectCategory(category.id)}>
           <span class="category-icon">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-              <path d={category.icon} />
+              <path d={iconPaths[category.icon as keyof typeof iconPaths] || ""} />
             </svg>
           </span>
           {category.name}
@@ -242,7 +259,7 @@
             <li class="category-item" class:selected={selectedCategory === category.id} on:click={() => selectCategory(category.id)}>
               <span class="category-icon">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                  <path d={category.icon} />
+                  <path d={iconPaths[category.icon as keyof typeof iconPaths] || ""} />
                 </svg>
               </span>
               {category.name}
@@ -773,20 +790,37 @@
     .banner-section {
       padding: 0;
       border-radius: 0 0 1rem 1rem;
+      width: 100%;
+      min-width: 0;
+      display: flex;
+      justify-content: center;
+      align-items: stretch;
     }
     .banner-slider {
       flex-direction: column;
-      align-items: flex-start;
-      gap: 0.5rem;
-      min-height: 120px;
+      align-items: center;
+      gap: 0.75rem;
+      min-height: 100px;
       padding: 1rem 0.5rem 1rem 0.5rem;
+      width: 100%;
+      box-sizing: border-box;
     }
     .banner-img {
-      height: 48px;
-      width: 48px;
+      height: 56px;
+      width: 56px;
+      margin-bottom: 0.5rem;
+    }
+    .banner-text {
+      align-items: center;
+      text-align: center;
+      width: 100%;
     }
     .banner-text h2 {
-      font-size: 1.1rem;
+      font-size: 1.15rem;
+      margin-bottom: 0.25rem;
+    }
+    .banner-text p {
+      font-size: 0.95rem;
     }
     .section-heading {
       font-size: 1.1rem;

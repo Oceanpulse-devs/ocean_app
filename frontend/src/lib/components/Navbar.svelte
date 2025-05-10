@@ -307,8 +307,14 @@
       display: none;
     }
 
+    .navbar {
+      padding: 0.25rem 0.5rem;
+      height: 52px;
+    }
+
     .navbar-container {
-      padding: 0.5rem 1rem;
+      padding: 0.25rem 0.5rem;
+      gap: 0.5rem;
     }
 
     .search-bar input {
@@ -316,31 +322,26 @@
       padding: 0.375rem 2rem 0.375rem 1rem;
     }
 
-    .navbar {
-      padding: 0.5rem 1rem;
-    }
-
-    .nav-icon {
-      width: 1.5rem;
-      height: 1.5rem;
-    }
-
     .mobile-nav {
-      gap: 1.5rem;
+      gap: 1rem;
     }
 
-    .mobile-nav a {
+    .mobile-nav a, .mobile-nav button {
+      padding: 0.35rem;
+      font-size: 0.95rem;
+    }
+
+    .mobile-nav svg, .profile-btn svg {
+      width: 1.25rem;
+      height: 1.25rem;
+    }
+
+    .mobile-menu {
       padding: 0.5rem;
     }
 
-    .mobile-nav svg {
-      width: 1.5rem;
-      height: 1.5rem;
-    }
-
-    .profile-btn svg {
-      width: 1.5rem;
-      height: 1.5rem;
+    .user-actions {
+      display: none;
     }
   }
 

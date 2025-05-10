@@ -159,10 +159,17 @@
       height: 100%;
       padding-bottom: 80px;
       -webkit-overflow-scrolling: touch;
+      width: 100vw;
+      left: 0;
     }
 
     .sidebar.open {
       transform: translateX(0);
+      width: 100vw;
+      left: 0;
+      position: fixed;
+      top: 0;
+      height: 100vh;
     }
 
     .sidebar-overlay {
