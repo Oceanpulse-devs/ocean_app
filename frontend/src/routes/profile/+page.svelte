@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import Upload from '$lib/components/Upload.svelte';
   import Post from '$lib/components/Post.svelte';
+  import EditProfile from '$lib/components/EditProfile.svelte';
   
   // Mock data - will be replaced with actual API calls
   let userData = {
@@ -37,6 +38,7 @@
   let activeTab = 'listings';
   let showUploadModal = false;
   let showPostModal = false;
+  let showEditProfileModal = false;
   
   let listings = [
     {
@@ -102,6 +104,13 @@
     // Here you would typically handle the post submission
   }
 
+  function handleProfileSubmit(event: CustomEvent) {
+    console.log('Profile updated:', event.detail);
+    // Here you would typically update the user data
+    userData = { ...userData, ...event.detail };
+    showEditProfileModal = false;
+  }
+
   function toggleAccountType() {
     userData.accountType = userData.accountType === 'buyer' ? 'seller' : 'buyer';
   }
@@ -129,6 +138,11 @@
 
   <Upload bind:showModal={showUploadModal} on:submit={handleProductSubmit} />
   <Post bind:showModal={showPostModal} on:submit={handlePostSubmit} />
+  <EditProfile 
+    bind:showModal={showEditProfileModal} 
+    bind:userData={userData}
+    on:submit={handleProfileSubmit} 
+  />
 
   <div class="profile-header-section">
   <!-- Cover Image -->
@@ -183,7 +197,7 @@
         </button>
       </div>
 
-      <button class="edit-profile-btn">Edit Profile</button>
+      <button class="edit-profile-btn" on:click={() => showEditProfileModal = true}>Edit Profile</button>
     </div>
   </div>
 
