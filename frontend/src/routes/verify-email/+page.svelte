@@ -317,26 +317,26 @@
 	
 	.glow {
 		text-shadow: 0 0 10px rgba(63, 137, 251, 0.7),
-					0 0 20px rgba(63, 137, 251, 0.5),
-					0 0 30px rgba(63, 137, 251, 0.3);
+					 0 0 20px rgba(63, 137, 251, 0.5),
+					 0 0 30px rgba(63, 137, 251, 0.3);
 		animation: pulse 3s infinite;
 	}
 	
 	@keyframes pulse {
 		0% {
 			text-shadow: 0 0 10px rgba(63, 137, 251, 0.7),
-						0 0 20px rgba(63, 137, 251, 0.5),
-						0 0 30px rgba(63, 137, 251, 0.3);
+						 0 0 20px rgba(63, 137, 251, 0.5),
+						 0 0 30px rgba(63, 137, 251, 0.3);
 		}
 		50% {
 			text-shadow: 0 0 15px rgba(63, 137, 251, 0.9),
-						0 0 30px rgba(63, 137, 251, 0.7),
-						0 0 45px rgba(63, 137, 251, 0.5);
+						 0 0 30px rgba(63, 137, 251, 0.7),
+						 0 0 45px rgba(63, 137, 251, 0.5);
 		}
 		100% {
 			text-shadow: 0 0 10px rgba(63, 137, 251, 0.7),
-						0 0 20px rgba(63, 137, 251, 0.5),
-						0 0 30px rgba(63, 137, 251, 0.3);
+						 0 0 20px rgba(63, 137, 251, 0.5),
+						 0 0 30px rgba(63, 137, 251, 0.3);
 		}
 	}
 	
@@ -559,9 +559,9 @@
 		
 		h2 {
 			font-size: 1.5rem;
-		}
-		
-		.code-input {
+	}
+	
+	.code-input {
 			width: 3rem !important;
 			height: 3rem;
 			font-size: 1.25rem !important;

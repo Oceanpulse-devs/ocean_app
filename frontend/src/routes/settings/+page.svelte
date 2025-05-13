@@ -52,135 +52,135 @@
 </script>
 
 <div class="settings-content">
-  <div class="settings-header">
-    <h1>Settings</h1>
-    <button class="save-button" on:click={saveSettings}>
-      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-      </svg>
-      Save Changes
-    </button>
-  </div>
+    <div class="settings-header">
+      <h1>Settings</h1>
+      <button class="save-button" on:click={saveSettings}>
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+        </svg>
+        Save Changes
+      </button>
+    </div>
 
   <div class="settings-container">
-    <nav class="settings-nav">
-      {#each settingsSections as section}
-        <button
-          class="nav-item"
-          class:active={activeSection === section.id}
-          on:click={() => activeSection = section.id}
-        >
-          {@html section.icon}
+      <nav class="settings-nav">
+        {#each settingsSections as section}
+          <button
+            class="nav-item"
+            class:active={activeSection === section.id}
+            on:click={() => activeSection = section.id}
+          >
+            {@html section.icon}
           <span>{section.title}</span>
-        </button>
-      {/each}
-    </nav>
+          </button>
+        {/each}
+      </nav>
 
-    <div class="settings-panel">
-      {#if activeSection === 'account'}
-        <section>
-          <h2>Account Settings</h2>
-          <div class="settings-group">
-            <div class="setting-item">
-              <label for="language">Language</label>
-              <select id="language" bind:value={language}>
-                <option value="english">English</option>
-                <option value="french">French</option>
-                <option value="spanish">Spanish</option>
-              </select>
-            </div>
-            
-            <div class="setting-item">
-              <label for="currency">Currency</label>
-              <select id="currency" bind:value={currency}>
-                <option value="USD">USD ($)</option>
-                <option value="EUR">EUR (€)</option>
-                <option value="GBP">GBP (£)</option>
-              </select>
-            </div>
+      <div class="settings-panel">
+        {#if activeSection === 'account'}
+          <section>
+            <h2>Account Settings</h2>
+            <div class="settings-group">
+              <div class="setting-item">
+                <label for="language">Language</label>
+                <select id="language" bind:value={language}>
+                  <option value="english">English</option>
+                  <option value="french">French</option>
+                  <option value="spanish">Spanish</option>
+                </select>
+              </div>
+              
+              <div class="setting-item">
+                <label for="currency">Currency</label>
+                <select id="currency" bind:value={currency}>
+                  <option value="USD">USD ($)</option>
+                  <option value="EUR">EUR (€)</option>
+                  <option value="GBP">GBP (£)</option>
+                </select>
+              </div>
 
-            <div class="setting-item">
-              <label>Auto-save Drafts</label>
-              <label class="toggle">
-                <input type="checkbox" bind:checked={autoSaveEnabled}>
-                <span class="toggle-slider"></span>
-              </label>
+              <div class="setting-item">
+                <label>Auto-save Drafts</label>
+                <label class="toggle">
+                  <input type="checkbox" bind:checked={autoSaveEnabled}>
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
             </div>
-          </div>
-        </section>
-      {/if}
+          </section>
+        {/if}
 
-      {#if activeSection === 'notifications'}
-        <section>
-          <h2>Notification Preferences</h2>
-          <div class="settings-group">
-            <div class="setting-item">
-              <label>Push Notifications</label>
-              <label class="toggle">
-                <input type="checkbox" bind:checked={notificationsEnabled}>
-                <span class="toggle-slider"></span>
-              </label>
-            </div>
+        {#if activeSection === 'notifications'}
+          <section>
+            <h2>Notification Preferences</h2>
+            <div class="settings-group">
+              <div class="setting-item">
+                <label>Push Notifications</label>
+                <label class="toggle">
+                  <input type="checkbox" bind:checked={notificationsEnabled}>
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
 
-            <div class="setting-item">
-              <label>Email Notifications</label>
-              <label class="toggle">
-                <input type="checkbox" bind:checked={emailNotifications}>
-                <span class="toggle-slider"></span>
-              </label>
-            </div>
+              <div class="setting-item">
+                <label>Email Notifications</label>
+                <label class="toggle">
+                  <input type="checkbox" bind:checked={emailNotifications}>
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
 
-            <div class="setting-item">
-              <label>Newsletter</label>
-              <label class="toggle">
-                <input type="checkbox" bind:checked={newsletterEnabled}>
-                <span class="toggle-slider"></span>
-              </label>
+              <div class="setting-item">
+                <label>Newsletter</label>
+                <label class="toggle">
+                  <input type="checkbox" bind:checked={newsletterEnabled}>
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
             </div>
-          </div>
-        </section>
-      {/if}
+          </section>
+        {/if}
 
-      {#if activeSection === 'privacy'}
-        <section>
-          <h2>Privacy & Security</h2>
-          <div class="settings-group">
-            <div class="setting-item">
-              <label for="privacy">Profile Privacy</label>
-              <select id="privacy" bind:value={privacyProfile}>
-                <option value="public">Public</option>
-                <option value="private">Private</option>
-                <option value="friends">Friends Only</option>
-              </select>
-            </div>
+        {#if activeSection === 'privacy'}
+          <section>
+            <h2>Privacy & Security</h2>
+            <div class="settings-group">
+              <div class="setting-item">
+                <label for="privacy">Profile Privacy</label>
+                <select id="privacy" bind:value={privacyProfile}>
+                  <option value="public">Public</option>
+                  <option value="private">Private</option>
+                  <option value="friends">Friends Only</option>
+                </select>
+              </div>
 
-            <div class="setting-item">
-              <label>Two-Factor Authentication</label>
-              <label class="toggle">
-                <input type="checkbox" bind:checked={twoFactorEnabled}>
-                <span class="toggle-slider"></span>
-              </label>
+              <div class="setting-item">
+                <label>Two-Factor Authentication</label>
+                <label class="toggle">
+                  <input type="checkbox" bind:checked={twoFactorEnabled}>
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
             </div>
-          </div>
-        </section>
-      {/if}
+          </section>
+        {/if}
 
-      {#if activeSection === 'preferences'}
-        <section>
-          <h2>Display Preferences</h2>
-          <div class="settings-group">
-            <div class="setting-item">
-              <label>Dark Mode</label>
-              <label class="toggle">
-                <input type="checkbox" bind:checked={darkMode}>
-                <span class="toggle-slider"></span>
-              </label>
+        {#if activeSection === 'preferences'}
+          <section>
+            <h2>Display Preferences</h2>
+            <div class="settings-group">
+              <div class="setting-item">
+                <label>Dark Mode</label>
+                <label class="toggle">
+                  <input type="checkbox" bind:checked={darkMode}>
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
             </div>
-          </div>
-        </section>
-      {/if}
+          </section>
+        {/if}
+      </div>
     </div>
-  </div>
 </div>
 
 <style>

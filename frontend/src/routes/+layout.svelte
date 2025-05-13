@@ -31,10 +31,10 @@
     <Sidebar {userStats} />
   {/if}
   <main class="main-content" class:scrollable={shouldScroll}>
-    {#if shouldShowNavbar}
+  {#if shouldShowNavbar}
       <Navbar {activePage} {isLandingPage} isFullWidth={isFullWidth} />
-    {/if}
-    
+  {/if}
+  
     <slot />
   </main>
 </div>
@@ -56,7 +56,7 @@
     min-height: 100vh;
     background: linear-gradient(135deg, #fff 60%, #f9fafb 100%);
   }
-
+  
   .main-content {
     background: transparent;
     min-height: 100vh;

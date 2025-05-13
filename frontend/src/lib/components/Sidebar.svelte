@@ -41,8 +41,8 @@
       <img src="/test.jpg.jpg" alt="Abbey Lincoln" class="avatar" />
     </div>
     <a href="/profile" class="profile-link">
-      <h2 class="profile-name">Abbey Lincoln</h2>
-      <p class="profile-username">@abbeylin</p>
+    <h2 class="profile-name">Abbey Lincoln</h2>
+    <p class="profile-username">@abbeylin</p>
     </a>
     
     <div class="stats-grid">
@@ -97,12 +97,6 @@
         <path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2zm0 15l-5-2.18L7 18V5h10v13z"/>
       </svg>
       Saved
-    </a>
-    <a href="/upload" class="nav-item">
-      <svg xmlns="http://www.w3.org/2000/svg" class="icon" viewBox="0 0 24 24">
-        <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
-      </svg>
-      Upload
     </a>
     <a href="/profile" class="nav-item">
       <svg xmlns="http://www.w3.org/2000/svg" class="icon" viewBox="0 0 24 24">

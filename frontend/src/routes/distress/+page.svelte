@@ -96,38 +96,38 @@
 </script>
 
 <div class="distress-content">
-  <div class="search-bar">
-    <div class="search-input">
-      <svg xmlns="http://www.w3.org/2000/svg" class="search-icon" viewBox="0 0 24 24">
-        <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
-      </svg>
-      <input type="text" placeholder="Search for product by text or image" />
-      <button class="camera-btn">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-          <path d="M12 15.2a3.2 3.2 0 100-6.4 3.2 3.2 0 000 6.4z"/>
-          <path d="M9 3L7.17 5H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2h-3.17L15 3H9zm3 15c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5z"/>
+    <div class="search-bar">
+      <div class="search-input">
+        <svg xmlns="http://www.w3.org/2000/svg" class="search-icon" viewBox="0 0 24 24">
+          <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
         </svg>
-      </button>
+        <input type="text" placeholder="Search for product by text or image" />
+        <button class="camera-btn">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M12 15.2a3.2 3.2 0 100-6.4 3.2 3.2 0 000 6.4z"/>
+            <path d="M9 3L7.17 5H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2h-3.17L15 3H9zm3 15c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5z"/>
+          </svg>
+        </button>
+      </div>
     </div>
-  </div>
 
-  <div class="products-grid">
-    {#each products as product (product.id)}
-      <div class="product-card">
-        <div class="seller-info">
-          <img src={product.seller.avatar} alt={product.seller.name} class="seller-avatar" />
-          <div class="seller-details">
-            <span class="seller-name">{product.seller.name}</span>
-            <span class="post-time">{product.seller.timestamp}</span>
+    <div class="products-grid">
+      {#each products as product (product.id)}
+        <div class="product-card">
+          <div class="seller-info">
+            <img src={product.seller.avatar} alt={product.seller.name} class="seller-avatar" />
+            <div class="seller-details">
+              <span class="seller-name">{product.seller.name}</span>
+              <span class="post-time">{product.seller.timestamp}</span>
+            </div>
           </div>
-        </div>
 
-        <div class="product-image">
-          <img src={product.image} alt={product.name} />
-          <div class="discount-badge">
-            {Math.round((1 - product.discountedPrice / product.originalPrice) * 100)}% OFF
+          <div class="product-image">
+            <img src={product.image} alt={product.name} />
+            <div class="discount-badge">
+              {Math.round((1 - product.discountedPrice / product.originalPrice) * 100)}% OFF
+            </div>
           </div>
-        </div>
 
         <div class="product-description">{product.description}</div>
         <div class="product-location">
@@ -135,17 +135,17 @@
           <span>{product.location}</span>
         </div>
 
-        <div class="product-actions">
-          <button class="message-btn">Message</button>
-          <button class="save-btn">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-              <path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z"/>
-            </svg>
-          </button>
+          <div class="product-actions">
+            <button class="message-btn">Message</button>
+            <button class="save-btn">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                <path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z"/>
+              </svg>
+            </button>
+          </div>
         </div>
-      </div>
-    {/each}
-  </div>
+      {/each}
+    </div>
 </div>
 
 <style>
@@ -160,7 +160,7 @@
   }
 
   @media (max-width: 768px) {
-    .distress-content {
+  .distress-content {
       padding: 0;
       padding-top: 64px; /* 56px navbar + 8px gap for mobile */
     }
@@ -379,7 +379,7 @@
     font-weight: 400;
     line-height: 1.5;
     word-break: break-word;
-  }
+    }
 
   .product-location {
     display: flex;

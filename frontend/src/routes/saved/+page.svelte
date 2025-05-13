@@ -135,8 +135,8 @@
         </div>
       {/each}
     </div>
-  </div>
-</main>
+    </div>
+  </main>
 
 <style>
   .main-container {

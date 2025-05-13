@@ -113,24 +113,24 @@
                   {/if}
                 </div>
               {/if}
-            </div>
+          </div>
           </div>
         {:else}
           <div class="image-gallery-modern">
             <div class="featured-image" on:click={() => openModal(0)}>
               <img src={feedPost.images[0]} alt="Featured product image" />
-            </div>
+          </div>
             <div class="thumbnails">
               {#each feedPost.images.slice(1, 3) as image, i}
                 <div class="thumbnail-item" on:click={() => openModal(i+1)}>
                   <img src={image} alt={`Product thumbnail ${i + 2}`} />
-                </div>
+          </div>
               {/each}
               {#if feedPost.images.length > 3}
                 <div class="thumbnail-item overlay-item" on:click={() => openModal(2)}>
                   <img src={feedPost.images[2]} alt="Product thumbnail 3" />
                   <div class="more-overlay">+{feedPost.images.length - 3}</div>
-                </div>
+        </div>
               {/if}
             </div>
           </div>
@@ -146,8 +146,8 @@
             <div class="modal-thumbs">
               {#each feedPost.images as img, idx}
                 <img src={img} alt={`Thumb ${idx+1}`} class:active-thumb={idx === modalIndex} on:click={() => modalIndex = idx} />
-              {/each}
-            </div>
+          {/each}
+        </div>
           </div>
         {/if}
 
@@ -219,13 +219,13 @@
     }
 
     .search-bar {
-      margin: 0;
+    margin: 0;
       padding: 0.75rem;
     }
 
     .product-info {
       grid-template-columns: 1fr;
-      gap: 0.75rem;
+    gap: 0.75rem;
     }
   }
 
