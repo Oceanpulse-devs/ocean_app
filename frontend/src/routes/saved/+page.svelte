@@ -128,7 +128,7 @@
             <button class="view-btn">View</button>
             <button class="remove-btn" on:click={() => removeFromSaved(product.id)}>
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                <path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z"/>
+                <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
               </svg>
             </button>
           </div>
@@ -143,7 +143,7 @@
     width: 100%;
     height: 100%;
     overflow-y: auto;
-    background-color: #FAF9F6;
+    background: linear-gradient(135deg, #fff 80%, #f3f4f6 100%);
   }
 
   .saved-content {
@@ -151,16 +151,18 @@
     display: flex;
     flex-direction: column;
     padding: 2rem;
+    padding-top: 88px; /* 72px navbar + 16px gap */
   }
 
   @media (max-width: 768px) {
     .saved-content {
       padding: 0;
+      padding-top: 64px; /* 56px navbar + 8px gap for mobile */
     }
 
     .search-bar {
+      top: 64px;
       padding: 0.5rem;
-      margin-bottom: 0;
     }
 
     .search-input {
@@ -186,10 +188,11 @@
 
   .search-bar {
     position: sticky;
-    top: 0;
+    top: 88px; /* 72px navbar + 16px gap */
     z-index: 10;
-    background-color: #FAF9F6;
+    background: linear-gradient(135deg, #fff 80%, #f3f4f6 100%);
     padding: 1rem 0;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
   }
 
   .search-input {
@@ -237,6 +240,7 @@
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
     gap: 1.5rem;
     padding: 1rem 1rem 4rem 1rem;
+    align-items: stretch;
   }
 
   /* Custom Scrollbar Styling */
@@ -267,15 +271,16 @@
     background: white;
     border-radius: 0.75rem;
     overflow: hidden;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
     display: flex;
     flex-direction: column;
+    height: 100%;
   }
 
   .product-image {
     width: 100%;
     aspect-ratio: 1;
-    background: #FDF6E3;
+    background: white;
+    flex-shrink: 0;
   }
 
   .product-image img {
@@ -287,6 +292,8 @@
   .product-info {
     padding: 1rem;
     flex: 1;
+    display: flex;
+    flex-direction: column;
   }
 
   .seller-info {
@@ -314,9 +321,14 @@
     color: #2D3748;
     margin: 0;
     margin-bottom: 0.5rem;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
   }
 
   .price-row {
+    margin-top: auto;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -332,6 +344,7 @@
     gap: 0.5rem;
     padding: 1rem;
     border-top: 1px solid #E2E8F0;
+    flex-shrink: 0;
   }
 
   .view-btn {
@@ -360,17 +373,22 @@
     border: none;
     border-radius: 0.5rem;
     cursor: pointer;
-    transition: background-color 0.2s;
+    transition: all 0.2s;
   }
 
   .remove-btn:hover {
-    background: #E5E7EB;
+    background: #FEE2E2;
+  }
+
+  .remove-btn:hover svg {
+    color: #EF4444;
   }
 
   .remove-btn svg {
     width: 1.25rem;
     height: 1.25rem;
     color: #6B7280;
+    transition: color 0.2s;
   }
 
   @media (max-width: 1024px) {

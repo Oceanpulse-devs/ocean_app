@@ -32,8 +32,30 @@
     engagement: {
       comments: 25,
       likes: '120K',
-      shares: 200,
-      saved: 15
+      shares: 200
+    }
+  };
+
+  let singlePhotoPost = {
+    author: {
+      name: 'Fashion Designer',
+      avatar: '/test.jpg.jpg',
+      timestamp: '2nd February, 10:AM'
+    },
+    product: {
+      name: 'Designer Watch',
+      location: 'Victoria Island',
+      price: '$350',
+      brand: 'Rolex'
+    },
+    images: [
+      '/test.jpg.jpg'
+    ],
+    description: 'Luxury timepiece in pristine condition. Perfect for special occasions and professional settings. Limited edition piece with authentic certification.',
+    engagement: {
+      comments: 12,
+      likes: '45K',
+      shares: 89
     }
   };
 
@@ -113,24 +135,24 @@
                   {/if}
                 </div>
               {/if}
-          </div>
+            </div>
           </div>
         {:else}
           <div class="image-gallery-modern">
             <div class="featured-image" on:click={() => openModal(0)}>
               <img src={feedPost.images[0]} alt="Featured product image" />
-          </div>
+            </div>
             <div class="thumbnails">
               {#each feedPost.images.slice(1, 3) as image, i}
                 <div class="thumbnail-item" on:click={() => openModal(i+1)}>
                   <img src={image} alt={`Product thumbnail ${i + 2}`} />
-          </div>
+                </div>
               {/each}
               {#if feedPost.images.length > 3}
                 <div class="thumbnail-item overlay-item" on:click={() => openModal(2)}>
                   <img src={feedPost.images[2]} alt="Product thumbnail 3" />
                   <div class="more-overlay">+{feedPost.images.length - 3}</div>
-        </div>
+                </div>
               {/if}
             </div>
           </div>
@@ -146,8 +168,8 @@
             <div class="modal-thumbs">
               {#each feedPost.images as img, idx}
                 <img src={img} alt={`Thumb ${idx+1}`} class:active-thumb={idx === modalIndex} on:click={() => modalIndex = idx} />
-          {/each}
-        </div>
+              {/each}
+            </div>
           </div>
         {/if}
 
@@ -176,11 +198,55 @@
             </svg>
             {feedPost.engagement.shares} Shares
           </button>
+        </div>
+      </article>
+
+      <!-- Single Photo Post -->
+      <article class="post">
+        <div class="post-header">
+          <div class="post-author">
+            <img src={singlePhotoPost.author.avatar} alt={singlePhotoPost.author.name} class="author-avatar" />
+            <div class="author-info">
+              <h3>{singlePhotoPost.author.name}</h3>
+              <span class="timestamp">{singlePhotoPost.author.timestamp}</span>
+            </div>
+          </div>
+          <div class="post-actions">
+            <button class="follow-btn">Follow</button>
+            <button class="message-btn">Message Me</button>
+          </div>
+        </div>
+
+        <div class="single-image-container">
+          <div class="featured-image" on:click={() => openModal(0)}>
+            <img src={singlePhotoPost.images[0]} alt="Featured product image" />
+          </div>
+        </div>
+
+        <p class="post-description">{singlePhotoPost.description}</p>
+        <div class="post-location">
+          <svg class="location-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+          <span class="location-text">Victoria Island</span>
+        </div>
+
+        <div class="post-engagement">
           <button class="engage-btn">
             <svg class="icon" viewBox="0 0 24 24">
-              <path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z"/>
+              <path d="M21.99 4c0-1.1-.89-2-1.99-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h14l4 4-.01-18z"/>
             </svg>
-            {feedPost.engagement.saved} Saved
+            {singlePhotoPost.engagement.comments} Comments
+          </button>
+          <button class="engage-btn">
+            <svg class="icon" viewBox="0 0 24 24">
+              <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+            </svg>
+            {singlePhotoPost.engagement.likes} Likes
+          </button>
+          <button class="engage-btn">
+            <svg class="icon" viewBox="0 0 24 24">
+              <path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z"/>
+            </svg>
+            {singlePhotoPost.engagement.shares} Shares
           </button>
         </div>
       </article>
@@ -771,5 +837,64 @@
     border-radius: 1rem;
     letter-spacing: 0.03em;
     z-index: 2;
+  }
+
+  .single-image-container {
+    margin-bottom: 1.5rem;
+  }
+
+  .single-image-container .featured-image {
+    width: 100%;
+    border-radius: 1rem;
+    overflow: hidden;
+    aspect-ratio: 16/10;
+    box-shadow: 0 2px 8px rgba(37,99,235,0.07);
+    cursor: pointer;
+  }
+
+  .single-image-container .featured-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+  }
+
+  .single-image-container .featured-image:hover img {
+    transform: scale(1.04);
+  }
+
+  @media (max-width: 768px) {
+    .single-image-container .featured-image {
+      aspect-ratio: 16/10;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .post-author {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.5rem;
+    }
+
+    .author-avatar {
+      width: 40px;
+      height: 40px;
+    }
+
+    .author-info h3 {
+      font-size: 0.95rem;
+    }
+
+    .timestamp {
+      font-size: 0.8rem;
+    }
+
+    .post-header {
+      align-items: flex-start;
+    }
+
+    .post-actions {
+      margin-top: 0.5rem;
+    }
   }
 </style> 
