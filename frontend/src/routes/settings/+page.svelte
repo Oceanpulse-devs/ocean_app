@@ -199,9 +199,14 @@
     align-items: center;
     padding: 2rem 2rem 1.5rem 2rem;
     background: linear-gradient(135deg, #fff 80%, #f3f4f6 100%);
-    position: sticky;
-    top: 88px;
-    z-index: 10;
+    position: fixed;
+    top: 72px;
+    left: 0;
+    right: 0;
+    z-index: 20;
+    border-bottom: 1px solid rgba(37, 99, 235, 0.1);
+    height: 72px; /* Fixed height for the header */
+    box-sizing: border-box;
   }
 
   .settings-header h1 {
@@ -209,6 +214,7 @@
     font-weight: 700;
     color: #111;
     letter-spacing: -0.025em;
+    margin: 0;
   }
 
   .save-button {
@@ -242,6 +248,7 @@
     gap: 2rem;
     margin: 0 2rem;
     min-height: 0;
+    padding-top: 72px; /* Match the header height */
   }
 
   .settings-nav {
@@ -253,6 +260,9 @@
     gap: 0.5rem;
     height: fit-content;
     box-shadow: 0 1px 3px rgba(37, 99, 235, 0.07);
+    position: sticky;
+    top: 144px; /* 72px navbar + 72px header */
+    z-index: 10;
   }
 
   .nav-item {
