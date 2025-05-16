@@ -132,14 +132,15 @@
   .notifications-container {
     display: flex;
     min-height: 100vh;
-    background-color: #FAF9F6;
+    background: linear-gradient(135deg, #fff 80%, #f3f4f6 100%);
   }
 
   .notifications-content {
     flex: 1;
-    padding: 2rem;
+    padding: 2rem 4rem;
     max-width: 800px;
     margin: 0 auto;
+    width: 100%;
   }
 
   .notifications-header {
@@ -147,25 +148,33 @@
     justify-content: space-between;
     align-items: center;
     margin-bottom: 2rem;
+    background: linear-gradient(135deg, #fff 80%, #f3f4f6 100%);
+    padding: 1.5rem 0;
+    position: sticky;
+    top: 0;
+    z-index: 10;
   }
 
   .notifications-header h1 {
     font-size: 1.5rem;
     font-weight: 600;
-    color: #1a1a1a;
+    color: #111;
   }
 
   .mark-read-btn {
     font-size: 0.875rem;
-    color: #666;
+    color: #2563eb;
     background: none;
-    border: none;
+    border: 1px solid #2563eb;
     cursor: pointer;
-    padding: 0.5rem;
+    padding: 0.5rem 1rem;
+    border-radius: 0.75rem;
+    transition: all 0.2s ease;
   }
 
   .mark-read-btn:hover {
-    color: #1a1a1a;
+    background: rgba(37, 99, 235, 0.08);
+    transform: translateY(-1px);
   }
 
   .notifications-list {
@@ -175,15 +184,17 @@
   }
 
   .notification-card {
-    background: white;
-    border-radius: 0.75rem;
-    padding: 1rem;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    background: #fff;
+    border-radius: 1.5rem;
+    padding: 1.5rem;
+    box-shadow: 0 1px 3px rgba(37, 99, 235, 0.07);
     transition: all 0.2s ease;
   }
 
   .notification-card:hover {
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    background: #f7f7fa;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 6px rgba(37, 99, 235, 0.12);
   }
 
   .notification-card.read {
@@ -196,10 +207,12 @@
   }
 
   .user-avatar {
-    width: 3rem;
-    height: 3rem;
+    width: 48px;
+    height: 48px;
     border-radius: 50%;
     object-fit: cover;
+    border: 2px solid #e2e8f0;
+    box-shadow: 0 0 0 2px rgba(37,99,235,0.08);
   }
 
   .notification-details {
@@ -217,33 +230,35 @@
   }
 
   .user-name {
-    font-weight: 500;
-    color: #1a1a1a;
+    font-weight: 600;
+    color: #111;
     margin: 0;
+    font-size: 1.1rem;
   }
 
   .action-text {
     font-weight: normal;
-    color: #666;
+    color: #64748b;
     margin-left: 0.25rem;
   }
 
   .content-text {
-    color: #666;
+    color: #64748b;
     margin: 0.5rem 0;
-    font-size: 0.875rem;
+    font-size: 0.95rem;
+    line-height: 1.6;
   }
 
   .timestamp {
-    color: #999;
-    font-size: 0.75rem;
+    color: #64748b;
+    font-size: 0.875rem;
     margin: 0.25rem 0 0 0;
   }
 
   .unread-indicator {
     width: 0.5rem;
     height: 0.5rem;
-    background: #6366F1;
+    background: #2563eb;
     border-radius: 50%;
     margin-left: 1rem;
     flex-shrink: 0;
@@ -251,36 +266,42 @@
 
   .action-buttons {
     display: flex;
-    gap: 0.5rem;
-    margin-top: 0.75rem;
-  }
-
-  .follow-btn, .decline-btn {
-    padding: 0.5rem 1rem;
-    border-radius: 9999px;
-    font-size: 0.875rem;
-    font-weight: 500;
-    cursor: pointer;
-    border: none;
-    transition: all 0.2s ease;
+    gap: 0.75rem;
+    margin-top: 1rem;
   }
 
   .follow-btn {
-    background: #6366F1;
+    padding: 0.5rem 1rem;
+    border-radius: 0.75rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: linear-gradient(135deg, #0EA5E9, #7C3AED);
+    border: none;
     color: white;
   }
 
   .follow-btn:hover {
-    background: #4F46E5;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px -1px rgba(37,99,235,0.12);
   }
 
   .decline-btn {
-    background: #f1f1f1;
-    color: #666;
+    padding: 0.5rem 1rem;
+    border-radius: 0.75rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: none;
+    border: 1px solid #e2e8f0;
+    color: #64748b;
   }
 
   .decline-btn:hover {
-    background: #e5e5e5;
+    background: #f7f7fa;
+    color: #111;
   }
 
   @media (max-width: 768px) {
@@ -288,12 +309,26 @@
       padding: 1rem;
     }
 
-    .notification-content {
-      flex-direction: column;
+    .notifications-header {
+      padding: 1rem 0;
     }
 
-    .action-buttons {
-      flex-direction: column;
+    .notification-card {
+      padding: 1rem;
+      border-radius: 1rem;
+    }
+
+    .user-avatar {
+      width: 40px;
+      height: 40px;
+    }
+
+    .user-name {
+      font-size: 0.95rem;
+    }
+
+    .content-text {
+      font-size: 0.875rem;
     }
   }
 </style>

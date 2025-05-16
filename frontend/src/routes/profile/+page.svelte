@@ -752,15 +752,15 @@
     font-weight: 500;
     cursor: pointer;
     display: block;
-  }
+    }
 
-  .profile-meta {
+    .profile-meta {
     display: flex;
-    justify-content: center;
+      justify-content: center;
     gap: 2rem;
     margin: 1.5rem 0;
-    flex-wrap: wrap;
-  }
+      flex-wrap: wrap;
+    }
 
   .meta-item.website {
     color: #4299e1;
@@ -820,7 +820,7 @@
 
   .toggle-button.seller-active::before {
     transform: translateX(100%);
-  }
+    }
 
   .toggle-button:hover::before {
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
@@ -842,9 +842,9 @@
     background: rgba(0, 0, 0, 0.5);
     display: flex;
     align-items: center;
-    justify-content: center;
+      justify-content: center;
     z-index: 1000;
-  }
+    }
 
   .modal-content {
     background: white;

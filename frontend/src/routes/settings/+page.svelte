@@ -188,8 +188,9 @@
     height: 100%;
     display: flex;
     flex-direction: column;
-    background-color: #FAF9F6;
+    background: linear-gradient(135deg, #fff 80%, #f3f4f6 100%);
     overflow-y: auto;
+    padding-top: 88px; /* 72px navbar + 16px gap */
   }
 
   .settings-header {
@@ -197,13 +198,16 @@
     justify-content: space-between;
     align-items: center;
     padding: 2rem 2rem 1.5rem 2rem;
-    background-color: #FAF9F6;
+    background: linear-gradient(135deg, #fff 80%, #f3f4f6 100%);
+    position: sticky;
+    top: 88px;
+    z-index: 10;
   }
 
   .settings-header h1 {
     font-size: 2rem;
     font-weight: 700;
-    color: #1a1a1a;
+    color: #111;
     letter-spacing: -0.025em;
   }
 
@@ -212,7 +216,7 @@
     align-items: center;
     gap: 0.5rem;
     padding: 0.75rem 1.5rem;
-    background: #6366F1;
+    background: linear-gradient(135deg, #0EA5E9, #7C3AED);
     color: white;
     border: none;
     border-radius: 0.75rem;
@@ -222,8 +226,8 @@
   }
 
   .save-button:hover {
-    background: #4F46E5;
     transform: translateY(-1px);
+    box-shadow: 0 4px 6px -1px rgba(37,99,235,0.12);
   }
 
   .save-button svg {
@@ -241,39 +245,38 @@
   }
 
   .settings-nav {
-    background: white;
-    border-radius: 1rem;
+    background: #fff;
+    border-radius: 1.5rem;
     padding: 1.5rem;
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
     height: fit-content;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 1px 3px rgba(37, 99, 235, 0.07);
   }
 
   .nav-item {
     display: flex;
     align-items: center;
-    gap: 1rem;
-    padding: 1rem;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
     border: none;
-    background: transparent;
-    color: #64748B;
-    border-radius: 0.75rem;
+    background: none;
+    color: #64748b;
+    font-size: 0.95rem;
     cursor: pointer;
-    transition: all 0.2s ease-in-out;
-    width: 100%;
-    text-align: left;
+    border-radius: 0.75rem;
+    transition: all 0.2s;
   }
 
   .nav-item:hover {
-    background: #F1F5F9;
-    color: #1E293B;
+    background: #f7f7fa;
+    color: #111;
   }
 
   .nav-item.active {
-    background: #F1F5F9;
-    color: #6366F1;
+    background: #111;
+    color: #fff;
   }
 
   .settings-nav-icon {
@@ -283,48 +286,23 @@
   }
 
   .settings-panel {
-    background: white;
+    background: #fff;
     border-radius: 1.5rem;
-    overflow-y: auto;
-    padding: 2.5rem;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  }
-
-  /* Custom Scrollbar Styling */
-  .settings-panel::-webkit-scrollbar {
-    width: 4px;
-  }
-
-  .settings-panel::-webkit-scrollbar-track {
-    background: transparent;
-  }
-
-  .settings-panel::-webkit-scrollbar-thumb {
-    background-color: rgba(203, 213, 225, 0.4);
-    border-radius: 20px;
-  }
-
-  .settings-panel::-webkit-scrollbar-thumb:hover {
-    background-color: rgba(148, 163, 184, 0.5);
-  }
-
-  /* Firefox */
-  .settings-panel {
-    scrollbar-width: thin;
-    scrollbar-color: rgba(203, 213, 225, 0.4) transparent;
+    padding: 2rem;
+    box-shadow: 0 1px 3px rgba(37, 99, 235, 0.07);
   }
 
   .settings-panel h2 {
     font-size: 1.5rem;
-    font-weight: 700;
-    color: #1E293B;
-    margin-bottom: 1.5rem;
+    font-weight: 600;
+    color: #111;
+    margin: 0 0 1.5rem 0;
   }
 
   .settings-group {
     display: flex;
     flex-direction: column;
-    gap: 1rem;
+    gap: 1.5rem;
   }
 
   .setting-item {
@@ -332,46 +310,47 @@
     justify-content: space-between;
     align-items: center;
     padding: 1rem;
-    background: #F8FAFC;
-    border-radius: 0.75rem;
-    transition: background-color 0.2s ease-in-out;
+    background: #f7f7fa;
+    border-radius: 1rem;
+    transition: all 0.2s;
   }
 
   .setting-item:hover {
-    background: #F1F5F9;
+    background: #f1f5f9;
   }
 
   .setting-item label {
+    font-size: 0.95rem;
+    color: #111;
     font-weight: 500;
-    color: #334155;
   }
 
   .setting-item select {
-    padding: 0.5rem 2rem 0.5rem 1rem;
-    border: 2px solid #E2E8F0;
-    border-radius: 0.5rem;
-    background: white;
-    color: #1E293B;
+    padding: 0.5rem 1rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.75rem;
+    background: #fff;
+    color: #111;
     font-size: 0.95rem;
     cursor: pointer;
-    transition: all 0.2s ease-in-out;
+    transition: all 0.2s;
   }
 
   .setting-item select:hover {
-    border-color: #CBD5E0;
+    border-color: #cbd5e1;
   }
 
   .setting-item select:focus {
     outline: none;
-    border-color: #6366F1;
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.08);
   }
 
   .toggle {
     position: relative;
     display: inline-block;
     width: 3rem;
-    height: 1.75rem;
+    height: 1.5rem;
   }
 
   .toggle input {
@@ -387,9 +366,9 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background-color: #E2E8F0;
-    transition: 0.4s;
-    border-radius: 1.75rem;
+    background-color: #e2e8f0;
+    transition: .4s;
+    border-radius: 1.5rem;
   }
 
   .toggle-slider:before {
@@ -405,7 +384,7 @@
   }
 
   input:checked + .toggle-slider {
-    background-color: #6366F1;
+    background: linear-gradient(135deg, #0EA5E9, #7C3AED);
   }
 
   input:checked + .toggle-slider:before {
@@ -414,81 +393,25 @@
 
   @media (max-width: 768px) {
     .settings-content {
-      background-color: white;
-      height: calc(100vh - 65px);
+      padding-top: 64px; /* 56px navbar + 8px gap for mobile */
+      height: calc(100vh - 64px);
       overflow-y: auto;
       -webkit-overflow-scrolling: touch;
     }
 
-    .settings-container {
-      margin: 0;
-      display: flex;
-      flex-direction: column;
-      gap: 0;
-    }
-
-    .settings-nav {
-      position: sticky;
-      top: 60px;
-      z-index: 9;
-      background: white;
-      border-radius: 0;
-      padding: 0;
-      box-shadow: none;
-      border-bottom: 1px solid #E2E8F0;
-      display: flex;
-      flex-direction: column;
-      overflow-x: visible;
-    }
-
-    .nav-item {
-      flex: 0 0 auto;
-      padding: 0.75rem 1rem;
-      border-radius: 0;
-      display: flex;
-      align-items: center;
-      justify-content: flex-start;
-      gap: 1rem;
-      border-bottom: 1px solid #F1F5F9;
-    }
-
-    .nav-item span {
-      display: block;
-      font-size: 0.875rem;
-      color: #64748B;
-    }
-
-    .nav-item.active {
-      background: #F8FAFC;
-      border-left: 2px solid #6366F1;
-    }
-
-    .nav-item.active span {
-      color: #6366F1;
-      font-weight: 500;
-    }
-
-    .settings-nav-icon {
-      width: 18px;
-      height: 18px;
-      stroke-width: 2;
-    }
-
-    .settings-panel {
+    .settings-header {
       padding: 1rem;
-      border-radius: 0;
-      box-shadow: none;
+      position: fixed;
+      top: 64px;
+      left: 0;
+      right: 0;
+      z-index: 20;
+      background: linear-gradient(135deg, #fff 80%, #f3f4f6 100%);
+      border-bottom: 1px solid rgba(37, 99, 235, 0.1);
     }
 
-    .settings-group {
-      padding: 0;
-    }
-
-    .setting-item {
-      padding: 1rem 0;
-      background: transparent;
-      border-radius: 0;
-      border-bottom: 1px solid #E2E8F0;
+    .settings-header h1 {
+      font-size: 1.5rem;
     }
 
     .save-button {
@@ -499,6 +422,172 @@
     .save-button svg {
       width: 1rem;
       height: 1rem;
+    }
+
+    .settings-container {
+      grid-template-columns: 1fr;
+      margin: 0;
+      gap: 0;
+      padding: 0;
+      padding-top: 56px; /* Height of the settings header */
+    }
+
+    .settings-nav {
+      position: sticky;
+      top: 120px; /* 64px navbar + 56px header */
+      z-index: 10;
+      border-radius: 0;
+      padding: 0.5rem 1rem;
+      box-shadow: none;
+      background: #fff;
+      border-bottom: 1px solid #e2e8f0;
+      flex-direction: row;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+      gap: 0.5rem;
+    }
+
+    .settings-nav::-webkit-scrollbar {
+      display: none;
+    }
+
+    .nav-item {
+      flex: 0 0 auto;
+      padding: 0.75rem 1rem;
+      border-radius: 0.75rem;
+      white-space: nowrap;
+      font-size: 0.875rem;
+      background: #f7f7fa;
+      border: 1px solid transparent;
+    }
+
+    .nav-item svg {
+      width: 1.25rem;
+      height: 1.25rem;
+    }
+
+    .nav-item.active {
+      background: #111;
+      color: #fff;
+      border-color: #111;
+    }
+
+    .settings-panel {
+      border-radius: 0;
+      padding: 1rem;
+      box-shadow: none;
+      background: transparent;
+    }
+
+    .settings-panel h2 {
+      font-size: 1.25rem;
+      margin-bottom: 1rem;
+      padding: 0 0.5rem;
+    }
+
+    .settings-group {
+      gap: 1rem;
+      padding: 0 0.5rem;
+    }
+
+    .setting-item {
+      padding: 1rem;
+      border-radius: 1rem;
+      background: #fff;
+      box-shadow: 0 1px 3px rgba(37, 99, 235, 0.07);
+      margin: 0 0.5rem;
+    }
+
+    .setting-item label {
+      font-size: 0.875rem;
+    }
+
+    .setting-item select {
+      padding: 0.5rem 2rem 0.5rem 1rem;
+      font-size: 0.875rem;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 0.5rem center;
+      background-size: 1.25rem;
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      appearance: none;
+    }
+
+    .toggle {
+      width: 2.5rem;
+      height: 1.25rem;
+    }
+
+    .toggle-slider:before {
+      height: 1rem;
+      width: 1rem;
+      left: 0.25rem;
+      bottom: 0.25rem;
+    }
+
+    input:checked + .toggle-slider:before {
+      transform: translateX(1rem);
+    }
+  }
+
+  /* Small mobile devices */
+  @media (max-width: 380px) {
+    .settings-header {
+      padding: 0.75rem;
+    }
+
+    .settings-header h1 {
+      font-size: 1.25rem;
+    }
+
+    .save-button {
+      padding: 0.375rem 0.75rem;
+      font-size: 0.75rem;
+    }
+
+    .settings-nav {
+      padding: 0.5rem;
+      gap: 0.25rem;
+    }
+
+    .nav-item {
+      padding: 0.5rem 0.75rem;
+      font-size: 0.75rem;
+    }
+
+    .nav-item svg {
+      width: 1rem;
+      height: 1rem;
+    }
+
+    .settings-panel {
+      padding: 0.75rem;
+    }
+
+    .settings-panel h2 {
+      font-size: 1.125rem;
+      padding: 0 0.25rem;
+    }
+
+    .settings-group {
+      padding: 0 0.25rem;
+    }
+
+    .setting-item {
+      padding: 0.75rem;
+      margin: 0 0.25rem;
+    }
+
+    .setting-item label {
+      font-size: 0.75rem;
+    }
+
+    .setting-item select {
+      padding: 0.375rem 1.5rem 0.375rem 0.75rem;
+      font-size: 0.75rem;
     }
   }
 </style> 

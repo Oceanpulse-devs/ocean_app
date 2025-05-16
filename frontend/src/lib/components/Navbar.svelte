@@ -323,21 +323,41 @@
     }
 
     .mobile-nav {
-      gap: 1rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 0.5rem;
+      width: 100%;
+      max-width: 100%;
     }
 
     .mobile-nav a, .mobile-nav button {
-      padding: 0.35rem;
-      font-size: 0.95rem;
-    }
-
-    .mobile-nav svg, .profile-btn svg {
-      width: 1.25rem;
-      height: 1.25rem;
-    }
-
-    .mobile-menu {
+      color: #111;
       padding: 0.5rem;
+      border-radius: 0.375rem;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: none;
+      border: none;
+      cursor: pointer;
+      flex: 1;
+      max-width: 25%;
+    }
+
+    .mobile-nav a:hover, .mobile-nav button:hover {
+      background-color: #f7f7fa;
+      color: #2563eb;
+    }
+
+    .mobile-nav a.active {
+      color: #2563eb;
+    }
+
+    .mobile-nav svg {
+      width: 24px;
+      height: 24px;
     }
 
     .user-actions {
@@ -364,9 +384,11 @@
   @media (max-width: 768px) {
     .mobile-nav {
       display: flex;
-      gap: 1.5rem;
+      justify-content: space-between;
       align-items: center;
       padding: 0 0.5rem;
+      width: 100%;
+      max-width: 100%;
     }
 
     .mobile-nav a, .mobile-nav button {
@@ -380,6 +402,8 @@
       background: none;
       border: none;
       cursor: pointer;
+      flex: 1;
+      max-width: 25%;
     }
 
     .mobile-nav a:hover, .mobile-nav button:hover {
@@ -402,6 +426,7 @@
 
     .navbar-container {
       padding: 0.5rem 1rem;
+      width: 100%;
     }
 
     .search-bar input {

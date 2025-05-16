@@ -191,6 +191,7 @@
   let bannerInterval: ReturnType<typeof setInterval>;
 
   import { onMount, onDestroy } from 'svelte';
+  import { goto } from '$app/navigation';
 
   onMount(() => {
     bannerInterval = setInterval(() => {
@@ -212,6 +213,10 @@
       showPriceFilter = !showPriceFilter;
       showBrandFilter = false;
     }
+  }
+
+  function handleProductClick(productId: number) {
+    goto(`/products/${productId}`);
   }
 
   // Mapping of icon names to SVG path data
@@ -372,7 +377,7 @@
             <h2 class="category-header">Featured Products</h2>
             <div class="products-row">
               {#each products.slice(0, 6) as product}
-                <div class="product-card">
+                <div class="product-card" on:click={() => handleProductClick(product.id)}>
                   <img src={product.image} alt={product.name} class="product-image" />
                   <div class="product-info">
                     <div class="product-name">{product.name}</div>
@@ -391,7 +396,7 @@
             <h2 class="category-header">New Arrivals</h2>
             <div class="products-row">
               {#each products.slice(6, 12) as product}
-                <div class="product-card">
+                <div class="product-card" on:click={() => handleProductClick(product.id)}>
                   <img src={product.image} alt={product.name} class="product-image" />
                   <div class="product-info">
                     <div class="product-name">{product.name}</div>
@@ -410,7 +415,7 @@
             <h2 class="category-header">Best Sellers</h2>
             <div class="products-row">
               {#each products.slice(12) as product}
-        <div class="product-card">
+        <div class="product-card" on:click={() => handleProductClick(product.id)}>
                   <img src={product.image} alt={product.name} class="product-image" />
           <div class="product-info">
                     <div class="product-name">{product.name}</div>
@@ -723,13 +728,14 @@
     min-width: 120px;
     box-shadow: none;
     border: none;
-    transition: transform 0.15s;
+    transition: transform 0.2s ease-in-out;
     width: 100%;
     min-width: 0;
     box-sizing: border-box;
+    cursor: pointer;
   }
   .product-card:hover {
-    transform: translateY(-2px) scale(1.02);
+    transform: translateY(-4px);
   }
   .product-image {
     width: 100%;
