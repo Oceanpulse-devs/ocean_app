@@ -818,18 +818,35 @@
 
   .search-bar {
     position: sticky;
-    top: 0;
+    top: 80px; /* Add space for the nav bar */
     left: 0;
     right: 0;
     background: linear-gradient(135deg, #fff 80%, #f3f4f6 100%);
     padding: 1.5rem 0;
-    z-index: 10;
+    z-index: 100; /* Increase z-index to be above nav */
     max-width: 800px;
     margin: 4rem auto 2rem;
     width: 100%;
     display: flex;
     gap: 1rem;
     align-items: center;
+  }
+
+  @media (max-width: 768px) {
+    .search-bar {
+      top: 60px; /* Adjust for mobile nav height */
+      flex-direction: column;
+      padding: 1rem;
+      margin: 3rem auto 1rem;
+      gap: 0.75rem;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .search-bar {
+      top: 50px; /* Further adjust for smaller mobile nav */
+      margin: 2rem auto 1rem;
+    }
   }
 
   .search-input {
