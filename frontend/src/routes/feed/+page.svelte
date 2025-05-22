@@ -800,6 +800,7 @@
     margin-left: 280px;
     height: 100vh;
     overflow-y: auto;
+    overflow-x: hidden;
     position: fixed;
     top: 0;
     right: 0;
@@ -812,6 +813,7 @@
     margin: 0 auto;
     padding-top: 1rem;
     width: 100%;
+    box-sizing: border-box;
   }
 
   .search-bar {
@@ -823,7 +825,7 @@
     padding: 1.5rem 0;
     z-index: 10;
     max-width: 800px;
-    margin: 2rem auto 2rem;
+    margin: 4rem auto 2rem;
     width: 100%;
     display: flex;
     gap: 1rem;
@@ -946,7 +948,7 @@
     .search-bar {
       flex-direction: column;
       padding: 1rem;
-      margin: 1rem auto;
+      margin: 3rem auto 1rem;
       gap: 0.75rem;
     }
 
@@ -1225,11 +1227,30 @@
       padding: 1.5rem;
       width: 100vw;
       margin-left: 0;
+      overflow-x: hidden;
     }
 
     .feed-posts,
     .search-bar {
       max-width: 100%;
+      padding-left: 0;
+      padding-right: 0;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .main-content {
+      padding: 1rem;
+    }
+
+    .feed-posts {
+      padding: 0;
+    }
+
+    .post {
+      border-radius: 0;
+      margin-bottom: 1rem;
+      padding: 1rem;
     }
   }
 
