@@ -1617,6 +1617,8 @@
     margin-bottom: 0.5rem;
     z-index: 50;
     min-width: 200px;
+    max-width: calc(100vw - 2rem);
+    transform: translateX(0);
   }
 
   .share-option {
@@ -1632,6 +1634,28 @@
     cursor: pointer;
     border-radius: 0.5rem;
     transition: background-color 0.2s;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  @media (max-width: 768px) {
+    .share-menu {
+      right: -0.5rem;
+      max-width: calc(100vw - 1rem);
+    }
+
+    .share-option {
+      padding: 0.625rem 0.875rem;
+      font-size: 0.875rem;
+    }
+  }
+
+  @media (max-width: 380px) {
+    .share-menu {
+      right: -1rem;
+      max-width: calc(100vw - 0.5rem);
+    }
   }
 
   .share-option:hover {
