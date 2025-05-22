@@ -199,8 +199,8 @@
           {#each featuredImages as _, i}
             <button class="dot" class:active={i === featuredIndex} on:click={() => featuredIndex = i} />
           {/each}
-        </div>
       </div>
+    </div>
 
     <div class="products-grid">
       {#each products as product (product.id)}
@@ -224,7 +224,7 @@
             <div class="product-location">
               <svg class="location-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
               <span>{product.location}</span>
-            </div>
+          </div>
 
           <div class="product-actions">
             <button class="message-btn">Message</button>

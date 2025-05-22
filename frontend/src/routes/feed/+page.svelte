@@ -101,6 +101,90 @@
   let showShareMenuSecond = false;
   let showCommentsFirst = false;
   let showCommentsSecond = false;
+  let showPostMenuFirst = false;
+  let showPostMenuSecond = false;
+
+  let isMobile = false;
+  let selectedRegion = 'all'; // Default to show all regions
+
+  interface Region {
+    id: string;
+    name: string;
+  }
+
+  interface RegionGroup {
+    group: string;
+    regions: Region[];
+  }
+
+  const regions: (Region | RegionGroup)[] = [
+    { id: 'all', name: 'All Regions' },
+    { 
+      group: 'Nigeria',
+      regions: [
+        { id: 'nigeria-all', name: 'All Nigeria' },
+        { id: 'lagos', name: 'Lagos' },
+        { id: 'abuja', name: 'Abuja' },
+        { id: 'port-harcourt', name: 'Port Harcourt' },
+        { id: 'ibadan', name: 'Ibadan' },
+        { id: 'benin', name: 'Benin' },
+        { id: 'calabar', name: 'Calabar' },
+        { id: 'enugu', name: 'Enugu' },
+        { id: 'kano', name: 'Kano' }
+      ]
+    },
+    {
+      group: 'Africa',
+      regions: [
+        { id: 'africa-all', name: 'All Africa' },
+        { id: 'ghana', name: 'Ghana' },
+        { id: 'kenya', name: 'Kenya' },
+        { id: 'south-africa', name: 'South Africa' },
+        { id: 'egypt', name: 'Egypt' },
+        { id: 'ethiopia', name: 'Ethiopia' },
+        { id: 'morocco', name: 'Morocco' }
+      ]
+    },
+    {
+      group: 'Europe',
+      regions: [
+        { id: 'europe-all', name: 'All Europe' },
+        { id: 'uk', name: 'United Kingdom' },
+        { id: 'france', name: 'France' },
+        { id: 'germany', name: 'Germany' },
+        { id: 'spain', name: 'Spain' },
+        { id: 'italy', name: 'Italy' },
+        { id: 'netherlands', name: 'Netherlands' }
+      ]
+    },
+    {
+      group: 'North America',
+      regions: [
+        { id: 'north-america-all', name: 'All North America' },
+        { id: 'usa', name: 'United States' },
+        { id: 'canada', name: 'Canada' },
+        { id: 'mexico', name: 'Mexico' }
+      ]
+    },
+    {
+      group: 'Asia',
+      regions: [
+        { id: 'asia-all', name: 'All Asia' },
+        { id: 'china', name: 'China' },
+        { id: 'india', name: 'India' },
+        { id: 'japan', name: 'Japan' },
+        { id: 'singapore', name: 'Singapore' },
+        { id: 'uae', name: 'United Arab Emirates' }
+      ]
+    }
+  ];
+
+  function handleRegionChange(event: Event) {
+    const select = event.target as HTMLSelectElement;
+    selectedRegion = select.value;
+    // TODO: Implement region filtering logic
+    console.log(`Filtering posts by region: ${selectedRegion}`);
+  }
 
   function toggleComments() {
     showComments = !showComments;
@@ -203,13 +287,28 @@
     showCommentsFirst = false; // Close other comments
   }
 
-  let isMobile = false;
-  function checkMobile() {
-    isMobile = window.innerWidth <= 768;
+  function togglePostMenuFirst() {
+    showPostMenuFirst = !showPostMenuFirst;
+    showPostMenuSecond = false; // Close other menu
   }
+
+  function togglePostMenuSecond() {
+    showPostMenuSecond = !showPostMenuSecond;
+    showPostMenuFirst = false; // Close other menu
+  }
+
+  function handleReport(postId: string) {
+    // TODO: Implement report functionality
+    console.log(`Reporting post ${postId}`);
+    showPostMenuFirst = false;
+    showPostMenuSecond = false;
+  }
+
   if (typeof window !== 'undefined') {
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
+    isMobile = window.innerWidth <= 768;
+    window.addEventListener('resize', () => {
+      isMobile = window.innerWidth <= 768;
+    });
   }
 </script>
 
@@ -230,6 +329,22 @@
           </svg>
         </button>
       </div>
+      <div class="region-filter">
+        <select 
+          bind:value={selectedRegion} 
+          on:change={handleRegionChange}
+          class="region-select"
+        >
+          <option value="all">All Regions</option>
+          {#each regions.filter((r): r is RegionGroup => 'group' in r) as group}
+            <optgroup label={group.group}>
+              {#each group.regions as region}
+                <option value={region.id}>{region.name}</option>
+              {/each}
+            </optgroup>
+          {/each}
+        </select>
+      </div>
     </div>
 
     <div class="feed-posts">
@@ -245,6 +360,25 @@
           <div class="post-actions">
             <button class="follow-btn">Follow</button>
             <button class="message-btn">Message Me</button>
+            <div class="post-menu">
+              <button class="menu-btn" on:click={togglePostMenuFirst}>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="1" />
+                  <circle cx="12" cy="5" r="1" />
+                  <circle cx="12" cy="19" r="1" />
+                </svg>
+              </button>
+              {#if showPostMenuFirst}
+                <div class="menu-dropdown">
+                  <button class="menu-item" on:click={() => handleReport('first')}>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    Report Post
+                  </button>
+                </div>
+              {/if}
+            </div>
           </div>
         </div>
 
@@ -396,6 +530,25 @@
           <div class="post-actions">
             <button class="follow-btn">Follow</button>
             <button class="message-btn">Message Me</button>
+            <div class="post-menu">
+              <button class="menu-btn" on:click={togglePostMenuSecond}>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="1" />
+                  <circle cx="12" cy="5" r="1" />
+                  <circle cx="12" cy="19" r="1" />
+                </svg>
+              </button>
+              {#if showPostMenuSecond}
+                <div class="menu-dropdown">
+                  <button class="menu-item" on:click={() => handleReport('second')}>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    Report Post
+                  </button>
+                </div>
+              {/if}
+            </div>
           </div>
         </div>
 
@@ -565,12 +718,16 @@
     max-width: 800px;
     margin: 2rem auto 2rem;
     width: 100%;
+    display: flex;
+    gap: 1rem;
+    align-items: center;
   }
 
   .search-input {
     position: relative;
     display: flex;
     align-items: center;
+    flex: 1;
   }
 
   .search-input input {
@@ -620,6 +777,92 @@
   .camera-btn svg {
     width: 1.25rem;
     height: 1.25rem;
+  }
+
+  .region-filter {
+    position: relative;
+    min-width: 160px;
+  }
+
+  .region-select {
+    width: 100%;
+    padding: 0.75rem 2.5rem 0.75rem 1rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 9999px;
+    font-size: 0.95rem;
+    background-color: #fff;
+    color: #111;
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 1rem center;
+    background-size: 1.25rem;
+    transition: all 0.2s ease;
+  }
+
+  .region-select optgroup {
+    font-weight: 600;
+    color: #64748b;
+    background-color: #f8fafc;
+  }
+
+  .region-select option {
+    font-weight: normal;
+    color: #111;
+    padding: 0.5rem;
+  }
+
+  .region-select option[value$="-all"] {
+    font-weight: 600;
+    color: #2563eb;
+    border-bottom: 1px solid #e2e8f0;
+    margin-bottom: 0.25rem;
+  }
+
+  .region-select option:checked {
+    background: linear-gradient(135deg, #0EA5E9, #7C3AED);
+    color: white;
+  }
+
+  .region-select:hover {
+    border-color: #cbd5e1;
+  }
+
+  .region-select:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.08);
+  }
+
+  @media (max-width: 768px) {
+    .search-bar {
+      flex-direction: column;
+      padding: 1rem;
+      margin: 1rem auto;
+      gap: 0.75rem;
+    }
+
+    .region-filter {
+      width: 100%;
+    }
+
+    .region-select {
+      padding: 0.625rem 2.5rem 0.625rem 1rem;
+      font-size: 0.875rem;
+    }
+  }
+
+  @media (max-width: 380px) {
+    .search-bar {
+      padding: 0.75rem;
+      margin: 0.75rem auto;
+    }
+
+    .region-select {
+      padding: 0.5rem 2.25rem 0.5rem 0.875rem;
+      font-size: 0.8125rem;
+    }
   }
 
   /* Modern Post Card Styles */
@@ -1287,5 +1530,95 @@
     0% { transform: scale(1); }
     50% { transform: scale(1.2); }
     100% { transform: scale(1); }
+  }
+
+  .post-menu {
+    position: relative;
+  }
+
+  .menu-btn {
+    background: none;
+    border: none;
+    color: #64748b;
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+  }
+
+  .menu-btn:hover {
+    background: #f1f5f9;
+    color: #111;
+  }
+
+  .menu-btn svg {
+    width: 1.25rem;
+    height: 1.25rem;
+  }
+
+  .menu-dropdown {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    background: white;
+    border-radius: 0.75rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    padding: 0.5rem;
+    margin-top: 0.5rem;
+    z-index: 50;
+    min-width: 160px;
+  }
+
+  .menu-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: none;
+    background: none;
+    color: #ef4444;
+    font-size: 0.95rem;
+    cursor: pointer;
+    border-radius: 0.5rem;
+    transition: background-color 0.2s;
+  }
+
+  .menu-item:hover {
+    background-color: #fee2e2;
+  }
+
+  .menu-item svg {
+    width: 1.25rem;
+    height: 1.25rem;
+    stroke: currentColor;
+  }
+
+  @media (max-width: 768px) {
+    .menu-btn {
+      padding: 0.375rem;
+    }
+
+    .menu-btn svg {
+      width: 1.125rem;
+      height: 1.125rem;
+    }
+
+    .menu-dropdown {
+      right: -0.5rem;
+    }
+
+    .menu-item {
+      padding: 0.625rem 0.875rem;
+      font-size: 0.875rem;
+    }
+
+    .menu-item svg {
+      width: 1.125rem;
+      height: 1.125rem;
+    }
   }
 </style> 
