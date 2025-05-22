@@ -103,6 +103,11 @@
   let showCommentsSecond = false;
   let showPostMenuFirst = false;
   let showPostMenuSecond = false;
+  let showReportModal = false;
+  let currentReportStep = 0;
+  let selectedReportReason = '';
+  let reportDetails = '';
+  let currentPostId = '';
 
   let isMobile = false;
   let selectedRegion = 'all'; // Default to show all regions
@@ -176,6 +181,34 @@
         { id: 'singapore', name: 'Singapore' },
         { id: 'uae', name: 'United Arab Emirates' }
       ]
+    }
+  ];
+
+  const reportQuestions = [
+    {
+      id: 'spam',
+      question: 'Is this post spam or misleading?',
+      description: 'Contains false information or promotional content'
+    },
+    {
+      id: 'inappropriate',
+      question: 'Is this content inappropriate?',
+      description: 'Contains offensive, violent, or adult content'
+    },
+    {
+      id: 'harassment',
+      question: 'Is this post harassing someone?',
+      description: 'Contains bullying, threats, or personal attacks'
+    },
+    {
+      id: 'copyright',
+      question: 'Is this post violating copyright?',
+      description: 'Contains unauthorized use of protected content'
+    },
+    {
+      id: 'other',
+      question: 'Other reason',
+      description: 'Select if none of the above apply'
     }
   ];
 
@@ -298,10 +331,38 @@
   }
 
   function handleReport(postId: string) {
-    // TODO: Implement report functionality
-    console.log(`Reporting post ${postId}`);
+    currentPostId = postId;
+    showReportModal = true;
+    currentReportStep = 0;
+    selectedReportReason = '';
+    reportDetails = '';
     showPostMenuFirst = false;
     showPostMenuSecond = false;
+  }
+
+  function handleReportReasonSelect(reason: string) {
+    selectedReportReason = reason;
+    currentReportStep = 1;
+  }
+
+  function handleReportSubmit() {
+    // TODO: Implement report submission
+    console.log('Submitting report:', {
+      postId: currentPostId,
+      reason: selectedReportReason,
+      details: reportDetails
+    });
+    showReportModal = false;
+    currentReportStep = 0;
+    selectedReportReason = '';
+    reportDetails = '';
+  }
+
+  function closeReportModal() {
+    showReportModal = false;
+    currentReportStep = 0;
+    selectedReportReason = '';
+    reportDetails = '';
   }
 
   if (typeof window !== 'undefined') {
@@ -643,6 +704,52 @@
     </div>
   </main>
 </div>
+
+{#if showReportModal}
+  <div class="modal-backdrop" on:click={closeReportModal}></div>
+  <div class="report-modal">
+    <button class="modal-close" on:click={closeReportModal}>&times;</button>
+    <div class="report-content">
+      {#if currentReportStep === 0}
+        <h3>Why are you reporting this post?</h3>
+        <div class="report-options">
+          {#each reportQuestions as reason}
+            <button 
+              class="report-option" 
+              on:click={() => handleReportReasonSelect(reason.id)}
+            >
+              <div class="report-option-content">
+                <h4>{reason.question}</h4>
+                <p>{reason.description}</p>
+              </div>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M9 18l6-6-6-6"/>
+              </svg>
+            </button>
+          {/each}
+        </div>
+      {:else}
+        <h3>Additional Details</h3>
+        <p class="report-subtitle">Please provide more information about your report</p>
+        <textarea 
+          bind:value={reportDetails}
+          placeholder="Describe the issue in detail..."
+          rows="4"
+        ></textarea>
+        <div class="report-actions">
+          <button class="cancel-btn" on:click={closeReportModal}>Cancel</button>
+          <button 
+            class="submit-btn" 
+            on:click={handleReportSubmit}
+            disabled={!reportDetails.trim()}
+          >
+            Submit Report
+          </button>
+        </div>
+      {/if}
+    </div>
+  </div>
+{/if}
 
 <style>
   .feed-layout {
@@ -1619,6 +1726,176 @@
     .menu-item svg {
       width: 1.125rem;
       height: 1.125rem;
+    }
+  }
+
+  .report-modal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: white;
+    border-radius: 1.25rem;
+    box-shadow: 0 8px 32px rgba(30,41,59,0.18);
+    z-index: 1001;
+    width: 90%;
+    max-width: 500px;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+
+  .report-content {
+    padding: 2rem;
+  }
+
+  .report-content h3 {
+    margin: 0 0 1.5rem;
+    font-size: 1.25rem;
+    color: #111;
+  }
+
+  .report-subtitle {
+    color: #64748b;
+    margin: -1rem 0 1rem;
+    font-size: 0.95rem;
+  }
+
+  .report-options {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .report-option {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 1rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.75rem;
+    background: none;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .report-option:hover {
+    background-color: #f8fafc;
+    border-color: #cbd5e1;
+  }
+
+  .report-option-content {
+    text-align: left;
+  }
+
+  .report-option-content h4 {
+    margin: 0 0 0.25rem;
+    font-size: 1rem;
+    color: #111;
+  }
+
+  .report-option-content p {
+    margin: 0;
+    font-size: 0.875rem;
+    color: #64748b;
+  }
+
+  .report-option svg {
+    width: 1.25rem;
+    height: 1.25rem;
+    color: #64748b;
+  }
+
+  textarea {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.75rem;
+    font-size: 0.95rem;
+    resize: vertical;
+    min-height: 100px;
+    margin-bottom: 1.5rem;
+  }
+
+  textarea:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.08);
+  }
+
+  .report-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+  }
+
+  .cancel-btn, .submit-btn {
+    padding: 0.75rem 1.5rem;
+    border-radius: 0.75rem;
+    font-size: 0.95rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .cancel-btn {
+    background: none;
+    border: 1px solid #e2e8f0;
+    color: #64748b;
+  }
+
+  .cancel-btn:hover {
+    background-color: #f8fafc;
+    border-color: #cbd5e1;
+  }
+
+  .submit-btn {
+    background: #ef4444;
+    border: none;
+    color: white;
+  }
+
+  .submit-btn:hover:not(:disabled) {
+    background: #dc2626;
+  }
+
+  .submit-btn:disabled {
+    background: #fecaca;
+    cursor: not-allowed;
+  }
+
+  @media (max-width: 768px) {
+    .report-modal {
+      width: 100%;
+      max-width: none;
+      height: 100vh;
+      max-height: none;
+      border-radius: 0;
+    }
+
+    .report-content {
+      padding: 1.5rem;
+    }
+
+    .report-content h3 {
+      font-size: 1.125rem;
+    }
+
+    .report-option {
+      padding: 0.875rem;
+    }
+
+    .report-option-content h4 {
+      font-size: 0.95rem;
+    }
+
+    .report-option-content p {
+      font-size: 0.8125rem;
+    }
+
+    .cancel-btn, .submit-btn {
+      padding: 0.625rem 1.25rem;
+      font-size: 0.875rem;
     }
   }
 </style> 
