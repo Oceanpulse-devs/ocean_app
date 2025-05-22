@@ -1175,6 +1175,8 @@
     padding: 1rem 0;
     border-top: 1px solid #e2e8f0;
     margin-bottom: 0;
+    position: relative;
+    flex-wrap: wrap;
   }
 
   .engage-btn {
@@ -1189,6 +1191,7 @@
     padding: 0.5rem;
     border-radius: 0.75rem;
     transition: all 0.2s ease;
+    white-space: nowrap;
   }
 
   .engage-btn:hover {
@@ -1617,7 +1620,7 @@
     margin-bottom: 0.5rem;
     z-index: 50;
     min-width: 200px;
-    max-width: calc(100vw - 2rem);
+    max-width: calc(100% - 1rem);
     transform: translateX(0);
   }
 
@@ -1642,7 +1645,7 @@
   @media (max-width: 768px) {
     .share-menu {
       right: -0.5rem;
-      max-width: calc(100vw - 1rem);
+      max-width: calc(100% - 0.5rem);
     }
 
     .share-option {
@@ -1651,10 +1654,20 @@
     }
   }
 
-  @media (max-width: 380px) {
-    .share-menu {
-      right: -1rem;
-      max-width: calc(100vw - 0.5rem);
+  @media (max-width: 480px) {
+    .post-engagement {
+      gap: 0.75rem;
+      justify-content: space-between;
+    }
+
+    .engage-btn {
+      font-size: 0.75rem;
+      padding: 0.25rem;
+    }
+
+    .engage-btn .icon {
+      width: 1.125rem;
+      height: 1.125rem;
     }
   }
 
