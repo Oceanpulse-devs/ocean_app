@@ -51,8 +51,51 @@
       likes: 45,
       category: "Electronics",
       condition: "Like New"
+    },
+    {
+      id: 2,
+      title: "MacBook Pro 2023 - 16GB RAM",
+      price: 1299,
+      image: "/test.jpg.jpg",
+      status: "Active",
+      views: 189,
+      likes: 32,
+      category: "Electronics",
+      condition: "New"
+    },
+    {
+      id: 3,
+      title: "Sony WH-1000XM4 Headphones",
+      price: 299,
+      image: "/test.jpg.jpg",
+      status: "Active",
+      views: 156,
+      likes: 28,
+      category: "Electronics",
+      condition: "Like New"
+    },
+    {
+      id: 4,
+      title: "Nintendo Switch OLED",
+      price: 349,
+      image: "/test.jpg.jpg",
+      status: "Active",
+      views: 278,
+      likes: 67,
+      category: "Gaming",
+      condition: "New"
+    },
+    {
+      id: 5,
+      title: "Samsung Galaxy S23 Ultra",
+      price: 1199,
+      image: "/test.jpg.jpg",
+      status: "Active",
+      views: 312,
+      likes: 89,
+      category: "Electronics",
+      condition: "New"
     }
-    // More listings will be added
   ];
 
   let reviews = [
@@ -66,8 +109,62 @@
       comment: "Great seller! Fast shipping and product exactly as described.",
       date: "1 week ago",
       product: "iPhone 12 Pro Max"
+    },
+    {
+      id: 2,
+      user: {
+        name: "Sarah Wilson",
+        avatar: "/test.jpg.jpg"
+      },
+      rating: 4,
+      comment: "Good communication and quick response. The item arrived in perfect condition. Would buy from again!",
+      date: "2 weeks ago",
+      product: "MacBook Pro 2023"
+    },
+    {
+      id: 3,
+      user: {
+        name: "Michael Chen",
+        avatar: "/test.jpg.jpg"
+      },
+      rating: 5,
+      comment: "Excellent service! The seller went above and beyond to ensure I was satisfied with my purchase.",
+      date: "3 weeks ago",
+      product: "Sony WH-1000XM4"
+    },
+    {
+      id: 4,
+      user: {
+        name: "Emma Thompson",
+        avatar: "/test.jpg.jpg"
+      },
+      rating: 4,
+      comment: "Very professional seller. The product was well-packaged and arrived earlier than expected.",
+      date: "1 month ago",
+      product: "Nintendo Switch OLED"
+    },
+    {
+      id: 5,
+      user: {
+        name: "David Rodriguez",
+        avatar: "/test.jpg.jpg"
+      },
+      rating: 5,
+      comment: "Best buying experience ever! The seller was extremely helpful and the product exceeded my expectations.",
+      date: "1 month ago",
+      product: "Samsung Galaxy S23 Ultra"
+    },
+    {
+      id: 6,
+      user: {
+        name: "Lisa Anderson",
+        avatar: "/test.jpg.jpg"
+      },
+      rating: 4,
+      comment: "Great price and fast shipping. The item was exactly as described. Very satisfied with my purchase.",
+      date: "2 months ago",
+      product: "iPhone 12 Pro Max"
     }
-    // More reviews will be added
   ];
 
   let sales = [
@@ -78,8 +175,79 @@
       image: "/test.jpg.jpg",
       date: "2 days ago",
       status: "Completed"
+    },
+    {
+      id: 2,
+      title: "MacBook Pro 2023",
+      price: 1299,
+      image: "/test.jpg.jpg",
+      date: "1 week ago",
+      status: "Completed"
+    },
+    {
+      id: 3,
+      title: "Sony WH-1000XM4 Headphones",
+      price: 299,
+      image: "/test.jpg.jpg",
+      date: "2 weeks ago",
+      status: "Completed"
+    },
+    {
+      id: 4,
+      title: "Nintendo Switch OLED",
+      price: 349,
+      image: "/test.jpg.jpg",
+      date: "3 weeks ago",
+      status: "Completed"
+    },
+    {
+      id: 5,
+      title: "Samsung Galaxy S23 Ultra",
+      price: 1199,
+      image: "/test.jpg.jpg",
+      date: "1 month ago",
+      status: "Completed"
+    },
+    {
+      id: 6,
+      title: "iPad Pro 12.9-inch",
+      price: 999,
+      image: "/test.jpg.jpg",
+      date: "1 month ago",
+      status: "Completed"
+    },
+    {
+      id: 7,
+      title: "AirPods Pro 2nd Gen",
+      price: 249,
+      image: "/test.jpg.jpg",
+      date: "2 months ago",
+      status: "Completed"
+    },
+    {
+      id: 8,
+      title: "PlayStation 5",
+      price: 499,
+      image: "/test.jpg.jpg",
+      date: "2 months ago",
+      status: "Completed"
+    },
+    {
+      id: 9,
+      title: "DJI Mini 3 Pro Drone",
+      price: 759,
+      image: "/test.jpg.jpg",
+      date: "3 months ago",
+      status: "Completed"
+    },
+    {
+      id: 10,
+      title: "GoPro Hero 11",
+      price: 499,
+      image: "/test.jpg.jpg",
+      date: "3 months ago",
+      status: "Completed"
     }
-    // More sales will be added
   ];
 
   function handleAction() {
@@ -199,10 +367,10 @@
         </svg>
         Change Cover
       </button>
-    </div>
+  </div>
 
-    <!-- Profile Header -->
-    <div class="profile-header">
+  <!-- Profile Header -->
+  <div class="profile-header">
       <div class="profile-main">
         <div class="profile-image">
           <img src={userData.avatar || "/default-avatar.jpg"} alt="Business Profile" />
@@ -219,26 +387,26 @@
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
               <polyline points="17 8 12 3 7 8"/>
               <line x1="12" y1="3" x2="12" y2="15"/>
-            </svg>
-          </button>
-        </div>
+        </svg>
+      </button>
+    </div>
 
-        <div class="profile-info">
+    <div class="profile-info">
           <div class="business-name">
-            <h1>{userData.name}</h1>
+        <h1>{userData.name}</h1>
             {#if userData.accountType === 'seller' && businessInfo.isVerified}
               <span class="verified-text">Verified Business</span>
             {/if}
-          </div>
-          
+      </div>
+
           {#if userData.accountType === 'seller'}
             <div class="business-category">{businessInfo.category}</div>
             <div class="business-location">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
                 <circle cx="12" cy="10" r="3"/>
-              </svg>
-              {userData.location}
+          </svg>
+          {userData.location}
             </div>
             <div class="business-established">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -259,16 +427,16 @@
               <div class="meta-item">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M12 8v4l3 3m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/>
-                </svg>
-                {userData.joinDate}
+          </svg>
+          {userData.joinDate}
               </div>
               <a href={userData.website} class="meta-item website" target="_blank" rel="noopener">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zm6.93 6h-2.95c-.32-1.25-.78-2.45-1.38-3.56 1.84.63 3.37 1.91 4.33 3.56zM12 4.04c.83 1.2 1.48 2.53 1.91 3.96h-3.82c-.43-1.43 1.08-2.76 1.91-3.96zM4.26 14C4.1 13.36 4 12.69 4 12s.1-1.36.26-2h3.38c-.08.66-.14 1.32-.14 2 0 .68.06 1.34.14 2H4.26zm.82 2h2.95c.32 1.25.78 2.45 1.38 3.56-1.84-.63-3.37-1.9-4.33-3.56zm2.95-8H5.08c.96-1.66 2.49-2.93 4.33-3.56C8.81 5.55 8.35 6.75 8.03 8zM12 19.96c-.83-1.2-1.48-2.53-1.91-3.96h3.82c-.43 1.43-1.08 2.76-1.91 3.96zM14.34 14H9.66c-.09-.66-.16-1.32-.16-2 0-.68.07-1.35.16-2h4.68c.09.65.16 1.32.16 2 0 .68-.07 1.34-.16 2zm.25 5.56c.6-1.11 1.06-2.31 1.38-3.56h2.95c-.96 1.65-2.49 2.93-4.33 3.56zM16.36 14c.08-.66.14-1.32.14-2 0-.68-.06-1.34-.14-2h3.38c.16.64.26 1.31.26 2s-.1 1.36-.26 2h-3.38z"/>
-                </svg>
-                {userData.website}
-              </a>
-            </div>
+          </svg>
+          {userData.website}
+        </a>
+      </div>
           {/if}
 
           <!-- Account Type Switch -->
@@ -294,7 +462,7 @@
                 Seller
               </span>
             </button>
-          </div>
+        </div>
         </div>
 
         <div class="profile-actions">
@@ -313,7 +481,7 @@
             Share
           </button>
         </div>
-      </div>
+        </div>
 
       <!-- Performance Metrics -->
       {#if userData.accountType === 'seller'}
@@ -321,19 +489,19 @@
           <div class="metric">
             <span class="metric-value">{userData.sellerStats.responseRate}</span>
             <span class="metric-label">Response Rate</span>
-          </div>
+        </div>
           <div class="metric">
             <span class="metric-value">{userData.sellerStats.responseTime}</span>
             <span class="metric-label">Response Time</span>
-          </div>
+        </div>
           <div class="metric">
             <span class="metric-value">{userData.sellerStats.totalSales}</span>
             <span class="metric-label">Total Sales</span>
-          </div>
+      </div>
           <div class="metric">
             <span class="metric-value">{userData.sellerStats.activeListings}</span>
             <span class="metric-label">Active Listings</span>
-          </div>
+    </div>
           <div class="metric">
             <span class="metric-value">{userData.sellerStats.rating}</span>
             <span class="metric-label">Rating</span>
@@ -399,27 +567,27 @@
   <!-- Profile Tabs -->
   <div class="profile-tabs">
     {#if userData.accountType === 'seller'}
-      <button 
-        class="tab-btn" 
+    <button 
+      class="tab-btn" 
         class:active={activeTab === 'listings'}
         on:click={() => activeTab = 'listings'}
-      >
+    >
         Active Listings
-      </button>
-      <button 
-        class="tab-btn" 
+    </button>
+    <button 
+      class="tab-btn" 
         class:active={activeTab === 'sales'}
         on:click={() => activeTab = 'sales'}
-      >
+    >
         Sales History
-      </button>
-      <button 
-        class="tab-btn" 
-        class:active={activeTab === 'reviews'}
-        on:click={() => activeTab = 'reviews'}
-      >
-        Reviews
-      </button>
+    </button>
+    <button 
+      class="tab-btn" 
+      class:active={activeTab === 'reviews'}
+      on:click={() => activeTab = 'reviews'}
+    >
+      Reviews
+    </button>
     {:else}
       <button 
         class="tab-btn" 
@@ -447,7 +615,7 @@
 
   <!-- Scrollable Content -->
   <div class="profile-content">
-    <div class="tab-content">
+  <div class="tab-content">
       {#if userData.accountType === 'seller'}
         {#if activeTab === 'listings'}
           <div class="listings-grid">
@@ -456,7 +624,7 @@
                 <div class="listing-image-container">
                   <img src={listing.image} alt={listing.title} class="listing-image" />
                   <span class="listing-status {listing.status.toLowerCase()}">{listing.status}</span>
-                </div>
+              </div>
                 <div class="listing-content">
                   <h3>{listing.title}</h3>
                   <p class="price">${listing.price}</p>
@@ -468,48 +636,59 @@
                     <span><i class="fas fa-eye"></i> {listing.views}</span>
                     <span><i class="fas fa-heart"></i> {listing.likes}</span>
                   </div>
-                </div>
-              </div>
-            {/each}
+            </div>
           </div>
+        {/each}
+            <div class="see-more-card">
+              <button class="see-more-btn" on:click={() => console.log('See more clicked')}>
+                <span class="see-more-text">See More</span>
+                <span class="see-more-count">+{Math.floor(Math.random() * 50)} items</span>
+                <svg xmlns="http://www.w3.org/2000/svg" class="see-more-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M5 12h14M12 5l7 7-7 7"/>
+                </svg>
+              </button>
+      </div>
+              </div>
         {:else if activeTab === 'sales'}
-          <div class="sales-grid">
+          <div class="sales-list">
             {#each sales as sale}
-              <div class="sale-card">
-                <img src={sale.image} alt={sale.title} class="sale-image" />
-                <div class="sale-content">
+              <div class="sale-item">
+                <div class="sale-info">
                   <h3>{sale.title}</h3>
-                  <p class="price">${sale.price}</p>
-                  <div class="sale-meta">
-                    <span class="date">{sale.date}</span>
-                    <span class="status {sale.status.toLowerCase()}">{sale.status}</span>
+                  <div class="sale-details">
+                    <span class="sale-price">${sale.price}</span>
+                    <span class="sale-date">{sale.date}</span>
+                    <span class="sale-status {sale.status.toLowerCase()}">{sale.status}</span>
                   </div>
                 </div>
-              </div>
-            {/each}
+                <div class="sale-actions">
+                  <button class="view-details-btn">View Details</button>
+            </div>
           </div>
+        {/each}
+      </div>
         {:else}
-          <div class="reviews-list">
-            {#each reviews as review}
-              <div class="review-card">
-                <div class="review-header">
-                  <img src={review.user.avatar} alt={review.user.name} class="review-avatar" />
-                  <div class="review-user-info">
-                    <h4>{review.user.name}</h4>
-                    <div class="rating">
-                      {#each Array(5) as _, i}
-                        <span class="star" class:filled={i < review.rating}>★</span>
-                      {/each}
-                    </div>
-                  </div>
-                  <span class="review-date">{review.date}</span>
+      <div class="reviews-list">
+        {#each reviews as review}
+          <div class="review-card">
+            <div class="review-header">
+              <img src={review.user.avatar} alt={review.user.name} class="review-avatar" />
+              <div class="review-user-info">
+                <h4>{review.user.name}</h4>
+                <div class="rating">
+                  {#each Array(5) as _, i}
+                    <span class="star" class:filled={i < review.rating}>★</span>
+                  {/each}
                 </div>
-                <p class="review-product">Product: {review.product}</p>
-                <p class="review-comment">{review.comment}</p>
               </div>
-            {/each}
+              <span class="review-date">{review.date}</span>
+            </div>
+            <p class="review-product">Product: {review.product}</p>
+            <p class="review-comment">{review.comment}</p>
           </div>
-        {/if}
+        {/each}
+      </div>
+    {/if}
       {:else}
         {#if activeTab === 'purchases'}
           <div class="purchases-grid">
@@ -536,11 +715,15 @@
     flex-direction: column;
     overflow-y: auto;
     background-color: white;
+    width: 100%;
+    max-width: 100vw;
+    position: relative;
   }
 
   .profile-container {
     width: 100%;
     background: #fff;
+    overflow-x: hidden;
   }
 
   .cover-photo {
@@ -779,18 +962,102 @@
     flex-direction: column;
     align-items: center;
     text-align: center;
+    padding: 1rem;
+    background: white;
+    border-radius: 0.75rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .metric:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  }
+
+  /* Seller Stats Colors */
+  .metric:nth-child(1) .metric-value {
+    background: linear-gradient(135deg, #10B981, #059669); /* Response Rate - Green */
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .metric:nth-child(2) .metric-value {
+    background: linear-gradient(135deg, #3B82F6, #2563EB); /* Response Time - Blue */
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .metric:nth-child(3) .metric-value {
+    background: linear-gradient(135deg, #F59E0B, #D97706); /* Total Sales - Orange */
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .metric:nth-child(4) .metric-value {
+    background: linear-gradient(135deg, #8B5CF6, #7C3AED); /* Active Listings - Purple */
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .metric:nth-child(5) .metric-value {
+    background: linear-gradient(135deg, #EC4899, #DB2777); /* Rating - Pink */
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .metric:nth-child(6) .metric-value {
+    background: linear-gradient(135deg, #6366F1, #4F46E5); /* Member Since - Indigo */
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  /* Buyer Stats Colors */
+  .metric:nth-child(1) .metric-value {
+    background: linear-gradient(135deg, #F59E0B, #D97706); /* Total Purchases - Orange */
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .metric:nth-child(2) .metric-value {
+    background: linear-gradient(135deg, #EC4899, #DB2777); /* Wishlist Items - Pink */
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .metric:nth-child(3) .metric-value {
+    background: linear-gradient(135deg, #8B5CF6, #7C3AED); /* Reviews Given - Purple */
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .metric:nth-child(4) .metric-value {
+    background: linear-gradient(135deg, #3B82F6, #2563EB); /* Saved Sellers - Blue */
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .metric:nth-child(5) .metric-value {
+    background: linear-gradient(135deg, #10B981, #059669); /* Active Bids - Green */
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .metric:nth-child(6) .metric-value {
+    background: linear-gradient(135deg, #6366F1, #4F46E5); /* Member Since - Indigo */
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
   }
 
   .metric-value {
     font-size: 1.5rem;
-    font-weight: 600;
-    color: #111;
+    font-weight: 700;
     margin-bottom: 0.25rem;
   }
 
   .metric-label {
     font-size: 0.875rem;
     color: #64748b;
+    font-weight: 500;
   }
 
   .business-hours {
@@ -862,63 +1129,66 @@
   }
 
   @media (max-width: 768px) {
+    .profile-page {
+      min-height: 100vh;
+      width: 100vw;
+      overflow-x: hidden;
+    }
+
+    .profile-container {
+      width: 100%;
+      overflow-x: hidden;
+    }
+
     .profile-main {
-      flex-direction: row;
-      align-items: flex-start;
-      text-align: left;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
       gap: 1rem;
       padding: 0 1rem;
+      width: 100%;
+      max-width: 100%;
     }
 
     .profile-image {
       margin-top: -60px;
-      flex-shrink: 0;
+      margin-bottom: 1rem;
+      width: 120px;
+      height: 120px;
     }
 
     .profile-image img {
-      width: 100px;
-      height: 100px;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
     }
 
     .profile-info {
-      flex: 1;
-      min-width: 0;
+      width: 100%;
+      text-align: center;
+      padding: 0 0.5rem;
     }
 
     .business-name {
-      justify-content: flex-start;
+      justify-content: center;
       flex-wrap: wrap;
       gap: 0.5rem;
+      width: 100%;
     }
 
     .business-name h1 {
       font-size: 1.5rem;
       margin-right: 0.5rem;
-    }
-
-    .verified-text {
-      font-size: 0.75rem;
-      padding: 0.15rem 0.5rem;
-    }
-
-    .business-category,
-    .user-bio {
-      font-size: 0.9rem;
-      margin: 0.5rem 0;
-    }
-
-    .business-location,
-    .business-established,
-    .user-meta {
-      font-size: 0.85rem;
-      gap: 0.75rem;
-      flex-wrap: wrap;
+      width: 100%;
     }
 
     .profile-actions {
-      flex-wrap: nowrap;
+      flex-wrap: wrap;
       gap: 0.5rem;
       margin-top: 1rem;
+      justify-content: center;
+      width: 100%;
+      padding: 0 0.5rem;
     }
 
     .follow-btn,
@@ -927,233 +1197,166 @@
       padding: 0.5rem 1rem;
       font-size: 0.85rem;
       white-space: nowrap;
+      flex: 1;
+      min-width: 120px;
+      max-width: 150px;
     }
 
     .performance-metrics {
-      grid-template-columns: repeat(3, 1fr);
-      gap: 0.75rem;
-      padding: 1rem;
-      margin: 1rem;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 0.5rem;
+      padding: 0.75rem;
+      margin: 0.75rem;
+      width: calc(100% - 1.5rem);
+      background: transparent;
     }
 
     .metric {
-      padding: 0.5rem;
+      padding: 0.5rem 0.25rem;
+      min-width: 0;
+      background: white;
+      border-radius: 0.5rem;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    }
+
+    .metric:hover {
+      transform: none;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
     }
 
     .metric-value {
-      font-size: 1.1rem;
+      font-size: 0.9rem;
+      font-weight: 600;
+      margin-bottom: 0.15rem;
     }
 
     .metric-label {
-      font-size: 0.75rem;
+      font-size: 0.65rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: #64748b;
     }
 
-    .profile-tabs {
+    .listings-grid,
+    .sales-grid {
+      grid-auto-columns: 180px;
+      gap: 0.75rem;
+  }
+
+  .profile-tabs {
+      width: 100%;
       padding: 0.5rem;
       overflow-x: auto;
       white-space: nowrap;
       -webkit-overflow-scrolling: touch;
       scrollbar-width: none;
       -ms-overflow-style: none;
+      justify-content: center;
     }
 
-    .profile-tabs::-webkit-scrollbar {
-      display: none;
-    }
-
-    .tab-btn {
-      padding: 0.75rem 1rem;
-      font-size: 0.9rem;
-    }
-
-    .listings-grid,
-    .sales-grid {
-      grid-template-columns: repeat(3, 1fr);
-      gap: 0.75rem;
-      padding: 0.75rem;
-    }
-
-    .listing-card,
-    .sale-card {
-      border-radius: 0.75rem;
-    }
-
-    .listing-image,
-    .sale-image {
-      height: 120px;
-    }
-
-    .listing-content,
-    .sale-content {
+    .profile-content {
+      width: 100%;
       padding: 0.5rem;
+      overflow-x: hidden;
     }
 
-    .listing-content h3,
-    .sale-content h3 {
-      font-size: 0.85rem;
+    .cover-photo {
+      height: 200px;
+      width: 100%;
     }
 
-    .price {
-      font-size: 0.9rem;
-    }
-
-    .listing-meta {
-      gap: 0.25rem;
-    }
-
-    .category,
-    .condition {
-      font-size: 0.65rem;
-      padding: 0.1rem 0.25rem;
-    }
-
-    .listing-stats {
-      font-size: 0.65rem;
-    }
-
-    .reviews-list {
-      padding: 0.75rem;
-    }
-
-    .review-card {
-      padding: 1rem;
-      border-radius: 0.75rem;
-    }
-
-    .review-header {
-      gap: 0.75rem;
-    }
-
-    .review-avatar {
-      width: 40px;
-      height: 40px;
-    }
-
-    .review-user-info h4 {
-      font-size: 0.9rem;
-    }
-
-    .review-date {
-      font-size: 0.75rem;
-    }
-
-    .review-product {
-      font-size: 0.8rem;
-    }
-
-    .review-comment {
-      font-size: 0.85rem;
-    }
-
-    .action-button {
-      bottom: 1rem;
-      right: 1rem;
-      padding: 0.5rem 1rem;
-      font-size: 0.9rem;
-    }
-
-    .action-button .icon {
-      width: 1.25rem;
-      height: 1.25rem;
-    }
-
-    .account-toggle {
-      margin: 0.75rem 0;
-    }
-
-    .toggle-button {
-      min-width: 180px;
-    }
-
-    .toggle-option {
-      padding: 0.5rem 1rem;
-      font-size: 0.8rem;
-    }
-
-    .toggle-option svg {
-      width: 1.1rem;
-      height: 1.1rem;
+    .cover-photo img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
     }
   }
 
   @media (max-width: 480px) {
+    .profile-page {
+      min-height: 100vh;
+      width: 100vw;
+      overflow-x: hidden;
+    }
+
     .profile-main {
-      flex-direction: row;
-      align-items: flex-start;
-      text-align: left;
-      padding: 0 0.75rem;
+      padding: 0 0.5rem;
     }
 
     .profile-image {
-      margin-top: -40px;
+      width: 100px;
+      height: 100px;
     }
 
-    .profile-image img {
-      width: 80px;
-      height: 80px;
+    .profile-info {
+      padding: 0 0.25rem;
     }
 
-    .business-name {
-      justify-content: flex-start;
-    }
-
-    .business-location,
-    .business-established,
-    .user-meta {
-      justify-content: flex-start;
-    }
-
-    .profile-actions {
-      flex-wrap: nowrap;
-      justify-content: flex-start;
+    .business-name h1 {
+      font-size: 1.25rem;
     }
 
     .follow-btn,
     .message-btn,
     .share-btn {
-      padding: 0.4rem 0.75rem;
+      min-width: 100px;
+      max-width: 120px;
       font-size: 0.8rem;
+      padding: 0.4rem 0.75rem;
     }
 
     .performance-metrics {
-      grid-template-columns: repeat(3, 1fr);
-      margin: 0.75rem;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 0.35rem;
+      padding: 0.5rem;
+      margin: 0.5rem;
+      width: calc(100% - 1rem);
+    }
+
+    .metric {
+      padding: 0.35rem 0.2rem;
+      border-radius: 0.35rem;
+    }
+
+    .metric-value {
+      font-size: 0.8rem;
+      margin-bottom: 0.1rem;
+    }
+
+    .metric-label {
+      font-size: 0.6rem;
     }
 
     .listings-grid,
     .sales-grid {
-      grid-template-columns: repeat(2, 1fr);
+      grid-auto-columns: 160px;
+      gap: 0.5rem;
     }
 
     .listing-image,
     .sale-image {
-      height: 100px;
+      height: 180px;
     }
 
     .cover-photo {
-      height: 120px;
+      height: 150px;
     }
 
-    .edit-cover {
-      padding: 0.35rem 0.75rem;
-      font-size: 0.85rem;
+    .profile-header {
+      padding: 0.5rem;
     }
 
-    .edit-cover svg {
-      width: 1rem;
-      height: 1rem;
+    .profile-content {
+      padding: 0.25rem;
     }
 
-    .metric-value {
-      font-size: 1rem;
-    }
-
-    .metric-label {
-      font-size: 0.7rem;
+    .profile-tabs {
+      padding: 0.25rem;
     }
 
     .tab-btn {
-      padding: 0.6rem 0.8rem;
+      padding: 0.5rem 0.75rem;
       font-size: 0.8rem;
     }
   }
@@ -1167,6 +1370,15 @@
     display: flex;
     gap: 1rem;
     border-bottom: 1px solid #e2e8f0;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    justify-content: center;
+    width: 100%;
+  }
+
+  .profile-tabs::-webkit-scrollbar {
+    display: none;
   }
 
   .tab-btn {
@@ -1178,6 +1390,8 @@
     color: #718096;
     cursor: pointer;
     position: relative;
+    white-space: nowrap;
+    min-width: fit-content;
   }
 
   .tab-btn.active {
@@ -1195,71 +1409,126 @@
   }
 
   .profile-content {
-    padding: 2rem;
+    padding: 1rem;
     padding-bottom: 8rem;
-    max-width: 1400px;
+    max-width: 1200px;
     margin: 0 auto;
+    width: 100%;
+    overflow-x: hidden;
+    box-sizing: border-box;
+  }
+
+  .tab-content {
+    width: 100%;
+    overflow-x: hidden;
   }
 
   .listings-grid,
   .sales-grid {
     display: grid;
-    grid-template-columns: repeat(6, 1fr);
+    grid-auto-flow: column;
+    grid-auto-columns: 220px;
     gap: 1rem;
     width: 100%;
-  }
-
-  .listing-card,
-  .sale-card {
-    background: white;
-    border-radius: 1rem;
-    overflow: hidden;
-    transition: transform 0.2s ease;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    height: 100%;
-  }
-
-  .listing-image-container {
+    padding: 0.5rem;
+    box-sizing: border-box;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    padding-bottom: 1rem;
     position: relative;
   }
 
-  .listing-image,
-  .sale-image {
-    width: 100%;
-    height: 140px;
-    object-fit: cover;
+  .listing-card,
+  .sale-card,
+  .see-more-card {
+    width: 220px;
+    flex: 0 0 220px;
+    scroll-snap-align: start;
+    position: relative;
+    background: white;
+    border-radius: 0.75rem;
+    overflow: hidden;
+    transition: transform 0.2s ease;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    display: flex;
+    flex-direction: column;
+  }
+
+  .listing-card:hover,
+  .sale-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   }
 
   .listing-status {
     position: absolute;
-    top: 1rem;
-    right: 1rem;
-    padding: 0.25rem 0.75rem;
-    border-radius: 1rem;
-    font-size: 0.75rem;
-    font-weight: 500;
+    top: 0.75rem;
+    right: 0.75rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.5rem;
+    font-size: 0.7rem;
+    font-weight: 600;
     background: white;
+    z-index: 1;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   }
 
   .listing-status.active {
-    color: #2F855A;
+    color: white;
+    background: #2F855A;
+  }
+
+  .listing-status.sold {
+    color: white;
+    background: #E53E3E;
+  }
+
+  .listing-status.pending {
+    color: white;
+    background: #D69E2E;
+  }
+
+  .listing-image-container {
+    position: relative;
+    width: 100%;
+    padding-top: 75%; /* 4:3 Aspect Ratio */
+    flex-shrink: 0;
+  }
+
+  .listing-image,
+  .sale-image {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
   }
 
   .listing-content,
   .sale-content {
     padding: 0.75rem;
+    width: 100%;
+    box-sizing: border-box;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
   }
 
   .listing-content h3,
   .sale-content h3 {
-    margin: 0 0 0.5rem;
+    margin: 0 0 0.25rem;
     font-size: 0.9rem;
     font-weight: 600;
-    line-height: 1.4;
+    line-height: 1.3;
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
+    word-break: break-word;
+    height: 2.6em;
   }
 
   .price {
@@ -1290,6 +1559,8 @@
     gap: 0.5rem;
     color: #718096;
     font-size: 0.7rem;
+    margin-top: auto;
+    padding-top: 0.25rem;
   }
 
   .review-product {
@@ -1302,13 +1573,23 @@
   .reviews-list {
     display: flex;
     flex-direction: column;
-    gap: 1.5rem;
+    gap: 1rem;
+    padding: 0.5rem;
+    width: 100%;
   }
 
   .review-card {
     background: white;
     padding: 1.5rem;
     border-radius: 1rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    width: 100%;
+  }
+
+  .review-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   }
 
   .review-header {
@@ -1316,6 +1597,7 @@
     align-items: center;
     gap: 1rem;
     margin-bottom: 1rem;
+    flex-wrap: wrap;
   }
 
   .review-avatar {
@@ -1323,14 +1605,23 @@
     height: 48px;
     border-radius: 50%;
     object-fit: cover;
+    flex-shrink: 0;
+  }
+
+  .review-user-info {
+    flex: 1;
+    min-width: 200px;
   }
 
   .review-user-info h4 {
-    margin: 0;
+    margin: 0 0 0.25rem 0;
     font-weight: 600;
+    color: #1a202c;
   }
 
   .rating {
+    display: flex;
+    gap: 0.25rem;
     color: #ECC94B;
   }
 
@@ -1343,15 +1634,90 @@
   }
 
   .review-date {
-    margin-left: auto;
     color: #718096;
     font-size: 0.875rem;
+    margin-left: auto;
   }
 
   .review-comment {
     color: #4A5568;
     line-height: 1.6;
-    margin: 0;
+    margin: 0.75rem 0 0 0;
+    font-size: 0.95rem;
+  }
+
+  @media (max-width: 768px) {
+    .review-card {
+      padding: 1.25rem;
+    }
+
+    .review-header {
+      gap: 0.75rem;
+    }
+
+    .review-avatar {
+      width: 40px;
+      height: 40px;
+    }
+
+    .review-user-info h4 {
+      font-size: 0.95rem;
+    }
+
+    .review-date {
+      font-size: 0.8rem;
+    }
+
+    .review-product {
+      font-size: 0.8rem;
+      padding: 0.4rem 0.75rem;
+    }
+
+    .review-comment {
+      font-size: 0.9rem;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .review-card {
+      padding: 1rem;
+    }
+
+    .review-header {
+      gap: 0.5rem;
+    }
+
+    .review-avatar {
+      width: 36px;
+      height: 36px;
+    }
+
+    .review-user-info {
+      min-width: 150px;
+    }
+
+    .review-user-info h4 {
+      font-size: 0.9rem;
+    }
+
+    .rating {
+      font-size: 0.9rem;
+    }
+
+    .review-date {
+      font-size: 0.75rem;
+      margin-left: 0;
+      width: 100%;
+    }
+
+    .review-product {
+      font-size: 0.75rem;
+      padding: 0.35rem 0.6rem;
+    }
+
+    .review-comment {
+      font-size: 0.85rem;
+    }
   }
 
   /* Custom Scrollbar Styling */
@@ -1384,7 +1750,7 @@
     bottom: 2rem;
     right: 2rem;
     display: flex;
-    align-items: center;
+      align-items: center;
     gap: 0.5rem;
     padding: 0.75rem 1.5rem;
     background: #4299e1;
@@ -1419,7 +1785,8 @@
 
     .listings-grid,
     .sales-grid {
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      padding: 0 0.5rem;
     }
   }
 
@@ -1430,24 +1797,63 @@
 
     .listings-grid,
     .sales-grid {
-      grid-template-columns: repeat(2, 1fr);
+      grid-auto-columns: 180px;
+      gap: 0.75rem;
     }
 
-    .listing-image,
-    .sale-image {
-      height: 120px;
+    .listing-card,
+    .sale-card,
+    .see-more-card {
+      width: 180px;
+      flex: 0 0 180px;
+    }
+
+    .listing-content h3,
+    .sale-content h3 {
+      font-size: 0.9rem;
+    }
+
+    .price {
+      font-size: 1.1rem;
     }
   }
 
   @media (max-width: 480px) {
-    .listings-grid,
-    .sales-grid {
-      grid-template-columns: 1fr;
+    .profile-content {
+      padding: 0.5rem;
     }
 
-    .listing-image,
-    .sale-image {
-      height: 180px;
+    .listings-grid,
+    .sales-grid {
+      grid-auto-columns: 160px;
+      gap: 0.5rem;
+    }
+
+    .listing-card,
+    .sale-card,
+    .see-more-card {
+      width: 160px;
+      flex: 0 0 160px;
+    }
+
+    .listing-content h3,
+    .sale-content h3 {
+      font-size: 0.85rem;
+    }
+
+    .price {
+      font-size: 1rem;
+    }
+
+    .category,
+    .condition {
+      font-size: 0.7rem;
+      padding: 0.2rem 0.4rem;
+    }
+
+    .listing-stats {
+      font-size: 0.7rem;
+      gap: 0.5rem;
     }
   }
 
@@ -1527,14 +1933,49 @@
   }
 
   .account-toggle {
-    margin: 1rem 0;
+    position: fixed;
+    top: 5rem;  /* Moved down to avoid nav bars */
+    right: 2rem;
+    z-index: 1000;
+    background: white;
+    border-radius: 2rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+
+  @media (max-width: 768px) {
+    .account-toggle {
+      top: 4rem;  /* Adjusted for mobile nav */
+      right: 1rem;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .account-toggle {
+      top: 3.5rem;  /* Further adjusted for smaller screens */
+      right: 0.75rem;
+    }
+
+    .toggle-button {
+      min-width: 110px;
+      padding: 0.25rem;
+    }
+
+    .toggle-option {
+      padding: 0.25rem 0.4rem;
+      font-size: 0.65rem;
+    }
+
+    .toggle-option svg {
+      width: 0.7rem;
+      height: 0.7rem;
+    }
   }
 
   .toggle-button {
     display: flex;
-    background: #f8fafc;
-    border-radius: 1.5rem;
-    padding: 0.25rem;
+    background: white;
+    border-radius: 2rem;
+    padding: 0.5rem;
     position: relative;
     cursor: pointer;
     border: 1px solid #e2e8f0;
@@ -1542,12 +1983,56 @@
     transition: all 0.3s ease;
   }
 
+  @media (max-width: 768px) {
+    .account-toggle {
+      top: 4rem;
+      right: 1rem;
+    }
+
+    .toggle-button {
+      min-width: 160px;
+      padding: 0.4rem;
+    }
+
+    .toggle-option {
+      padding: 0.4rem 0.75rem;
+      font-size: 0.8rem;
+    }
+
+    .toggle-option svg {
+      width: 0.9rem;
+      height: 0.9rem;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .account-toggle {
+      top: 3.5rem;
+      right: 0.75rem;
+    }
+
+    .toggle-button {
+      min-width: 140px;
+      padding: 0.35rem;
+    }
+
+    .toggle-option {
+      padding: 0.35rem 0.6rem;
+      font-size: 0.75rem;
+    }
+
+    .toggle-option svg {
+      width: 0.8rem;
+      height: 0.8rem;
+    }
+  }
+
   .toggle-option {
     padding: 0.75rem 1.25rem;
-    font-size: 0.875rem;
+    font-size: 0.95rem;
     font-weight: 500;
     color: #64748b;
-    border-radius: 1.25rem;
+    border-radius: 1.5rem;
     transition: all 0.3s ease;
     z-index: 1;
     flex: 1;
@@ -1575,25 +2060,28 @@
     left: 0.25rem;
     width: calc(50% - 0.25rem);
     height: calc(100% - 0.5rem);
-    background: white;
-    border-radius: 1.25rem;
+    background: #f8fafc;
+    border-radius: 1.5rem;
     transition: all 0.3s ease;
     transform: translateX(0);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
   }
 
   .toggle-button.seller-active::before {
     transform: translateX(100%);
   }
 
-  .toggle-button:hover::before {
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  @media (max-width: 768px) {
+    .toggle-option {
+      padding: 0.6rem 1rem;
+      font-size: 0.9rem;
+    }
   }
 
-  @media (max-width: 768px) {
-    .toggle-button {
-      width: 100%;
-      max-width: 200px;
+  @media (max-width: 480px) {
+    .toggle-option {
+      padding: 0.5rem 0.75rem;
+      font-size: 0.85rem;
     }
   }
 
@@ -1618,5 +2106,200 @@
     max-height: 90vh;
     overflow-y: auto;
     padding: 2rem;
+  }
+
+  .see-more-btn {
+    width: 100%;
+    height: 100%;
+    background: white;
+    border: 2px dashed #e2e8f0;
+    border-radius: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    padding: 0.75rem;
+    position: relative;
+    z-index: 2;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  }
+
+  .see-more-btn:hover {
+    border-color: #2563eb;
+    background: #f8fafc;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  }
+
+  .see-more-text {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #2563eb;
+  }
+
+  .see-more-count {
+    font-size: 0.8rem;
+    color: #64748b;
+  }
+
+  .see-more-icon {
+    width: 1.25rem;
+    height: 1.25rem;
+    color: #2563eb;
+    margin-top: 0.25rem;
+  }
+
+  @media (max-width: 768px) {
+    .see-more-card {
+      width: 180px;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .see-more-card {
+      width: 160px;
+    }
+    .see-more-text {
+      font-size: 0.85rem;
+    }
+    .see-more-count {
+      font-size: 0.7rem;
+    }
+    .see-more-icon {
+      width: 1.1rem;
+      height: 1.1rem;
+    }
+  }
+
+  .sales-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding: 0.5rem;
+  }
+
+  .sale-item {
+    background: white;
+    border-radius: 0.75rem;
+      padding: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .sale-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  }
+
+  .sale-info {
+    flex: 1;
+  }
+
+  .sale-info h3 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #1a202c;
+  }
+
+  .sale-details {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .sale-price {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #2d3748;
+  }
+
+  .sale-date {
+    color: #718096;
+    font-size: 0.9rem;
+  }
+
+  .sale-status {
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.5rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+  }
+
+  .sale-status.completed {
+    background: #C6F6D5;
+    color: #2F855A;
+  }
+
+  .sale-status.pending {
+    background: #FEFCBF;
+    color: #D69E2E;
+  }
+
+  .sale-status.cancelled {
+    background: #FED7D7;
+    color: #E53E3E;
+  }
+
+  .sale-actions {
+    margin-left: 1rem;
+  }
+
+  .view-details-btn {
+    padding: 0.5rem 1rem;
+    background: #EBF8FF;
+    color: #3182CE;
+    border: none;
+    border-radius: 0.5rem;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .view-details-btn:hover {
+    background: #BEE3F8;
+  }
+
+  @media (max-width: 768px) {
+    .sale-item {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 1rem;
+    }
+
+    .sale-actions {
+      margin-left: 0;
+      width: 100%;
+    }
+
+    .view-details-btn {
+      width: 100%;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .sale-details {
+      gap: 0.5rem;
+    }
+
+    .sale-price {
+      font-size: 1rem;
+    }
+
+    .sale-date {
+      font-size: 0.8rem;
+    }
+
+    .sale-status {
+      font-size: 0.7rem;
+    }
   }
 </style> 
