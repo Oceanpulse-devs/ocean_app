@@ -250,6 +250,160 @@
     }
   ];
 
+  let purchases = [
+    {
+      id: 1,
+      title: "iPhone 13 Pro",
+      price: 999,
+      image: "/test.jpg.jpg",
+      date: "2 days ago",
+      status: "Delivered",
+      seller: "TechStore"
+    },
+    {
+      id: 2,
+      title: "Nike Air Max 270",
+      price: 150,
+      image: "/test.jpg.jpg",
+      date: "1 week ago",
+      status: "Delivered",
+      seller: "SneakerHead"
+    },
+    {
+      id: 3,
+      title: "Samsung 4K Smart TV",
+      price: 799,
+      image: "/test.jpg.jpg",
+      date: "2 weeks ago",
+      status: "Delivered",
+      seller: "ElectroWorld"
+    },
+    {
+      id: 4,
+      title: "Sony PlayStation 5",
+      price: 499,
+      image: "/test.jpg.jpg",
+      date: "1 month ago",
+      status: "Delivered",
+      seller: "GameZone"
+    },
+    {
+      id: 5,
+      title: "Apple Watch Series 7",
+      price: 399,
+      image: "/test.jpg.jpg",
+      date: "2 months ago",
+      status: "Delivered",
+      seller: "TechStore"
+    }
+  ];
+
+  let wishlist = [
+    {
+      id: 1,
+      title: "MacBook Pro M2",
+      price: 1299,
+      image: "/test.jpg.jpg",
+      addedDate: "2 days ago",
+      seller: "Apple Store",
+      category: "Electronics"
+    },
+    {
+      id: 2,
+      title: "Nike Air Jordan 1",
+      price: 179,
+      image: "/test.jpg.jpg",
+      addedDate: "1 week ago",
+      seller: "SneakerHead",
+      category: "Fashion"
+    },
+    {
+      id: 3,
+      title: "Sony WH-1000XM5",
+      price: 399,
+      image: "/test.jpg.jpg",
+      addedDate: "2 weeks ago",
+      seller: "AudioWorld",
+      category: "Electronics"
+    },
+    {
+      id: 4,
+      title: "Canon EOS R6",
+      price: 2499,
+      image: "/test.jpg.jpg",
+      addedDate: "1 month ago",
+      seller: "PhotoPro",
+      category: "Photography"
+    },
+    {
+      id: 5,
+      title: "Rolex Submariner",
+      price: 8999,
+      image: "/test.jpg.jpg",
+      addedDate: "2 months ago",
+      seller: "LuxuryWatches",
+      category: "Luxury"
+    }
+  ];
+
+  let activeBids = [
+    {
+      id: 1,
+      title: "Vintage Rolex Daytona",
+      currentBid: 8500,
+      yourBid: 8200,
+      timeLeft: "2 days 5 hours",
+      image: "/test.jpg.jpg",
+      seller: "LuxuryWatches",
+      totalBids: 12,
+      status: "Outbid"
+    },
+    {
+      id: 2,
+      title: "Limited Edition Nike Dunk Low",
+      currentBid: 250,
+      yourBid: 250,
+      timeLeft: "5 hours 30 mins",
+      image: "/test.jpg.jpg",
+      seller: "SneakerHead",
+      totalBids: 8,
+      status: "Highest Bidder"
+    },
+    {
+      id: 3,
+      title: "Sony A7IV Camera",
+      currentBid: 2200,
+      yourBid: 2100,
+      timeLeft: "1 day 12 hours",
+      image: "/test.jpg.jpg",
+      seller: "PhotoPro",
+      totalBids: 15,
+      status: "Outbid"
+    },
+    {
+      id: 4,
+      title: "Apple Mac Studio",
+      currentBid: 1800,
+      yourBid: 1800,
+      timeLeft: "3 hours 45 mins",
+      image: "/test.jpg.jpg",
+      seller: "TechStore",
+      totalBids: 6,
+      status: "Highest Bidder"
+    },
+    {
+      id: 5,
+      title: "Designer Leather Bag",
+      currentBid: 450,
+      yourBid: 400,
+      timeLeft: "8 hours 20 mins",
+      image: "/test.jpg.jpg",
+      seller: "FashionHouse",
+      totalBids: 9,
+      status: "Outbid"
+    }
+  ];
+
   function handleAction() {
     if (userData.accountType === 'buyer') {
       // Show post modal
@@ -281,6 +435,12 @@
 
   function toggleAccountType() {
     userData.accountType = userData.accountType === 'buyer' ? 'seller' : 'buyer';
+    // Automatically switch to appropriate tab based on account type
+    if (userData.accountType === 'buyer') {
+      activeTab = 'purchases';
+    } else {
+      activeTab = 'listings';
+    }
   }
 
   let businessInfo = {
@@ -691,16 +851,100 @@
     {/if}
       {:else}
         {#if activeTab === 'purchases'}
-          <div class="purchases-grid">
-            <!-- Similar to sales grid but for purchases -->
+          <div class="purchases-list">
+            {#each purchases as purchase}
+              <div class="purchase-item">
+                <div class="purchase-info">
+                  <h3>{purchase.title}</h3>
+                  <div class="purchase-details">
+                    <span class="purchase-price">${purchase.price}</span>
+                    <span class="purchase-date">{purchase.date}</span>
+                    <span class="purchase-status {purchase.status.toLowerCase()}">{purchase.status}</span>
+                    <span class="purchase-seller">Seller: {purchase.seller}</span>
+                  </div>
+                </div>
+                <div class="purchase-actions">
+                  <button class="view-details-btn">View Details</button>
+                  <button class="track-order-btn">Track Order</button>
+                </div>
+              </div>
+            {/each}
           </div>
         {:else if activeTab === 'wishlist'}
           <div class="wishlist-grid">
-            <!-- Similar to listings grid but for wishlist items -->
+            {#each wishlist as item}
+              <div class="wishlist-item">
+                <div class="wishlist-image-container">
+                  <img src={item.image} alt={item.title} class="wishlist-image" />
+                  <button class="remove-wishlist-btn" title="Remove from wishlist">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
+                </div>
+                <div class="wishlist-content">
+                  <h3>{item.title}</h3>
+                  <p class="price">${item.price}</p>
+                  <div class="wishlist-meta">
+                    <span class="category">{item.category}</span>
+                    <span class="seller">Seller: {item.seller}</span>
+                  </div>
+                  <div class="wishlist-footer">
+                    <span class="added-date">Added {item.addedDate}</span>
+                    <button class="buy-now-btn">Buy Now</button>
+                  </div>
+                </div>
+              </div>
+            {/each}
           </div>
         {:else}
           <div class="bids-list">
-            <!-- List of active bids -->
+            {#each activeBids as bid}
+              <div class="bid-item">
+                <div class="bid-image-container">
+                  <img src={bid.image} alt={bid.title} class="bid-image" />
+                  <span class="bid-status {bid.status.toLowerCase().replace(' ', '-')}">
+                    {bid.status}
+                  </span>
+                </div>
+                <div class="bid-content">
+                  <div class="bid-header">
+                    <h3>{bid.title}</h3>
+                    <span class="seller">Seller: {bid.seller}</span>
+                  </div>
+                  <div class="bid-details">
+                    <div class="bid-amounts">
+                      <div class="amount-group">
+                        <span class="label">Current Bid</span>
+                        <span class="value">${bid.currentBid}</span>
+                      </div>
+                      <div class="amount-group">
+                        <span class="label">Your Bid</span>
+                        <span class="value">${bid.yourBid}</span>
+                      </div>
+                    </div>
+                    <div class="bid-meta">
+                      <div class="time-left">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <path d="M12 8v4l3 3m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/>
+                        </svg>
+                        {bid.timeLeft}
+                      </div>
+                      <div class="total-bids">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2"/>
+                        </svg>
+                        {bid.totalBids} bids
+                      </div>
+                    </div>
+                  </div>
+                  <div class="bid-actions">
+                    <button class="increase-bid-btn">Increase Bid</button>
+                    <button class="cancel-bid-btn">Cancel Bid</button>
+                  </div>
+                </div>
+              </div>
+            {/each}
           </div>
         {/if}
       {/if}
@@ -2300,6 +2544,553 @@
 
     .sale-status {
       font-size: 0.7rem;
+    }
+  }
+
+  .purchases-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding: 0.5rem;
+  }
+
+  .purchase-item {
+    background: white;
+    border-radius: 0.75rem;
+    padding: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .purchase-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  }
+
+  .purchase-info {
+    flex: 1;
+  }
+
+  .purchase-info h3 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #1a202c;
+  }
+
+  .purchase-details {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .purchase-price {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #2d3748;
+  }
+
+  .purchase-date {
+    color: #718096;
+    font-size: 0.9rem;
+  }
+
+  .purchase-status {
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.5rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+  }
+
+  .purchase-status.delivered {
+    background: #C6F6D5;
+    color: #2F855A;
+  }
+
+  .purchase-status.processing {
+    background: #FEFCBF;
+    color: #D69E2E;
+  }
+
+  .purchase-status.cancelled {
+    background: #FED7D7;
+    color: #E53E3E;
+  }
+
+  .purchase-seller {
+    color: #4A5568;
+    font-size: 0.9rem;
+  }
+
+  .purchase-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-left: 1rem;
+  }
+
+  .track-order-btn {
+    padding: 0.5rem 1rem;
+    background: #EBF8FF;
+    color: #3182CE;
+    border: none;
+    border-radius: 0.5rem;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .track-order-btn:hover {
+    background: #BEE3F8;
+  }
+
+  @media (max-width: 768px) {
+    .purchase-item {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 1rem;
+    }
+
+    .purchase-actions {
+      margin-left: 0;
+      width: 100%;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.5rem;
+    }
+
+    .view-details-btn,
+    .track-order-btn {
+      width: 100%;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .purchase-details {
+      gap: 0.5rem;
+    }
+
+    .purchase-price {
+      font-size: 1rem;
+    }
+
+    .purchase-date,
+    .purchase-seller {
+      font-size: 0.8rem;
+    }
+
+    .purchase-status {
+      font-size: 0.7rem;
+    }
+  }
+
+  .wishlist-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1.5rem;
+    padding: 0.5rem;
+  }
+
+  .wishlist-item {
+    background: white;
+    border-radius: 0.75rem;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    position: relative;
+  }
+
+  .wishlist-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  }
+
+  .wishlist-image-container {
+    position: relative;
+    width: 100%;
+    padding-top: 75%;
+  }
+
+  .wishlist-image {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .remove-wishlist-btn {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    background: rgba(255, 255, 255, 0.9);
+    border: none;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+
+  .remove-wishlist-btn:hover {
+    background: white;
+    transform: scale(1.1);
+  }
+
+  .remove-wishlist-btn svg {
+    width: 1.25rem;
+    height: 1.25rem;
+    color: #E53E3E;
+  }
+
+  .wishlist-content {
+    padding: 1rem;
+  }
+
+  .wishlist-content h3 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #1a202c;
+    line-height: 1.4;
+  }
+
+  .wishlist-meta {
+    display: flex;
+    gap: 0.5rem;
+    margin: 0.5rem 0;
+    flex-wrap: wrap;
+  }
+
+  .category {
+    font-size: 0.8rem;
+    padding: 0.25rem 0.5rem;
+    background: #F7FAFC;
+    color: #4A5568;
+    border-radius: 0.25rem;
+  }
+
+  .seller {
+    font-size: 0.8rem;
+    color: #718096;
+  }
+
+  .wishlist-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 1rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid #EDF2F7;
+  }
+
+  .added-date {
+    font-size: 0.8rem;
+    color: #718096;
+  }
+
+  .buy-now-btn {
+    padding: 0.5rem 1rem;
+    background: #4299E1;
+    color: white;
+    border: none;
+    border-radius: 0.5rem;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .buy-now-btn:hover {
+    background: #3182CE;
+    transform: translateY(-1px);
+  }
+
+  @media (max-width: 768px) {
+    .wishlist-grid {
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 1rem;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .wishlist-grid {
+      grid-template-columns: 1fr;
+      gap: 0.75rem;
+    }
+
+    .wishlist-content h3 {
+      font-size: 0.95rem;
+    }
+
+    .category,
+    .seller,
+    .added-date {
+      font-size: 0.75rem;
+    }
+
+    .buy-now-btn {
+      padding: 0.4rem 0.75rem;
+      font-size: 0.85rem;
+    }
+  }
+
+  .bids-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    padding: 0.5rem;
+  }
+
+  .bid-item {
+    background: white;
+    border-radius: 0.75rem;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    display: flex;
+    gap: 1.5rem;
+  }
+
+  .bid-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  }
+
+  .bid-image-container {
+    position: relative;
+    width: 200px;
+    flex-shrink: 0;
+  }
+
+  .bid-image {
+    width: 100%;
+    height: 200px;
+    object-fit: cover;
+  }
+
+  .bid-status {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+    padding: 0.35rem 0.75rem;
+    border-radius: 0.5rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    background: white;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+
+  .bid-status.highest-bidder {
+    color: #2F855A;
+    background: #C6F6D5;
+  }
+
+  .bid-status.outbid {
+    color: #E53E3E;
+    background: #FED7D7;
+  }
+
+  .bid-content {
+    flex: 1;
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .bid-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .bid-header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #1a202c;
+    line-height: 1.4;
+  }
+
+  .seller {
+    font-size: 0.9rem;
+    color: #718096;
+    white-space: nowrap;
+  }
+
+  .bid-details {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .bid-amounts {
+    display: flex;
+    gap: 2rem;
+  }
+
+  .amount-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .label {
+    font-size: 0.85rem;
+    color: #718096;
+  }
+
+  .value {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #2d3748;
+  }
+
+  .bid-meta {
+    display: flex;
+    gap: 1.5rem;
+    color: #718096;
+    font-size: 0.9rem;
+  }
+
+  .time-left,
+  .total-bids {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .time-left svg,
+  .total-bids svg {
+    width: 1.25rem;
+    height: 1.25rem;
+  }
+
+  .bid-actions {
+    display: flex;
+    gap: 1rem;
+    margin-top: auto;
+  }
+
+  .increase-bid-btn,
+  .cancel-bid-btn {
+    padding: 0.75rem 1.5rem;
+    border-radius: 0.5rem;
+    font-size: 0.95rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .increase-bid-btn {
+    background: #4299E1;
+    color: white;
+    border: none;
+  }
+
+  .increase-bid-btn:hover {
+    background: #3182CE;
+    transform: translateY(-1px);
+  }
+
+  .cancel-bid-btn {
+    background: none;
+    color: #E53E3E;
+    border: 1px solid #E53E3E;
+  }
+
+  .cancel-bid-btn:hover {
+    background: #FED7D7;
+    transform: translateY(-1px);
+  }
+
+  @media (max-width: 768px) {
+    .bid-item {
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .bid-image-container {
+      width: 100%;
+    }
+
+    .bid-image {
+      height: 250px;
+    }
+
+    .bid-content {
+      padding: 1rem;
+    }
+
+    .bid-header {
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .bid-amounts {
+      gap: 1rem;
+    }
+
+    .bid-meta {
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .bid-actions {
+      flex-direction: column;
+    }
+
+    .increase-bid-btn,
+    .cancel-bid-btn {
+      width: 100%;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .bids-list {
+      gap: 1rem;
+    }
+
+    .bid-item {
+      border-radius: 0.5rem;
+    }
+
+    .bid-image {
+      height: 200px;
+    }
+
+    .bid-content {
+      padding: 0.75rem;
+    }
+
+    .bid-header h3 {
+      font-size: 1rem;
+    }
+
+    .value {
+      font-size: 1.1rem;
+    }
+
+    .time-left,
+    .total-bids {
+      font-size: 0.85rem;
+    }
+
+    .increase-bid-btn,
+    .cancel-bid-btn {
+      padding: 0.6rem 1rem;
+      font-size: 0.9rem;
     }
   }
 </style> 
