@@ -128,7 +128,7 @@
     height: 100vh;
     background: #fff;
     box-shadow: 2px 0 16px 0 rgba(0,0,0,0.08);
-    z-index: 100;
+    z-index: 9999;
     display: flex;
     flex-direction: column;
     transition: left 0.3s cubic-bezier(0.4,0,0.2,1);
@@ -142,7 +142,7 @@
     right: 0;
     bottom: 0;
     background: rgba(0, 0, 0, 0.5);
-    z-index: 50;
+    z-index: 9998;
     display: none;
   }
 
