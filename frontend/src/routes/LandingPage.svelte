@@ -27,6 +27,7 @@
   
   <div class="hero">
     <div class="hero-content">
+      <img src="/oceanlogo-removebg-preview.png" alt="Ocean App Logo" class="ocean-logo" />
       <h1 class="glow">OCEAN</h1>
       <p class="subtitle">Your marine marketplace</p>
       <div class="buttons">
@@ -412,6 +413,25 @@
     
     h1 {
       font-size: 3.5rem;
+    }
+  }
+  
+  .ocean-logo {
+    width: 140px;
+    max-width: 60vw;
+    margin: 0 auto 1.5rem auto;
+    display: block;
+    filter: drop-shadow(0 4px 16px rgba(63,137,251,0.10));
+    transition: transform 0.2s;
+  }
+  .ocean-logo:hover {
+    transform: scale(1.04) rotate(-2deg);
+    filter: drop-shadow(0 8px 32px rgba(63,137,251,0.18));
+  }
+  @media (max-width: 768px) {
+    .ocean-logo {
+      width: 90px;
+      margin-bottom: 1rem;
     }
   }
 </style> 
