@@ -41,12 +41,13 @@
   </div>
 
   <div class="auth-container">
-    <div class="logo-section" on:click={navigateToHome}>
-      <h1 class="glow">OCEAN</h1>
-    </div>
+    <!-- <div class="logo-section" on:click={navigateToHome}>
+      <img src="/oceanlogo-removebg-preview.png" alt="Ocean App Logo" class="ocean-logo" />
+    </div> -->
     
     <div class="auth-form-container">
       <div class="auth-form">
+        <img src="/oceanlogo-removebg-preview.png" alt="Ocean App Logo" class="ocean-logo" style="cursor:pointer" on:click={navigateToHome} />
         <h2>Welcome Back</h2>
         <p class="subtitle">Login to your account</p>
         
@@ -520,6 +521,25 @@
     
     h2 {
       font-size: 1.5rem;
+    }
+  }
+  
+  .ocean-logo {
+    width: 110px;
+    max-width: 60vw;
+    margin: 0 auto 1.5rem auto;
+    display: block;
+    filter: drop-shadow(0 4px 16px rgba(63,137,251,0.10));
+    transition: transform 0.2s;
+  }
+  .ocean-logo:hover {
+    transform: scale(1.04) rotate(-2deg);
+    filter: drop-shadow(0 8px 32px rgba(63,137,251,0.18));
+  }
+  @media (max-width: 600px) {
+    .ocean-logo {
+      width: 70px;
+      margin-bottom: 1rem;
     }
   }
 </style> 
