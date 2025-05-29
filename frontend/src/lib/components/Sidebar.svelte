@@ -32,7 +32,7 @@
 
 <aside class="sidebar" class:open={$isSidebarOpen}>
   <div class="ocean-logo">
-    <img src="/wrigglyLine2.png" alt="Ocean" />
+    <img src="/logoopacity.png" alt="Ocean" />
     <h1 class="ocean-title">OCEAN</h1>
   </div>
 

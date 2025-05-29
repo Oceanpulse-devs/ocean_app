@@ -114,84 +114,79 @@
 	</div>
 
 	<div class="auth-container">
-		<div class="logo-section" on:click={navigateToHome}>
-			<h1 class="glow">OCEAN</h1>
-		</div>
-		
-		<div class="auth-form-container">
-			<div class="auth-form">
-				{#if !verificationSuccess}
-					<h2>Verify your email</h2>
-					<p class="subtitle">Enter the 5-digit code sent to your email</p>
+		<div class="auth-form">
+			<img src="/oceanlogo-removebg-preview.png" alt="Ocean App Logo" class="ocean-logo" style="cursor:pointer" on:click={navigateToHome} />
+			{#if !verificationSuccess}
+				<h2>Verify your email</h2>
+				<p class="subtitle">Enter the 5-digit code sent to your email</p>
+				
+				<div class="form-content">
+					<div class="verification-code">
+						{#each verificationCode as code, i}
+							<input
+								type="text"
+								maxlength="1"
+								bind:this={inputRefs[i]}
+								value={code}
+								on:input={(e) => handleInput(i, e)}
+								on:keydown={(e) => handleKeydown(i, e)}
+								class="code-input"
+								disabled={isVerifying}
+							/>
+						{/each}
+					</div>
+
+					{#if isVerifying}
+						<div class="verifying-message">
+							<div class="spinner verify-spinner"></div>
+							<p>Verifying code...</p>
+						</div>
+					{/if}
+
+					{#if error}
+						<div class="error-message">
+							<p>{error}</p>
+						</div>
+					{/if}
+
+					{#if resendSuccess}
+						<div class="success-message">
+							<p>New verification code has been sent!</p>
+						</div>
+					{/if}
+
+					<button
+						on:click={handleResendEmail}
+						disabled={isResending || isVerifying}
+						class="text-btn resend-btn"
+					>
+						{#if isResending}
+							<span class="spinner"></span>
+							<span>Sending new code...</span>
+						{:else}
+							<span>Resend verification code</span>
+						{/if}
+					</button>
+
+					<div class="auth-footer">
+						<button class="text-btn" on:click={navigateToHome}>Return to home</button>
+					</div>
+				</div>
+			{:else}
+				<div class="verification-status">
+					<div class="status-icon success">
+						<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" viewBox="0 0 16 16">
+							<path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zm-3.97-3.03a.75.75 0 0 0-1.08.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-.01-1.05z"/>
+						</svg>
+					</div>
+					<h2>Email verified!</h2>
+					<p class="subtitle">Your email has been successfully verified</p>
 					
-					<div class="form-content">
-						<div class="verification-code">
-							{#each verificationCode as code, i}
-								<input
-									type="text"
-									maxlength="1"
-									bind:this={inputRefs[i]}
-									value={code}
-									on:input={(e) => handleInput(i, e)}
-									on:keydown={(e) => handleKeydown(i, e)}
-									class="code-input"
-									disabled={isVerifying}
-								/>
-							{/each}
-						</div>
-
-						{#if isVerifying}
-							<div class="verifying-message">
-								<div class="spinner verify-spinner"></div>
-								<p>Verifying code...</p>
-							</div>
-						{/if}
-
-						{#if error}
-							<div class="error-message">
-								<p>{error}</p>
-							</div>
-						{/if}
-
-						{#if resendSuccess}
-							<div class="success-message">
-								<p>New verification code has been sent!</p>
-							</div>
-						{/if}
-
-						<button
-							on:click={handleResendEmail}
-							disabled={isResending || isVerifying}
-							class="text-btn resend-btn"
-						>
-							{#if isResending}
-								<span class="spinner"></span>
-								<span>Sending new code...</span>
-							{:else}
-								<span>Resend verification code</span>
-							{/if}
-						</button>
-
-						<div class="auth-footer">
-							<button class="text-btn" on:click={navigateToHome}>Return to home</button>
-						</div>
-					</div>
-				{:else}
-					<div class="verification-status">
-						<div class="status-icon success">
-							<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" viewBox="0 0 16 16">
-								<path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zm-3.97-3.03a.75.75 0 0 0-1.08.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-.01-1.05z"/>
-							</svg>
-						</div>
-						<h2>Email verified!</h2>
-						<p class="subtitle">Your email has been successfully verified</p>
-						
-						<button class="submit-btn" on:click={navigateToHome}>
-							Go to homepage
-						</button>
-					</div>
-				{/if}
-			</div>
+					<button class="submit-btn" on:click={navigateToHome}>
+						Go to homepage
+					</button>
+				</div>
+			{/if}
 		</div>
 	</div>
 </div>
@@ -300,49 +295,6 @@
 		align-items: center;
 		z-index: 1;
 		padding: 2rem;
-	}
-	
-	.logo-section {
-		margin-bottom: 2rem;
-		cursor: pointer;
-	}
-	
-	h1 {
-		font-size: 3rem;
-		margin: 0;
-		font-weight: 900;
-		letter-spacing: 0.1em;
-		text-transform: uppercase;
-	}
-	
-	.glow {
-		text-shadow: 0 0 10px rgba(63, 137, 251, 0.7),
-					 0 0 20px rgba(63, 137, 251, 0.5),
-					 0 0 30px rgba(63, 137, 251, 0.3);
-		animation: pulse 3s infinite;
-	}
-	
-	@keyframes pulse {
-		0% {
-			text-shadow: 0 0 10px rgba(63, 137, 251, 0.7),
-						 0 0 20px rgba(63, 137, 251, 0.5),
-						 0 0 30px rgba(63, 137, 251, 0.3);
-		}
-		50% {
-			text-shadow: 0 0 15px rgba(63, 137, 251, 0.9),
-						 0 0 30px rgba(63, 137, 251, 0.7),
-						 0 0 45px rgba(63, 137, 251, 0.5);
-		}
-		100% {
-			text-shadow: 0 0 10px rgba(63, 137, 251, 0.7),
-						 0 0 20px rgba(63, 137, 251, 0.5),
-						 0 0 30px rgba(63, 137, 251, 0.3);
-		}
-	}
-	
-	.auth-form-container {
-		width: 100%;
-		max-width: 450px;
 	}
 	
 	.auth-form {
@@ -544,6 +496,20 @@
 		transform: translateY(-1px);
 	}
 	
+	.ocean-logo {
+		width: 110px;
+		max-width: 60vw;
+		margin: 0 auto 1.5rem auto;
+		display: block;
+		filter: drop-shadow(0 4px 16px rgba(63,137,251,0.10));
+		transition: transform 0.2s;
+	}
+	
+	.ocean-logo:hover {
+		transform: scale(1.04) rotate(-2deg);
+		filter: drop-shadow(0 8px 32px rgba(63,137,251,0.18));
+	}
+	
 	@media (max-width: 600px) {
 		.auth-container {
 			padding: 1rem;
@@ -559,12 +525,17 @@
 		
 		h2 {
 			font-size: 1.5rem;
-	}
-	
-	.code-input {
+		}
+		
+		.code-input {
 			width: 3rem !important;
 			height: 3rem;
 			font-size: 1.25rem !important;
+		}
+		
+		.ocean-logo {
+			width: 70px;
+			margin-bottom: 1rem;
 		}
 	}
 </style> 
