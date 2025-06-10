@@ -42,7 +42,7 @@ module.exports = (sequelize, DataTypes) =>{
                 notEmpty:true,
             }
         },
-        accoutType:{
+        accountType:{
             type:DataTypes.ENUM("admin","buyer","seller"),
             allowNull: false,
             defaultValue:"buyer",

@@ -1,5 +1,8 @@
 const {UserTable} = require('../../models')
 const bcrypt = require('bcrypt')
+const jwt = require('jsonwebtoken')
+const JWT_SECRET = process.env.JWT_SECRET
+
 
 const signup =   async(req , res)=>{
    const {fullName, email , password , confirmPassword} = req.body;
@@ -23,22 +26,38 @@ const signup =   async(req , res)=>{
 }
 }
 
-
+// login or signing in
 const login = async(req,res)=>{
    const {email , password} = req.body;
 
    try{
+    //checking if email is already existing 
     const existingUser = await UserTable.findOne({where:{ email }})
-    // console.log(existingUser)
     if(!existingUser){
-        res.status(400).json({messsage:`Wrong Email or password, or user with ${email} does not exist.`})
+        res.status(400).json({messsage:`invalid Email or password.`})
     }
-    
-    const passwordMatched = await bcrypt.compare(password,UserTable.password)
+    //checking if password matches
+    const passwordMatched = await bcrypt.compare(password,existingUser.password)
     if(!passwordMatched){
-        res.status(400).json({messsage:`Wrong Email or password, or user with ${email} does not exist.`})
+        res.status(400).json({messsage:`invalid Email or password.`})
     }
-
+    //generating jwt token
+    const token = jwt.sign(
+        {id: existingUser.id , email: existingUser.email , role: existingUser.accountType},JWT_SECRET,
+        {expiresIn: '7d'}
+    );
+    //send token in http-only cookie
+    res.cookie('token',token,{
+        httpOnly: true,
+        secure: process.env.NODE_ENV, //=== 'production' , during development,
+        maxAge: 7 *24 *60 *60 *1000 //7days
+    });
+    res.status(200).json({message:"User successfully signed in.",user:{
+        id:existingUser.id,
+        fullName:existingUser.fullName,
+        email:existingUser.email,
+        role: existingUser.accountType
+    }})
    }catch(error){
     res.status(500).json({message:"error Signing user in",error:error.message})
    }

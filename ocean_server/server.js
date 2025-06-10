@@ -4,6 +4,7 @@ const dotenv = require('dotenv').config();
 const port = process.env.PORT || 5000
 const redis = require('./src/config/redisdb')
 const db = require('./models')
+const cookieParser = require('cookie-parser')
 
 
 
@@ -12,10 +13,12 @@ const app = express();
 
 app.use(express.json());
 app.use(express.urlencoded({extended:true}));
+app.use(cookieParser());
 
 
 
-const authRoutes = require('./src/routes/authRoutes')
+//routes
+const authRoutes = require('./src/routes/authRoutes');
 app.use('/', authRoutes)
 
 
