@@ -4,6 +4,7 @@ const dotenv = require('dotenv').config();
 const port = process.env.PORT || 5000
 const redisClient = require('./src/config/redisdb')
 const db = require('./models')
+const pool = require('./src/config/database')
 const cookieParser = require('cookie-parser')
 
 
