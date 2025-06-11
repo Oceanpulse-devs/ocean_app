@@ -123,7 +123,12 @@ const sellerRegistration = async(req,res)=>{
         if(currentUserId){
             const existingSeller = await SellersTable.findOne({where :{userId:currentUserId}})
             if(existingSeller){
-                return res.status(400).json({message:"You are already a Seller. Do you want to upgrade your plan?."})
+                if(existingSeller.verificationStatus === 'approved'){
+                    return res.status(400).json({message:"You are already an Approved seller."})
+            }else if(existingSeller.verificationStatus === 'pending'){
+                    return res.status(400).json({message:"Your request is under review."})
+            }else{
+                    return res.status(400).json({message:"Rejected"})
             }
         }
         const currentuser = await UserTable.findOne({where:{id:currentUserId}})
@@ -151,7 +156,7 @@ const sellerRegistration = async(req,res)=>{
             { where: { id: currentUserId } }
         );
         res.status(201).json({message:"Seller registered successfully.", seller:newSeller});
-    } catch (error) {
+    }} catch (error) {
         res.status(500).json({message:"Seller's registration failed.",error:error.message})
     }
 }
