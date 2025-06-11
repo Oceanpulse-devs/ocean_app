@@ -35,7 +35,8 @@ const currentUserprofile = async(req,res)=>{
        
          return res.status(200).json({profileInfo:{username , profilePicture , coverPicture , email , role , businessName , businessAddress , category , country , state, rating, totalSales, verificationStatus}}) 
         
-   }} catch (error) {
+   }
+} catch (error) {
        return res.status(500).json({message:"Error fetching user profile", error:error.message})
     
    }

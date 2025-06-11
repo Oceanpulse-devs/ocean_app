@@ -13,14 +13,12 @@ const updateVerificationStatusBasedOnDocuments = async (req, res, next) => {
       return next();
     }
 
-    
+    // Fetch the seller's document status
         const documents = await SellerDocument.findOne({ where: { sellerId: sellerData.id } });
         if (documents){
             if(documents.status === "approved") {
                 await SellersTable.update({ verificationStatus: 'approved' }, { where: { id: sellerData.id } });
-            } else if(documents.status === "pending") {
-                await SellersTable.update({ verificationStatus: 'pending' }, { where: { id: sellerData.id } });
-            }else if(documents.status === "rejected") {
+            } else if(documents.status === "rejected") {
                 await SellersTable.update({ verificationStatus: 'rejected' }, { where: { id: sellerData.id } });
                 await SellerDocument.destroy({ where: { sellerId: sellerData.id } });
             }
