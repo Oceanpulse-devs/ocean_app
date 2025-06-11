@@ -28,6 +28,20 @@ module.exports = (sequelize, DataTypes) =>{
                 notEmpty:true,
             }
         },
+         profilePicture:{
+            type:DataTypes.TEXT,
+            allowNull: true,
+            validate:{
+                notEmpty:false,
+            }
+        },
+         coverPicture:{
+            type:DataTypes.TEXT,
+            allowNull: true,
+            validate:{
+                notEmpty:false,
+            }
+        },
         email:{
             type:DataTypes.STRING,
             allowNull: false,
@@ -42,10 +56,46 @@ module.exports = (sequelize, DataTypes) =>{
                 notEmpty:true,
             }
         },
+         state:{
+            type:DataTypes.STRING,
+            allowNull: true,
+            validate:{
+                notEmpty:false,
+            }
+        },
+        country:{
+            type:DataTypes.STRING,
+            allowNull: false,
+            validate:{
+                notEmpty:true,
+            }
+        },
+        phoneNumber:{
+            type:DataTypes.STRING,
+            allowNull: true,
+            validate:{
+                notEmpty:false,
+            }
+        },
+        address:{
+            type:DataTypes.TEXT,
+            allowNull: true,
+            validate:{
+                notEmpty:false,
+            }
+        },
         accountType:{
             type:DataTypes.ENUM("admin","buyer","seller"),
             allowNull: false,
             defaultValue:"buyer",
+            validate:{
+                notEmpty:true,
+            }
+        },
+        accountStatus:{
+            type:DataTypes.ENUM("active","suspended","deactivated"),
+            allowNull: false,
+            defaultValue:"active",
             validate:{
                 notEmpty:true,
             }

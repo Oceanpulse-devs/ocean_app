@@ -1,13 +1,14 @@
-const {UserTable} = require('../../models')
+const {UserTable,SellersTable, SellerDocument} = require('../../models')
 const bcrypt = require('bcrypt')
 const jwt = require('jsonwebtoken')
 const { where } = require('sequelize')
 const JWT_SECRET = process.env.JWT_SECRET
 const redisClient = require('../config/redisdb')
 
+
 //signing up
 const signup =   async(req , res)=>{
-   const {fullName, email , password , confirmPassword} = req.body;
+   const {fullName, email , password , confirmPassword, state , country , phoneNumber , address} = req.body;
 
    try{
     //makign sure two passwords match
@@ -24,12 +25,12 @@ const signup =   async(req , res)=>{
    }
    //hashing the password
    const hashedPassword = await bcrypt.hash(password,10)
-   const newUser = await UserTable.create({fullName,username:fullName, email, password:hashedPassword})
+   const newUser = await UserTable.create({fullName , username:fullName , email, password:hashedPassword, state , country , phoneNumber , address})
    res.status(201).json({message:"user created successfully", user:newUser})
 }catch(error){
     res.status(500).json({message:"error creating user", error:error.message})
 }
-}
+};
 
 // login or signing in
 const login = async(req,res)=>{
@@ -66,7 +67,7 @@ const login = async(req,res)=>{
    }catch(error){
     res.status(500).json({message:"error Signing user in",error:error.message})
    }
-}
+};
 
 //forgot password
 const forgotPassword = async(req,res)=>{
@@ -85,7 +86,7 @@ const forgotPassword = async(req,res)=>{
      //store in reddis
      await redisClient.set(`reset:${email}`, resetcode,{EX: 600})
      console.log("saved reset to redis.")
-
+     //sending reset code to users gmail
      console.log(`Reset code for ${email} is ${resetcode}. please do not share this with anyone.`)
 
      res.json({ message: 'Reset code generated and logged (for dev use).' });
@@ -93,7 +94,7 @@ const forgotPassword = async(req,res)=>{
     }catch(error){
         res.status(500).json({ message: 'Error generating reset code', error: error.message });
     }
-}
+};
 
 //verify reset code
 const verifyResetCode = async(req,res)=>{
@@ -106,13 +107,48 @@ const verifyResetCode = async(req,res)=>{
         const storedCode = await redisClient.get(`reset:${email}`);
     
         if (storedCode !== resetCode) {
-          return res.status(400).json({ message: 'Invalid or expired reset code.' });
+          return res.status(400).json({ message: 'Invalid or expired reset code.'});
         }
     
-        res.json({ message: 'Reset code verified successfully.' });
+        res.status(200).json({ message: 'Reset code verified successfully.' });
       } catch (error) {
-        res.status(500).json({ message: 'Error verifying code', error: error.message });
+        res.status(500).json({ message: 'Error verifying code', error: error.message});
       }
+};
+
+const sellerRegistration = async(req,res)=>{
+    const {businessName , businessAddress ,  category , documentType , documentNumber , documentImage} = req.body;
+    try {
+        const currentUserId = req.user.id
+        if(currentUserId){
+            const existingSeller = await SellersTable.findOne({where :{userId:currentUserId}})
+            if(existingSeller){
+                return res.status(400).json({message:"You are already a Seller. Do you want to upgrade your plan?."})
+            }
+        }
+        const currentuser = await UserTable.findOne({where:{id:currentUserId}})
+        const newSeller = await SellersTable.create({
+            userId: currentUserId,
+            fullName: currentuser.fullName,
+            businessName,
+            email: currentuser.email,
+            phoneNumber: currentuser.phoneNumber,
+            businessAddress,
+            country: currentuser.country,
+            state: currentuser.state,
+            category
+        });
+        // Create seller documents
+        await SellerDocument.create({
+            sellerId: newSeller.id,
+            documentType,
+            documentNumber,
+            documentImage
+        });
+        res.status(201).json({message:"Seller registered successfully.", seller:newSeller});
+    } catch (error) {
+        res.status(500).json({message:"Seller's registration failed.",error:error.message})
+    }
 }
 
-module.exports = {signup,login,forgotPassword,verifyResetCode};
+module.exports = {signup,login,forgotPassword,verifyResetCode,sellerRegistration};
