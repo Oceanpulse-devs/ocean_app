@@ -85,7 +85,7 @@ module.exports = (sequelize, DataTypes) =>{
             }
         },
         accountType:{
-            type:DataTypes.ENUM("admin","buyer","seller"),
+            type:DataTypes.ENUM("admin","buyer","seller","pending-seller"),
             allowNull: false,
             defaultValue:"buyer",
             validate:{

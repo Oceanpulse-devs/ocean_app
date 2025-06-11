@@ -13,7 +13,8 @@ const currentUserprofile = async(req,res)=>{
    
 
 
-     if(role === "buyer"){
+     if(role === "buyer" || role === "pending-seller"){
+       // For buyers and pending sellers, we return basic profile information
      return res.status(200).json({profileInfo:{username , profilePicture , coverPicture , email , role}})
      }else if(role ==="seller"){
        const alsoSeller = await SellersTable.findOne({where:{userId:id}})
@@ -24,18 +25,15 @@ const currentUserprofile = async(req,res)=>{
        const state = alsoSeller.state;
        const rating = alsoSeller.rating;
        const totalSales = alsoSeller.totalSales;
-
-       return res.status(200).json({profileInfo:{username , profilePicture , coverPicture , email , role , businessName , businessAddress ,category , country , state , rating , totalSales}})
-     }
-   } catch (error) {
+       const verificationStatus = alsoSeller.verificationStatus;
+       
+         return res.status(200).json({profileInfo:{username , profilePicture , coverPicture , email , role , businessName , businessAddress , category , country , state, rating, totalSales, verificationStatus}}) 
+        
+   }} catch (error) {
        return res.status(500).json({message:"Error fetching user profile", error:error.message})
     
    }
-   
 
-
-
-   
 }
 
 module.exports = currentUserprofile

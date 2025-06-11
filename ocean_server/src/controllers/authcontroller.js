@@ -145,6 +145,11 @@ const sellerRegistration = async(req,res)=>{
             documentNumber,
             documentImage
         });
+        // update accout type to pending-seller
+        await UserTable.update(
+            { accountType: 'pending-seller' },
+            { where: { id: currentUserId } }
+        );
         res.status(201).json({message:"Seller registered successfully.", seller:newSeller});
     } catch (error) {
         res.status(500).json({message:"Seller's registration failed.",error:error.message})
