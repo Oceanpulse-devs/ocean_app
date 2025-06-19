@@ -1,4 +1,5 @@
 // sellerDocuments.js for all sellers verification approach
+
 module.exports = (sequelize, DataTypes) => {
   const SellerDocument = sequelize.define('SellerDocument', {
     id: {

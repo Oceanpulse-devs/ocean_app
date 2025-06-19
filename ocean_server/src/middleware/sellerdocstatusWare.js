@@ -1,8 +1,9 @@
 // This middleware checks the seller's document verification status and updates the seller's verification status accordingly.
+const { where } = require('sequelize');
 const { SellerDocument, SellersTable } = require('../../models');
 
 const updateVerificationStatusBasedOnDocuments = async (req, res, next) => {
-    console.log("Checking seller document status...");
+    // console.log("Checking seller document status...");
   try {
     const id = req.user.id;
 
@@ -18,9 +19,12 @@ const updateVerificationStatusBasedOnDocuments = async (req, res, next) => {
         if (documents){
             if(documents.status === "approved") {
                 await SellersTable.update({ verificationStatus: 'approved' }, { where: { id: sellerData.id } });
-            } else if(documents.status === "rejected") {
+            }else if(documents.status === "pending"){
+                await SellersTable.update({verificationStatus:'pending'},{where:{id: sellerData.id}})
+            }
+             else if(documents.status === "rejected") {
                 await SellersTable.update({ verificationStatus: 'rejected' }, { where: { id: sellerData.id } });
-                await SellerDocument.destroy({ where: { sellerId: sellerData.id } });
+                // await SellerDocument.destroy({ where: { sellerId: sellerData.id } });
             }
         }
     
@@ -33,4 +37,4 @@ const updateVerificationStatusBasedOnDocuments = async (req, res, next) => {
 
 module.exports = updateVerificationStatusBasedOnDocuments;
 // This middleware checks the seller's document verification status and updates the seller's verification status accordingly.
-// If the document is approved, the verification status is set to 'approved'.
+// If the document is approved, the verification status is set to 'approved'

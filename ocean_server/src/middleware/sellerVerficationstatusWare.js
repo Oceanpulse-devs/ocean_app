@@ -12,6 +12,8 @@ const updateRoleBasedOnVerification = async (req, res, next) => {
 
     if (sellerData.verificationStatus === "approved") {
       await UserTable.update({ accountType: 'seller' }, { where: { id } });
+    }else if(sellerData.verificationStatus === "pending"){
+      await UserTable.update({ accountType: 'pending-seller' }, { where: { id } });
     } else if (sellerData.verificationStatus === "rejected") {
       await UserTable.update({ accountType: 'buyer' }, { where: { id } });
       await SellersTable.destroy({ where: { userId: id } });
