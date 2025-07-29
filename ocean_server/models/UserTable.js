@@ -14,6 +14,20 @@ module.exports = (sequelize, DataTypes) =>{
                 notEmpty:true,
             }
         },
+        google_Id:{
+            type:DataTypes.STRING,
+            allowNull: true,
+            validate:{
+                notEmpty:false,
+            }
+        },
+        facebook_Id:{
+            type:DataTypes.STRING,
+            allowNull: true,
+            validate:{
+                notEmpty:false,
+            }
+        },
         fullName:{
             type:DataTypes.STRING,
             allowNull: false,
@@ -56,18 +70,19 @@ module.exports = (sequelize, DataTypes) =>{
                 notEmpty:true,
             }
         },
-         state:{
-            type:DataTypes.STRING,
-            allowNull: true,
+        agreeTerms:{
+            type:DataTypes.BOOLEAN,
+            allowNull: false,
+            defaultValue: false,
             validate:{
                 notEmpty:false,
             }
         },
         country:{
             type:DataTypes.STRING,
-            allowNull: false,
+            allowNull: true,
             validate:{
-                notEmpty:true,
+                notEmpty:false,
             }
         },
         phoneNumber:{

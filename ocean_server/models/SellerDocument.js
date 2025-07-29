@@ -38,5 +38,13 @@ module.exports = (sequelize, DataTypes) => {
     timestamps: true,
   });
 
+  // Define associations
+  SellerDocument.associate = (models) => {
+    SellerDocument.belongsTo(models.SellersTable, {
+      foreignKey: 'sellerId',
+      as: 'seller'
+    });
+  };
+
   return SellerDocument;
 };

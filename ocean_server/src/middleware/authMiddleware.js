@@ -1,14 +1,27 @@
 const jwt = require('jsonwebtoken')
 const JWT_SECRET = process.env.JWT_SECRET
+const redisClient = require('../config/redisdb')
 
-const authMiddleware = (req,res,next)=>{
+const authMiddleware = async (req,res,next)=>{
     const token = req.cookies.token;
     if(!token){
-       return res.status(401).json({message:"Access denied. token not found!"})
+       return res.status(401).json({message:"Access denied. Token not found!"})
     }
+    
     //if found decoding info in token and setting it to user
     try {
         const decoded = jwt.verify(token,JWT_SECRET);
+        
+        // Check if session is still valid (for logout from all devices)
+        if(decoded.sessionId) {
+            const sessionKey = `session:${decoded.id}:${decoded.sessionId}`;
+            const sessionStatus = await redisClient.get(sessionKey);
+            
+            if(!sessionStatus || sessionStatus !== 'active') {
+                return res.status(401).json({message:"Session expired. Please login again."})
+            }
+        }
+        
         req.user = decoded;
         next()
 

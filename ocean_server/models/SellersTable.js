@@ -68,5 +68,13 @@ module.exports = (sequelize) => {
     timestamps: true,
   });
 
+  // Define associations
+  SellersTable.associate = (models) => {
+    SellersTable.hasMany(models.SellerDocument, {
+      foreignKey: 'sellerId',
+      as: 'documents'
+    });
+  };
+
   return SellersTable;
 };

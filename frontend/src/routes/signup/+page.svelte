@@ -1,13 +1,22 @@
 <script>
   import { goto } from '$app/navigation';
+  import {signup} from '$lib/api/auth'
   
   let fullName = '';
   let email = '';
+  // let state = '';
+  // let country = '';
+  // let phoneNumber = '';
+  // let address = '';
   let password = '';
   let confirmPassword = '';
   let agreeTerms = false;
   let isLoading = false;
   let passwordError = '';
+  let signupError = '';
+  let signupSuccess = '';
+  let username = '';
+  
   
   function validatePasswords() {
     if (password !== confirmPassword) {
@@ -22,17 +31,30 @@
     return true;
   }
   
-  function handleSignup() {
-    if (!validatePasswords()) return;
-    
-    isLoading = true;
-    
-    // Simulate signup - replace with actual registration
-    setTimeout(() => {
-      isLoading = false;
-      goto('/feed');
-    }, 1000);
+  async function handleSignup() {
+  if (!validatePasswords()) return;
+  isLoading = true;
+  signupError = '';
+  signupSuccess = '';
+  try {
+    await signup({
+      fullName,
+      username: username || email.split('@')[0], // fallback if username not provided
+      email,
+      password,
+      agreeTerms
+    });
+    signupSuccess = 'Signup successful! Redirecting...';
+    console.log(signupSuccess)
+    setTimeout(() => goto('/feed'), 1200);
+  } catch (error) {
+    // If error is an object and has a string 'message', use it, else fallback
+    signupError = "fail to register!"
+    console.log(signupError)
+  } finally {
+    isLoading = false;
   }
+}
   
   function handleGoogleSignup() {
     // Implement Google OAuth signup
@@ -90,6 +112,50 @@
               <input type="email" id="email" bind:value={email} required placeholder="Your email address" />
             </div>
           </div>
+
+            <!-- <div class="form-group">
+            <label for="Country">Country</label>
+            <div class="input-container">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                <path d="M11 6a3 3 0 1 1-6 0 3 3 0 0 1 6 0z"/>
+                <path fill-rule="evenodd" d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8zm8-7a7 7 0 0 0-5.468 11.37C3.242 11.226 4.805 10 8 10s4.757 1.225 5.468 2.37A7 7 0 0 0 8 1z"/>
+              </svg>
+              <input type="text" id="fullName" bind:value={country} required placeholder="Your Country" />
+            </div>
+          </div> -->
+
+           <!-- <div class="form-group">
+            <label for="State">State</label>
+            <div class="input-container">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                <path d="M11 6a3 3 0 1 1-6 0 3 3 0 0 1 6 0z"/>
+                <path fill-rule="evenodd" d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8zm8-7a7 7 0 0 0-5.468 11.37C3.242 11.226 4.805 10 8 10s4.757 1.225 5.468 2.37A7 7 0 0 0 8 1z"/>
+              </svg>
+              <input type="text" id="fullName" bind:value={state} required placeholder="Your State" />
+            </div>
+          </div> -->
+
+            <!-- <div class="form-group">
+            <label for="Phone Number">Phone Number</label>
+            <div class="input-container"> -->
+              <!-- <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                <path d="M11 6a3 3 0 1 1-6 0 3 3 0 0 1 6 0z"/>
+                <path fill-rule="evenodd" d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8zm8-7a7 7 0 0 0-5.468 11.37C3.242 11.226 4.805 10 8 10s4.757 1.225 5.468 2.37A7 7 0 0 0 8 1z"/>
+              </svg> -->
+              <!-- <input type="number" id="fullName" bind:value={phoneNumber} required placeholder="Your phone number" />
+            </div>
+          </div> -->
+
+                     <!-- <div class="form-group">
+            <label for="Address">Address</label>
+            <div class="input-container">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                <path d="M11 6a3 3 0 1 1-6 0 3 3 0 0 1 6 0z"/>
+                <path fill-rule="evenodd" d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8zm8-7a7 7 0 0 0-5.468 11.37C3.242 11.226 4.805 10 8 10s4.757 1.225 5.468 2.37A7 7 0 0 0 8 1z"/>
+              </svg>
+              <input type="text" id="fullName" bind:value={address} required placeholder="Your residence address" />
+            </div>
+          </div> -->
           
           <div class="form-group">
             <label for="password">Password</label>
