@@ -1,6 +1,6 @@
 const express = require('express')
 const router = express.Router()
-const {signup,login,forgotPassword,verifyResetCode,resetPassword,sellerRegistration,approveSeller,rejectSeller,getPendingSellers,getAllSellers,getSellerById,toggleSellerStatus,getAdminStats} = require('../controllers/authcontroller')
+const {signup,login,forgotPassword,verifyResetCode,resetPassword,sellerRegistration} = require('../controllers/authcontroller')
 const authMiddleware = require('../middleware/authMiddleware')
 const updateRoleBasedOnVerification = require('../middleware/sellerVerficationstatusWare')
 const updateVerificationStatusBasedOnDocuments = require('../middleware/sellerdocstatusWare')
@@ -118,16 +118,9 @@ router.post('/api/verify-resetCode',verifyResetCode)
 router.post('/api/reset-password',resetPassword)
 router.post('/api/seller-registration', authMiddleware,sellerRegistration)
 
-// Admin routes for seller management
-router.get('/api/admin/pending-sellers', authMiddleware, getPendingSellers)
-router.get('/api/admin/sellers', authMiddleware, getAllSellers)
-router.get('/api/admin/sellers/:sellerId', authMiddleware, getSellerById)
-router.post('/api/admin/approve-seller', authMiddleware, approveSeller)
-router.post('/api/admin/reject-seller', authMiddleware, rejectSeller)
-router.post('/api/admin/toggle-seller-status', authMiddleware, toggleSellerStatus)
-router.get('/api/admin/stats', authMiddleware, getAdminStats)
+
 //profile routes 
-router.get('/api/profile',authMiddleware,updateVerificationStatusBasedOnDocuments,updateRoleBasedOnVerification,currentUserprofile)
+router.get('/api/profile', authMiddleware, currentUserprofile)
 //......profile
 //feed
 router.post('/api/create-feed', authMiddleware, createFeed)

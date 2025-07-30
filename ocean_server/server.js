@@ -56,7 +56,12 @@ app.use(cors({
 
 //routes
 const authRoutes = require('./src/routes/authRoutes');
-app.use('/', authRoutes)
+const adminRoutes = require('./src/routes/adminRoutes');
+const notificationRoutes = require('./src/routes/notificationRoutes');
+
+app.use('/', authRoutes);
+app.use('/', adminRoutes);
+app.use('/', notificationRoutes);
 
 
 
