@@ -21,16 +21,15 @@ module.exports = (sequelize, DataTypes) => {
     indexes: [
       {
         unique: true,
-        fields: ['userId', 'followsUserId'] // Prevent double follow
+        fields: ['userId', 'followsUserId']
       }
     ]
   });
 
-  // Associations (optional but useful if you're using a Users model)
-//   UserFollows.associate = models => {
-//     UserFollows.belongsTo(models.UserTable, { as: 'follower', foreignKey: 'userId' });
-//     UserFollows.belongsTo(models.UserTable, { as: 'followed', foreignKey: 'followsUserId' });
-//   };
+  UserFollows.associate = function(models) {
+    UserFollows.belongsTo(models.UserTable, { as: 'follower', foreignKey: 'userId' });
+    UserFollows.belongsTo(models.UserTable, { as: 'followed', foreignKey: 'followsUserId' });
+  };
 
   return UserFollows;
 };
