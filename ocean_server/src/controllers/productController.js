@@ -486,9 +486,6 @@ const getSavedProducts = async (req, res) => {
 // Get product categories
 const getCategories = async (req, res) => {
     try {
-        // console.log('getCategories function called');
-        // console.log('ProductCategory model:', ProductCategory);
-        
         const categories = await ProductCategory.findAll({
             where: { isActive: true, parentId: null },
             include: [
@@ -501,8 +498,6 @@ const getCategories = async (req, res) => {
             ],
             order: [['sortOrder', 'ASC'], ['name', 'ASC']]
         });
-
-        console.log('Categories found:', categories.length);
 
         res.status(200).json({
             message: "Categories retrieved successfully",

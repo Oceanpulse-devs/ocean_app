@@ -6,9 +6,6 @@ const productController = require('../controllers/productController');
 // Public routes (no authentication required)
 router.get('/api/products', productController.getProducts);
 router.get('/api/categories', productController.getCategories);
-router.get('/api/test-categories', (req, res) => {
-    res.json({ message: "Categories test route working", data: [] });
-});
 router.get('/api/products/seller/:sellerId', productController.getSellerProducts);
 router.get('/api/product/:productId', productController.getProduct);
 
