@@ -15,9 +15,9 @@ const redisClient = require('../config/redisdb')
 //auth routes
 // OAuth routes - only register if environment variables are available
 if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
-    //google:
-    router.get('/api/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
-    router.get('/api/auth/google/callback', passport.authenticate('google', { failureRedirect: '/api/auth/google/failure' }), (req, res) => {
+//google:
+router.get('/api/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
+router.get('/api/auth/google/callback', passport.authenticate('google', { failureRedirect: '/api/auth/google/failure' }), (req, res) => {
         // Generate JWT token for the authenticated user
         const token = jwt.sign(
             { id: req.user.id, email: req.user.email, role: req.user.accountType },
@@ -43,9 +43,9 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
 }
 
 if (process.env.FACEBOOK_APP_ID && process.env.FACEBOOK_APP_SECRET) {
-    //facebook:
-    router.get('/api/auth/facebook', passport.authenticate('facebook', { scope: ['email'] }));
-    router.get('/api/auth/facebook/callback', passport.authenticate('facebook', { failureRedirect: '/api/auth/facebook/failure' }), (req, res) => {
+//facebook:
+router.get('/api/auth/facebook', passport.authenticate('facebook', { scope: ['email'] }));
+router.get('/api/auth/facebook/callback', passport.authenticate('facebook', { failureRedirect: '/api/auth/facebook/failure' }), (req, res) => {
         // Generate JWT token for the authenticated user
         const token = jwt.sign(
             { id: req.user.id, email: req.user.email, role: req.user.accountType },

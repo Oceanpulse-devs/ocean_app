@@ -63,12 +63,12 @@ const signup = async(req, res) => {
     }
 
     //checking if user already exist
-    const existingUser = await UserTable.findOne({where:{ email }})
-    if(existingUser){
+   const existingUser = await UserTable.findOne({where:{ email }})
+   if(existingUser){
         return res.status(400).json({message:"User already exists with this email"})
-    }
+   }
 
-    //hashing the password
+   //hashing the password
     const hashedPassword = await bcrypt.hash(password, 10)
     const newUser = await UserTable.create({
         fullName: fullName.trim(),
@@ -92,9 +92,9 @@ const signup = async(req, res) => {
             accountStatus: newUser.accountStatus
         }
     })
-   }catch(error){
+}catch(error){
         res.status(500).json({message:"Error creating user", error:error.message})
-   }
+}
 };
 
 // login or signing in
@@ -111,7 +111,7 @@ const login = async(req,res)=>{
         return res.status(400).json({message:"Please provide a valid email address"})
     }
 
-    //checking if email is already existing
+    //checking if email is already existing 
     const existingUser = await UserTable.findOne({where:{ email: email.toLowerCase().trim() }})
     if(!existingUser){
         return res.status(400).json({message:"Invalid email or password."})
@@ -206,7 +206,7 @@ const login = async(req,res)=>{
             id: existingUser.id,
             fullName: existingUser.fullName,
             email: existingUser.email,
-            role: existingUser.accountType
+        role: existingUser.accountType
         }
     })
    }catch(error){
@@ -274,11 +274,11 @@ const verifyResetCode = async(req,res)=>{
         if (!storedCode) {
           return res.status(400).json({ message: 'Reset code has expired.'});
         }
-
+    
         if (storedCode !== resetCode) {
           return res.status(400).json({ message: 'Invalid reset code.'});
         }
-
+    
         res.status(200).json({ message: 'Reset code verified successfully.' });
       } catch (error) {
         res.status(500).json({ message: 'Error verifying code', error: error.message});
@@ -408,8 +408,8 @@ const sellerRegistration = async(req,res)=>{
 
         // Check if user already has a seller account
         const existingSeller = await SellersTable.findOne({where: {userId: currentUserId}});
-        if(existingSeller){
-            if(existingSeller.verificationStatus === 'approved'){
+            if(existingSeller){
+                if(existingSeller.verificationStatus === 'approved'){
                 return res.status(400).json({message:"You are already an approved seller."})
             }else if(existingSeller.verificationStatus === 'pending'){
                 return res.status(400).json({message:"Your seller application is currently under review."})

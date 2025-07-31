@@ -74,6 +74,14 @@ module.exports = (sequelize) => {
       foreignKey: 'sellerId',
       as: 'documents'
     });
+    
+    // Association with UserTable
+    if (models.UserTable) {
+      SellersTable.belongsTo(models.UserTable, {
+        foreignKey: 'userId',
+        as: 'user'
+      });
+    }
   };
 
   return SellersTable;

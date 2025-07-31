@@ -115,7 +115,7 @@ const getFeed = async (req, res) => {
             }
         });
 
-    } catch (error) {
+  } catch (error) {
         console.error('Get feed error:', error);
         res.status(500).json({ message: "Error retrieving feed", error: error.message });
     }
@@ -196,7 +196,7 @@ const createPost = async (req, res) => {
             data: createdPost
         });
 
-    } catch (error) {
+  } catch (error) {
         console.error('Create post error:', error);
         res.status(500).json({ message: "Error creating post", error: error.message });
     }
@@ -237,7 +237,7 @@ const getPost = async (req, res) => {
                 PostLike.findOne({ where: { postId, userId: currentUserId } }),
                 SavedPost.findOne({ where: { postId, userId: currentUserId } }),
                 UserFollows.findOne({ 
-                    where: { 
+            where: {
                         userId: currentUserId, 
                         followsUserId: post.userId 
                     } 

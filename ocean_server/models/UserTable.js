@@ -128,5 +128,16 @@ module.exports = (sequelize, DataTypes) =>{
         tableName:'users'
     })
 
+    // Define associations
+    UserTable.associate = (models) => {
+        // Association with SellersTable
+        if (models.SellersTable) {
+            UserTable.hasOne(models.SellersTable, {
+                foreignKey: 'userId',
+                as: 'seller'
+            });
+        }
+    };
+
     return UserTable;
 }
