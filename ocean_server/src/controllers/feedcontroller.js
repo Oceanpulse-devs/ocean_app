@@ -1,204 +1,519 @@
-const {FeedsTable , UserTable} = require('../../models');
-const{Op,Sequelize, and} = require('sequelize');
+const { Post, PostMedia, PostLike, PostComment, PostShare, SavedPost, UserTable, UserFollows } = require('../../models');
+const { Op, Sequelize } = require('sequelize');
 
-
-//to create feeds
-const createFeed = async (req, res) => {
-  try {
-    const { postText, pic1, pic2, pic3,pic4,pic5,video1,video2,cartegory } = req.body;
-    const userId = req.user.id; // Assuming user ID is stored in req.user
-
-    const existingUser = await UserTable.findOne({
-      where: { id: userId }
-    });
-    if (!existingUser) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-    // const postersId = existingUser.id;
-    const username = existingUser.username;
-    const profilePicture = existingUser.profilePicture;
-    const country = existingUser.country;
-    const location = existingUser.state;
-    const region = existingUser.country;
-
-    const feed = await FeedsTable.create({
-      postersId: userId,
-      username,
-      profilePicture,
-      postText,
-      location,
-      country,
-      region,
-      pic1,
-      pic2,
-      pic3,
-      pic4,
-      pic5,
-      video1,
-      video2,
-      cartegory
-    });
-
-    res.status(201).json({ message: 'Feed created successfully', feed });
-  } catch (error) {
-    console.error('Error creating feed:', error);
-    res.status(500).json({ message: 'Internal server error', error: error.message });
-  }
-}
-
-//to get all feeds but randomly so user can see feeds change when ever they refresh
-const getRandomFeed = async (req , res)=>{
-    const allFeed = await FeedsTable.findAll({
-       
-        order: Sequelize.literal('RAND()'), // Random order
-        limit: 10 // Adjust the limit as needed
-    });
-    res.status(200).json({ feeds: allFeed });
-}
-
-//to get all feeds by region
-const getFeedsByRegion = async (req, res) => {
-  const { region } = req.params;
-  try {
-    const feeds = await FeedsTable.findAll({
-      where: { region },
-      order: Sequelize.literal('RAND()') // Order by random
-    });
-    res.status(200).json({ feeds });
-  } catch (error) {
-    console.error('Error fetching feeds by region:', error);
-    res.status(500).json({ message: 'Internal server error', error: error.message });
-  }
-}
-
-// search feeds by postText content or location which is by state
-const searchFeed = async(req,res)=>{
-    const { query } = req.params;
+// Get feed with region filtering and random ordering
+const getFeed = async (req, res) => {
     try {
-        const feeds = await FeedsTable.findAll({
-            where: {
-                [Op.or]: [
-                    { postText: { [Op.like]: `%${query}%` } },
-                    { location: { [Op.like]: `%${query}%` } }
-                ]
-            },
-             order: Sequelize.literal('RAND()') // Order by random
+        const { 
+            page = 1, 
+            limit = 10, 
+            region, 
+            country, 
+            postType,
+            search,
+            userId 
+        } = req.query;
+        
+        const offset = (page - 1) * limit;
+        const currentUserId = req.user?.id;
+
+        // Build where clause
+        let whereClause = {
+            status: 'active'
+        };
+
+        // Region filtering
+        if (region) {
+            whereClause.userRegion = region;
+        }
+        if (country) {
+            whereClause.userCountry = country;
+        }
+        if (postType) {
+            whereClause.postType = postType;
+        }
+
+        // Search functionality
+        if (search) {
+            whereClause[Op.or] = [
+                { content: { [Op.like]: `%${search}%` } },
+                { productName: { [Op.like]: `%${search}%` } },
+                { brand: { [Op.like]: `%${search}%` } },
+                { location: { [Op.like]: `%${search}%` } },
+                { tags: { [Op.like]: `%${search}%` } }
+            ];
+        }
+
+        // Get posts with random ordering to avoid repetition
+        const posts = await Post.findAndCountAll({
+            where: whereClause,
+            include: [
+                {
+                    model: UserTable,
+                    as: 'user',
+                    attributes: ['id', 'fullName', 'email', 'profilePicture', 'accountType', 'accountStatus']
+                },
+                {
+                    model: PostMedia,
+                    as: 'media',
+                    attributes: ['id', 'mediaType', 'mediaUrl', 'thumbnailUrl', 'mediaOrder'],
+                    order: [['mediaOrder', 'ASC']]
+                }
+            ],
+            order: [
+                [Sequelize.fn('RAND')], // Random ordering
+                ['createdAt', 'DESC']
+            ],
+            limit: parseInt(limit),
+            offset: parseInt(offset),
+            distinct: true
         });
-        res.status(200).json({ feeds });
-    } catch (error) {
-        console.error('Error searching feeds:', error);
-        res.status(500).json({ message: 'Internal server error', error: error.message });
-    }
-}
 
-//get feed by id and postersId display it for editing
-const getFeedById = async (req, res) => {
-    const {feedId} = req.params;
-    const currentUserId = req.user.id
-    try {
-        const singleFeed = await FeedsTable.findOne({
-            where: {
-                id: feedId,
-                postersId: currentUserId
+        // Add engagement status for current user
+        const postsWithEngagement = await Promise.all(
+            posts.rows.map(async (post) => {
+                const postData = post.toJSON();
+                
+                if (currentUserId) {
+                    // Check if user liked the post
+                    const userLike = await PostLike.findOne({
+                        where: { postId: post.id, userId: currentUserId }
+                    });
+                    postData.isLiked = !!userLike;
+
+                    // Check if user saved the post
+                    const userSaved = await SavedPost.findOne({
+                        where: { postId: post.id, userId: currentUserId }
+                    });
+                    postData.isSaved = !!userSaved;
+
+                    // Check if user is following the post author
+                    const userFollow = await UserFollows.findOne({
+                        where: { 
+                            userId: currentUserId, 
+                            followsUserId: post.userId 
+                        }
+                    });
+                    postData.isFollowing = !!userFollow;
+                }
+
+                return postData;
+            })
+        );
+
+        res.status(200).json({
+            message: "Feed retrieved successfully",
+            data: {
+                posts: postsWithEngagement,
+                pagination: {
+                    currentPage: parseInt(page),
+                    totalPages: Math.ceil(posts.count / limit),
+                    totalPosts: posts.count,
+                    hasNextPage: offset + limit < posts.count,
+                    hasPrevPage: page > 1
+                }
             }
         });
 
-        if (!singleFeed) {
-            return res.status(404).json({ message: 'Feed not found or not authorized' });
-        }
-
-        res.status(200).json({ feed: singleFeed });
     } catch (error) {
-        console.error('Error fetching feed by id:', error);
-        res.status(500).json({ message: 'Internal server error', error: error.message });
-    }
-   
-}
-
-//edit feed by id and postersId
-const editFeedById = async (req, res) => {
-    const { feedId } = req.params;
-    const currentUserId = req.user.id;
-    const { postText, pic1, pic2, pic3, pic4, pic5, video1, video2, cartegory } = req.body;
-
-    try {
-        const feed = await FeedsTable.findOne({
-            where: {
-                id: feedId,
-                postersId: currentUserId
-            }
-        });
-
-        if (!feed) {
-            return res.status(404).json({ message: 'Feed not found or not authorized' });
-        }
-
-        // Update the feed with new data
-        feed.postText = postText || feed.postText;
-        feed.pic1 = pic1 || feed.pic1;
-        feed.pic2 = pic2 || feed.pic2;
-        feed.pic3 = pic3 || feed.pic3;
-        feed.pic4 = pic4 || feed.pic4;
-        feed.pic5 = pic5 || feed.pic5;
-        feed.video1 = video1 || feed.video1;
-        feed.video2 = video2 || feed.video2;
-        feed.cartegory = cartegory || feed.cartegory;
-
-        await feed.save();
-
-        res.status(200).json({ message: 'Feed updated successfully', feed });
-    } catch (error) {
-        console.error('Error updating feed:', error);
-        res.status(500).json({ message: 'Internal server error', error: error.message });
-    }      
- }
-
- //delete feed by id and postersId
- const deleteFeed = async (req, res) => {
-    const { feedId } = req.params;
-    const currentUserId = req.user.id;
-
-    try {
-        const feed = await FeedsTable.findOne({
-            where: {
-                id: feedId,
-                postersId: currentUserId
-            }
-        });
-
-        if (!feed) {
-            return res.status(404).json({ message: 'Feed not found or not authorized' });
-        }
-
-        await feed.destroy();
-
-        res.status(200).json({ message: 'Feed deleted successfully' });
-    } catch (error) {
-        console.error('Error deleting feed:', error);
-        res.status(500).json({ message: 'Internal server error', error: error.message });
+        console.error('Get feed error:', error);
+        res.status(500).json({ message: "Error retrieving feed", error: error.message });
     }
 };
 
-//get all feeds by postersId for current user
-const getFeedsByPostersId = async (req, res) => {
-    const  postersId  = req.user.id
+// Create a new post
+const createPost = async (req, res) => {
     try {
-        const feeds = await FeedsTable.findAll({
-            where: { postersId },
-            order: [['createdAt', 'DESC']] // Order by creation date
-        });
-        if (feeds.length === 0) {
-            return res.status(404).json({ message: 'No feeds found.' });
-        }
-       
+        const {
+            postType = 'product',
+            content,
+            productName,
+            brand,
+            price,
+            currency = 'USD',
+            location,
+            tags,
+            media
+        } = req.body;
 
-        res.status(200).json({ feeds });
+        const userId = req.user.id;
+
+        // Get user's region and country
+        const user = await UserTable.findByPk(userId);
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        // Create post
+        const post = await Post.create({
+            userId,
+            postType,
+            content,
+            productName,
+            brand,
+            price: price ? parseFloat(price) : null,
+            currency,
+            location,
+            userRegion: user.region || 'Unknown',
+            userCountry: user.country || 'Unknown',
+            tags: tags ? (typeof tags === 'string' ? JSON.parse(tags) : tags) : null
+        });
+
+        // Add media if provided
+        if (media && Array.isArray(media)) {
+            const mediaPromises = media.map((mediaItem, index) => {
+                return PostMedia.create({
+                    postId: post.id,
+                    mediaType: mediaItem.type || 'image',
+                    mediaUrl: mediaItem.url,
+                    thumbnailUrl: mediaItem.thumbnailUrl,
+                    mediaOrder: index,
+                    altText: mediaItem.altText
+                });
+            });
+            await Promise.all(mediaPromises);
+        }
+
+        // Get created post with associations
+        const createdPost = await Post.findByPk(post.id, {
+            include: [
+                {
+                    model: UserTable,
+                    as: 'user',
+                    attributes: ['id', 'fullName', 'email', 'profilePicture', 'accountType', 'accountStatus']
+                },
+                {
+                    model: PostMedia,
+                    as: 'media',
+                    attributes: ['id', 'mediaType', 'mediaUrl', 'thumbnailUrl', 'mediaOrder'],
+                    order: [['mediaOrder', 'ASC']]
+                }
+            ]
+        });
+
+        res.status(201).json({
+            message: "Post created successfully",
+            data: createdPost
+        });
+
     } catch (error) {
-        console.error('Error fetching feeds by postersId:', error);
-        res.status(500).json({ message: 'Internal server error', error: error.message });
+        console.error('Create post error:', error);
+        res.status(500).json({ message: "Error creating post", error: error.message });
     }
-}   
+};
+
+// Get single post with engagement
+const getPost = async (req, res) => {
+    try {
+        const { postId } = req.params;
+        const currentUserId = req.user?.id;
+
+        const post = await Post.findOne({
+            where: { id: postId, status: 'active' },
+            include: [
+                {
+                    model: UserTable,
+                    as: 'user',
+                    attributes: ['id', 'fullName', 'email', 'profilePicture', 'accountType', 'accountStatus']
+                },
+                {
+                    model: PostMedia,
+                    as: 'media',
+                    attributes: ['id', 'mediaType', 'mediaUrl', 'thumbnailUrl', 'mediaOrder'],
+                    order: [['mediaOrder', 'ASC']]
+                }
+            ]
+        });
+
+        if (!post) {
+            return res.status(404).json({ message: "Post not found" });
+        }
+
+        const postData = post.toJSON();
+
+        // Add engagement status for current user
+        if (currentUserId) {
+            const [userLike, userSaved, userFollow] = await Promise.all([
+                PostLike.findOne({ where: { postId, userId: currentUserId } }),
+                SavedPost.findOne({ where: { postId, userId: currentUserId } }),
+                UserFollows.findOne({ 
+                    where: { 
+                        userId: currentUserId, 
+                        followsUserId: post.userId 
+                    } 
+                })
+            ]);
+
+            postData.isLiked = !!userLike;
+            postData.isSaved = !!userSaved;
+            postData.isFollowing = !!userFollow;
+        }
+
+        res.status(200).json({
+            message: "Post retrieved successfully",
+            data: postData
+        });
+
+    } catch (error) {
+        console.error('Get post error:', error);
+        res.status(500).json({ message: "Error retrieving post", error: error.message });
+    }
+};
+
+// Like/Unlike a post
+const toggleLike = async (req, res) => {
+    try {
+        const { postId } = req.params;
+        const userId = req.user.id;
+
+        // Check if post exists
+        const post = await Post.findByPk(postId);
+        if (!post) {
+            return res.status(404).json({ message: "Post not found" });
+        }
+
+        // Check if already liked
+        const existingLike = await PostLike.findOne({
+            where: { postId, userId }
+        });
+
+        if (existingLike) {
+            // Unlike
+            await existingLike.destroy();
+            await post.decrement('likesCount');
+            
+            res.status(200).json({
+                message: "Post unliked successfully",
+                data: { isLiked: false }
+            });
+        } else {
+            // Like
+            await PostLike.create({ postId, userId });
+            await post.increment('likesCount');
+            
+            res.status(200).json({
+                message: "Post liked successfully",
+                data: { isLiked: true }
+            });
+        }
+
+    } catch (error) {
+        console.error('Toggle like error:', error);
+        res.status(500).json({ message: "Error toggling like", error: error.message });
+    }
+};
+
+// Save/Unsave a post
+const toggleSave = async (req, res) => {
+    try {
+        const { postId } = req.params;
+        const { collectionName = 'General' } = req.body;
+        const userId = req.user.id;
+
+        // Check if post exists
+        const post = await Post.findByPk(postId);
+        if (!post) {
+            return res.status(404).json({ message: "Post not found" });
+        }
+
+        // Check if already saved
+        const existingSave = await SavedPost.findOne({
+            where: { postId, userId }
+        });
+
+        if (existingSave) {
+            // Unsave
+            await existingSave.destroy();
+            await post.decrement('savedCount');
+            
+            res.status(200).json({
+                message: "Post unsaved successfully",
+                data: { isSaved: false }
+            });
+        } else {
+            // Save
+            await SavedPost.create({ postId, userId, collectionName });
+            await post.increment('savedCount');
+            
+            res.status(200).json({
+                message: "Post saved successfully",
+                data: { isSaved: true }
+            });
+        }
+
+    } catch (error) {
+        console.error('Toggle save error:', error);
+        res.status(500).json({ message: "Error toggling save", error: error.message });
+    }
+};
+
+// Get user's saved posts
+const getSavedPosts = async (req, res) => {
+    try {
+        const { page = 1, limit = 10, collectionName } = req.query;
+        const offset = (page - 1) * limit;
+        const userId = req.user.id;
+
+        let whereClause = { userId };
+        if (collectionName) {
+            whereClause.collectionName = collectionName;
+        }
+
+        const savedPosts = await SavedPost.findAndCountAll({
+            where: whereClause,
+            include: [
+                {
+                    model: Post,
+                    as: 'post',
+                    where: { status: 'active' },
+                    include: [
+                        {
+                            model: UserTable,
+                            as: 'user',
+                            attributes: ['id', 'fullName', 'email', 'profilePicture', 'accountType', 'accountStatus']
+                        },
+                        {
+                            model: PostMedia,
+                            as: 'media',
+                            attributes: ['id', 'mediaType', 'mediaUrl', 'thumbnailUrl', 'mediaOrder'],
+                            order: [['mediaOrder', 'ASC']]
+                        }
+                    ]
+                }
+            ],
+            order: [['createdAt', 'DESC']],
+            limit: parseInt(limit),
+            offset: parseInt(offset)
+        });
+
+        res.status(200).json({
+            message: "Saved posts retrieved successfully",
+            data: {
+                savedPosts: savedPosts.rows,
+                pagination: {
+                    currentPage: parseInt(page),
+                    totalPages: Math.ceil(savedPosts.count / limit),
+                    totalSavedPosts: savedPosts.count,
+                    hasNextPage: offset + limit < savedPosts.count,
+                    hasPrevPage: page > 1
+                }
+            }
+        });
+
+    } catch (error) {
+        console.error('Get saved posts error:', error);
+        res.status(500).json({ message: "Error retrieving saved posts", error: error.message });
+    }
+};
+
+// Search posts
+const searchPosts = async (req, res) => {
+    try {
+        const { 
+            query, 
+            page = 1, 
+            limit = 10, 
+            region, 
+            country, 
+            postType 
+        } = req.query;
+        
+        const offset = (page - 1) * limit;
+        const currentUserId = req.user?.id;
+
+        if (!query) {
+            return res.status(400).json({ message: "Search query is required" });
+        }
+
+        // Build where clause
+        let whereClause = {
+            status: 'active',
+            [Op.or]: [
+                { content: { [Op.like]: `%${query}%` } },
+                { productName: { [Op.like]: `%${query}%` } },
+                { brand: { [Op.like]: `%${query}%` } },
+                { location: { [Op.like]: `%${query}%` } },
+                { tags: { [Op.like]: `%${query}%` } }
+            ]
+        };
+
+        if (region) whereClause.userRegion = region;
+        if (country) whereClause.userCountry = country;
+        if (postType) whereClause.postType = postType;
+
+        const posts = await Post.findAndCountAll({
+            where: whereClause,
+            include: [
+                {
+                    model: UserTable,
+                    as: 'user',
+                    attributes: ['id', 'fullName', 'email', 'profilePicture', 'accountType', 'accountStatus']
+                },
+                {
+                    model: PostMedia,
+                    as: 'media',
+                    attributes: ['id', 'mediaType', 'mediaUrl', 'thumbnailUrl', 'mediaOrder'],
+                    order: [['mediaOrder', 'ASC']]
+                }
+            ],
+            order: [['createdAt', 'DESC']],
+            limit: parseInt(limit),
+            offset: parseInt(offset)
+        });
+
+        // Add engagement status
+        const postsWithEngagement = await Promise.all(
+            posts.rows.map(async (post) => {
+                const postData = post.toJSON();
+                
+                if (currentUserId) {
+                    const [userLike, userSaved, userFollow] = await Promise.all([
+                        PostLike.findOne({ where: { postId: post.id, userId: currentUserId } }),
+                        SavedPost.findOne({ where: { postId: post.id, userId: currentUserId } }),
+                        UserFollows.findOne({ 
+                            where: { 
+                                userId: currentUserId, 
+                                followsUserId: post.userId 
+                            } 
+                        })
+                    ]);
+
+                    postData.isLiked = !!userLike;
+                    postData.isSaved = !!userSaved;
+                    postData.isFollowing = !!userFollow;
+                }
+
+                return postData;
+            })
+        );
+
+        res.status(200).json({
+            message: "Search completed successfully",
+            data: {
+                posts: postsWithEngagement,
+                query,
+                pagination: {
+                    currentPage: parseInt(page),
+                    totalPages: Math.ceil(posts.count / limit),
+                    totalResults: posts.count,
+                    hasNextPage: offset + limit < posts.count,
+                    hasPrevPage: page > 1
+                }
+            }
+        });
+
+    } catch (error) {
+        console.error('Search posts error:', error);
+        res.status(500).json({ message: "Error searching posts", error: error.message });
+    }
+};
 
 module.exports = {
-  createFeed , getRandomFeed , getFeedsByRegion,searchFeed,getFeedById,editFeedById,deleteFeed,getFeedsByPostersId
+    getFeed,
+    createPost,
+    getPost,
+    toggleLike,
+    toggleSave,
+    getSavedPosts,
+    searchPosts
 };

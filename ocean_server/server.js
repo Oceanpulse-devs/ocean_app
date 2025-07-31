@@ -59,11 +59,13 @@ const authRoutes = require('./src/routes/authRoutes');
 const adminRoutes = require('./src/routes/adminRoutes');
 const notificationRoutes = require('./src/routes/notificationRoutes');
 const followRoutes = require('./src/routes/followRoutes');
+const feedRoutes = require('./src/routes/feedRoutes');
 
 app.use('/', authRoutes);
 app.use('/', adminRoutes);
 app.use('/', notificationRoutes);
 app.use('/', followRoutes);
+app.use('/', feedRoutes);
 
 
 
