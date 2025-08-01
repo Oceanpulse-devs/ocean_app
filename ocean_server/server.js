@@ -61,6 +61,7 @@ const notificationRoutes = require('./src/routes/notificationRoutes');
 const followRoutes = require('./src/routes/followRoutes');
 const feedRoutes = require('./src/routes/feedRoutes');
 const productRoutes = require('./src/routes/productRoutes');
+const auctionRoutes = require('./src/routes/auctionRoutes');
 
 app.use('/', authRoutes);
 app.use('/', adminRoutes);
@@ -68,6 +69,7 @@ app.use('/', notificationRoutes);
 app.use('/', followRoutes);
 app.use('/', feedRoutes);
 app.use('/', productRoutes);
+app.use('/', auctionRoutes);
 
 
 
