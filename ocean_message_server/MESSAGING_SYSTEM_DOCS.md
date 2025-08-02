@@ -18,7 +18,7 @@ The Ocean Messaging System is a real-time messaging microservice that handles di
 ## 🏗️ Architecture
 
 ### Server Setup
-- **Port**: 5002 (configurable)
+- **Port**: 5001 (configurable)
 - **Database**: MySQL (shared with main server)
 - **Real-time**: Socket.IO
 - **Authentication**: JWT tokens (shared with main server)

@@ -78,8 +78,8 @@ A subscription renewal or expiry reminder	“Your Tide plan expires in 3 days. R
 .Phase 1: Core Features (What we have + need)
 ✅ Feed System (DONE!)
 ✅🛒 Products Page (DONE!)
-�� Messaging System
-🏷️ Auction System
+✅�� Messaging System
+✅🏷️ Auction System
 Phase 2: Advanced Features
 �� Group Buy System
 🔄 Swap Deals
