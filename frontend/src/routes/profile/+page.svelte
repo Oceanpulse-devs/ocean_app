@@ -3,6 +3,7 @@
   import Upload from '$lib/components/Upload.svelte';
   import Post from '$lib/components/Post.svelte';
   import EditProfile from '$lib/components/EditProfile.svelte';
+  import ProtectedRoute from '$lib/components/ProtectedRoute.svelte';
   
   // Mock data - will be replaced with actual API calls
   let userData = {
@@ -487,13 +488,14 @@
   }
 </script>
 
-<div class="profile-page">
-  <!-- Floating Action Button -->
-  <button 
-    class="action-button" 
-    on:click={handleAction}
-    title={userData.accountType === 'buyer' ? 'Create Post' : 'Upload Product'}
-  >
+<ProtectedRoute>
+  <div class="profile-page">
+    <!-- Floating Action Button -->
+    <button 
+      class="action-button" 
+      on:click={handleAction}
+      title={userData.accountType === 'buyer' ? 'Create Post' : 'Upload Product'}
+    >
     {#if userData.accountType === 'buyer'}
       <svg xmlns="http://www.w3.org/2000/svg" class="icon" viewBox="0 0 24 24">
         <path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm4 16H6v-2h12v2zm0-4H6v-2h12v2zm-3-5V3.5L18.5 9H15z"/>
@@ -3093,4 +3095,5 @@
       font-size: 0.9rem;
     }
   }
-</style> 
+</style>
+</ProtectedRoute> 

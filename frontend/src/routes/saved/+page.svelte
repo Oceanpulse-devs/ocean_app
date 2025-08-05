@@ -1,4 +1,6 @@
 <script lang="ts">
+  import ProtectedRoute from '$lib/components/ProtectedRoute.svelte';
+  
   interface SavedProduct {
     id: number;
     name: string;
@@ -88,55 +90,53 @@
   }
 </script>
 
-<main class="main-container">
-  <div class="saved-content">
-    <div class="search-bar">
-      <div class="search-input">
-        <svg xmlns="http://www.w3.org/2000/svg" class="search-icon" viewBox="0 0 24 24">
-          <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
-        </svg>
-        <input type="text" placeholder="Search for product by text or image" />
-        <button class="camera-btn">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-            <path d="M12 15.2a3.2 3.2 0 100-6.4 3.2 3.2 0 000 6.4z"/>
-            <path d="M9 3L7.17 5H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2h-3.17L15 3H9zm3 15c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5z"/>
+<ProtectedRoute>
+  <main class="main-container">
+    <div class="saved-content">
+      <div class="search-bar">
+        <div class="search-input">
+          <svg xmlns="http://www.w3.org/2000/svg" class="search-icon" viewBox="0 0 24 24">
+            <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
           </svg>
-        </button>
+          <input type="text" placeholder="Search for product by text or image" />
+          <button class="camera-btn">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+              <path d="M12 2C13.1 2 14 2.9 14 4C14 5.1 13.1 6 12 6C10.9 6 10 5.1 10 4C10 2.9 10.9 2 12 2ZM21 9V7L15 1H5C3.89 1 3 1.89 3 3V21C3 22.11 3.89 23 5 23H19C20.11 23 21 22.11 21 21V9ZM19 21H5V3H13V9H19V21Z"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="saved-header">
+        <h1>Saved Items</h1>
+        <p>Your saved products and favorites</p>
+      </div>
+
+      <div class="saved-grid">
+        {#each savedProducts as product}
+          <div class="saved-item">
+            <div class="product-image">
+              <img src={product.image} alt={product.name} />
+              <button class="remove-btn" on:click={() => removeFromSaved(product.id)}>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                  <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+                </svg>
+              </button>
+            </div>
+            <div class="product-info">
+              <h3>{product.name}</h3>
+              <p class="price">${product.price}</p>
+              <div class="seller-info">
+                <img src={product.seller.avatar} alt={product.seller.name} />
+                <span>{product.seller.name}</span>
+              </div>
+            </div>
+          </div>
+        {/each}
       </div>
     </div>
-
-    <div class="products-grid">
-      {#each savedProducts as product (product.id)}
-        <div class="product-card">
-          <div class="product-image">
-            <img src={product.image} alt={product.name} />
-          </div>
-
-          <div class="product-info">
-            <div class="seller-info">
-              <img src={product.seller.avatar} alt={product.seller.name} class="seller-avatar" />
-              <span class="seller-name">{product.seller.name}</span>
-            </div>
-
-            <h3 class="product-name">{product.name}</h3>
-            <div class="price-row">
-              <span class="price">${product.price}</span>
-            </div>
-          </div>
-
-          <div class="product-actions">
-            <button class="view-btn">View</button>
-            <button class="remove-btn" on:click={() => removeFromSaved(product.id)}>
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
-              </svg>
-            </button>
-          </div>
-        </div>
-      {/each}
-    </div>
-    </div>
   </main>
+</ProtectedRoute>
 
 <style>
   .main-container {

@@ -1,7 +1,9 @@
 <script lang="ts">
   import { page } from '$app/stores';
+  import { onMount } from 'svelte';
   import Navbar from '$lib/components/Navbar.svelte';
   import Sidebar from '$lib/components/Sidebar.svelte';
+  import { authStore } from '$lib/stores/auth';
   
   // Pages that use transparent navbar (landing) or no navbar (auth pages)
   const specialNavbarRoutes = ['/'];
@@ -24,6 +26,11 @@
   };
 
   $: isFullWidth = $page.url.pathname === '/products';
+
+  // Check authentication on app startup
+  onMount(() => {
+    authStore.checkAuth();
+  });
 </script>
 
 <div class="layout" class:with-sidebar={shouldShowSidebar}>

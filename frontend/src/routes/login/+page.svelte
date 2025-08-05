@@ -1,19 +1,46 @@
-<script>
+<script lang="ts">
   import { goto } from '$app/navigation';
+  import { login } from '$lib/api/auth';
+  import { authStore } from '$lib/stores/auth';
   
   let email = '';
   let password = '';
   let rememberMe = false;
   let isLoading = false;
+  let loginError = '';
+  let loginSuccess = '';
   
-  function handleLogin() {
-    isLoading = true;
+  async function handleLogin() {
+    if (!email || !password) {
+      loginError = 'Please fill in all fields';
+      return;
+    }
     
-    // Simulate login - replace with actual authentication
-    setTimeout(() => {
+    isLoading = true;
+    loginError = '';
+    loginSuccess = '';
+    authStore.clearError();
+    
+    try {
+      const response = await login({ email, password });
+      console.log('Login response:', response);
+      
+      // Update auth store with user data
+      if (response.user) {
+        authStore.setUser(response.user);
+      }
+      
+      loginSuccess = 'Login successful! Redirecting...';
+      console.log(loginSuccess);
+      setTimeout(() => goto('/feed'), 1200);
+    } catch (error: any) {
+      const errorMessage = error.message || 'Login failed. Please try again.';
+      loginError = errorMessage;
+      authStore.setError(errorMessage);
+      console.error('Login error:', error);
+    } finally {
       isLoading = false;
-      goto('/feed');
-    }, 1000);
+    }
   }
   
   function handleGoogleLogin() {
@@ -80,6 +107,26 @@
             </div>
             <a href="/forgot-password" class="forgot-link">Forgot password?</a>
           </div>
+          
+          <!-- Error Message -->
+          {#if loginError}
+            <div class="error-message">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM8 4a.905.905 0 0 0-.9.995l.35 3.507a.552.552 0 0 0 1.1 0l.35-3.507A.905.905 0 0 0 8 4zm.002 6a1 1 0 1 0 0 2 1 1 0 0 0 0-2z"/>
+              </svg>
+              {loginError}
+            </div>
+          {/if}
+          
+          <!-- Success Message -->
+          {#if loginSuccess}
+            <div class="success-message">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zm-3.97-3.97a.235.235 0 0 0-.02.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-1.071-1.05z"/>
+              </svg>
+              {loginSuccess}
+            </div>
+          {/if}
           
           <button type="submit" class="submit-btn" disabled={isLoading}>
             {#if isLoading}
@@ -536,6 +583,33 @@
     transform: scale(1.04) rotate(-2deg);
     filter: drop-shadow(0 8px 32px rgba(63,137,251,0.18));
   }
+  
+  .error-message {
+    background-color: #fef2f2;
+    border: 1px solid #fecaca;
+    color: #dc2626;
+    padding: 0.75rem;
+    border-radius: 0.5rem;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+  }
+  
+  .success-message {
+    background-color: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    color: #16a34a;
+    padding: 0.75rem;
+    border-radius: 0.5rem;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+  }
+  
   @media (max-width: 600px) {
     .ocean-logo {
       width: 70px;

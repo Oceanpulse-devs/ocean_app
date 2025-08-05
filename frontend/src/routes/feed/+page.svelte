@@ -1,6 +1,6 @@
 <script lang="ts">
+  import ProtectedRoute from '$lib/components/ProtectedRoute.svelte';
   
-
   let userStats = {
     posts: 46,
     followers: '2.8K',
@@ -373,10 +373,11 @@
   }
 </script>
 
-<div class="feed-layout">
+<ProtectedRoute>
+  <div class="feed-layout">
 
-  <!-- Main Content -->
-  <main class="main-content">
+    <!-- Main Content -->
+    <main class="main-content">
     <div class="search-bar">
       <div class="search-input">
         <svg xmlns="http://www.w3.org/2000/svg" class="search-icon" viewBox="0 0 24 24">
@@ -1973,4 +1974,5 @@
       font-size: 0.875rem;
     }
   }
-</style> 
+</style>
+</ProtectedRoute> 

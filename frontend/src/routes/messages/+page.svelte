@@ -1,6 +1,7 @@
 <script lang="ts">
   import { browser } from '$app/environment';
   import { slide } from 'svelte/transition';
+  import ProtectedRoute from '$lib/components/ProtectedRoute.svelte';
 
   let userStats = {
     posts: 46,
@@ -148,8 +149,9 @@
   ];
 </script>
 
-<div class="messages-wrapper">
-  <div class="chat-area" class:full-width={!showContacts}>
+<ProtectedRoute>
+  <div class="messages-wrapper">
+    <div class="chat-area" class:full-width={!showContacts}>
     <div class="chat-header">
       {#if isMobile}
         <button class="toggle-contacts" on:click={toggleContacts}>
@@ -748,4 +750,5 @@
     transition: transform 0.2s ease, box-shadow 0.2s ease;
     color: #111;
   }
-</style> 
+</style>
+</ProtectedRoute> 

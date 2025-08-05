@@ -30,7 +30,7 @@ const validatePassword = (password) => {
 
 //signing up
 const signup = async(req, res) => {
-   const {fullName, email, password, confirmPassword, agreeTerms, state, country, phoneNumber, address} = req.body;
+   const {fullName, email, password, confirmPassword, agreeTerms} = req.body;
 
    try{
     // Input validation
@@ -54,10 +54,6 @@ const signup = async(req, res) => {
         return res.status(400).json({message:"Password and confirm password do not match"})
     }
 
-    if(phoneNumber && !validatePhoneNumber(phoneNumber)){
-        return res.status(400).json({message:"Please provide a valid phone number"})
-    }
-
     if(!agreeTerms){
         return res.status(400).json({message:"You must agree to the terms and conditions"})
     }
@@ -72,14 +68,11 @@ const signup = async(req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10)
     const newUser = await UserTable.create({
         fullName: fullName.trim(),
-        username: fullName.trim(),
         email: email.toLowerCase().trim(),
         password: hashedPassword,
         agreeTerms,
-        state: state?.trim(),
-        country: country?.trim(),
-        phoneNumber: phoneNumber?.trim(),
-        address: address?.trim()
+        accountType: 'buyer', // Default to buyer
+        accountStatus: 'active' // Default to active
     })
 
     res.status(201).json({
@@ -93,6 +86,7 @@ const signup = async(req, res) => {
         }
     })
 }catch(error){
+        console.error('Signup error:', error);
         res.status(500).json({message:"Error creating user", error:error.message})
 }
 };
@@ -197,6 +191,7 @@ const login = async(req,res)=>{
     res.cookie('token', token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
         maxAge: 7 * 24 * 60 * 60 * 1000 //7days
     });
 

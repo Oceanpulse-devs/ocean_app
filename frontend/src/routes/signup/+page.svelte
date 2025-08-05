@@ -1,6 +1,7 @@
-<script>
+<script lang="ts">
   import { goto } from '$app/navigation';
-  import {signup} from '$lib/api/auth'
+  import { signup } from '$lib/api/auth';
+  import { authStore } from '$lib/stores/auth';
   
   let fullName = '';
   let email = '';
@@ -32,29 +33,41 @@
   }
   
   async function handleSignup() {
-  if (!validatePasswords()) return;
-  isLoading = true;
-  signupError = '';
-  signupSuccess = '';
-  try {
-    await signup({
-      fullName,
-      username: username || email.split('@')[0], // fallback if username not provided
-      email,
-      password,
-      agreeTerms
-    });
-    signupSuccess = 'Signup successful! Redirecting...';
-    console.log(signupSuccess)
-    setTimeout(() => goto('/feed'), 1200);
-  } catch (error) {
-    // If error is an object and has a string 'message', use it, else fallback
-    signupError = "fail to register!"
-    console.log(signupError)
-  } finally {
-    isLoading = false;
+    if (!validatePasswords()) return;
+    isLoading = true;
+    signupError = '';
+    signupSuccess = '';
+    authStore.clearError();
+    
+    try {
+      const response = await signup({
+        fullName,
+        username: username || email.split('@')[0], // fallback if username not provided
+        email,
+        password,
+        confirmPassword,
+        agreeTerms
+      });
+      
+      console.log('Signup response:', response);
+      
+      // Update auth store with user data
+      if (response.user) {
+        authStore.setUser(response.user);
+      }
+      
+      signupSuccess = 'Signup successful! Redirecting...';
+      console.log(signupSuccess);
+      setTimeout(() => goto('/feed'), 1200);
+    } catch (error: any) {
+      const errorMessage = error.message || "Failed to register! Please try again.";
+      signupError = errorMessage;
+      authStore.setError(errorMessage);
+      console.log(signupError);
+    } finally {
+      isLoading = false;
+    }
   }
-}
   
   function handleGoogleSignup() {
     // Implement Google OAuth signup
@@ -201,6 +214,26 @@
               <label for="agreeTerms">I agree to the <a href="/terms" class="link">Terms of Service</a> and <a href="/privacy" class="link">Privacy Policy</a></label>
             </div>
           </div>
+          
+          <!-- Error Message -->
+          {#if signupError}
+            <div class="error-message">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM8 4a.905.905 0 0 0-.9.995l.35 3.507a.552.552 0 0 0 1.1 0l.35-3.507A.905.905 0 0 0 8 4zm.002 6a1 1 0 1 0 0 2 1 1 0 0 0 0-2z"/>
+              </svg>
+              {signupError}
+            </div>
+          {/if}
+          
+          <!-- Success Message -->
+          {#if signupSuccess}
+            <div class="success-message">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zm-3.97-3.97a.235.235 0 0 0-.02.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-1.071-1.05z"/>
+              </svg>
+              {signupSuccess}
+            </div>
+          {/if}
           
           <button type="submit" class="submit-btn" disabled={isLoading || !agreeTerms}>
             {#if isLoading}
@@ -663,6 +696,33 @@
     transform: scale(1.04) rotate(-2deg);
     filter: drop-shadow(0 8px 32px rgba(63,137,251,0.18));
   }
+  
+  .error-message {
+    background-color: #fef2f2;
+    border: 1px solid #fecaca;
+    color: #dc2626;
+    padding: 0.75rem;
+    border-radius: 0.5rem;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+  }
+  
+  .success-message {
+    background-color: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    color: #16a34a;
+    padding: 0.75rem;
+    border-radius: 0.5rem;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+  }
+  
   @media (max-width: 600px) {
     .ocean-logo {
       width: 70px;

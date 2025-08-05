@@ -14,46 +14,26 @@ module.exports = (sequelize, DataTypes) =>{
                 notEmpty:true,
             }
         },
-        google_Id:{
-            type:DataTypes.STRING,
-            allowNull: true,
-            validate:{
-                notEmpty:false,
-            }
-        },
-        facebook_Id:{
-            type:DataTypes.STRING,
-            allowNull: true,
-            validate:{
-                notEmpty:false,
-            }
-        },
+        // OAuth fields - will be added when implementing OAuth
+        // google_Id:{
+        //     type:DataTypes.STRING,
+        //     allowNull: true,
+        //     validate:{
+        //         notEmpty:false,
+        //     }
+        // },
+        // facebook_Id:{
+        //     type:DataTypes.STRING,
+        //     allowNull: true,
+        //     validate:{
+        //         notEmpty:false,
+        //     }
+        // },
         fullName:{
             type:DataTypes.STRING,
             allowNull: false,
             validate:{
                 notEmpty:true,
-            }
-        },
-        username:{
-            type:DataTypes.STRING,
-            allowNull: false,
-            validate:{
-                notEmpty:true,
-            }
-        },
-         profilePicture:{
-            type:DataTypes.TEXT,
-            allowNull: true,
-            validate:{
-                notEmpty:false,
-            }
-        },
-         coverPicture:{
-            type:DataTypes.TEXT,
-            allowNull: true,
-            validate:{
-                notEmpty:false,
             }
         },
         email:{
@@ -74,27 +54,6 @@ module.exports = (sequelize, DataTypes) =>{
             type:DataTypes.BOOLEAN,
             allowNull: false,
             defaultValue: false,
-            validate:{
-                notEmpty:false,
-            }
-        },
-        country:{
-            type:DataTypes.STRING,
-            allowNull: true,
-            validate:{
-                notEmpty:false,
-            }
-        },
-        phoneNumber:{
-            type:DataTypes.STRING,
-            allowNull: true,
-            validate:{
-                notEmpty:false,
-            }
-        },
-        address:{
-            type:DataTypes.TEXT,
-            allowNull: true,
             validate:{
                 notEmpty:false,
             }

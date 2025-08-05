@@ -1,4 +1,6 @@
 <script lang="ts">
+  import ProtectedRoute from '$lib/components/ProtectedRoute.svelte';
+  
   // Settings state
   let notificationsEnabled = true;
   let emailNotifications = true;
@@ -51,7 +53,8 @@
   let activeSection = 'account';
 </script>
 
-<div class="settings-content">
+<ProtectedRoute>
+  <div class="settings-content">
     <div class="settings-header">
       <h1>Settings</h1>
       <button class="save-button" on:click={saveSettings}>
@@ -600,4 +603,5 @@
       font-size: 0.75rem;
     }
   }
-</style> 
+</style>
+</ProtectedRoute> 

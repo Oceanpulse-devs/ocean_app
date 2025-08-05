@@ -71,7 +71,7 @@ router.get('/api/auth/facebook/callback', passport.authenticate('facebook', { fa
 }
 
 router.post('/api/signup', signup)
-router.post('/api/signin', login)
+router.post('/api/login', login)
 router.post('/api/logout', (req, res) => {
     res.clearCookie('token');
     res.status(200).json({ message: 'Logged out successfully' });

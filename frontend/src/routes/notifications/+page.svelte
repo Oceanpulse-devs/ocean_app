@@ -1,6 +1,7 @@
 <script lang="ts">
   import { browser } from '$app/environment';
   import { formatDistanceToNow } from 'date-fns';
+  import ProtectedRoute from '$lib/components/ProtectedRoute.svelte';
 
   interface Notification {
     id: number;
@@ -65,10 +66,11 @@
   }
 </script>
 
-<div class="notifications-container">
+<ProtectedRoute>
+  <div class="notifications-container">
 
   
-  <div class="notifications-content">
+    <div class="notifications-content">
     <div class="notifications-header">
       <h1>Notifications</h1>
       <button class="mark-read-btn" on:click={markAllAsRead}>
@@ -332,3 +334,4 @@
     }
   }
 </style>
+</ProtectedRoute>
