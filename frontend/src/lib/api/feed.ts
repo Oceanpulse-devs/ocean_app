@@ -159,4 +159,58 @@ export async function searchPosts(query: string, params?: {
   }
   
   return apiRequest(`/search?${searchParams.toString()}`);
+}
+
+// Comment interfaces
+export interface Comment {
+  id: string;
+  content: string;
+  createdAt: string;
+  user: {
+    id: string;
+    fullName: string;
+    email: string;
+    profilePicture?: string;
+  };
+}
+
+export interface CommentResponse {
+  comments: Comment[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+// Create a comment on a post
+export async function createComment(postId: string, content: string) {
+  return apiRequest(`/posts/${postId}/comments`, {
+    method: 'POST',
+    body: JSON.stringify({ content }),
+  });
+}
+
+// Get comments for a post
+export async function getComments(postId: string, params?: {
+  page?: number;
+  limit?: number;
+}) {
+  const searchParams = new URLSearchParams();
+  
+  if (params) {
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined) {
+        searchParams.append(key, value.toString());
+      }
+    });
+  }
+  
+  return apiRequest(`/posts/${postId}/comments?${searchParams.toString()}`);
+}
+
+// Delete a comment
+export async function deleteComment(commentId: string) {
+  return apiRequest(`/comments/${commentId}`, {
+    method: 'DELETE',
+  });
 } 

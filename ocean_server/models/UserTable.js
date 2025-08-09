@@ -58,6 +58,42 @@ module.exports = (sequelize, DataTypes) =>{
                 notEmpty:false,
             }
         },
+        // Profile fields
+        profilePicture:{
+            type:DataTypes.STRING,
+            allowNull: true,
+            validate:{
+                notEmpty:false,
+            }
+        },
+        coverPicture:{
+            type:DataTypes.STRING,
+            allowNull: true,
+            validate:{
+                notEmpty:false,
+            }
+        },
+        bio:{
+            type:DataTypes.TEXT,
+            allowNull: true,
+            validate:{
+                notEmpty:false,
+            }
+        },
+        location:{
+            type:DataTypes.STRING,
+            allowNull: true,
+            validate:{
+                notEmpty:false,
+            }
+        },
+        website:{
+            type:DataTypes.STRING,
+            allowNull: true,
+            validate:{
+                notEmpty:false,
+            }
+        },
         accountType:{
             type:DataTypes.ENUM("admin","buyer","seller","pending-seller"),
             allowNull: false,

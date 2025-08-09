@@ -20,8 +20,12 @@
       }
     });
 
-    // Check auth status
-    authStore.checkAuth();
+    // Only check auth if we don't already have user data
+    if (!$authStore.user) {
+      authStore.checkAuth();
+    } else {
+      isChecking = false;
+    }
 
     return unsubscribe;
   });

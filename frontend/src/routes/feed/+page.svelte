@@ -1,6 +1,6 @@
 <script lang="ts">
   import ProtectedRoute from '$lib/components/ProtectedRoute.svelte';
-  import { getFeed, createPost, toggleLike, toggleSave } from '$lib/api/feed';
+  import { getFeed, createPost, toggleLike, toggleSave, createComment, getComments, deleteComment, type Comment } from '$lib/api/feed';
   import { onMount } from 'svelte';
   
   // Feed data state
@@ -14,6 +14,9 @@
   let showComments = false;
   let commentText = '';
   let showShareMenu = false;
+  let comments: Comment[] = [];
+  let isLoadingComments = false;
+  let commentingPostId = '';
   let isModalOpen = false;
   let modalIndex = 0;
   let currentPostId = '';
@@ -161,17 +164,67 @@
     }
   }
 
+  // Load comments for a post
+  async function loadComments(postId: string) {
+    try {
+      isLoadingComments = true;
+      const response = await getComments(postId);
+      comments = response.data.comments || [];
+    } catch (err: any) {
+      console.error('Error loading comments:', err);
+    } finally {
+      isLoadingComments = false;
+    }
+  }
+
   // Handle comment submit
-  function handleCommentSubmit() {
-    if (commentText.trim()) {
-      // TODO: Implement comment submission to backend
-      console.log('Submitting comment:', commentText);
-      commentText = '';
+  async function handleCommentSubmit() {
+    if (commentText.trim() && commentingPostId) {
+      try {
+        const response = await createComment(commentingPostId, commentText.trim());
+        
+        // Add new comment to the list
+        comments = [response.data, ...comments];
+        
+        // Update comment count on the post
+        const postIndex = posts.findIndex(p => p.id === commentingPostId);
+        if (postIndex !== -1) {
+          posts[postIndex].commentsCount = (posts[postIndex].commentsCount || 0) + 1;
+          posts = [...posts]; // Trigger reactivity
+        }
+        
+        commentText = '';
+      } catch (err: any) {
+        console.error('Error submitting comment:', err);
+      }
+    }
+  }
+
+  // Delete a comment
+  async function handleDeleteComment(commentId: string) {
+    try {
+      await deleteComment(commentId);
+      
+      // Remove comment from list
+      comments = comments.filter(c => c.id !== commentId);
+      
+      // Update comment count on the post
+      const postIndex = posts.findIndex(p => p.id === commentingPostId);
+      if (postIndex !== -1) {
+        posts[postIndex].commentsCount = Math.max(0, (posts[postIndex].commentsCount || 0) - 1);
+        posts = [...posts]; // Trigger reactivity
+      }
+    } catch (err: any) {
+      console.error('Error deleting comment:', err);
     }
   }
 
   // Toggle comments
-  function toggleComments() {
+  async function toggleComments(postId: string) {
+    if (!showComments) {
+      commentingPostId = postId;
+      await loadComments(postId);
+    }
     showComments = !showComments;
   }
 
@@ -195,12 +248,12 @@
   // Toggle like
   async function handleToggleLike(postId: string) {
     try {
-      await toggleLike(postId);
-      // Update local state instead of reloading feed
+      const response = await toggleLike(postId);
+      // Update local state based on backend response
       const postIndex = posts.findIndex(p => p.id === postId);
       if (postIndex !== -1) {
-        posts[postIndex].isLiked = !posts[postIndex].isLiked;
-        posts[postIndex].likesCount = posts[postIndex].isLiked 
+        posts[postIndex].isLiked = response.data.isLiked;
+        posts[postIndex].likesCount = response.data.isLiked 
           ? (posts[postIndex].likesCount || 0) + 1 
           : Math.max(0, (posts[postIndex].likesCount || 0) - 1);
         posts = [...posts]; // Trigger reactivity
@@ -213,12 +266,12 @@
   // Toggle save
   async function handleToggleSave(postId: string) {
     try {
-      await toggleSave(postId);
-      // Update local state instead of reloading feed
+      const response = await toggleSave(postId);
+      // Update local state based on backend response
       const postIndex = posts.findIndex(p => p.id === postId);
       if (postIndex !== -1) {
-        posts[postIndex].isSaved = !posts[postIndex].isSaved;
-        posts[postIndex].savedCount = posts[postIndex].isSaved 
+        posts[postIndex].isSaved = response.data.isSaved;
+        posts[postIndex].savedCount = response.data.isSaved 
           ? (posts[postIndex].savedCount || 0) + 1 
           : Math.max(0, (posts[postIndex].savedCount || 0) - 1);
         posts = [...posts]; // Trigger reactivity
@@ -303,18 +356,30 @@
     });
   }
 
+  // Scroll detection for search bar
+  let isSearchBarVisible = true;
+
+
+
   // Load feed on mount
   onMount(() => {
     loadFeed();
+    
+
+    
+          // Cleanup function
+      return () => {
+        // Cleanup if needed in the future
+      };
   });
 </script>
 
 <ProtectedRoute>
   <div class="feed-layout">
 
-    <!-- Main Content -->
-    <main class="main-content">
-    <div class="search-bar">
+    <!-- Search Bar (Fixed Position) -->
+    <div class="search-bar" class:search-bar-hidden={!isSearchBarVisible}>
+
               <div class="search-input">
           <svg xmlns="http://www.w3.org/2000/svg" class="search-icon" viewBox="0 0 24 24">
             <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
@@ -348,9 +413,43 @@
           {/each}
         </select>
       </div>
+      
+      <!-- Toggle Button -->
+      <button 
+        class="search-toggle-btn"
+        class:search-toggle-visible={isSearchBarVisible}
+        on:click={() => isSearchBarVisible = !isSearchBarVisible}
+        title={isSearchBarVisible ? "Hide Search Bar" : "Show Search Bar"}
+        aria-label={isSearchBarVisible ? "Hide Search Bar" : "Show Search Bar"}
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          {#if isSearchBarVisible}
+            <path d="M18 6 6 18"/>
+            <path d="m6 6 12 12"/>
+          {:else}
+            <path d="M12 5v14"/>
+            <path d="M5 12h14"/>
+          {/if}
+        </svg>
+      </button>
     </div>
 
-    <div class="feed-posts">
+    <!-- Floating Search Button (appears when search bar is hidden) -->
+    {#if !isSearchBarVisible}
+      <button 
+        class="floating-search-btn" 
+        on:click={() => isSearchBarVisible = true}
+        title="Show Search Bar"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+        </svg>
+      </button>
+    {/if}
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <div class="feed-posts">
       {#if isLoading}
         <div class="loading-state">
           <div class="loading-spinner"></div>
@@ -459,7 +558,7 @@
                  </svg>
                  {post.likesCount || 0} Likes
                </button>
-               <button class="engage-btn" on:click={() => toggleComments()}>
+               <button class="engage-btn" on:click={() => toggleComments(post.id)}>
                  <svg class="icon" viewBox="0 0 24 24">
                    <path d="M21.99 4c0-1.1-.89-2-1.99-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h14l4 4-.01-18z"/>
                  </svg>
@@ -508,8 +607,39 @@
             {#if showComments}
               <div class="comments-section">
                 <div class="comments-list">
-                  <!-- Comments will be loaded separately -->
-                  <p class="no-comments">No comments yet. Be the first to comment!</p>
+                  {#if isLoadingComments}
+                    <div class="loading-comments">Loading comments...</div>
+                  {:else if comments.length === 0}
+                    <p class="no-comments">No comments yet. Be the first to comment!</p>
+                  {:else}
+                    {#each comments as comment}
+                      <div class="comment">
+                        <img 
+                          src={comment.user.profilePicture || "/test.jpg.jpg"} 
+                          alt={comment.user.fullName} 
+                          class="comment-avatar" 
+                        />
+                        <div class="comment-content">
+                          <div class="comment-header">
+                            <span class="comment-author">{comment.user.fullName}</span>
+                            <span class="comment-timestamp">
+                              {new Date(comment.createdAt).toLocaleDateString()}
+                            </span>
+                          </div>
+                          <p class="comment-text">{comment.content}</p>
+                          <button 
+                            class="delete-comment-btn" 
+                            on:click={() => handleDeleteComment(comment.id)}
+                            title="Delete comment"
+                          >
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                              <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0h10"/>
+                            </svg>
+                          </button>
+                        </div>
+                      </div>
+                    {/each}
+                  {/if}
                 </div>
                 <div class="comment-input">
                   <img src="/test.jpg.jpg" alt="Your avatar" class="comment-avatar" />
@@ -526,7 +656,7 @@
                   </button>
                 </div>
               </div>
-                         {/if}
+            {/if}
            </article>
          {/each}
        {/if}
@@ -594,7 +724,7 @@
       }
 
       .main-content {
-        padding: 0;
+        padding: 6rem 1rem 1rem; /* Adjust for mobile search bar */
         width: 100%;
         margin-left: 0;
         position: relative;
@@ -623,7 +753,7 @@
 
     /* Main Content Styles */
     .main-content {
-      padding: 2rem 4rem;
+      padding: 8rem 4rem 2rem; /* Add top padding for fixed search bar */
       max-width: 100%;
       width: calc(100vw - 280px);
       margin-left: 280px;
@@ -646,35 +776,177 @@
     }
 
     .search-bar {
-      position: sticky;
+      position: fixed;
       top: 80px; /* Add space for the nav bar */
-      left: 0;
+      left: 280px; /* Align with main content */
       right: 0;
       background: linear-gradient(135deg, #fff 80%, #f3f4f6 100%);
-      padding: 1.5rem 0;
+      padding: 1.5rem 4rem;
       z-index: 100; /* Increase z-index to be above nav */
       max-width: 800px;
-      margin: 4rem auto 2rem;
-      width: 100%;
+      margin: 0 auto;
+      width: calc(100vw - 280px);
       display: flex;
       gap: 1rem;
       align-items: center;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      margin-top: 0;
+      opacity: 1;
+      box-sizing: border-box;
+
+    }
+
+    .search-bar.search-bar-hidden {
+      margin-top: -100px;
+      opacity: 0;
+      pointer-events: none;
+      visibility: hidden;
+    }
+
+    /* Search Toggle Button */
+    .search-toggle-btn {
+      position: fixed;
+      top: 100px; /* Position below the search bar */
+      right: 2rem;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #3b82f6, #2563eb);
+      border: none;
+      color: white;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 101;
+      opacity: 0;
+      transform: scale(0.8);
+      pointer-events: none;
+    }
+
+    .search-toggle-btn.search-toggle-visible:hover {
+      transform: scale(1.1);
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.5);
+      background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    }
+
+    .search-toggle-btn.search-toggle-visible:active {
+      transform: scale(0.95);
+    }
+
+    .search-toggle-btn svg {
+      width: 18px;
+      height: 18px;
+      stroke: currentColor;
+      stroke-width: 2.5;
+    }
+
+    /* Toggle button visibility states */
+    .search-toggle-btn.search-toggle-visible {
+      opacity: 1;
+      transform: scale(1);
+      pointer-events: auto;
+    }
+
+    .floating-search-btn {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #3b82f6, #2563eb);
+      border: none;
+      color: white;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      z-index: 200;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      animation: float-in 0.3s ease-out;
+    }
+
+    .floating-search-btn:hover {
+      transform: translateY(-2px) scale(1.05);
+      box-shadow: 0 6px 20px rgba(59, 130, 246, 0.6);
+    }
+
+    .floating-search-btn:active {
+      transform: translateY(0) scale(0.95);
+    }
+
+    .floating-search-btn svg {
+      width: 1.5rem;
+      height: 1.5rem;
+    }
+
+    @keyframes float-in {
+      from {
+        opacity: 0;
+        transform: translateY(20px) scale(0.8);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
     }
 
     @media (max-width: 768px) {
       .search-bar {
         top: 60px; /* Adjust for mobile nav height */
+        left: 0;
+        width: 100vw;
         flex-direction: column;
         padding: 1rem;
-        margin: 3rem auto 1rem;
+        margin: 0;
         gap: 0.75rem;
+      }
+
+      .search-toggle-btn {
+        top: 80px; /* Position below mobile search bar */
+        right: 1rem;
+        width: 36px;
+        height: 36px;
+      }
+
+      .search-toggle-btn svg {
+        width: 16px;
+        height: 16px;
+      }
+
+      .floating-search-btn {
+        bottom: 1.5rem;
+        right: 1.5rem;
+        width: 48px;
+        height: 48px;
+      }
+
+      .floating-search-btn svg {
+        width: 1.25rem;
+        height: 1.25rem;
       }
     }
 
     @media (max-width: 480px) {
       .search-bar {
         top: 50px; /* Further adjust for smaller mobile nav */
-        margin: 2rem auto 1rem;
+        margin: 0;
+      }
+
+      .search-toggle-btn {
+        top: 70px; /* Position below smaller mobile search bar */
+        right: 0.75rem;
+        width: 32px;
+        height: 32px;
+      }
+
+      .search-toggle-btn svg {
+        width: 14px;
+        height: 14px;
       }
     }
 
@@ -1857,11 +2129,36 @@
      font-size: 1.1rem;
    }
 
-   .no-comments {
-     color: #64748b;
-     font-style: italic;
-     text-align: center;
-     padding: 1rem;
-   }
- </style>
+       .no-comments {
+      color: #64748b;
+      font-style: italic;
+      text-align: center;
+      padding: 1rem;
+    }
+
+    .loading-comments {
+      text-align: center;
+      color: #6b7280;
+      padding: 2rem;
+    }
+
+    .delete-comment-btn {
+      background: none;
+      border: none;
+      color: #ef4444;
+      cursor: pointer;
+      padding: 0.25rem;
+      border-radius: 4px;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+
+    .comment:hover .delete-comment-btn {
+      opacity: 1;
+    }
+
+    .delete-comment-btn:hover {
+      background: #fef2f2;
+    }
+  </style>
 </ProtectedRoute> 

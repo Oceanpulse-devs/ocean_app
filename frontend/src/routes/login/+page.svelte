@@ -27,12 +27,28 @@
       
       // Update auth store with user data
       if (response.user) {
-        authStore.setUser(response.user);
+        // Transform the backend user data to match the frontend User interface
+        const userData = {
+          id: response.user.id,
+          fullName: response.user.fullName,
+          username: response.user.email.split('@')[0], // Generate username from email
+          email: response.user.email,
+          accountType: response.user.role as 'buyer' | 'seller' | 'admin',
+          accountStatus: 'active' as const, // Default since backend doesn't return this
+          createdAt: new Date().toISOString(), // Default since backend doesn't return this
+          updatedAt: new Date().toISOString() // Default since backend doesn't return this
+        };
+        authStore.setUser(userData);
       }
       
       loginSuccess = 'Login successful! Redirecting...';
       console.log(loginSuccess);
-      setTimeout(() => goto('/feed'), 1200);
+      
+      // Set loading to false in auth store to prevent ProtectedRoute from checking auth again
+      authStore.setLoading(false);
+      
+      // Redirect immediately
+      goto('/feed');
     } catch (error: any) {
       const errorMessage = error.message || 'Login failed. Please try again.';
       loginError = errorMessage;

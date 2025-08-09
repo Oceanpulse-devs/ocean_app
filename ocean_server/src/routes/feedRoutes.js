@@ -14,4 +14,9 @@ router.post('/api/posts/:postId/like', authMiddleware, feedController.toggleLike
 router.post('/api/posts/:postId/save', authMiddleware, feedController.toggleSave);
 router.get('/api/saved-posts', authMiddleware, feedController.getSavedPosts);
 
+// Comment routes
+router.post('/api/posts/:postId/comments', authMiddleware, feedController.createComment);
+router.get('/api/posts/:postId/comments', feedController.getComments);
+router.delete('/api/comments/:commentId', authMiddleware, feedController.deleteComment);
+
 module.exports = router; 

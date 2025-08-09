@@ -27,10 +27,8 @@
 
   $: isFullWidth = $page.url.pathname === '/products';
 
-  // Check authentication on app startup
-  onMount(() => {
-    authStore.checkAuth();
-  });
+  // Note: Authentication is checked by individual protected pages
+  // to avoid race conditions and multiple auth checks
 </script>
 
 <div class="layout" class:with-sidebar={shouldShowSidebar}>

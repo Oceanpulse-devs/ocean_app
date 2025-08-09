@@ -35,6 +35,7 @@ function createAuthStore() {
         ...state,
         user,
         isAuthenticated: true,
+        isLoading: false,
         error: null
       }));
     },
@@ -64,57 +65,76 @@ function createAuthStore() {
         isLoading
       }));
     },
-    checkAuth: async () => {
-      update(state => ({ ...state, isLoading: true }));
-      
-      try {
-        // Check if user is authenticated by making an API call
-        const isAuth = await isAuthenticated();
-        
-        if (isAuth) {
-          // Try to get user profile
-          const response = await fetch('http://localhost:5000/api/profile', {
-            credentials: 'include' // Include cookies
-          });
-          
-          if (response.ok) {
-            const user = await response.json();
-            update(state => ({
-              ...state,
-              user,
-              isAuthenticated: true,
-              isLoading: false,
-              error: null
-            }));
-          } else {
-            // Token is invalid, clear auth state
-            update(state => ({
-              ...state,
-              user: null,
-              isAuthenticated: false,
-              isLoading: false,
-              error: null
-            }));
-          }
-        } else {
-          update(state => ({
-            ...state,
-            user: null,
-            isAuthenticated: false,
-            isLoading: false,
-            error: null
-          }));
-        }
-      } catch (error) {
-        update(state => ({
-          ...state,
-          user: null,
-          isAuthenticated: false,
-          isLoading: false,
-          error: 'Failed to check authentication status'
-        }));
-      }
-    }
+         checkAuth: async () => {
+       console.log('🔍 AuthStore: Starting auth check...');
+       update(state => ({ ...state, isLoading: true }));
+       
+       try {
+         // Check if user is authenticated by making an API call
+         const isAuth = await isAuthenticated();
+         console.log('🔍 AuthStore: isAuthenticated() returned:', isAuth);
+         
+         if (isAuth) {
+           // Try to get user profile
+           const { getProfile } = await import('$lib/api/auth');
+           const response = await getProfile();
+           console.log('🔍 AuthStore: Profile response status:', response.status);
+           
+           if (response.ok) {
+             const data = await response.json();
+             console.log('🔍 AuthStore: Profile data:', data);
+             
+             // Transform profile data to match User interface
+             const userData = {
+               id: data.profileInfo.id || 'unknown',
+               fullName: data.profileInfo.fullName,
+               username: data.profileInfo.email.split('@')[0], // Generate username from email
+               email: data.profileInfo.email,
+               accountType: data.profileInfo.role as 'buyer' | 'seller' | 'admin',
+               accountStatus: data.profileInfo.accountStatus as 'active' | 'inactive' | 'suspended',
+               createdAt: data.profileInfo.createdAt,
+               updatedAt: data.profileInfo.createdAt // Use createdAt as updatedAt since backend doesn't provide it
+             };
+             console.log('🔍 AuthStore: Setting user data:', userData);
+             update(state => ({
+               ...state,
+               user: userData,
+               isAuthenticated: true,
+               isLoading: false,
+               error: null
+             }));
+           } else {
+             console.log('🔍 AuthStore: Profile response not ok, clearing auth state');
+             // Token is invalid, clear auth state
+             update(state => ({
+               ...state,
+               user: null,
+               isAuthenticated: false,
+               isLoading: false,
+               error: null
+             }));
+           }
+         } else {
+           console.log('🔍 AuthStore: Not authenticated, clearing auth state');
+           update(state => ({
+             ...state,
+             user: null,
+             isAuthenticated: false,
+             isLoading: false,
+             error: null
+           }));
+         }
+       } catch (error) {
+         console.log('🔍 AuthStore: Error during auth check:', error);
+         update(state => ({
+           ...state,
+           user: null,
+           isAuthenticated: false,
+           isLoading: false,
+           error: 'Failed to check authentication status'
+         }));
+       }
+     }
   };
 }
 

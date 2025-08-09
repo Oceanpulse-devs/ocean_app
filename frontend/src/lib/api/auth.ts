@@ -73,9 +73,40 @@ export async function resetPassword(email: string, code: string, newPassword: st
 }
 
 export async function getProfile() {
-  return apiRequest('/profile', {
-    method: 'GET',
-  });
+  try {
+    const response = await fetch('http://localhost:5000/api/profile', {
+      method: 'GET',
+      credentials: 'include', // Include cookies
+    });
+    return response;
+  } catch (error) {
+    console.log('🔍 getProfile error:', error);
+    throw error;
+  }
+}
+
+export async function updateProfile(profileData: {
+  fullName?: string;
+  bio?: string;
+  location?: string;
+  website?: string;
+  profilePicture?: string;
+  coverPicture?: string;
+}) {
+  try {
+    const response = await fetch('http://localhost:5000/api/profile', {
+      method: 'PUT',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(profileData),
+    });
+    return response;
+  } catch (error) {
+    console.log('🔍 updateProfile error:', error);
+    throw error;
+  }
 }
 
 // Seller registration
@@ -143,10 +174,12 @@ export async function isAuthenticated(): Promise<boolean> {
   try {
     // Make an API call to check if the token is valid
     const response = await fetch('http://localhost:5000/api/profile', {
-      credentials: 'include' // Include cookies
+      method: 'GET',
+      credentials: 'include', // Include cookies
     });
     return response.ok;
   } catch (error) {
+    console.log('🔍 isAuthenticated error:', error);
     return false;
   }
 }

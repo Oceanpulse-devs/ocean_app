@@ -508,6 +508,143 @@ const searchPosts = async (req, res) => {
     }
 };
 
+// Create a comment on a post
+const createComment = async (req, res) => {
+    try {
+        const { postId } = req.params;
+        const { content } = req.body;
+        const userId = req.user.id;
+
+        // Validate input
+        if (!content || content.trim().length === 0) {
+            return res.status(400).json({ message: "Comment content is required" });
+        }
+
+        // Check if post exists
+        const post = await Post.findByPk(postId);
+        if (!post) {
+            return res.status(404).json({ message: "Post not found" });
+        }
+
+        // Create comment
+        const comment = await PostComment.create({
+            postId,
+            userId,
+            content: content.trim()
+        });
+
+        // Increment comment count on post
+        await post.increment('commentsCount');
+
+        // Get user info for the comment
+        const user = await UserTable.findByPk(userId, {
+            attributes: ['id', 'fullName', 'email', 'profilePicture']
+        });
+
+        const commentData = {
+            id: comment.id,
+            content: comment.content,
+            createdAt: comment.createdAt,
+            user: {
+                id: user.id,
+                fullName: user.fullName,
+                email: user.email,
+                profilePicture: user.profilePicture
+            }
+        };
+
+        res.status(201).json({
+            message: "Comment created successfully",
+            data: commentData
+        });
+
+    } catch (error) {
+        console.error('Create comment error:', error);
+        res.status(500).json({ message: "Error creating comment", error: error.message });
+    }
+};
+
+// Get comments for a post
+const getComments = async (req, res) => {
+    try {
+        const { postId } = req.params;
+        const { page = 1, limit = 10 } = req.query;
+        const offset = (page - 1) * limit;
+
+        // Check if post exists
+        const post = await Post.findByPk(postId);
+        if (!post) {
+            return res.status(404).json({ message: "Post not found" });
+        }
+
+        // Get comments with user info
+        const comments = await PostComment.findAndCountAll({
+            where: { postId },
+            include: [
+                {
+                    model: UserTable,
+                    as: 'user',
+                    attributes: ['id', 'fullName', 'email', 'profilePicture']
+                }
+            ],
+            order: [['createdAt', 'DESC']],
+            limit: parseInt(limit),
+            offset: parseInt(offset)
+        });
+
+        res.status(200).json({
+            message: "Comments retrieved successfully",
+            data: {
+                comments: comments.rows,
+                total: comments.count,
+                page: parseInt(page),
+                limit: parseInt(limit),
+                totalPages: Math.ceil(comments.count / limit)
+            }
+        });
+
+    } catch (error) {
+        console.error('Get comments error:', error);
+        res.status(500).json({ message: "Error retrieving comments", error: error.message });
+    }
+};
+
+// Delete a comment
+const deleteComment = async (req, res) => {
+    try {
+        const { commentId } = req.params;
+        const userId = req.user.id;
+
+        // Find comment
+        const comment = await PostComment.findByPk(commentId);
+        if (!comment) {
+            return res.status(404).json({ message: "Comment not found" });
+        }
+
+        // Check if user owns the comment or is admin
+        if (comment.userId !== userId && req.user.accountType !== 'admin') {
+            return res.status(403).json({ message: "You can only delete your own comments" });
+        }
+
+        // Get post to update comment count
+        const post = await Post.findByPk(comment.postId);
+        if (post) {
+            await post.decrement('commentsCount');
+        }
+
+        // Delete comment
+        await comment.destroy();
+
+        res.status(200).json({
+            message: "Comment deleted successfully"
+        });
+
+    } catch (error) {
+        console.error('Delete comment error:', error);
+        res.status(500).json({ message: "Error deleting comment", error: error.message });
+    }
+};
+
 module.exports = {
     getFeed,
     createPost,
@@ -515,5 +652,8 @@ module.exports = {
     toggleLike,
     toggleSave,
     getSavedPosts,
-    searchPosts
+    searchPosts,
+    createComment,
+    getComments,
+    deleteComment
 };

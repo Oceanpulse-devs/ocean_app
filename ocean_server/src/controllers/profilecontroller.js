@@ -11,32 +11,47 @@ const currentUserprofile = async(req,res)=>{
    }
    
    const alsoSeller = await SellersTable.findOne({where:{userId:id}})
-   const username = currentUser.username
-   const profilePicture = currentUser.profilePicture
-   const coverPicture = currentUser.coverPicture
+   const fullName = currentUser.fullName
    const email = currentUser.email
    const role = currentUser.accountType
+   const accountStatus = currentUser.accountStatus
+   const createdAt = currentUser.createdAt
    let verificationStatus = alsoSeller ? alsoSeller.verificationStatus : null;
    
-   // Basic profile info for all users
+   // Format join date
+   const joinDate = `Joined ${new Date(createdAt).toLocaleDateString('en-US', { 
+     month: 'long', 
+     year: 'numeric' 
+   })}`;
+   
+   // Basic profile info for all users with actual database values
    const profileInfo = {
-     username, 
-     profilePicture, 
-     coverPicture, 
+     id: currentUser.id,
+     fullName, 
      email, 
      role,
-     verificationStatus
+     accountStatus,
+     createdAt,
+     joinDate,
+     verificationStatus,
+     // Use actual database values with fallbacks
+     profilePicture: currentUser.profilePicture || "/default-avatar.jpg",
+     coverPicture: currentUser.coverPicture || "/default-cover.jpg",
+     bio: currentUser.bio || (role === "seller" ? "Professional seller on Ocean App" : "Ocean App user"),
+     location: currentUser.location || "Not specified",
+     website: currentUser.website || null
    }
 
    // Add seller-specific info if user is a seller
    if(role === "seller" && alsoSeller){
-     profileInfo.businessName = alsoSeller.businessName;
+     profileInfo.businessName = alsoSeller.businessName || fullName;
      profileInfo.businessAddress = alsoSeller.businessAddress;
      profileInfo.category = alsoSeller.category;
      profileInfo.country = alsoSeller.country;
      profileInfo.state = alsoSeller.state;
-     profileInfo.rating = alsoSeller.rating;
-     profileInfo.totalSales = alsoSeller.totalSales;
+     profileInfo.rating = alsoSeller.rating || 0;
+     profileInfo.totalSales = alsoSeller.totalSales || 0;
+     profileInfo.bio = alsoSeller.businessDescription || "Professional seller on Ocean App";
    }
    
    return res.status(200).json({profileInfo})

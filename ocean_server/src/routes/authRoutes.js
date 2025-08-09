@@ -5,6 +5,7 @@ const authMiddleware = require('../middleware/authMiddleware')
 const updateRoleBasedOnVerification = require('../middleware/sellerVerficationstatusWare')
 const updateVerificationStatusBasedOnDocuments = require('../middleware/sellerdocstatusWare')
 const currentUserprofile = require('../controllers/profilecontroller')
+const { updateProfile } = require('../controllers/profileUpdateController')
 
 const passport = require('passport')
 const jwt = require('jsonwebtoken')
@@ -121,6 +122,7 @@ router.post('/api/seller-registration', authMiddleware,sellerRegistration)
 
 //profile routes 
 router.get('/api/profile', authMiddleware, currentUserprofile)
+router.put('/api/profile', authMiddleware, updateProfile)
 
 
 
