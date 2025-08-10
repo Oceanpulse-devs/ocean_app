@@ -124,6 +124,9 @@ const getFeed = async (req, res) => {
 // Create a new post
 const createPost = async (req, res) => {
     try {
+        console.log('Create post request body:', req.body);
+        console.log('Create post request files:', req.files);
+        
         const {
             postType = 'product',
             content,
@@ -132,11 +135,18 @@ const createPost = async (req, res) => {
             price,
             currency = 'USD',
             location,
-            tags,
-            media
+            tags
         } = req.body;
 
         const userId = req.user.id;
+
+        // Validate required fields
+        if (!postType) {
+            return res.status(400).json({ message: "postType is required" });
+        }
+        if (!content) {
+            return res.status(400).json({ message: "content is required" });
+        }
 
         // Get user's region and country
         const user = await UserTable.findByPk(userId);
@@ -159,16 +169,19 @@ const createPost = async (req, res) => {
             tags: tags ? (typeof tags === 'string' ? JSON.parse(tags) : tags) : null
         });
 
-        // Add media if provided
-        if (media && Array.isArray(media)) {
-            const mediaPromises = media.map((mediaItem, index) => {
+        // Add media if provided (optional - pictures are always optional)
+        if (req.files && req.files.length > 0) {
+            const mediaPromises = req.files.map((file, index) => {
+                // Determine media type from file mimetype
+                const mediaType = file.mimetype.startsWith('image/') ? 'image' : 'video';
+                
                 return PostMedia.create({
                     postId: post.id,
-                    mediaType: mediaItem.type || 'image',
-                    mediaUrl: mediaItem.url,
-                    thumbnailUrl: mediaItem.thumbnailUrl,
+                    mediaType: mediaType,
+                    mediaUrl: `/uploads/${file.filename}`, // Store the file path
+                    thumbnailUrl: mediaType === 'image' ? `/uploads/${file.filename}` : null,
                     mediaOrder: index,
-                    altText: mediaItem.altText
+                    altText: file.originalname
                 });
             });
             await Promise.all(mediaPromises);
@@ -191,6 +204,7 @@ const createPost = async (req, res) => {
             ]
         });
 
+        console.log('Sending response:', { message: "Post created successfully", data: createdPost });
         res.status(201).json({
             message: "Post created successfully",
             data: createdPost
@@ -645,9 +659,205 @@ const deleteComment = async (req, res) => {
     }
 };
 
+// Update a post
+const updatePost = async (req, res) => {
+    try {
+        const { postId } = req.params;
+        const userId = req.user.id;
+        const updateData = req.body;
+
+        // Find post
+        const post = await Post.findByPk(postId);
+        if (!post) {
+            return res.status(404).json({ message: "Post not found" });
+        }
+
+        // Check if user owns the post
+        if (post.userId !== userId) {
+            return res.status(403).json({ message: "You can only update your own posts" });
+        }
+
+        // Update post fields
+        const allowedFields = ['content', 'productName', 'brand', 'price', 'location', 'tags'];
+        allowedFields.forEach(field => {
+            if (updateData[field] !== undefined) {
+                post[field] = updateData[field];
+            }
+        });
+
+        // Handle tags array
+        if (updateData.tags) {
+            if (typeof updateData.tags === 'string') {
+                try {
+                    post.tags = JSON.parse(updateData.tags);
+                } catch (e) {
+                    post.tags = updateData.tags.split(',').map(tag => tag.trim()).filter(tag => tag);
+                }
+            } else if (Array.isArray(updateData.tags)) {
+                post.tags = updateData.tags;
+            }
+        }
+
+        // Save updated post
+        await post.save();
+
+        // Handle new media files if provided
+        if (req.files && req.files.length > 0) {
+            // Delete existing media
+            await PostMedia.destroy({ where: { postId: post.id } });
+            
+            // Add new media
+            const mediaPromises = req.files.map((file, index) => {
+                const mediaType = file.mimetype.startsWith('image/') ? 'image' : 'video';
+                
+                return PostMedia.create({
+                    postId: post.id,
+                    mediaType: mediaType,
+                    mediaUrl: `/uploads/${file.filename}`,
+                    thumbnailUrl: mediaType === 'image' ? `/uploads/${file.filename}` : null,
+                    mediaOrder: index,
+                    altText: file.originalname
+                });
+            });
+            await Promise.all(mediaPromises);
+        }
+
+        res.status(200).json({
+            message: "Post updated successfully",
+            data: post
+        });
+
+    } catch (error) {
+        console.error('Update post error:', error);
+        res.status(500).json({ message: "Error updating post", error: error.message });
+    }
+};
+
+// Delete a post
+const deletePost = async (req, res) => {
+    try {
+        const { postId } = req.params;
+        const userId = req.user.id;
+
+        // Find post
+        const post = await Post.findByPk(postId);
+        if (!post) {
+            return res.status(404).json({ message: "Post not found" });
+        }
+
+        // Check if user owns the post
+        if (post.userId !== userId) {
+            return res.status(403).json({ message: "You can only delete your own posts" });
+        }
+
+        // Delete associated media files (you might want to add file deletion logic here)
+        await PostMedia.destroy({ where: { postId } });
+
+        // Delete associated likes, comments, saves, shares
+        await PostLike.destroy({ where: { postId } });
+        await PostComment.destroy({ where: { postId } });
+        await SavedPost.destroy({ where: { postId } });
+        await PostShare.destroy({ where: { postId } });
+
+        // Delete the post
+        await post.destroy();
+
+        res.status(200).json({
+            message: "Post deleted successfully"
+        });
+
+    } catch (error) {
+        console.error('Delete post error:', error);
+        res.status(500).json({ message: "Error deleting post", error: error.message });
+    }
+};
+
+// Get posts by a specific user
+const getUserPosts = async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const { page = 1, limit = 10 } = req.query;
+        const offset = (page - 1) * limit;
+        const currentUserId = req.user?.id;
+
+        // Get posts for the specified user
+        const posts = await Post.findAndCountAll({
+            where: {
+                userId: userId,
+                status: 'active'
+            },
+            include: [
+                {
+                    model: UserTable,
+                    as: 'user',
+                    attributes: ['id', 'fullName', 'email', 'profilePicture', 'accountType', 'accountStatus']
+                },
+                {
+                    model: PostMedia,
+                    as: 'media',
+                    attributes: ['id', 'mediaType', 'mediaUrl', 'thumbnailUrl', 'mediaOrder'],
+                    order: [['mediaOrder', 'ASC']]
+                }
+            ],
+            order: [['createdAt', 'DESC']],
+            limit: parseInt(limit),
+            offset: parseInt(offset),
+            distinct: true
+        });
+
+        // Add engagement status for current user
+        const postsWithEngagement = await Promise.all(
+            posts.rows.map(async (post) => {
+                const postData = post.toJSON();
+                
+                if (currentUserId) {
+                    // Check if user liked the post
+                    const userLike = await PostLike.findOne({
+                        where: { postId: post.id, userId: currentUserId }
+                    });
+                    postData.isLiked = !!userLike;
+
+                    // Check if user saved the post
+                    const userSaved = await SavedPost.findOne({
+                        where: { postId: post.id, userId: currentUserId }
+                    });
+                    postData.isSaved = !!userSaved;
+
+                    // Check if user is following the post author
+                    const userFollow = await UserFollows.findOne({
+                        where: { 
+                            userId: currentUserId, 
+                            followsUserId: post.userId 
+                        }
+                    });
+                    postData.isFollowing = !!userFollow;
+                }
+
+                return postData;
+            })
+        );
+
+        res.status(200).json({
+            message: "User posts retrieved successfully",
+            data: {
+                posts: postsWithEngagement,
+                totalPosts: posts.count,
+                currentPage: parseInt(page),
+                totalPages: Math.ceil(posts.count / limit)
+            }
+        });
+
+    } catch (error) {
+        console.error('Get user posts error:', error);
+        res.status(500).json({ message: "Error retrieving user posts", error: error.message });
+    }
+};
+
 module.exports = {
     getFeed,
     createPost,
+    updatePost,
+    deletePost,
     getPost,
     toggleLike,
     toggleSave,
@@ -655,5 +865,6 @@ module.exports = {
     searchPosts,
     createComment,
     getComments,
-    deleteComment
+    deleteComment,
+    getUserPosts
 };

@@ -2,6 +2,7 @@
   import ProtectedRoute from '$lib/components/ProtectedRoute.svelte';
   import { getFeed, createPost, toggleLike, toggleSave, createComment, getComments, deleteComment, type Comment } from '$lib/api/feed';
   import { onMount } from 'svelte';
+  import AddFeed from '$lib/components/AddFeed.svelte';
   
   // Feed data state
   let posts: any[] = [];
@@ -34,6 +35,9 @@
     tags: [] as string[],
     location: ''
   };
+
+  // AddFeed component state
+  let showAddFeedModal = false;
 
   interface Region {
     id: string;
@@ -365,12 +369,10 @@
   onMount(() => {
     loadFeed();
     
-
-    
-          // Cleanup function
-      return () => {
-        // Cleanup if needed in the future
-      };
+    // Cleanup function
+    return () => {
+      // Cleanup if needed in the future
+    };
   });
 </script>
 
@@ -430,6 +432,19 @@
             <path d="M12 5v14"/>
             <path d="M5 12h14"/>
           {/if}
+        </svg>
+      </button>
+
+      <!-- Create Post Button -->
+      <button 
+        class="create-post-btn"
+        on:click={() => showAddFeedModal = true}
+        title="Create New Post"
+        aria-label="Create New Post"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 5v14"/>
+          <path d="M5 12h14"/>
         </svg>
       </button>
     </div>
@@ -947,6 +962,19 @@
       .search-toggle-btn svg {
         width: 14px;
         height: 14px;
+      }
+
+      /* Extra small mobile styles for Create Post button */
+      .create-post-btn {
+        top: 120px;
+        right: 0.75rem;
+        width: 44px;
+        height: 44px;
+      }
+
+      .create-post-btn svg {
+        width: 18px;
+        height: 18px;
       }
     }
 
@@ -2074,11 +2102,25 @@
         font-size: 0.8125rem;
       }
 
-           .cancel-btn, .submit-btn {
-       padding: 0.625rem 1.25rem;
-       font-size: 0.875rem;
-     }
-   }
+      .cancel-btn, .submit-btn {
+        padding: 0.625rem 1.25rem;
+        font-size: 0.875rem;
+      }
+
+      /* Mobile styles for Create Post button */
+      .create-post-btn {
+        top: 140px;
+        right: 1rem;
+        width: 48px;
+        height: 48px;
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+      }
+
+      .create-post-btn svg {
+        width: 20px;
+        height: 20px;
+      }
+    }
 
    /* Loading, Error, and Empty States */
    .loading-state, .error-state, .empty-state {
@@ -2160,5 +2202,61 @@
     .delete-comment-btn:hover {
       background: #fef2f2;
     }
+
+    /* Create Post Button */
+    .create-post-btn {
+      position: fixed;
+      top: 160px; /* Position below the search toggle button */
+      right: 2rem;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #10b981, #059669);
+      border: none;
+      color: white;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 101;
+      opacity: 1;
+      transform: scale(1);
+      pointer-events: auto;
+    }
+
+    .create-post-btn:hover {
+      transform: scale(1.1);
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.5);
+      background: linear-gradient(135deg, #059669, #047857);
+    }
+
+    .create-post-btn:active {
+      transform: scale(0.95);
+    }
+
+    .create-post-btn svg {
+      width: 18px;
+      height: 18px;
+      stroke: currentColor;
+      stroke-width: 2.5;
+    }
+
+    /* Toggle button visibility states */
   </style>
+
+  <!-- AddFeed Component Modal -->
+  <AddFeed
+    isOpen={showAddFeedModal}
+    onClose={() => showAddFeedModal = false}
+    on:submit={(event) => {
+      const { post, action } = event.detail;
+      if (action === 'created') {
+        // Add new post to the beginning of the feed
+        posts = [post, ...posts];
+      }
+      showAddFeedModal = false;
+    }}
+  />
 </ProtectedRoute> 

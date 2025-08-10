@@ -3,8 +3,10 @@
   import ProtectedRoute from '$lib/components/ProtectedRoute.svelte';
   import { getProfile } from '$lib/api/auth';
   import { getFollowStats, followUser, unfollowUser, checkFollowStatus } from '$lib/api/follow';
+  import { getUserPosts } from '$lib/api/feed';
   import { authStore } from '$lib/stores/auth';
   import EditProfile from '$lib/components/EditProfile.svelte';
+  import AddFeed from '$lib/components/AddFeed.svelte';
   
   // Real user data from backend
   let userData: any = null;
@@ -15,6 +17,13 @@
   let isOwnProfile = false;
   let currentUser: any = null;
   let showEditModal = false;
+
+  // User posts state
+  let userPosts: any[] = [];
+  let postsLoading = false;
+  let postsError = '';
+  let showAddFeedModal = false;
+  let editingPost: any = null;
 
   // Load user profile data
   async function loadProfile() {
@@ -74,14 +83,14 @@
     try {
       // Get follow stats
       const statsResponse = await getFollowStats(userData.id);
-      if (statsResponse.ok) {
-        followStats = await statsResponse.json();
+      if (statsResponse && statsResponse.message) {
+        followStats = statsResponse.data || statsResponse;
       }
 
       // Check if current user is following this user
       const followStatusResponse = await checkFollowStatus(userData.id);
-      if (followStatusResponse.ok) {
-        const statusData = await followStatusResponse.json();
+      if (followStatusResponse && followStatusResponse.message) {
+        const statusData = followStatusResponse.data || followStatusResponse;
         isFollowing = statusData.isFollowing;
       }
     } catch (err: any) {
@@ -118,9 +127,67 @@
     showEditModal = false;
   }
 
+  // Load user posts
+  async function loadUserPosts() {
+    if (!userData?.id) return;
+    
+    try {
+      postsLoading = true;
+      postsError = '';
+      const response = await getUserPosts(userData.id, { limit: 20 });
+      
+      if (response && response.message) {
+        userPosts = response.data.posts || [];
+      } else {
+        postsError = 'Failed to load posts';
+      }
+    } catch (err: any) {
+      console.error('Error loading user posts:', err);
+      postsError = 'Failed to load posts';
+    } finally {
+      postsLoading = false;
+    }
+  }
+
+  // Handle feed actions (create, update, delete)
+  function handleFeedSubmit(event: CustomEvent) {
+    const { post, isEditing, action } = event.detail;
+    
+    if (action === 'created') {
+      // Add new post to the beginning of the list
+      userPosts = [post, ...userPosts];
+    } else if (action === 'updated') {
+      // Update existing post
+      userPosts = userPosts.map(p => p.id === post.id ? post : p);
+    } else if (action === 'deleted') {
+      // Remove deleted post
+      userPosts = userPosts.filter(p => p.id !== post.id);
+    }
+    
+    showAddFeedModal = false;
+    editingPost = null;
+  }
+
+  // Open edit post modal
+  function editPost(post: any) {
+    editingPost = post;
+    showAddFeedModal = true;
+  }
+
+  // Open create post modal
+  function createPost() {
+    editingPost = null;
+    showAddFeedModal = true;
+  }
+
   onMount(() => {
     loadProfile();
   });
+
+  // Watch for userData changes to load posts
+  $: if (userData?.id && isOwnProfile) {
+    loadUserPosts();
+  }
 </script>
 
 <ProtectedRoute>
@@ -322,9 +389,87 @@
             <p>Category: {userData.category || 'Not set'}</p>
           {/if}
         </div>
+
+        <!-- User Posts Section (only show for own profile) -->
+        {#if isOwnProfile}
+          <div class="user-posts-section">
+            <div class="posts-header">
+              <h3>My Posts</h3>
+              <button class="create-post-btn" on:click={createPost}>
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 5v14"/>
+                  <path d="M5 12h14"/>
+                </svg>
+                Create Post
+              </button>
+            </div>
+
+            {#if postsLoading}
+              <div class="posts-loading">
+                <div class="loading-spinner"></div>
+                <p>Loading posts...</p>
+              </div>
+            {:else if postsError}
+              <div class="posts-error">
+                <p>{postsError}</p>
+                <button on:click={loadUserPosts}>Retry</button>
+              </div>
+            {:else if userPosts.length === 0}
+              <div class="no-posts">
+                <p>You haven't created any posts yet.</p>
+                <button class="create-first-post-btn" on:click={createPost}>
+                  Create Your First Post
+                </button>
+              </div>
+            {:else}
+              <div class="posts-grid">
+                {#each userPosts as post}
+                  <div class="post-card">
+                    {#if post.media && post.media.length > 0}
+                      <div class="post-image">
+                        <img src={post.media[0].mediaUrl} alt="Post media" />
+                      </div>
+                    {/if}
+                    <div class="post-content">
+                      <h4>{post.postType === 'product' ? post.productName || 'Product Post' : 'Post'}</h4>
+                      <p class="post-text">{post.content}</p>
+                      {#if post.postType === 'product' && post.price}
+                        <div class="post-price">${post.price}</div>
+                      {/if}
+                      <div class="post-meta">
+                        <span class="post-date">{new Date(post.createdAt).toLocaleDateString()}</span>
+                        <span class="post-type">{post.postType}</span>
+                      </div>
+                      <div class="post-actions">
+                        <button class="edit-post-btn" on:click={() => editPost(post)}>
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                          </svg>
+                          Edit
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                {/each}
+              </div>
+            {/if}
+          </div>
+        {/if}
       </div>
     {/if}
   </div>
+
+  <!-- AddFeed Component Modal -->
+  <AddFeed
+    post={editingPost}
+    isOpen={showAddFeedModal}
+    onClose={() => {
+      showAddFeedModal = false;
+      editingPost = null;
+    }}
+    on:submit={handleFeedSubmit}
+  />
 
   <style>
     .profile-page {
@@ -722,6 +867,208 @@
       width: 1rem;
       height: 1rem;
     }
+
+    /* User Posts Section Styles */
+    .user-posts-section {
+      padding: 2rem;
+      border-top: 1px solid #e5e7eb;
+    }
+
+    .posts-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2rem;
+    }
+
+    .posts-header h3 {
+      margin: 0;
+      font-size: 1.5rem;
+      color: #111;
+    }
+
+    .create-post-btn {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.75rem 1.5rem;
+      background: linear-gradient(135deg, #3b82f6, #2563eb);
+      color: white;
+      border: none;
+      border-radius: 0.75rem;
+      font-weight: 600;
+      font-size: 0.875rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+    }
+
+    .create-post-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+    }
+
+    .create-post-btn svg {
+      width: 1.25rem;
+      height: 1.25rem;
+    }
+
+    .posts-loading,
+    .posts-error,
+    .no-posts {
+      text-align: center;
+      padding: 3rem 1rem;
+      color: #6b7280;
+    }
+
+    .posts-loading .loading-spinner {
+      width: 40px;
+      height: 40px;
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #3b82f6;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 1rem;
+    }
+
+    .posts-error button,
+    .no-posts button {
+      margin-top: 1rem;
+      padding: 0.75rem 1.5rem;
+      background: #3b82f6;
+      color: white;
+      border: none;
+      border-radius: 0.5rem;
+      cursor: pointer;
+      font-weight: 500;
+    }
+
+    .create-first-post-btn {
+      background: linear-gradient(135deg, #10b981, #059669) !important;
+    }
+
+    .posts-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .post-card {
+      background: white;
+      border: 1px solid #e5e7eb;
+      border-radius: 1rem;
+      overflow: hidden;
+      transition: all 0.2s ease;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .post-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    }
+
+    .post-image {
+      width: 100%;
+      height: 200px;
+      overflow: hidden;
+    }
+
+    .post-image img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .post-content {
+      padding: 1.5rem;
+    }
+
+    .post-content h4 {
+      margin: 0 0 0.75rem;
+      font-size: 1.125rem;
+      color: #111;
+      font-weight: 600;
+    }
+
+    .post-text {
+      margin: 0 0 1rem;
+      color: #4b5563;
+      line-height: 1.5;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .post-price {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #059669;
+      margin-bottom: 1rem;
+    }
+
+    .post-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+      font-size: 0.875rem;
+      color: #6b7280;
+    }
+
+    .post-type {
+      background: #f3f4f6;
+      padding: 0.25rem 0.75rem;
+      border-radius: 1rem;
+      text-transform: capitalize;
+    }
+
+    .post-actions {
+      display: flex;
+      gap: 0.75rem;
+    }
+
+    .edit-post-btn {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      background: #f59e0b;
+      color: white;
+      border: none;
+      border-radius: 0.5rem;
+      font-weight: 500;
+      font-size: 0.875rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .edit-post-btn:hover {
+      background: #d97706;
+      transform: translateY(-1px);
+    }
+
+    .edit-post-btn svg {
+      width: 1rem;
+      height: 1rem;
+    }
+
+    @media (max-width: 768px) {
+      .posts-header {
+        flex-direction: column;
+        gap: 1rem;
+        text-align: center;
+      }
+
+      .posts-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+      }
+
+      .post-card {
+        margin: 0 1rem;
+      }
+    }
   </style>
   
   <!-- Edit Profile Modal -->
@@ -729,5 +1076,13 @@
     showModal={showEditModal} 
     userData={userData}
     on:submit={handleProfileUpdate}
+  />
+
+  <!-- AddFeed Component Modal -->
+  <AddFeed
+    post={editingPost}
+    isOpen={showAddFeedModal}
+    onClose={() => showAddFeedModal = false}
+    on:submit={handleFeedSubmit}
   />
 </ProtectedRoute>

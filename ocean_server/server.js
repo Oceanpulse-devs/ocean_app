@@ -3,6 +3,7 @@ const cors = require('cors');
 const dotenv = require('dotenv').config();
 const session = require('express-session');
 const passport = require('passport');
+const multer = require('multer');
 const port = process.env.PORT || 5000
 const redisClient = require('./src/config/redisdb')
 const db = require('./models')
@@ -31,6 +32,38 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({extended:true}));
 app.use(cookieParser());
+
+// Configure multer for file uploads
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, 'uploads/') // Make sure this directory exists
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, file.fieldname + '-' + uniqueSuffix + '.' + file.originalname.split('.').pop());
+  }
+});
+
+const upload = multer({ 
+  storage: storage,
+  limits: {
+    fileSize: 10 * 1024 * 1024 // 10MB limit
+  },
+  fileFilter: function (req, file, cb) {
+    // Accept images and videos
+    if (file.mimetype.startsWith('image/') || file.mimetype.startsWith('video/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image and video files are allowed'), false);
+    }
+  }
+});
+
+// Make upload available to routes
+app.locals.upload = upload;
+
+// Serve uploaded files statically
+app.use('/uploads', express.static('uploads'));
 
 // Session configuration for OAuth
 app.use(session({

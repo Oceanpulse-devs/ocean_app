@@ -1,6 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher, onMount } from 'svelte';
   import { authStore } from '../stores/auth';
+  import { createPost, updatePost, deletePost } from '../api/feed';
   
   export let post: any = null; // For editing existing posts
   export let isOpen = false;
@@ -10,7 +11,7 @@
   
   // Form state
   let formData = {
-    postType: 'product',
+    postType: 'product' as 'product' | 'buyer_request' | 'general',
     content: '',
     productName: '',
     brand: '',
@@ -26,6 +27,8 @@
   let error = '';
   let success = '';
   let isEditing = false;
+  let showDeleteConfirm = false;
+  let showFeedbackScreen = false;
   
   // Media handling
   let mediaFiles: File[] = [];
@@ -57,6 +60,35 @@
     }
   });
   
+  // Handle feedback screen timing
+  $: if (showFeedbackScreen) {
+    // Close modal after delay
+    setTimeout(() => {
+      onClose();
+    }, 3000);
+    
+    // Reset form and clear feedback after delay
+    setTimeout(() => {
+      if (!isEditing) {
+        resetForm();
+      }
+      success = '';
+      error = '';
+      showFeedbackScreen = false;
+    }, 2500);
+  }
+  
+  // Clear feedback when modal opens
+  $: if (isOpen) {
+    if (!isEditing) {
+      resetForm();
+    }
+    // Clear any previous messages and feedback
+    error = '';
+    success = '';
+    showFeedbackScreen = false;
+  }
+  
   function loadPostData() {
     formData = {
       postType: post.postType || 'product',
@@ -66,84 +98,33 @@
       price: post.price ? post.price.toString() : '',
       currency: post.currency || 'USD',
       location: post.location || '',
-      tags: post.tags ? (Array.isArray(post.tags) ? post.tags.join(', ') : post.tags) : '',
-      media: post.media || []
+      tags: post.tags ? post.tags.join(', ') : '',
+      media: []
     };
     
-    // Load existing media URLs
+    // Load existing media if any
     if (post.media && post.media.length > 0) {
-      mediaUrls = post.media.map((m: any) => m.mediaUrl);
+      mediaUrls = post.media.map((m: any) => m.url || m);
     }
   }
   
-  function validateForm(): boolean {
-    errors = {};
-    
-    if (!formData.content.trim()) {
-      errors.content = 'Content is required';
+  function handleMediaChange(event: Event) {
+    const target = event.target as HTMLInputElement;
+    if (target.files) {
+      const newFiles = Array.from(target.files);
+      mediaFiles = [...mediaFiles, ...newFiles];
+      
+      // Create preview URLs
+      newFiles.forEach(file => {
+        const url = URL.createObjectURL(file);
+        mediaUrls.push(url);
+      });
     }
-    
-    if (formData.postType === 'product') {
-      if (!formData.productName.trim()) {
-        errors.productName = 'Product name is required';
-      }
-      if (!formData.price.trim()) {
-        errors.price = 'Price is required';
-      }
-      if (isNaN(Number(formData.price)) || Number(formData.price) <= 0) {
-        errors.price = 'Price must be a valid positive number';
-      }
-    }
-    
-    if (formData.postType === 'buyer_request') {
-      if (!formData.productName.trim()) {
-        errors.productName = 'What you\'re looking for is required';
-      }
-    }
-    
-    return Object.keys(errors).length === 0;
   }
   
-  async function handleSubmit() {
-    if (!validateForm()) return;
-    
-    isLoading = true;
-    error = '';
-    success = '';
-    
-    try {
-      const payload = {
-        ...formData,
-        price: formData.price ? parseFloat(formData.price) : null,
-        tags: formData.tags ? formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag) : null,
-        media: mediaUrls.map((url, index) => ({
-          type: 'image',
-          url,
-          thumbnailUrl: url,
-          mediaOrder: index,
-          altText: `Media ${index + 1}`
-        }))
-      };
-      
-      // For now, just emit the data
-      dispatch('submit', { post: payload, isEditing });
-      success = isEditing ? 'Post updated successfully!' : 'Post created successfully!';
-      
-      // Reset form
-      if (!isEditing) {
-        resetForm();
-      }
-      
-      // Close modal after delay
-      setTimeout(() => {
-        onClose();
-      }, 2000);
-      
-    } catch (err: any) {
-      error = err.message || 'An error occurred';
-    } finally {
-      isLoading = false;
-    }
+  function removeMedia(index: number) {
+    mediaFiles.splice(index, 1);
+    mediaUrls.splice(index, 1);
   }
   
   function resetForm() {
@@ -163,52 +144,131 @@
     errors = {};
   }
   
-  function handleFileSelect(event: Event) {
-    const target = event.target as HTMLInputElement;
-    if (target.files) {
-      const files = Array.from(target.files);
-      handleFiles(files);
-    }
-  }
-  
-  function handleFiles(files: File[]) {
-    files.forEach(file => {
-      if (file.type.startsWith('image/')) {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          const result = e.target?.result as string;
-          if (result) {
-            mediaUrls.push(result);
-            mediaUrls = [...mediaUrls]; // Trigger reactivity
-          }
-        };
-        reader.readAsDataURL(file);
-      }
-    });
-  }
-  
-  function handleDrop(event: DragEvent) {
-    event.preventDefault();
-    dragOver = false;
+  function validateForm(): boolean {
+    errors = {};
     
-    if (event.dataTransfer?.files) {
-      const files = Array.from(event.dataTransfer.files);
-      handleFiles(files);
+    if (!formData.postType) {
+      errors.postType = 'Post type is required';
+    }
+    
+    if (!formData.content.trim()) {
+      errors.content = 'Content is required';
+    }
+    
+    if (formData.postType === 'product') {
+      if (!formData.productName.trim()) {
+        errors.productName = 'Product name is required';
+      }
+      // Handle price validation safely - convert to string first if needed
+      const priceStr = String(formData.price || '');
+      if (!priceStr.trim()) {
+        errors.price = 'Price is required';
+      } else if (isNaN(Number(priceStr)) || Number(priceStr) <= 0) {
+        errors.price = 'Price must be a valid positive number';
+      }
+    }
+    
+    return Object.keys(errors).length === 0;
+  }
+  
+  async function handleSubmit(event: Event) {
+    event.preventDefault();
+    
+    if (!validateForm()) return;
+    
+    isLoading = true;
+    error = '';
+    success = '';
+    
+    try {
+      const formDataObj = new FormData(event.target as HTMLFormElement);
+      const payload: any = {};
+      
+      // Extract form data
+      for (const [key, value] of formDataObj.entries()) {
+        if (key === 'media' && value instanceof File) {
+          if (value.size > 0) {
+            payload.media = [value];
+          }
+        } else if (key === 'media' && Array.isArray(value)) {
+          payload.media = value.filter((file: File) => file.size > 0);
+        } else {
+          payload[key] = value;
+        }
+      }
+      
+      // Add user ID from the post if editing, or from auth store
+      payload.userId = post?.userId || $authStore?.user?.id;
+      
+      console.log('Submitting payload:', payload);
+      
+      let response;
+      if (isEditing && post?.id) {
+        response = await updatePost(post.id, payload);
+      } else {
+        response = await createPost(payload);
+      }
+      
+      // Since apiRequest now returns parsed data directly, response is already the data
+      if (response && response.message) {
+        console.log('Response received:', response);
+        
+        success = isEditing ? 'Post updated successfully!' : 'Post created successfully!';
+        
+        // Dispatch the updated/created post data
+        dispatch('submit', { 
+          post: response.data || { ...post, ...payload }, 
+          isEditing,
+          action: isEditing ? 'updated' : 'created'
+        });
+        
+        // Show feedback screen instead of closing immediately
+        showFeedbackScreen = true;
+      } else {
+        error = response?.message || 'Failed to save post';
+        showFeedbackScreen = true;
+      }
+    } catch (err: any) {
+      console.error('Submit error:', err);
+      error = err.message || 'An error occurred';
+      showFeedbackScreen = true;
+    } finally {
+      isLoading = false;
     }
   }
   
-  function handleDragOver(event: DragEvent) {
-    event.preventDefault();
-    dragOver = true;
-  }
-  
-  function handleDragLeave() {
-    dragOver = false;
-  }
-  
-  function removeMedia(index: number) {
-    mediaUrls.splice(index, 1);
-    mediaUrls = [...mediaUrls];
+  async function handleDelete() {
+    if (!post?.id) return;
+    
+    isLoading = true;
+    error = '';
+    
+    try {
+      const response = await deletePost(post.id);
+      
+      if (response && response.message) {
+        success = 'Post deleted successfully!';
+        
+        // Dispatch the delete event
+        dispatch('submit', { 
+          post: post, 
+          isEditing: false,
+          action: 'deleted'
+        });
+        
+        // Show feedback screen
+        showFeedbackScreen = true;
+      } else {
+        error = response?.message || 'Failed to delete post';
+        showFeedbackScreen = true;
+      }
+    } catch (err: any) {
+      error = err.message || 'An error occurred';
+      showFeedbackScreen = true;
+    } finally {
+      isLoading = false;
+      showDeleteConfirm = false;
+    }
   }
   
   function closeModal() {
@@ -221,245 +281,213 @@
 <!-- Modal Overlay -->
 {#if isOpen}
   <div class="modal-overlay" on:click={closeModal}>
+    <!-- Modal Content -->
     <div class="modal-content" on:click|stopPropagation>
-      
-      <!-- Header -->
       <div class="modal-header">
         <h2>{isEditing ? 'Edit Post' : 'Create New Post'}</h2>
-        <button class="close-btn" on:click={closeModal} disabled={isLoading}>
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M18 6 6 18"/>
-            <path d="m6 6 12 12"/>
-          </svg>
-        </button>
+        <button class="close-btn" on:click={onClose}>&times;</button>
       </div>
-      
-      <!-- Error/Success Messages -->
-      {#if error}
-        <div class="error-message">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
-          </svg>
-          {error}
-        </div>
-      {/if}
-      
-      {#if success}
-        <div class="success-message">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-          </svg>
-          {success}
-        </div>
-      {/if}
-      
-      <!-- Form -->
-      <form class="feed-form" on:submit|preventDefault={handleSubmit}>
-        
-        <!-- Post Type Selection -->
-        <div class="form-group">
-          <label for="postType">Post Type *</label>
-          <div class="post-type-selector">
-            {#each postTypes as type}
-              <label class="post-type-option">
-                <input 
-                  type="radio" 
-                  bind:group={formData.postType} 
-                  value={type.value}
-                  name="postType"
-                />
-                <span class="radio-custom"></span>
-                <span class="label-text">{type.label}</span>
-              </label>
-            {/each}
-          </div>
-        </div>
-        
-        <!-- Content -->
-        <div class="form-group">
-          <label for="content">Content *</label>
-          <textarea
-            id="content"
-            bind:value={formData.content}
-            placeholder="Share what's on your mind..."
-            rows="4"
-            class:error={errors.content}
-          ></textarea>
-          {#if errors.content}
-            <span class="error-text">{errors.content}</span>
+
+      <!-- Feedback Screen -->
+      {#if showFeedbackScreen}
+        <div class="feedback-screen">
+          {#if success}
+            <div class="success-feedback">
+              <div class="success-icon-large">✓</div>
+              <h3>Success!</h3>
+              <p>{success}</p>
+            </div>
+          {:else if error}
+            <div class="error-feedback">
+              <div class="error-icon-large">✕</div>
+              <h3>Error</h3>
+              <p>{error}</p>
+            </div>
           {/if}
         </div>
-        
-        <!-- Product Fields (for product posts) -->
-        {#if formData.postType === 'product'}
-          <div class="product-fields">
-            <div class="form-row">
-              <div class="form-group">
-                <label for="productName">Product Name *</label>
-                <input
-                  type="text"
-                  id="productName"
-                  bind:value={formData.productName}
-                  placeholder="Enter product name"
-                  class:error={errors.productName}
-                />
-                {#if errors.productName}
-                  <span class="error-text">{errors.productName}</span>
-                {/if}
-              </div>
-              
-              <div class="form-group">
-                <label for="brand">Brand</label>
-                <input
-                  type="text"
-                  id="brand"
-                  bind:value={formData.brand}
-                  placeholder="Enter brand name"
-                />
-              </div>
-            </div>
-            
-            <div class="form-row">
-              <div class="form-group">
-                <label for="price">Price *</label>
-                <div class="price-input">
-                  <select bind:value={formData.currency}>
-                    {#each currencies as currency}
-                      <option value={currency.value}>{currency.label}</option>
-                    {/each}
-                  </select>
-                  <input
-                    type="number"
-                    id="price"
-                    bind:value={formData.price}
-                    placeholder="0.00"
-                    step="0.01"
-                    min="0"
-                    class:error={errors.price}
-                  />
-                </div>
-                {#if errors.price}
-                  <span class="error-text">{errors.price}</span>
-                {/if}
-              </div>
-              
-              <div class="form-group">
-                <label for="location">Location</label>
-                <input
-                  type="text"
-                  id="location"
-                  bind:value={formData.location}
-                  placeholder="Enter location"
-                />
-              </div>
-            </div>
-          </div>
-        {/if}
-        
-        <!-- Buyer Request Fields -->
-        {#if formData.postType === 'buyer_request'}
+      {:else}
+        <!-- Form Content -->
+        <form on:submit={handleSubmit} class="form">
+          <!-- Post Type Selection -->
           <div class="form-group">
-            <label for="productName">What are you looking for? *</label>
-            <input
-              type="text"
-              id="productName"
-              bind:value={formData.productName}
-              placeholder="Describe what you're looking for..."
-              class:error={errors.productName}
+            <label for="postType">Post Type *</label>
+            <select 
+              id="postType" 
+              name="postType" 
+              bind:value={formData.postType}
+              required
+            >
+              <option value="">Select post type</option>
+              <option value="product">Product Sale</option>
+              <option value="buyer_request">Buyer Request</option>
+              <option value="general">General Post</option>
+            </select>
+          </div>
+
+          <!-- Content -->
+          <div class="form-group">
+            <label for="content">Content *</label>
+            <textarea 
+              id="content" 
+              name="content" 
+              bind:value={formData.content}
+              placeholder="What's on your mind?"
+              rows="4"
+              required
+            ></textarea>
+          </div>
+
+          <!-- Product-specific fields -->
+          {#if formData.postType === 'product'}
+            <div class="form-group">
+              <label for="productName">Product Name *</label>
+              <input 
+                type="text" 
+                id="productName" 
+                name="productName" 
+                bind:value={formData.productName}
+                placeholder="Enter product name"
+                required
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="brand">Brand</label>
+              <input 
+                type="text" 
+                id="brand" 
+                name="brand" 
+                bind:value={formData.brand}
+                placeholder="Enter brand (optional)"
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="price">Price *</label>
+              <input 
+                type="number" 
+                id="price" 
+                name="price" 
+                bind:value={formData.price}
+                placeholder="Enter price"
+                min="0"
+                step="0.01"
+                required
+              />
+            </div>
+          {/if}
+
+          <!-- Location -->
+          <div class="form-group">
+            <label for="location">Location</label>
+            <input 
+              type="text" 
+              id="location" 
+              name="location" 
+              bind:value={formData.location}
+              placeholder="Enter location (optional)"
             />
-            {#if errors.productName}
-              <span class="error-text">{errors.productName}</span>
+          </div>
+
+          <!-- Tags -->
+          <div class="form-group">
+            <label for="tags">Tags</label>
+            <input 
+              type="text" 
+              id="tags" 
+              name="tags" 
+              bind:value={formData.tags}
+              placeholder="Enter tags separated by commas (optional)"
+            />
+          </div>
+
+          <!-- Media Upload -->
+          <div class="form-group">
+            <label for="media">Media (optional)</label>
+            <input 
+              type="file" 
+              id="media" 
+              name="media" 
+              accept="image/*,video/*"
+              multiple
+              on:change={handleMediaChange}
+            />
+            {#if mediaFiles.length > 0}
+              <div class="media-preview">
+                {#each mediaFiles as file, index}
+                  <div class="media-item">
+                    <span>{file.name}</span>
+                    <button type="button" on:click={() => removeMedia(index)}>&times;</button>
+                  </div>
+                {/each}
+              </div>
             {/if}
           </div>
-        {/if}
-        
-        <!-- Tags -->
-        <div class="form-group">
-          <label for="tags">Tags (comma separated)</label>
-          <input
-            type="text"
-            id="tags"
-            bind:value={formData.tags}
-            placeholder="e.g., electronics, gadgets, affordable"
-          />
-          <small>Add relevant tags to help others find your post</small>
-        </div>
-        
-        <!-- Media Upload -->
-        <div class="form-group">
-          <label>Media</label>
-          <div 
-            class="media-upload-area"
-            class:drag-over={dragOver}
-            on:dragover={handleDragOver}
-            on:dragleave={handleDragLeave}
-            on:drop={handleDrop}
-          >
-            <input
-              type="file"
-              id="media-upload"
-              multiple
-              accept="image/*"
-              on:change={handleFileSelect}
-              class="file-input"
-            />
-            <div class="upload-content">
-              <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                <polyline points="7,10 12,15 17,10"/>
-                <line x1="12" y1="15" x2="12" y2="3"/>
-              </svg>
-              <p>Drag & drop images here or click to browse</p>
-              <small>Supports JPG, PNG, GIF (max 5 images)</small>
-            </div>
+
+          <!-- Action Buttons -->
+          <div class="form-actions">
+            {#if isEditing}
+              <button type="button" class="btn btn-secondary" on:click={onClose}>
+                Cancel
+              </button>
+              <button type="submit" class="btn btn-primary" disabled={isLoading}>
+                {isLoading ? 'Updating...' : 'Update Post'}
+              </button>
+            {:else}
+              <button type="button" class="btn btn-secondary" on:click={onClose}>
+                Cancel
+              </button>
+              <button type="submit" class="btn btn-primary" disabled={isLoading}>
+                {isLoading ? 'Creating...' : 'Create Post'}
+              </button>
+            {/if}
           </div>
-          
-          <!-- Media Preview -->
-          {#if mediaUrls.length > 0}
-            <div class="media-preview">
-              {#each mediaUrls as url, index}
-                <div class="media-item">
-                  <img src={url} alt="Media {index + 1}" />
-                  <button 
-                    type="button" 
-                    class="remove-media" 
-                    on:click={() => removeMedia(index)}
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <path d="M18 6 6 18"/>
-                      <path d="m6 6 12 12"/>
-                    </svg>
-                  </button>
-                </div>
-              {/each}
+
+          <!-- Delete Button for Editing -->
+          {#if isEditing && post?.id}
+            <div class="delete-section">
+              <button 
+                type="button" 
+                class="btn btn-danger" 
+                on:click={() => showDeleteConfirm = true}
+              >
+                Delete Post
+              </button>
             </div>
           {/if}
-        </div>
-        
-        <!-- Action Buttons -->
-        <div class="form-actions">
-          <div class="right-actions">
-            <button type="button" class="btn btn-secondary" on:click={closeModal} disabled={isLoading}>
+        </form>
+      {/if}
+
+      <!-- Delete Confirmation Modal -->
+      {#if showDeleteConfirm}
+        <div class="delete-confirm">
+          <h3>Confirm Delete</h3>
+          <p>Are you sure you want to delete this post? This action cannot be undone.</p>
+          <div class="delete-actions">
+            <button 
+              type="button" 
+              class="btn btn-secondary" 
+              on:click={() => showDeleteConfirm = false}
+            >
               Cancel
             </button>
-            <button type="submit" class="btn btn-primary" disabled={isLoading}>
-              {#if isLoading}
-                <svg class="spinner" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M21 12a9 9 0 11-6.219-8.56"/>
-                </svg>
-                {isEditing ? 'Updating...' : 'Creating...'}
-              {:else}
-                {isEditing ? 'Update Post' : 'Create Post'}
-              {/if}
+            <button 
+              type="button" 
+              class="btn btn-danger" 
+              on:click={handleDelete}
+              disabled={isLoading}
+            >
+              {isLoading ? 'Deleting...' : 'Delete'}
             </button>
           </div>
         </div>
-      </form>
+      {/if}
     </div>
   </div>
 {/if}
 
 <style>
+  /* Modal Structure */
   .modal-overlay {
     position: fixed;
     top: 0;
@@ -485,17 +513,6 @@
     animation: slideIn 0.3s ease-out;
   }
   
-  @keyframes slideIn {
-    from {
-      opacity: 0;
-      transform: translateY(-20px) scale(0.95);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0) scale(1);
-    }
-  }
-  
   .modal-header {
     display: flex;
     align-items: center;
@@ -514,47 +531,143 @@
   .close-btn {
     background: none;
     border: none;
-    padding: 0.5rem;
-    border-radius: 0.5rem;
+    font-size: 1.5rem;
     cursor: pointer;
     color: #6b7280;
+    padding: 0.5rem;
+    border-radius: 0.375rem;
     transition: all 0.2s;
   }
   
-  .close-btn:hover:not(:disabled) {
+  .close-btn:hover {
     background: #f3f4f6;
     color: #374151;
   }
   
-  .close-btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
+  @keyframes slideIn {
+    from {
+      opacity: 0;
+      transform: translateY(-20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
-  
-  .error-message,
-  .success-message {
+
+  /* Feedback Screen */
+  .feedback-screen {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    padding: 1rem 1.5rem;
-    margin: 0 1.5rem;
-    border-radius: 0.5rem;
-    font-size: 0.875rem;
+    justify-content: center;
+    min-height: 300px;
+    padding: 2rem;
+    text-align: center;
   }
   
-  .error-message {
-    background: #fef2f2;
-    color: #dc2626;
-    border: 1px solid #fecaca;
+  .success-feedback,
+  .error-feedback {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    animation: fadeInScale 0.5s ease-out;
   }
   
-  .success-message {
-    background: #f0fdf4;
+  .success-icon-large {
+    font-size: 4rem;
     color: #16a34a;
-    border: 1px solid #bbf7d0;
+    animation: checkmarkLarge 0.8s ease-in-out;
+    background: #f0fdf4;
+    border-radius: 50%;
+    width: 120px;
+    height: 120px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 4px solid #16a34a;
   }
   
-  .feed-form {
+  .error-icon-large {
+    font-size: 4rem;
+    color: #dc2626;
+    animation: errorIconLarge 0.8s ease-in-out;
+    background: #fef2f2;
+    border-radius: 50%;
+    width: 120px;
+    height: 120px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 4px solid #dc2626;
+  }
+  
+  .success-feedback h3,
+  .error-feedback h3 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin: 0;
+  }
+  
+  .success-feedback h3 {
+    color: #16a34a;
+  }
+  
+  .error-feedback h3 {
+    color: #dc2626;
+  }
+  
+  .success-feedback p,
+  .error-feedback p {
+    font-size: 1.1rem;
+    margin: 0;
+    color: #6b7280;
+    max-width: 300px;
+  }
+  
+  @keyframes fadeInScale {
+    from {
+      opacity: 0;
+      transform: scale(0.8);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+  
+  @keyframes checkmarkLarge {
+    0% {
+      transform: scale(0) rotate(-45deg);
+      opacity: 0;
+    }
+    50% {
+      transform: scale(1.2) rotate(0deg);
+      opacity: 1;
+    }
+    100% {
+      transform: scale(1) rotate(0deg);
+      opacity: 1;
+    }
+  }
+  
+  @keyframes errorIconLarge {
+    0% {
+      transform: scale(0) rotate(45deg);
+      opacity: 0;
+    }
+    50% {
+      transform: scale(1.2) rotate(0deg);
+      opacity: 1;
+    }
+    100% {
+      transform: scale(1) rotate(0deg);
+      opacity: 1;
+    }
+  }
+
+  /* Form Styles */
+  .form {
     padding: 1.5rem;
   }
   
@@ -570,233 +683,72 @@
   }
   
   .form-group input,
-  .form-group textarea,
-  .form-group select {
+  .form-group select,
+  .form-group textarea {
     width: 100%;
     padding: 0.75rem;
     border: 1px solid #d1d5db;
     border-radius: 0.5rem;
-    font-size: 0.875rem;
-    transition: all 0.2s;
-    box-sizing: border-box;
+    font-size: 1rem;
+    transition: border-color 0.2s;
   }
   
   .form-group input:focus,
-  .form-group textarea:focus,
-  .form-group select:focus {
+  .form-group select:focus,
+  .form-group textarea:focus {
     outline: none;
     border-color: #3b82f6;
     box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
   }
   
-  .form-group input.error,
-  .form-group textarea.error {
-    border-color: #dc2626;
-  }
-  
-  .error-text {
-    color: #dc2626;
-    font-size: 0.75rem;
-    margin-top: 0.25rem;
-    display: block;
-  }
-  
-  .form-group small {
-    color: #6b7280;
-    font-size: 0.75rem;
-    margin-top: 0.25rem;
-    display: block;
-  }
-  
-  .post-type-selector {
-    display: flex;
-    gap: 1rem;
-    flex-wrap: wrap;
-  }
-  
-  .post-type-option {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    cursor: pointer;
-    padding: 0.75rem 1rem;
-    border: 1px solid #d1d5db;
-    border-radius: 0.5rem;
-    transition: all 0.2s;
-  }
-  
-  .post-type-option:hover {
-    border-color: #3b82f6;
-    background: #f8fafc;
-  }
-  
-  .post-type-option input[type="radio"] {
-    display: none;
-  }
-  
-  .radio-custom {
-    width: 18px;
-    height: 18px;
-    border: 2px solid #d1d5db;
-    border-radius: 50%;
-    position: relative;
-    transition: all 0.2s;
-  }
-  
-  .post-type-option input[type="radio"]:checked + .radio-custom {
-    border-color: #3b82f6;
-    background: #3b82f6;
-  }
-  
-  .post-type-option input[type="radio"]:checked + .radio-custom::after {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 6px;
-    height: 6px;
-    background: white;
-    border-radius: 50%;
-  }
-  
-  .label-text {
-    font-weight: 500;
-    color: #374151;
-  }
-  
-  .form-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1rem;
-  }
-  
-  .price-input {
-    display: flex;
-    gap: 0.5rem;
-  }
-  
-  .price-input select {
-    width: auto;
-    min-width: 80px;
-  }
-  
-  .price-input input {
-    flex: 1;
-  }
-  
-  .media-upload-area {
-    border: 2px dashed #d1d5db;
-    border-radius: 0.5rem;
-    padding: 2rem;
-    text-align: center;
-    transition: all 0.2s;
-    cursor: pointer;
-    position: relative;
-  }
-  
-  .media-upload-area:hover,
-  .media-upload-area.drag-over {
-    border-color: #3b82f6;
-    background: #f8fafc;
-  }
-  
-  .file-input {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    opacity: 0;
-    cursor: pointer;
-  }
-  
-  .upload-content {
-    pointer-events: none;
-  }
-  
-  .upload-content svg {
-    color: #9ca3af;
-    margin-bottom: 1rem;
-  }
-  
-  .upload-content p {
-    margin: 0 0 0.5rem;
-    font-weight: 500;
-    color: #374151;
-  }
-  
-  .upload-content small {
-    color: #6b7280;
+  .form-group textarea {
+    resize: vertical;
+    min-height: 100px;
   }
   
   .media-preview {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-    gap: 0.75rem;
-    margin-top: 1rem;
+    margin-top: 0.5rem;
   }
   
   .media-item {
-    position: relative;
-    border-radius: 0.5rem;
-    overflow: hidden;
-    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem;
+    background: #f9fafb;
+    border-radius: 0.375rem;
+    margin-bottom: 0.5rem;
   }
   
-  .media-item img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-  
-  .remove-media {
-    position: absolute;
-    top: 0.25rem;
-    right: 0.25rem;
-    background: rgba(0, 0, 0, 0.7);
-    border: none;
+  .media-item button {
+    background: #ef4444;
     color: white;
+    border: none;
+    border-radius: 50%;
     width: 24px;
     height: 24px;
-    border-radius: 50%;
     cursor: pointer;
+    font-size: 14px;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.2s;
-  }
-  
-  .remove-media:hover {
-    background: rgba(0, 0, 0, 0.9);
-    transform: scale(1.1);
   }
   
   .form-actions {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
     gap: 1rem;
+    justify-content: flex-end;
     margin-top: 2rem;
-    padding-top: 1.5rem;
-    border-top: 1px solid #e5e7eb;
-  }
-  
-  .right-actions {
-    display: flex;
-    gap: 0.75rem;
   }
   
   .btn {
     padding: 0.75rem 1.5rem;
     border: none;
     border-radius: 0.5rem;
+    font-size: 1rem;
     font-weight: 500;
     cursor: pointer;
     transition: all 0.2s;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
   }
   
   .btn:disabled {
@@ -811,34 +763,56 @@
   
   .btn-primary:hover:not(:disabled) {
     background: #2563eb;
-    transform: translateY(-1px);
   }
   
   .btn-secondary {
-    background: #f3f4f6;
-    color: #374151;
+    background: #6b7280;
+    color: white;
   }
   
   .btn-secondary:hover:not(:disabled) {
-    background: #e5e7eb;
+    background: #4b5563;
   }
   
   .btn-danger {
-    background: #dc2626;
+    background: #ef4444;
     color: white;
   }
   
   .btn-danger:hover:not(:disabled) {
-    background: #b91c1c;
+    background: #dc2626;
   }
   
-  .spinner {
-    animation: spin 1s linear infinite;
+  .delete-section {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #e5e7eb;
+    text-align: center;
   }
   
-  @keyframes spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
+  .delete-confirm {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+    margin-top: 1rem;
+    text-align: center;
+  }
+  
+  .delete-confirm h3 {
+    color: #dc2626;
+    margin: 0 0 1rem 0;
+  }
+  
+  .delete-confirm p {
+    color: #6b7280;
+    margin: 0 0 1.5rem 0;
+  }
+  
+  .delete-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
   }
   
   /* Responsive Design */
@@ -869,12 +843,18 @@
       align-items: stretch;
     }
     
+    .left-actions,
     .right-actions {
       justify-content: stretch;
     }
     
     .btn {
       justify-content: center;
+    }
+    
+    .delete-confirm-actions {
+      flex-direction: column;
+      align-items: stretch;
     }
   }
 </style>

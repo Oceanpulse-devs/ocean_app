@@ -71,6 +71,24 @@ export async function getFeed(params?: {
   return apiRequest(`/feed?${searchParams.toString()}`);
 }
 
+// Get posts by a specific user
+export async function getUserPosts(userId: string, params?: {
+  page?: number;
+  limit?: number;
+}) {
+  const searchParams = new URLSearchParams();
+  
+  if (params) {
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined) {
+        searchParams.append(key, value.toString());
+      }
+    });
+  }
+  
+  return apiRequest(`/users/${userId}/posts?${searchParams.toString()}`);
+}
+
 // Create a new post
 export async function createPost(postData: CreatePostData) {
   const formData = new FormData();
@@ -99,6 +117,44 @@ export async function createPost(postData: CreatePostData) {
     headers: {
       // Remove Content-Type to let browser set it with boundary for FormData
     },
+  });
+}
+
+// Update an existing post
+export async function updatePost(postId: string, postData: Partial<CreatePostData>) {
+  const formData = new FormData();
+  
+  // Add text fields
+  Object.entries(postData).forEach(([key, value]) => {
+    if (key !== 'media' && value !== undefined) {
+      if (key === 'tags' && Array.isArray(value)) {
+        formData.append(key, JSON.stringify(value));
+      } else {
+        formData.append(key, value.toString());
+      }
+    }
+  });
+  
+  // Add media files
+  if (postData.media) {
+    postData.media.forEach((file, index) => {
+      formData.append('media', file);
+    });
+  }
+  
+  return apiRequest(`/posts/${postId}`, {
+    method: 'PUT',
+    body: formData,
+    headers: {
+      // Remove Content-Type to let browser set it with boundary for FormData
+    },
+  });
+}
+
+// Delete a post
+export async function deletePost(postId: string) {
+  return apiRequest(`/posts/${postId}`, {
+    method: 'DELETE',
   });
 }
 
