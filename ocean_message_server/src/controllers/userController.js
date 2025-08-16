@@ -1,4 +1,4 @@
-const { UserTable, Conversation, ConversationParticipant } = require('../../models');
+const { UserReference, Conversation, ConversationParticipant } = require('../../models');
 const { Op } = require('sequelize');
 
 // Get online users
@@ -9,7 +9,7 @@ const getOnlineUsers = async (req, res) => {
 
     const offset = (page - 1) * limit;
 
-    const users = await UserTable.findAndCountAll({
+    const users = await UserReference.findAndCountAll({
       where: {
         id: { [Op.ne]: userId }, // Exclude current user
         accountStatus: 'active'
@@ -50,7 +50,7 @@ const searchUsers = async (req, res) => {
 
     const offset = (page - 1) * limit;
 
-    const users = await UserTable.findAndCountAll({
+    const users = await UserReference.findAndCountAll({
       where: {
         id: { [Op.ne]: userId }, // Exclude current user
         accountStatus: 'active',
@@ -87,7 +87,7 @@ const getUserProfile = async (req, res) => {
     const { userId } = req.params;
     const currentUserId = req.user.id;
 
-    const user = await UserTable.findByPk(userId, {
+    const user = await UserReference.findByPk(userId, {
       attributes: ['id', 'fullName', 'profilePicture', 'accountType'],
       include: [
         {
@@ -164,7 +164,7 @@ const getRecentContacts = async (req, res) => {
               where: { userId: { [Op.ne]: userId }, isActive: true },
               include: [
                 {
-                  model: UserTable,
+                  model: UserReference,
                   as: 'user',
                   attributes: ['id', 'fullName', 'profilePicture']
                 }

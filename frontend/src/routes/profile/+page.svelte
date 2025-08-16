@@ -2,7 +2,6 @@
   import { onMount } from 'svelte';
   import ProtectedRoute from '$lib/components/ProtectedRoute.svelte';
   import { getProfile } from '$lib/api/auth';
-  import { getFollowStats, followUser, unfollowUser, checkFollowStatus } from '$lib/api/follow';
   import { getUserPosts } from '$lib/api/feed';
   import { authStore } from '$lib/stores/auth';
   import EditProfile from '$lib/components/EditProfile.svelte';
@@ -12,10 +11,8 @@
   let userData: any = null;
   let loading = true;
   let error = '';
-  let followStats: any = null;
-  let isFollowing = false;
-  let isOwnProfile = false;
   let currentUser: any = null;
+  let isOwnProfile = false;
   let showEditModal = false;
 
   // User posts state
@@ -30,10 +27,9 @@
     try {
       loading = true;
       error = '';
-      const response = await getProfile();
+      const data = await getProfile();
       
-      if (response.ok) {
-        const data = await response.json();
+      if (data && data.profileInfo) {
         userData = {
           ...data.profileInfo,
           // Add mock stats for now
@@ -60,62 +56,17 @@
           if (state.user) {
             currentUser = state.user;
             isOwnProfile = currentUser.id === userData.id;
-            
-            // Load follow stats and status if not own profile
-            if (!isOwnProfile) {
-              loadFollowData();
-            }
           }
         })();
       } else {
-        error = 'Failed to load profile';
+        error = 'Failed to load profile - invalid data format';
+        console.error('Invalid profile data format:', data);
       }
     } catch (err: any) {
       console.error('Error loading profile:', err);
       error = 'Failed to load profile';
     } finally {
       loading = false;
-    }
-  }
-
-  // Load follow data for other users
-  async function loadFollowData() {
-    try {
-      // Get follow stats
-      const statsResponse = await getFollowStats(userData.id);
-      if (statsResponse && statsResponse.message) {
-        followStats = statsResponse.data || statsResponse;
-      }
-
-      // Check if current user is following this user
-      const followStatusResponse = await checkFollowStatus(userData.id);
-      if (followStatusResponse && followStatusResponse.message) {
-        const statusData = followStatusResponse.data || followStatusResponse;
-        isFollowing = statusData.isFollowing;
-      }
-    } catch (err: any) {
-      console.error('Error loading follow data:', err);
-    }
-  }
-
-  // Handle follow/unfollow
-  async function handleFollowToggle() {
-    try {
-      if (isFollowing) {
-        await unfollowUser(userData.id);
-        isFollowing = false;
-        if (followStats) {
-          followStats.followersCount--;
-        }
-      } else {
-        await followUser(userData.id);
-        isFollowing = true;
-        if (followStats) {
-          followStats.followersCount++;
-        }
-      }
-    } catch (err: any) {
-      console.error('Error toggling follow:', err);
     }
   }
 
@@ -279,47 +230,6 @@
             </div>
           </div>
 
-          <!-- Follow/Following Section -->
-          <div class="follow-section">
-            <!-- Follow Stats -->
-            <div class="follow-stats">
-              <div class="follow-stat">
-                <span class="stat-number">{followStats?.followersCount || 0}</span>
-                <span class="stat-label">Followers</span>
-              </div>
-              <div class="follow-stat">
-                <span class="stat-number">{followStats?.followingCount || 0}</span>
-                <span class="stat-label">Following</span>
-              </div>
-            </div>
-
-            <!-- Follow Button (only show for other users) -->
-            {#if !isOwnProfile && currentUser}
-              <button 
-                class="follow-button" 
-                class:following={isFollowing}
-                on:click={handleFollowToggle}
-              >
-                {#if isFollowing}
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M9 12l2 2 4-4"/>
-                    <path d="M21 12c-1 0-2-.4-2-1s1-2 2-2 2 1 2 2-1 1-2 1z"/>
-                    <path d="M3 12c1 0 2-.4 2-1s-1-2-2-2-2 1-2 2 1 1 2 1z"/>
-                  </svg>
-                  Following
-                {:else}
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                    <circle cx="8.5" cy="7" r="4"/>
-                    <line x1="20" y1="8" x2="20" y2="14"/>
-                    <line x1="23" y1="11" x2="17" y2="11"/>
-                  </svg>
-                  Follow
-                {/if}
-              </button>
-            {/if}
-          </div>
-
           <!-- Performance Metrics -->
           {#if userData.role === 'seller'}
             <div class="performance-metrics">
@@ -375,18 +285,6 @@
                 <span class="metric-label">Member Since</span>
               </div>
             </div>
-          {/if}
-        </div>
-
-        <!-- Profile Content -->
-        <div class="profile-content">
-          <h2>Welcome to your profile!</h2>
-          <p>Account Type: {userData.role}</p>
-          <p>Email: {userData.email}</p>
-          <p>Status: {userData.accountStatus}</p>
-          {#if userData.role === 'seller'}
-            <p>Business Name: {userData.businessName || 'Not set'}</p>
-            <p>Category: {userData.category || 'Not set'}</p>
           {/if}
         </div>
 
@@ -692,79 +590,6 @@
       font-weight: 500;
     }
 
-    .follow-section {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin: 1.5rem 0;
-      padding: 1rem;
-      background: #f8fafc;
-      border-radius: 1rem;
-    }
-
-    .follow-stats {
-      display: flex;
-      gap: 2rem;
-    }
-
-    .follow-stat {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      text-align: center;
-    }
-
-    .stat-number {
-      font-size: 1.25rem;
-      font-weight: 700;
-      color: #1a202c;
-      margin-bottom: 0.25rem;
-    }
-
-    .stat-label {
-      font-size: 0.875rem;
-      color: #64748b;
-      font-weight: 500;
-    }
-
-    .follow-button {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      padding: 0.75rem 1.5rem;
-      border: 2px solid #3B82F6;
-      border-radius: 0.75rem;
-      background: #3B82F6;
-      color: white;
-      font-weight: 600;
-      font-size: 0.875rem;
-      cursor: pointer;
-      transition: all 0.2s ease;
-    }
-
-    .follow-button:hover {
-      background: #2563EB;
-      border-color: #2563EB;
-      transform: translateY(-1px);
-    }
-
-    .follow-button.following {
-      background: transparent;
-      color: #3B82F6;
-      border-color: #3B82F6;
-    }
-
-    .follow-button.following:hover {
-      background: #FEF2F2;
-      color: #DC2626;
-      border-color: #DC2626;
-    }
-
-    .follow-button svg {
-      width: 1rem;
-      height: 1rem;
-    }
-
     .profile-content {
       padding: 2rem;
       border-top: 1px solid #e2e8f0;
@@ -816,29 +641,6 @@
 
       .metric-label {
         font-size: 0.75rem;
-      }
-
-      .follow-section {
-        flex-direction: column;
-        gap: 1rem;
-        text-align: center;
-      }
-
-      .follow-stats {
-        gap: 1.5rem;
-      }
-
-      .stat-number {
-        font-size: 1.125rem;
-      }
-
-      .stat-label {
-        font-size: 0.75rem;
-      }
-
-      .follow-button {
-        padding: 0.625rem 1.25rem;
-        font-size: 0.8125rem;
       }
     }
     
@@ -1078,11 +880,4 @@
     on:submit={handleProfileUpdate}
   />
 
-  <!-- AddFeed Component Modal -->
-  <AddFeed
-    post={editingPost}
-    isOpen={showAddFeedModal}
-    onClose={() => showAddFeedModal = false}
-    on:submit={handleFeedSubmit}
-  />
 </ProtectedRoute>

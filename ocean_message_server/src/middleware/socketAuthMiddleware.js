@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const { UserTable } = require('../../models');
+const { UserReference } = require('../../models');
 
 const socketAuthMiddleware = async (socket, next) => {
   try {
@@ -14,7 +14,7 @@ const socketAuthMiddleware = async (socket, next) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
     // Check if user exists and is active
-    const user = await UserTable.findByPk(decoded.id);
+    const user = await UserReference.findByPk(decoded.id);
     if (!user) {
       return next(new Error('Authentication error: User not found'));
     }

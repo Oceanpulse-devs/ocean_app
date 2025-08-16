@@ -2,15 +2,30 @@
 import { apiRequest } from './base';
 
 // Override the base URL for messaging server
-const MESSAGING_API_BASE_URL = 'http://localhost:5002/api';
+const MESSAGING_API_BASE_URL = 'http://localhost:5001/api';
+
+// Helper function to get JWT token from main server
+export async function getMessagingToken(): Promise<string | null> {
+  try {
+    const response = await apiRequest('/messaging-token');
+    return response.token;
+  } catch (error) {
+    console.error('Error getting messaging token:', error);
+    return null;
+  }
+}
 
 // Helper function for messaging API requests
 async function messagingApiRequest(endpoint: string, options: RequestInit = {}) {
   const url = `${MESSAGING_API_BASE_URL}${endpoint}`;
   
+  // Get JWT token from main server
+  const token = await getMessagingToken();
+  
   const config: RequestInit = {
     headers: {
       'Content-Type': 'application/json',
+      ...(token && { 'Authorization': `Bearer ${token}` }),
       ...options.headers,
     },
     ...options,
@@ -21,7 +36,11 @@ async function messagingApiRequest(endpoint: string, options: RequestInit = {}) 
     
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+      const error = new Error(errorData.message || `HTTP error! status: ${response.status}`);
+      // Preserve additional error data for handling specific cases
+      (error as any).conversationId = errorData.conversationId;
+      (error as any).status = response.status;
+      throw error;
     }
     
     return await response.json();
@@ -144,7 +163,7 @@ export async function createConversation(conversationData: {
   type: 'direct' | 'group';
   name?: string;
   description?: string;
-  participantIds: string[];
+  participants: string[];
 }) {
   return messagingApiRequest('/conversations', {
     method: 'POST',
@@ -207,7 +226,7 @@ export async function getMessages(conversationId: string, params?: {
     });
   }
   
-  return messagingApiRequest(`/conversations/${conversationId}/messages?${searchParams.toString()}`);
+  return messagingApiRequest(`/messages/${conversationId}?${searchParams.toString()}`);
 }
 
 // Send a message
@@ -221,15 +240,21 @@ export async function sendMessage(conversationId: string, messageData: {
   thumbnailUrl?: string;
   replyToId?: string;
 }) {
-  return messagingApiRequest(`/conversations/${conversationId}/messages`, {
+  // Add conversationId to the message data since the endpoint is /api/messages
+  const messageWithConversation = {
+    ...messageData,
+    conversationId: conversationId
+  };
+  
+  return messagingApiRequest(`/messages`, {
     method: 'POST',
-    body: JSON.stringify(messageData),
+    body: JSON.stringify(messageWithConversation),
   });
 }
 
 // Edit a message
 export async function editMessage(conversationId: string, messageId: string, content: string) {
-  return messagingApiRequest(`/conversations/${conversationId}/messages/${messageId}`, {
+  return messagingApiRequest(`/messages/${messageId}`, {
     method: 'PUT',
     body: JSON.stringify({ content }),
   });
@@ -237,14 +262,14 @@ export async function editMessage(conversationId: string, messageId: string, con
 
 // Delete a message
 export async function deleteMessage(conversationId: string, messageId: string) {
-  return messagingApiRequest(`/conversations/${conversationId}/messages/${messageId}`, {
+  return messagingApiRequest(`/messages/${messageId}`, {
     method: 'DELETE',
   });
 }
 
 // Add reaction to message
 export async function addReaction(conversationId: string, messageId: string, reaction: string) {
-  return messagingApiRequest(`/conversations/${conversationId}/messages/${messageId}/reactions`, {
+  return messagingApiRequest(`/messages/${messageId}/reactions`, {
     method: 'POST',
     body: JSON.stringify({ reaction }),
   });
@@ -252,7 +277,7 @@ export async function addReaction(conversationId: string, messageId: string, rea
 
 // Remove reaction from message
 export async function removeReaction(conversationId: string, messageId: string, reaction: string) {
-  return messagingApiRequest(`/conversations/${conversationId}/messages/${messageId}/reactions/${reaction}`, {
+  return messagingApiRequest(`/messages/${messageId}/reactions/${reaction}`, {
     method: 'DELETE',
   });
 }

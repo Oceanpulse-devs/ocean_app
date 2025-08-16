@@ -95,6 +95,11 @@ const followRoutes = require('./src/routes/followRoutes');
 const feedRoutes = require('./src/routes/feedRoutes');
 const productRoutes = require('./src/routes/productRoutes');
 const auctionRoutes = require('./src/routes/auctionRoutes');
+const groupBuyRoutes = require('./src/routes/groupBuyRoutes');
+const swapDealRoutes = require('./src/routes/swapDealRoutes');
+const buyerNeedRoutes = require('./src/routes/buyerNeedRoutes');
+const marketAnalyticsRoutes = require('./src/routes/marketAnalyticsRoutes');
+const advancedNotificationRoutes = require('./src/routes/advancedNotificationRoutes');
 
 app.use('/', authRoutes);
 app.use('/', adminRoutes);
@@ -103,10 +108,32 @@ app.use('/', followRoutes);
 app.use('/', feedRoutes);
 app.use('/', productRoutes);
 app.use('/', auctionRoutes);
+app.use('/api/group-buy', groupBuyRoutes);
+app.use('/api/swap-deals', swapDealRoutes);
+app.use('/api/buyer-needs', buyerNeedRoutes);
+app.use('/api/market-analytics', marketAnalyticsRoutes);
+app.use('/api/advanced-notifications', advancedNotificationRoutes);
 
 
 
-db.sequelize.sync().then((req)=>{})
+// Database sync with safe options - won't drop existing tables
+db.sequelize.sync({ 
+    force: false,  // Don't drop tables
+    alter: false   // Don't alter existing tables - just ensure they exist
+}).then(() => {
+    console.log('✅ Database synchronized safely');
+    
+    // After sync, update any NULL timestamps to current time
+    return db.sequelize.query(`
+        UPDATE users 
+        SET createdAt = NOW(), updatedAt = NOW() 
+        WHERE createdAt IS NULL OR updatedAt IS NULL
+    `);
+}).then(() => {
+    console.log('✅ Timestamps updated for existing users');
+}).catch((error) => {
+    console.error('❌ Database sync error:', error);
+});
 app.listen(port , ()=>{
     console.log(`● Server running on port ${port} ✅`)
 })

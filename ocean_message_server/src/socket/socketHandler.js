@@ -1,4 +1,4 @@
-const { Message, Conversation, ConversationParticipant, UserTable } = require('../../models');
+const { Message, Conversation, ConversationParticipant, UserReference } = require('../../models');
 
 const socketHandler = (io, socket) => {
   console.log(`🔌 Socket handler initialized for user: ${socket.userId}`);
@@ -55,7 +55,7 @@ const socketHandler = (io, socket) => {
       const messageWithSender = await Message.findByPk(message.id, {
         include: [
           {
-            model: UserTable,
+            model: UserReference,
             as: 'sender',
             attributes: ['id', 'fullName', 'profilePicture']
           },
@@ -64,7 +64,7 @@ const socketHandler = (io, socket) => {
             as: 'replyTo',
             include: [
               {
-                model: UserTable,
+                model: UserReference,
                 as: 'sender',
                 attributes: ['id', 'fullName']
               }

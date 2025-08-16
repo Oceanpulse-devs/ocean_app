@@ -1,4 +1,4 @@
-const { Message, Conversation, ConversationParticipant, UserTable, MessageReaction } = require('../../models');
+const { Message, Conversation, ConversationParticipant, UserReference, MessageReaction } = require('../../models');
 const { Op } = require('sequelize');
 
 // Get messages for a conversation
@@ -34,7 +34,7 @@ const getMessages = async (req, res) => {
       where: whereClause,
       include: [
         {
-          model: UserTable,
+          model: UserReference,
           as: 'sender',
           attributes: ['id', 'fullName', 'profilePicture']
         },
@@ -43,7 +43,7 @@ const getMessages = async (req, res) => {
           as: 'replyTo',
           include: [
             {
-              model: UserTable,
+              model: UserReference,
               as: 'sender',
               attributes: ['id', 'fullName']
             }
@@ -54,7 +54,7 @@ const getMessages = async (req, res) => {
           as: 'reactions',
           include: [
             {
-              model: UserTable,
+              model: UserReference,
               as: 'user',
               attributes: ['id', 'fullName']
             }
@@ -141,7 +141,7 @@ const sendMessage = async (req, res) => {
     const messageWithSender = await Message.findByPk(message.id, {
       include: [
         {
-          model: UserTable,
+          model: UserReference,
           as: 'sender',
           attributes: ['id', 'fullName', 'profilePicture']
         },
@@ -150,7 +150,7 @@ const sendMessage = async (req, res) => {
           as: 'replyTo',
           include: [
             {
-              model: UserTable,
+              model: UserReference,
               as: 'sender',
               attributes: ['id', 'fullName']
             }
@@ -301,7 +301,7 @@ const addReaction = async (req, res) => {
     const reactionWithUser = await MessageReaction.findByPk(messageReaction.id, {
       include: [
         {
-          model: UserTable,
+          model: UserReference,
           as: 'user',
           attributes: ['id', 'fullName']
         }

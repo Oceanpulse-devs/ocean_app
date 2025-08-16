@@ -151,8 +151,8 @@ module.exports = (sequelize) => {
     }
 
     // Message belongs to sender
-    if (models.UserTable) {
-      Message.belongsTo(models.UserTable, {
+    if (models.UserReference) {
+      Message.belongsTo(models.UserReference, {
         foreignKey: 'senderId',
         as: 'sender'
       });
@@ -179,8 +179,8 @@ module.exports = (sequelize) => {
     }
 
     // Message can be deleted by a user
-    if (models.UserTable) {
-      Message.belongsTo(models.UserTable, {
+    if (models.UserReference) {
+      Message.belongsTo(models.UserReference, {
         foreignKey: 'deletedBy',
         as: 'deletedByUser'
       });

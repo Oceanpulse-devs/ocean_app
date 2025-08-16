@@ -131,10 +131,10 @@ const getFollowers = async (req, res) => {
             message: "Followers retrieved successfully",
             data: {
                 followers: followers.rows,
+                totalFollowers: followers.count,
                 pagination: {
                     currentPage: parseInt(page),
                     totalPages: Math.ceil(followers.count / limit),
-                    totalFollowers: followers.count,
                     hasNextPage: offset + limit < followers.count,
                     hasPrevPage: page > 1
                 }
@@ -177,10 +177,10 @@ const getFollowing = async (req, res) => {
             message: "Following list retrieved successfully",
             data: {
                 following: following.rows,
+                totalFollowing: following.count,
                 pagination: {
                     currentPage: parseInt(page),
                     totalPages: Math.ceil(following.count / limit),
-                    totalFollowing: following.count,
                     hasNextPage: offset + limit < following.count,
                     hasPrevPage: page > 1
                 }

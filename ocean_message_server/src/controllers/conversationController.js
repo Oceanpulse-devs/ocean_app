@@ -1,4 +1,4 @@
-const { Conversation, ConversationParticipant, UserTable, Message } = require('../../models');
+const { Conversation, ConversationParticipant, UserReference, Message } = require('../../models');
 const { Op } = require('sequelize');
 
 // Get user's conversations
@@ -21,7 +21,7 @@ const getConversations = async (req, res) => {
               as: 'lastMessage',
               include: [
                 {
-                  model: UserTable,
+                  model: UserReference,
                   as: 'sender',
                   attributes: ['id', 'fullName']
                 }
@@ -32,7 +32,7 @@ const getConversations = async (req, res) => {
               as: 'participants',
               include: [
                 {
-                  model: UserTable,
+                  model: UserReference,
                   as: 'user',
                   attributes: ['id', 'fullName', 'profilePicture']
                 }
@@ -91,7 +91,7 @@ const getConversation = async (req, res) => {
           as: 'participants',
           include: [
             {
-              model: UserTable,
+              model: UserReference,
               as: 'user',
               attributes: ['id', 'fullName', 'profilePicture']
             }
@@ -102,14 +102,14 @@ const getConversation = async (req, res) => {
           as: 'lastMessage',
           include: [
             {
-              model: UserTable,
+              model: UserReference,
               as: 'sender',
               attributes: ['id', 'fullName']
             }
           ]
         },
         {
-          model: UserTable,
+          model: UserReference,
           as: 'creator',
           attributes: ['id', 'fullName']
         }
@@ -165,32 +165,60 @@ const createConversation = async (req, res) => {
 
     // Check if direct conversation already exists
     if (type === 'direct') {
-      const existingConversation = await Conversation.findOne({
+      console.log('🔍 Checking for existing direct conversation with participants:', participants);
+      
+      // For direct conversations, we need to find if there's already a conversation
+      // with exactly these two participants
+      const existingConversations = await Conversation.findAll({
         where: { type: 'direct' },
         include: [
           {
             model: ConversationParticipant,
             as: 'participants',
-            where: { userId: { [Op.in]: participants }, isActive: true }
+            where: { isActive: true }
           }
         ]
       });
 
-      if (existingConversation) {
-        return res.status(400).json({
-          message: 'Direct conversation already exists',
-          conversationId: existingConversation.id
-        });
+      console.log('📋 Found existing conversations:', existingConversations.length);
+      
+      // Check if any existing conversation has exactly these two participants
+      for (const conv of existingConversations) {
+        console.log('🔍 Checking conversation:', conv.id, 'with participants:', conv.participants.map(p => p.userId));
+        
+        if (conv.participants.length === 2) {
+          const convParticipantIds = conv.participants.map(p => p.userId).sort();
+          const requestedParticipantIds = participants.sort();
+          
+          console.log('📊 Comparing:', convParticipantIds, 'vs', requestedParticipantIds);
+          
+          // Check if the participants match exactly
+          if (convParticipantIds.length === 2 && 
+              requestedParticipantIds.length === 2 &&
+              convParticipantIds[0] === requestedParticipantIds[0] && 
+              convParticipantIds[1] === requestedParticipantIds[1]) {
+            
+            console.log('❌ Found duplicate conversation:', conv.id);
+            return res.status(400).json({
+              message: 'Direct conversation already exists',
+              conversationId: conv.id
+            });
+          }
+        }
       }
+      
+      console.log('✅ No duplicate conversation found, creating new one');
     }
 
     // Create conversation
+    console.log('🚀 Creating new conversation with type:', type, 'and participants:', participants);
     const conversation = await Conversation.create({
       type,
       name: type === 'group' ? name : null,
       description: type === 'group' ? description : null,
       createdBy: userId
     });
+    console.log('✅ Conversation created with ID:', conversation.id);
 
     // Add participants
     const participantData = participants.map(participantId => ({
@@ -199,7 +227,9 @@ const createConversation = async (req, res) => {
       role: participantId === userId ? 'admin' : 'member'
     }));
 
+    console.log('👥 Adding participants:', participantData);
     await ConversationParticipant.bulkCreate(participantData);
+    console.log('✅ Participants added successfully');
 
     // Load conversation with participants
     const conversationWithParticipants = await Conversation.findByPk(conversation.id, {
@@ -209,14 +239,14 @@ const createConversation = async (req, res) => {
           as: 'participants',
           include: [
             {
-              model: UserTable,
+              model: UserReference,
               as: 'user',
               attributes: ['id', 'fullName', 'profilePicture']
             }
           ]
         },
         {
-          model: UserTable,
+          model: UserReference,
           as: 'creator',
           attributes: ['id', 'fullName']
         }

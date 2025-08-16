@@ -4,7 +4,7 @@ const {signup,login,forgotPassword,verifyResetCode,resetPassword,sellerRegistrat
 const authMiddleware = require('../middleware/authMiddleware')
 const updateRoleBasedOnVerification = require('../middleware/sellerVerficationstatusWare')
 const updateVerificationStatusBasedOnDocuments = require('../middleware/sellerdocstatusWare')
-const currentUserprofile = require('../controllers/profilecontroller')
+const { currentUserprofile, getUserProfileById } = require('../controllers/profilecontroller')
 const { updateProfile } = require('../controllers/profileUpdateController')
 
 const passport = require('passport')
@@ -104,14 +104,43 @@ router.get('/api/active-sessions', authMiddleware, async (req, res) => {
         // Get all session keys for this user
         const sessionKeys = await redisClient.keys(`session:${userId}:*`);
         
-        const activeSessions = sessionKeys.length;
+        // Get session details
+        const sessions = [];
+        for (const key of sessionKeys) {
+            const sessionId = key.split(':')[2];
+            const status = await redisClient.get(key);
+            const ttl = await redisClient.ttl(key);
+            
+            sessions.push({
+                sessionId,
+                status,
+                expiresIn: ttl > 0 ? ttl : 0
+            });
+        }
         
-        res.status(200).json({ 
-            message: 'Active sessions retrieved successfully',
-            activeSessions: activeSessions
+        res.json({ sessions });
+    } catch (error) {
+        res.status(500).json({ message: 'Error getting active sessions', error: error.message });
+    }
+});
+
+// Get messaging token for messaging server
+router.get('/api/messaging-token', authMiddleware, (req, res) => {
+    try {
+        // Get the token from the request cookies
+        const token = req.cookies.token;
+        
+        if (!token) {
+            return res.status(401).json({ message: 'No token found' });
+        }
+        
+        // Return the token for the messaging server
+        res.json({ 
+            message: 'Messaging token retrieved successfully',
+            token: token 
         });
     } catch (error) {
-        res.status(500).json({ message: 'Error retrieving active sessions', error: error.message });
+        res.status(500).json({ message: 'Error getting messaging token', error: error.message });
     }
 });
 router.post('/api/forgot-password',forgotPassword)
@@ -122,6 +151,7 @@ router.post('/api/seller-registration', authMiddleware,sellerRegistration)
 
 //profile routes 
 router.get('/api/profile', authMiddleware, currentUserprofile)
+router.get('/api/users/:userId', authMiddleware, getUserProfileById)
 router.put('/api/profile', authMiddleware, updateProfile)
 
 

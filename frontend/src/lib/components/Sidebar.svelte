@@ -5,6 +5,9 @@
   import { browser } from '$app/environment';
   import { page } from '$app/stores';
   import { afterNavigate } from '$app/navigation';
+  import { authStore } from '$lib/stores/auth';
+  import { logout } from '$lib/api/auth';
+  import { goto } from '$app/navigation';
 
   export let userStats = {
     posts: 46,
@@ -19,6 +22,22 @@
         closeSidebar();
       }
     });
+  }
+
+  // Handle logout
+  async function handleLogout() {
+    try {
+      await logout();
+      authStore.clearUser();
+      closeSidebar();
+      goto('/login');
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Even if logout API fails, clear local state and redirect
+      authStore.clearUser();
+      closeSidebar();
+      goto('/login');
+    }
   }
 </script>
 
@@ -36,7 +55,7 @@
     <h1 class="ocean-title">OCEAN</h1>
   </div>
 
-  <div class="profile-section">
+  <!-- <div class="profile-section">
     <div class="avatar-container">
       <img src="/test.jpg.jpg" alt="Abbey Lincoln" class="avatar" />
     </div>
@@ -59,7 +78,7 @@
         <span class="stat-label">Following</span>
       </div>
     </div>
-  </div>
+  </div> -->
 
   <nav class="sidebar-nav">
     <a href="/feed" class="nav-item">
@@ -110,7 +129,7 @@
       </svg>
       Settings
     </a>
-    <button class="nav-item logout-btn">
+    <button class="nav-item logout-btn" on:click={handleLogout}>
       <svg xmlns="http://www.w3.org/2000/svg" class="icon" viewBox="0 0 24 24">
         <path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/>
       </svg>

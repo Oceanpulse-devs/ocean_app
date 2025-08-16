@@ -3,6 +3,10 @@
   import { getFeed, createPost, toggleLike, toggleSave, createComment, getComments, deleteComment, type Comment } from '$lib/api/feed';
   import { onMount } from 'svelte';
   import AddFeed from '$lib/components/AddFeed.svelte';
+  import { followUser, unfollowUser, checkFollowStatus } from '$lib/api/follow';
+  import { createConversation, getConversations } from '$lib/api/messaging';
+  import { authStore } from '$lib/stores/auth';
+  import { goto } from '$app/navigation';
   
   // Feed data state
   let posts: any[] = [];
@@ -38,6 +42,11 @@
 
   // AddFeed component state
   let showAddFeedModal = false;
+
+  // Following state
+  let currentUser: any = null;
+  let followStatuses: Record<string, boolean> = {};
+  let followLoading: Record<string, boolean> = {};
 
   interface Region {
     id: string;
@@ -160,6 +169,9 @@
       });
       
       posts = response.data?.posts || [];
+      
+      // Check follow statuses for all posts
+      await checkAllFollowStatuses();
     } catch (err: any) {
       console.error('Feed loading error:', err);
       error = err.message || 'Failed to load feed';
@@ -286,10 +298,112 @@
   }
 
   // Handle share
-  function handleShare(option: string) {
-    console.log(`Sharing via ${option}`);
-    showShareMenu = false;
+  async function handleShare(postId: string) {
+    // Share functionality
+    console.log('Sharing post:', postId);
   }
+
+  // Start conversation with post author
+  async function handleStartConversation(postAuthorId: string, postAuthorName?: string) {
+    console.log('=== STARTING CONVERSATION ===');
+    console.log('Post Author ID:', postAuthorId);
+    console.log('Post Author Name:', postAuthorName);
+    console.log('Current User from authStore:', $authStore.user);
+    console.log('Current User ID from authStore:', $authStore.user?.id);
+    
+    if (!postAuthorId) {
+      console.error('No post author ID provided');
+      return;
+    }
+    
+    try {
+      // Get current user ID from auth store
+      const currentUserId = $authStore.user?.id;
+      console.log('Current user ID:', currentUserId);
+      
+      if (!currentUserId) {
+        console.error('No current user ID found');
+        return;
+      }
+      
+      // Check if user is trying to message themselves
+      if (currentUserId === postAuthorId) {
+        console.error('Cannot message yourself');
+        // You could show a user-friendly message here
+        return;
+      }
+      
+      const conversationData = {
+        type: 'direct' as const,
+        participants: [currentUserId, postAuthorId] // Send both participants
+      };
+      
+      console.log('Sending conversation data:', conversationData);
+      console.log('Current user ID:', currentUserId);
+      console.log('Post author ID:', postAuthorId);
+      console.log('Participants array:', conversationData.participants);
+      
+      const response = await createConversation(conversationData);
+      console.log('=== CONVERSATION RESPONSE ===');
+      console.log('Full response:', response);
+      console.log('Response type:', typeof response);
+      console.log('Response keys:', Object.keys(response));
+      console.log('Response.id:', response.id);
+      console.log('Response.data:', response.data);
+      
+      // Handle response - messaging API returns data directly, not wrapped in .data
+      const conversationId = response.id || response.data?.id;
+      console.log('Extracted conversation ID:', conversationId);
+      
+      if (conversationId) {
+        console.log('Redirecting to conversation:', conversationId);
+        goto(`/messages?conversation=${conversationId}`);
+      } else {
+        console.error('No conversation ID in response:', response);
+        goto('/messages');
+      }
+    } catch (err: any) {
+      console.error('Error starting conversation:', err);
+      
+      // Check if conversation already exists
+      if (err.message && err.message.includes('Direct conversation already exists')) {
+        console.log('Conversation already exists, error details:', err);
+        
+        // The backend returns conversationId in the error response
+        // Try to extract it from the error object
+        if (err.conversationId) {
+          console.log('Redirecting to existing conversation:', err.conversationId);
+          goto(`/messages?conversation=${err.conversationId}`);
+          return;
+        }
+        
+        // If no conversationId in error, try to find existing conversation
+        console.log('No conversationId in error, trying to find existing conversation...');
+        try {
+          // Get all conversations and find the one with this user
+          const conversations = await getConversations();
+          const existingConversation = conversations.find((conv: any) => 
+            conv.type === 'direct' && 
+            conv.participants.some((p: any) => p.userId === postAuthorId)
+          );
+          
+          if (existingConversation) {
+            console.log('Found existing conversation:', existingConversation.id);
+            goto(`/messages?conversation=${existingConversation.id}`);
+            return;
+          }
+        } catch (findErr) {
+          console.error('Error finding existing conversation:', findErr);
+        }
+      }
+      
+      // Fallback: just go to messages page
+      console.log('Fallback: redirecting to messages page');
+      goto('/messages');
+    }
+  }
+
+
 
   // Modal functions
   function openModal(index: number) {
@@ -360,6 +474,104 @@
     });
   }
 
+  // Get current user from auth store
+  authStore.subscribe((state) => {
+    if (state.user) {
+      currentUser = state.user;
+      // Check follow statuses after user is loaded
+      if (posts.length > 0) {
+        checkAllFollowStatuses();
+      }
+    }
+  })();
+
+  // Navigate to user profile
+  function goToProfile(userId: string) {
+    goto(`/profile/${userId}`);
+  }
+
+  // Handle follow/unfollow
+  async function handleFollowToggle(post: any) {
+    if (!currentUser || currentUser.id === post.user.id) return;
+    
+    const targetUserId = post.user.id;
+    console.log('Toggling follow for user:', targetUserId, 'Current status:', followStatuses[targetUserId]);
+    followLoading[targetUserId] = true;
+    
+    try {
+      if (followStatuses[targetUserId]) {
+        // Unfollow
+        console.log('Unfollowing user:', targetUserId);
+        await unfollowUser(targetUserId);
+        followStatuses[targetUserId] = false;
+        
+        // Update follower count in the post
+        if (post.user.followersCount !== undefined) {
+          post.user.followersCount = Math.max(0, post.user.followersCount - 1);
+        }
+      } else {
+        // Follow
+        console.log('Following user:', targetUserId);
+        await followUser(targetUserId);
+        followStatuses[targetUserId] = true;
+        
+        // Update follower count in the post
+        if (post.user.followersCount !== undefined) {
+          post.user.followersCount = (post.user.followersCount || 0) + 1;
+        }
+      }
+      
+      // Trigger reactivity by updating the posts array
+      posts = [...posts];
+      
+      console.log('Follow status updated for user:', targetUserId, 'New status:', followStatuses[targetUserId]);
+    } catch (error) {
+      console.error('Error toggling follow:', error);
+    } finally {
+      followLoading[targetUserId] = false;
+    }
+  }
+
+  // Check follow status for all posts
+  async function checkAllFollowStatuses() {
+    if (!currentUser) return;
+    
+    console.log('Checking follow statuses for', posts.length, 'posts');
+    console.log('Current user:', currentUser.id);
+    
+    // Initialize follow statuses for all posts
+    for (const post of posts) {
+      if (post.user && post.user.id !== currentUser.id) {
+        // Initialize as false if not set
+        if (followStatuses[post.user.id] === undefined) {
+          followStatuses[post.user.id] = false;
+        }
+        
+        try {
+          console.log('Checking follow status for user:', post.user.id);
+          const response = await checkFollowStatus(post.user.id);
+          if (response && response.message) {
+            followStatuses[post.user.id] = response.data.isFollowing;
+            console.log('User', post.user.id, 'follow status:', response.data.isFollowing);
+          }
+        } catch (error) {
+          console.error('Error checking follow status for user', post.user.id, ':', error);
+        }
+      }
+    }
+    
+    // Trigger reactivity
+    followStatuses = { ...followStatuses };
+    console.log('Final follow statuses:', followStatuses);
+  }
+
+  // Force refresh follow statuses (for debugging)
+  async function forceRefreshFollowStatuses() {
+    console.log('Force refreshing follow statuses');
+    followStatuses = {};
+    await checkAllFollowStatuses();
+  }
+
   // Scroll detection for search bar
   let isSearchBarVisible = true;
 
@@ -369,9 +581,29 @@
   onMount(() => {
     loadFeed();
     
+    // Add page visibility listener to refresh follow statuses when page becomes visible
+    const handleVisibilityChange = () => {
+      if (!document.hidden && posts.length > 0 && currentUser) {
+        console.log('Page became visible, refreshing follow statuses');
+        checkAllFollowStatuses();
+      }
+    };
+    
+    // Add focus listener to refresh follow statuses when window regains focus
+    const handleFocus = () => {
+      if (posts.length > 0 && currentUser) {
+        console.log('Window regained focus, refreshing follow statuses');
+        checkAllFollowStatuses();
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleFocus);
+    
     // Cleanup function
     return () => {
-      // Cleanup if needed in the future
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
     };
   });
 </script>
@@ -484,15 +716,52 @@
           <article class="post">
                      <div class="post-header">
              <div class="post-author">
-               <img src={post.user?.profilePicture || '/test.jpg.jpg'} alt={post.user?.fullName || 'User'} class="author-avatar" />
+               <img 
+                 src={post.user?.profilePicture || '/test.jpg.jpg'} 
+                 alt={post.user?.fullName || 'User'} 
+                 class="author-avatar" 
+                 on:click={() => goToProfile(post.user.id)}
+                 style="cursor: pointer;"
+               />
                <div class="author-info">
-                 <h3>{post.user?.fullName || 'Unknown User'}</h3>
+                 <h3 
+                   on:click={() => goToProfile(post.user.id)}
+                   style="cursor: pointer;"
+                 >
+                   {post.user?.fullName || 'Unknown User'}
+                 </h3>
                  <span class="timestamp">{new Date(post.createdAt).toLocaleDateString()}</span>
                </div>
              </div>
             <div class="post-actions">
-              <button class="follow-btn">Follow</button>
-              <button class="message-btn">Message Me</button>
+              {#if currentUser && currentUser.id !== post.user?.id}
+                <button 
+                  class="follow-btn" 
+                  class:following={followStatuses[post.user?.id]}
+                  class:loading={followLoading[post.user?.id]}
+                  on:click={() => handleFollowToggle(post)}
+                  disabled={followLoading[post.user?.id]}
+                >
+                  {#if followLoading[post.user?.id]}
+                    <span>...</span>
+                  {:else if followStatuses[post.user?.id]}
+                    <span>Following</span>
+                  {:else}
+                    <span>Follow</span>
+                  {/if}
+                </button>
+              {/if}
+              {#if currentUser && currentUser.id !== post.user?.id}
+                <button class="message-btn" on:click={() => {
+                  console.log('Message button clicked for post:', {
+                    postId: post.id,
+                    postUserId: post.user?.id,
+                    postUserName: post.user?.fullName,
+                    currentUserId: currentUser?.id
+                  });
+                  handleStartConversation(post.user.id, post.user.fullName);
+                }}>Message Me</button>
+              {/if}
               <div class="post-menu">
                 <button class="menu-btn" on:click={() => handleReport(post.id)}>
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1155,6 +1424,11 @@
       object-fit: cover;
       border: 2px solid #e2e8f0;
       box-shadow: 0 0 0 2px rgba(37,99,235,0.08);
+      transition: transform 0.2s ease;
+    }
+
+    .author-avatar:hover {
+      transform: scale(1.05);
     }
 
     .author-info h3 {
@@ -1162,6 +1436,11 @@
       font-size: 1.1rem;
       color: #111;
       font-weight: 600;
+      transition: color 0.2s ease;
+    }
+
+    .author-info h3:hover {
+      color: #3b82f6;
     }
 
     .timestamp {
@@ -1192,6 +1471,27 @@
 
     .follow-btn:hover {
       background: rgba(37, 99, 235, 0.08);
+    }
+
+    .follow-btn.following {
+      background: #10b981;
+      border-color: #10b981;
+      color: white;
+    }
+
+    .follow-btn.following:hover {
+      background: #059669;
+      border-color: #059669;
+    }
+
+    .follow-btn.loading {
+      opacity: 0.7;
+      cursor: not-allowed;
+    }
+
+    .follow-btn:disabled {
+      opacity: 0.7;
+      cursor: not-allowed;
     }
 
     .message-btn {

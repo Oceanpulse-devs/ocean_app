@@ -82,8 +82,8 @@ module.exports = (sequelize) => {
     }
 
     // Conversation belongs to creator
-    if (models.UserTable) {
-      Conversation.belongsTo(models.UserTable, {
+    if (models.UserReference) {
+      Conversation.belongsTo(models.UserReference, {
         foreignKey: 'createdBy',
         as: 'creator'
       });

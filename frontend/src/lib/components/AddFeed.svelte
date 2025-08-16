@@ -59,12 +59,19 @@
       loadPostData();
     }
   });
+
+  // Watch for changes in the post prop
+  $: if (post && isOpen) {
+    console.log('Post prop changed, loading data:', post);
+    isEditing = true;
+    loadPostData();
+  }
   
   // Handle feedback screen timing
   $: if (showFeedbackScreen) {
     // Close modal after delay
     setTimeout(() => {
-      onClose();
+      handleClose();
     }, 3000);
     
     // Reset form and clear feedback after delay
@@ -80,6 +87,7 @@
   
   // Clear feedback when modal opens
   $: if (isOpen) {
+    // Only reset form if not editing
     if (!isEditing) {
       resetForm();
     }
@@ -90,6 +98,7 @@
   }
   
   function loadPostData() {
+    console.log('Loading post data:', post);
     formData = {
       postType: post.postType || 'product',
       content: post.content || '',
@@ -104,8 +113,10 @@
     
     // Load existing media if any
     if (post.media && post.media.length > 0) {
-      mediaUrls = post.media.map((m: any) => m.url || m);
+      mediaUrls = post.media.map((m: any) => m.mediaUrl || m.url || m);
     }
+    
+    console.log('Form data loaded:', formData);
   }
   
   function handleMediaChange(event: Event) {
@@ -142,6 +153,12 @@
     mediaFiles = [];
     mediaUrls = [];
     errors = {};
+  }
+
+  function handleClose() {
+    isEditing = false;
+    resetForm();
+    onClose();
   }
   
   function validateForm(): boolean {
@@ -273,7 +290,7 @@
   
   function closeModal() {
     if (!isLoading) {
-      onClose();
+      handleClose();
     }
   }
 </script>
@@ -285,7 +302,7 @@
     <div class="modal-content" on:click|stopPropagation>
       <div class="modal-header">
         <h2>{isEditing ? 'Edit Post' : 'Create New Post'}</h2>
-        <button class="close-btn" on:click={onClose}>&times;</button>
+        <button class="close-btn" on:click={handleClose}>&times;</button>
       </div>
 
       <!-- Feedback Screen -->
@@ -427,14 +444,14 @@
           <!-- Action Buttons -->
           <div class="form-actions">
             {#if isEditing}
-              <button type="button" class="btn btn-secondary" on:click={onClose}>
+              <button type="button" class="btn btn-secondary" on:click={handleClose}>
                 Cancel
               </button>
               <button type="submit" class="btn btn-primary" disabled={isLoading}>
                 {isLoading ? 'Updating...' : 'Update Post'}
               </button>
             {:else}
-              <button type="button" class="btn btn-secondary" on:click={onClose}>
+              <button type="button" class="btn btn-secondary" on:click={handleClose}>
                 Cancel
               </button>
               <button type="submit" class="btn btn-primary" disabled={isLoading}>

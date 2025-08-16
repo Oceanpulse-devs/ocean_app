@@ -1,7 +1,7 @@
 const { DataTypes } = require('sequelize');
 
 module.exports = (sequelize) => {
-  const UserTable = sequelize.define('UserTable', {
+  const UserReference = sequelize.define('UserReference', {
     id: {
       type: DataTypes.UUID,
       primaryKey: true
@@ -12,8 +12,7 @@ module.exports = (sequelize) => {
     },
     email: {
       type: DataTypes.STRING(255),
-      allowNull: false,
-      unique: true
+      allowNull: false
     },
     profilePicture: {
       type: DataTypes.STRING(500),
@@ -31,24 +30,14 @@ module.exports = (sequelize) => {
     }
   }, {
     tableName: 'users',
-    timestamps: false, // We don't manage timestamps here
-    indexes: [
-      {
-        fields: ['email']
-      },
-      {
-        fields: ['accountType']
-      },
-      {
-        fields: ['accountStatus']
-      }
-    ]
+    timestamps: false,
+    freezeTableName: true
   });
 
-  UserTable.associate = (models) => {
+  UserReference.associate = (models) => {
     // User has many conversations (as participant)
     if (models.ConversationParticipant) {
-      UserTable.hasMany(models.ConversationParticipant, {
+      UserReference.hasMany(models.ConversationParticipant, {
         foreignKey: 'userId',
         as: 'conversationParticipants'
       });
@@ -56,7 +45,7 @@ module.exports = (sequelize) => {
 
     // User has many messages
     if (models.Message) {
-      UserTable.hasMany(models.Message, {
+      UserReference.hasMany(models.Message, {
         foreignKey: 'senderId',
         as: 'messages'
       });
@@ -64,7 +53,7 @@ module.exports = (sequelize) => {
 
     // User has many reactions
     if (models.MessageReaction) {
-      UserTable.hasMany(models.MessageReaction, {
+      UserReference.hasMany(models.MessageReaction, {
         foreignKey: 'userId',
         as: 'messageReactions'
       });
@@ -72,7 +61,7 @@ module.exports = (sequelize) => {
 
     // User can create conversations
     if (models.Conversation) {
-      UserTable.hasMany(models.Conversation, {
+      UserReference.hasMany(models.Conversation, {
         foreignKey: 'createdBy',
         as: 'createdConversations'
       });
@@ -80,12 +69,14 @@ module.exports = (sequelize) => {
 
     // User can delete messages
     if (models.Message) {
-      UserTable.hasMany(models.Message, {
+      UserReference.hasMany(models.Message, {
         foreignKey: 'deletedBy',
         as: 'deletedMessages'
       });
     }
   };
 
-  return UserTable;
-}; 
+  return UserReference;
+};
+
+

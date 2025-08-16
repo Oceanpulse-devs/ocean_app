@@ -73,16 +73,7 @@ export async function resetPassword(email: string, code: string, newPassword: st
 }
 
 export async function getProfile() {
-  try {
-    const response = await fetch('http://localhost:5000/api/profile', {
-      method: 'GET',
-      credentials: 'include', // Include cookies
-    });
-    return response;
-  } catch (error) {
-    console.log('🔍 getProfile error:', error);
-    throw error;
-  }
+  return apiRequest('/profile');
 }
 
 export async function updateProfile(profileData: {
@@ -93,20 +84,10 @@ export async function updateProfile(profileData: {
   profilePicture?: string;
   coverPicture?: string;
 }) {
-  try {
-    const response = await fetch('http://localhost:5000/api/profile', {
-      method: 'PUT',
-      credentials: 'include',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(profileData),
-    });
-    return response;
-  } catch (error) {
-    console.log('🔍 updateProfile error:', error);
-    throw error;
-  }
+  return apiRequest('/profile', {
+    method: 'PUT',
+    body: JSON.stringify(profileData),
+  });
 }
 
 // Seller registration
@@ -173,11 +154,8 @@ export async function facebookAuth() {
 export async function isAuthenticated(): Promise<boolean> {
   try {
     // Make an API call to check if the token is valid
-    const response = await fetch('http://localhost:5000/api/profile', {
-      method: 'GET',
-      credentials: 'include', // Include cookies
-    });
-    return response.ok;
+    const response = await apiRequest('/profile');
+    return true; // If we get here, the request was successful
   } catch (error) {
     console.log('🔍 isAuthenticated error:', error);
     return false;

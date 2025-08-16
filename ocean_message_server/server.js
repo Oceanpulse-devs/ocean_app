@@ -29,7 +29,11 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIo(server, {
   cors: {
-    origin: process.env.CLIENT_URL || "http://localhost:3000",
+    origin: [
+      process.env.CLIENT_URL || "http://localhost:5173",
+      "http://localhost:3000",
+      "http://localhost:5173"
+    ],
     methods: ["GET", "POST"],
     credentials: true
   },
@@ -42,6 +46,7 @@ const PORT = process.env.PORT || 5001;
 // Security middleware
 app.use(helmet({
   crossOriginEmbedderPolicy: false,
+  crossOriginResourcePolicy: { policy: "cross-origin" },
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
@@ -70,7 +75,11 @@ app.use(limiter);
 
 // CORS configuration
 app.use(cors({
-  origin: process.env.CLIENT_URL || "http://localhost:5000",
+  origin: [
+    process.env.CLIENT_URL || "http://localhost:5173",
+    "http://localhost:3000",
+    "http://localhost:5173"
+  ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
@@ -92,6 +101,9 @@ app.get('/health', (req, res) => {
     uptime: process.uptime()
   });
 });
+
+// Handle CORS preflight for all API routes
+app.options('*', cors());
 
 // API routes
 app.use('/api/messages', messageRoutes);
@@ -133,19 +145,24 @@ app.use('*', (req, res) => {
 });
 
 // Database connection and server start
-db.sequelize.sync()
+// Messaging server connects to existing tables (created by main server)
+db.sequelize.authenticate()
   .then(() => {
     console.log('✅ Database connected successfully');
-    server.listen(PORT, () => {
-      console.log(`🚀 Ocean Message Server running on port ${PORT}`);
-      console.log(`📡 WebSocket server ready for connections`);
-      console.log(`🔗 Health check: http://localhost:${PORT}/health`);
-    });
+    startServer();
   })
   .catch((error) => {
     console.error('❌ Database connection failed:', error);
     process.exit(1);
   });
+
+function startServer() {
+  server.listen(PORT, () => {
+    console.log(`🚀 Ocean Message Server running on port ${PORT}`);
+    console.log(`📡 WebSocket server ready for connections`);
+    console.log(`🔗 Health check: http://localhost:${PORT}/health`);
+  });
+}
 
 // Graceful shutdown
 process.on('SIGTERM', () => {

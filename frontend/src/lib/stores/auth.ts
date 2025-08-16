@@ -77,13 +77,10 @@ function createAuthStore() {
          if (isAuth) {
            // Try to get user profile
            const { getProfile } = await import('$lib/api/auth');
-           const response = await getProfile();
-           console.log('🔍 AuthStore: Profile response status:', response.status);
+           const data = await getProfile();
+           console.log('🔍 AuthStore: Profile data:', data);
            
-           if (response.ok) {
-             const data = await response.json();
-             console.log('🔍 AuthStore: Profile data:', data);
-             
+           if (data && data.profileInfo) {
              // Transform profile data to match User interface
              const userData = {
                id: data.profileInfo.id || 'unknown',
@@ -104,8 +101,8 @@ function createAuthStore() {
                error: null
              }));
            } else {
-             console.log('🔍 AuthStore: Profile response not ok, clearing auth state');
-             // Token is invalid, clear auth state
+             console.log('🔍 AuthStore: Profile data invalid, clearing auth state');
+             // Profile data is invalid, clear auth state
              update(state => ({
                ...state,
                user: null,

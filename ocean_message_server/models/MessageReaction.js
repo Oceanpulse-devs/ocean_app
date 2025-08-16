@@ -62,8 +62,8 @@ module.exports = (sequelize) => {
     }
 
     // Reaction belongs to user
-    if (models.UserTable) {
-      MessageReaction.belongsTo(models.UserTable, {
+    if (models.UserReference) {
+      MessageReaction.belongsTo(models.UserReference, {
         foreignKey: 'userId',
         as: 'user'
       });

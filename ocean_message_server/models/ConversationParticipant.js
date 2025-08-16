@@ -95,8 +95,8 @@ module.exports = (sequelize) => {
     }
 
     // Participant belongs to user
-    if (models.UserTable) {
-      ConversationParticipant.belongsTo(models.UserTable, {
+    if (models.UserReference) {
+      ConversationParticipant.belongsTo(models.UserReference, {
         foreignKey: 'userId',
         as: 'user'
       });

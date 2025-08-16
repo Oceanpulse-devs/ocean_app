@@ -112,27 +112,30 @@ module.exports = (sequelize, DataTypes) =>{
         },
         createdAt:{
             type:DataTypes.DATE,
-            allowNull: false,
+            allowNull: true, // Allow null temporarily for existing users
+            defaultValue: DataTypes.NOW,
             validate:{
-                notEmpty:true,
+                notEmpty:false, // Allow empty for existing users
+            }
+        },
+        updatedAt:{
+            type:DataTypes.DATE,
+            allowNull: true, // Allow null temporarily for existing users
+            defaultValue: DataTypes.NOW,
+            validate:{
+                notEmpty:false, // Allow empty for existing users
             }
         },
         
        
     },{
-        tableName:'users'
+        tableName:'users',
+        timestamps: true, // Enable automatic timestamp management
+        createdAt: 'createdAt',
+        updatedAt: 'updatedAt'
     })
 
-    // Define associations
-    UserTable.associate = (models) => {
-        // Association with SellersTable
-        if (models.SellersTable) {
-            UserTable.hasOne(models.SellersTable, {
-                foreignKey: 'userId',
-                as: 'seller'
-            });
-        }
-    };
+
 
     return UserTable;
 }

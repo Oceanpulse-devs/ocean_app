@@ -1,24 +1,6 @@
 // Follow API functions
 import { apiRequest } from './base';
 
-export interface User {
-  id: string;
-  fullName: string;
-  username: string;
-  email: string;
-  profilePicture?: string;
-  accountType: string;
-  accountStatus: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface FollowStats {
-  followersCount: number;
-  followingCount: number;
-  mutualFollowersCount: number;
-}
-
 // Follow a user
 export async function followUser(targetUserId: string) {
   return apiRequest('/follow', {
@@ -39,8 +21,6 @@ export async function unfollowUser(targetUserId: string) {
 export async function getFollowers(userId: string, params?: {
   page?: number;
   limit?: number;
-  sortBy?: 'createdAt' | 'fullName';
-  sortOrder?: 'ASC' | 'DESC';
 }) {
   const searchParams = new URLSearchParams();
   
@@ -55,12 +35,10 @@ export async function getFollowers(userId: string, params?: {
   return apiRequest(`/users/${userId}/followers?${searchParams.toString()}`);
 }
 
-// Get user's following
+// Get users that the user is following
 export async function getFollowing(userId: string, params?: {
   page?: number;
   limit?: number;
-  sortBy?: 'createdAt' | 'fullName';
-  sortOrder?: 'ASC' | 'DESC';
 }) {
   const searchParams = new URLSearchParams();
   
@@ -80,13 +58,13 @@ export async function checkFollowStatus(targetUserId: string) {
   return apiRequest(`/users/${targetUserId}/follow-status`);
 }
 
-// Get user's follow statistics
+// Get follow statistics for a user
 export async function getFollowStats(userId: string) {
   return apiRequest(`/users/${userId}/follow-stats`);
 }
 
-// Get mutual followers between current user and target user
-export async function getMutualFollowers(targetUserId: string, params?: {
+// Get mutual followers
+export async function getMutualFollowers(userId: string, params?: {
   page?: number;
   limit?: number;
 }) {
@@ -100,5 +78,57 @@ export async function getMutualFollowers(targetUserId: string, params?: {
     });
   }
   
-  return apiRequest(`/users/${targetUserId}/mutual-followers?${searchParams.toString()}`);
+  return apiRequest(`/users/${userId}/mutual-followers`);
+}
+
+// Types for following data
+export interface FollowUser {
+  id: string;
+  fullName: string;
+  email: string;
+  profilePicture?: string;
+  accountType: string;
+  accountStatus: string;
+}
+
+export interface FollowRelationship {
+  id: string;
+  userId: string;
+  followsUserId: string;
+  createdAt: string;
+  follower?: FollowUser;
+  followed?: FollowUser;
+}
+
+export interface FollowersResponse {
+  followers: FollowRelationship[];
+  pagination: {
+    currentPage: number;
+    totalPages: number;
+    totalFollowers: number;
+    hasNextPage: boolean;
+    hasPrevPage: boolean;
+  };
+}
+
+export interface FollowingResponse {
+  following: FollowRelationship[];
+  pagination: {
+    currentPage: number;
+    totalPages: number;
+    totalFollowing: number;
+    hasNextPage: boolean;
+    hasPrevPage: boolean;
+  };
+}
+
+export interface FollowStatusResponse {
+  isFollowing: boolean;
+  followedAt?: string;
+}
+
+export interface FollowStatsResponse {
+  userId: string;
+  followerCount: number;
+  followingCount: number;
 } 
