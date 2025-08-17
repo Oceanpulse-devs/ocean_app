@@ -73,6 +73,41 @@ module.exports = (sequelize) => {
     status: {
       type: DataTypes.ENUM('active', 'sold', 'inactive'),
       defaultValue: 'active'
+    },
+    // Distress sale fields
+    isDistressSale: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+      comment: 'Whether this is a distress sale item'
+    },
+    originalPrice: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: true,
+      comment: 'Original price before discount'
+    },
+    discountPercentage: {
+      type: DataTypes.DECIMAL(5, 2),
+      allowNull: true,
+      comment: 'Discount percentage applied',
+      validate: {
+        min: 0,
+        max: 100
+      }
+    },
+    urgencyLevel: {
+      type: DataTypes.ENUM('low', 'medium', 'high', 'urgent'),
+      defaultValue: 'medium',
+      comment: 'Urgency level of the distress sale'
+    },
+    distressReason: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+      comment: 'Reason for distress sale (moving, financial, etc.)'
+    },
+    distressExpiryDate: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      comment: 'When the distress sale expires'
     }
   }, {
     tableName: 'products',

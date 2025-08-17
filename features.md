@@ -73,6 +73,8 @@ You’ve been sent a swap offer	“A user offered their ‘iPhone 11’ for your
 Your product gets AR views	“Your ‘Office Chair’ was viewed in AR by 5 users today.”
 A search insight matches your listings	“People in Abuja searched for ‘3-seater couch.’ Do you want to view their profile and talk to them
 A subscription renewal or expiry reminder	“Your Tide plan expires in 3 days. Renew now to keep seeing Buyer Needs.”
+17 Heavy distributor:
+I also forgot to mention about the “heavy distributor” it’s a feature that allows buyers look for suppliers of a particular product all over the country
 
 🚀 Development Priority:
 .Phase 1: Core Features (What we have + need)
@@ -81,11 +83,12 @@ A subscription renewal or expiry reminder	“Your Tide plan expires in 3 days. R
 ✅�� Messaging System
 ✅🏷️ Auction System
 Phase 2: Advanced Features
-�� Group Buy System
-🔄 Swap Deals
-�� Buyer Needs Board
-�� Market Analytics
+✅�� Group Buy System
+✅🔄 Swap Deals
+✅�� Buyer Needs Board
+✅�� Market Analytics
+Heavy distributor
 Phase 3: Premium Features
 📱 AR Product Views
-🏆 Verified Seller System
-🔔 Advanced Notifications
+✅🏆 Verified Seller System (COMPLETED!)
+✅🔔 Advanced Notifications

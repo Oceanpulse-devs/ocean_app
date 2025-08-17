@@ -49,11 +49,47 @@ module.exports = (sequelize) => {
       defaultValue: false,
     },
     verificationStatus: {
-      type: DataTypes.ENUM('pending', 'rejected', 'approved', 'suspended', 'active'),
+      type: DataTypes.ENUM('pending', 'rejected', 'approved', 'suspended', 'active', 'expired'),
       defaultValue: 'pending',
     },
     verifiedAt: {
       type: DataTypes.DATE,
+    },
+    verificationExpiresAt: {
+      type: DataTypes.DATE,
+      comment: 'When verification expires and needs renewal'
+    },
+    verificationLevel: {
+      type: DataTypes.ENUM('basic', 'premium', 'enterprise'),
+      defaultValue: 'basic',
+      comment: 'Level of verification achieved'
+    },
+    verificationScore: {
+      type: DataTypes.INTEGER,
+      defaultValue: 0,
+      comment: 'Overall verification score (0-100)'
+    },
+    verificationNotes: {
+      type: DataTypes.TEXT,
+      comment: 'Admin notes about verification process'
+    },
+    rejectionReason: {
+      type: DataTypes.TEXT,
+      comment: 'Reason for rejection if verification failed'
+    },
+    documentsSubmitted: {
+      type: DataTypes.INTEGER,
+      defaultValue: 0,
+      comment: 'Number of verification documents submitted'
+    },
+    documentsApproved: {
+      type: DataTypes.INTEGER,
+      defaultValue: 0,
+      comment: 'Number of verification documents approved'
+    },
+    lastVerificationCheck: {
+      type: DataTypes.DATE,
+      comment: 'Last time verification was reviewed'
     },
     rating: {
       type: DataTypes.FLOAT,
@@ -62,6 +98,16 @@ module.exports = (sequelize) => {
     totalSales: {
       type: DataTypes.INTEGER,
       defaultValue: 0,
+    },
+    verifiedSellerBenefits: {
+      type: DataTypes.JSON,
+      defaultValue: [],
+      comment: 'Array of benefits this verified seller has access to'
+    },
+    trustScore: {
+      type: DataTypes.INTEGER,
+      defaultValue: 0,
+      comment: 'Trust score based on verification, sales, and reviews (0-100)'
     }
   }, {
     tableName: 'sellers',

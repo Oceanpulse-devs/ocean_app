@@ -54,6 +54,9 @@ const UserBehaviorAnalytics = require('./UserBehaviorAnalytics');
 const AdvancedNotification = require('./AdvancedNotification');
 const UserNotificationPreference = require('./UserNotificationPreference');
 const NotificationTemplate = require('./NotificationTemplate');
+const HeavyDistributor = require('./HeavyDistributor');
+const DistributorReview = require('./DistributorReview');
+const DistributorInquiry = require('./DistributorInquiry');
 
 // Initialize all models
 db.UserTable = UserTable(sequelize, Sequelize.DataTypes);
@@ -89,6 +92,9 @@ db.ShareStats = ShareStats(sequelize, Sequelize.DataTypes);
   db.AdvancedNotification = AdvancedNotification(sequelize, Sequelize.DataTypes);
   db.UserNotificationPreference = UserNotificationPreference(sequelize, Sequelize.DataTypes);
   db.NotificationTemplate = NotificationTemplate(sequelize, Sequelize.DataTypes);
+  db.HeavyDistributor = HeavyDistributor(sequelize, Sequelize.DataTypes);
+  db.DistributorReview = DistributorReview(sequelize, Sequelize.DataTypes);
+  db.DistributorInquiry = DistributorInquiry(sequelize, Sequelize.DataTypes);
 
 // Set up associations
 const setupAssociations = () => {
@@ -233,6 +239,22 @@ const setupAssociations = () => {
   // User Notification Preferences associations
   db.UserNotificationPreference.belongsTo(db.UserTable, { foreignKey: 'user_id', as: 'user' });
   db.UserTable.hasMany(db.UserNotificationPreference, { foreignKey: 'user_id', as: 'notificationPreferences' });
+  
+  // Heavy Distributor associations
+  db.HeavyDistributor.belongsTo(db.SellersTable, { foreignKey: 'supplierId', as: 'supplier' });
+  db.SellersTable.hasOne(db.HeavyDistributor, { foreignKey: 'supplierId', as: 'distributorListing' });
+  
+  // Distributor Review associations
+  db.DistributorReview.belongsTo(db.HeavyDistributor, { foreignKey: 'distributorId', as: 'distributor' });
+  db.DistributorReview.belongsTo(db.UserTable, { foreignKey: 'reviewerId', as: 'reviewer' });
+  db.HeavyDistributor.hasMany(db.DistributorReview, { foreignKey: 'distributorId', as: 'reviews' });
+  db.UserTable.hasMany(db.DistributorReview, { foreignKey: 'reviewerId', as: 'distributorReviews' });
+  
+  // Distributor Inquiry associations
+  db.DistributorInquiry.belongsTo(db.HeavyDistributor, { foreignKey: 'distributorId', as: 'distributor' });
+  db.DistributorInquiry.belongsTo(db.UserTable, { foreignKey: 'inquirerId', as: 'inquirer' });
+  db.HeavyDistributor.hasMany(db.DistributorInquiry, { foreignKey: 'distributorId', as: 'inquiries' });
+  db.UserTable.hasMany(db.DistributorInquiry, { foreignKey: 'inquirerId', as: 'distributorInquiries' });
 };
 
 // Setup associations

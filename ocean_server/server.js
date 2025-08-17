@@ -100,6 +100,9 @@ const swapDealRoutes = require('./src/routes/swapDealRoutes');
 const buyerNeedRoutes = require('./src/routes/buyerNeedRoutes');
 const marketAnalyticsRoutes = require('./src/routes/marketAnalyticsRoutes');
 const advancedNotificationRoutes = require('./src/routes/advancedNotificationRoutes');
+const distressSaleRoutes = require('./src/routes/distressSaleRoutes');
+const heavyDistributorRoutes = require('./src/routes/heavyDistributorRoutes');
+const sellerVerificationRoutes = require('./src/routes/sellerVerificationRoutes');
 
 app.use('/', authRoutes);
 app.use('/', adminRoutes);
@@ -113,6 +116,9 @@ app.use('/api/swap-deals', swapDealRoutes);
 app.use('/api/buyer-needs', buyerNeedRoutes);
 app.use('/api/market-analytics', marketAnalyticsRoutes);
 app.use('/api/advanced-notifications', advancedNotificationRoutes);
+app.use('/api/distress-sales', distressSaleRoutes);
+app.use('/api/heavy-distributors', heavyDistributorRoutes);
+app.use('/api/seller-verification', sellerVerificationRoutes);
 
 
 
