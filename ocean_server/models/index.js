@@ -99,10 +99,10 @@ db.ShareStats = ShareStats(sequelize, Sequelize.DataTypes);
 // Set up associations
 const setupAssociations = () => {
   // User associations
-  db.UserTable.hasMany(db.Post, { foreignKey: 'user_id', as: 'posts' });
-  db.UserTable.hasMany(db.Product, { foreignKey: 'seller_id', as: 'products' });
-  db.UserTable.hasMany(db.Auction, { foreignKey: 'seller_id', as: 'auctions' });
-  db.UserTable.hasMany(db.GroupBuy, { foreignKey: 'creator_id', as: 'createdGroupBuys' });
+  db.UserTable.hasMany(db.Post, { foreignKey: 'userId', as: 'posts' });
+  db.UserTable.hasMany(db.Product, { foreignKey: 'sellerId', as: 'products' });
+  db.UserTable.hasMany(db.Auction, { foreignKey: 'sellerId', as: 'auctions' });
+  db.UserTable.hasMany(db.GroupBuy, { foreignKey: 'creatorId', as: 'createdGroupBuys' });
   db.UserTable.hasOne(db.SellersTable, { foreignKey: 'userId', as: 'seller' });
   
   // User Follow associations
@@ -110,135 +110,135 @@ const setupAssociations = () => {
   db.UserTable.hasMany(db.UserFollows, { foreignKey: 'followsUserId', as: 'followers' });
   
   // Post associations
-  db.Post.belongsTo(db.UserTable, { foreignKey: 'user_id', as: 'user' });
-  db.Post.hasMany(db.PostComment, { foreignKey: 'post_id', as: 'comments' });
-  db.Post.hasMany(db.PostLike, { foreignKey: 'post_id', as: 'likes' });
-  db.Post.hasMany(db.PostMedia, { foreignKey: 'post_id', as: 'media' });
-  db.Post.hasMany(db.PostShare, { foreignKey: 'post_id', as: 'shares' });
+  db.Post.belongsTo(db.UserTable, { foreignKey: 'userId', as: 'user' });
+  db.Post.hasMany(db.PostComment, { foreignKey: 'postId', as: 'comments' });
+  db.Post.hasMany(db.PostLike, { foreignKey: 'postId', as: 'likes' });
+  db.Post.hasMany(db.PostMedia, { foreignKey: 'postId', as: 'media' });
+  db.Post.hasMany(db.PostShare, { foreignKey: 'postId', as: 'shares' });
   
   // PostComment associations
-  db.PostComment.belongsTo(db.Post, { foreignKey: 'post_id', as: 'post' });
-  db.PostComment.belongsTo(db.UserTable, { foreignKey: 'user_id', as: 'user' });
+  db.PostComment.belongsTo(db.Post, { foreignKey: 'postId', as: 'post' });
+  db.PostComment.belongsTo(db.UserTable, { foreignKey: 'userId', as: 'user' });
   
   // PostLike associations
-  db.PostLike.belongsTo(db.Post, { foreignKey: 'post_id', as: 'post' });
-  db.PostLike.belongsTo(db.UserTable, { foreignKey: 'user_id', as: 'user' });
+  db.PostLike.belongsTo(db.Post, { foreignKey: 'postId', as: 'post' });
+  db.PostLike.belongsTo(db.UserTable, { foreignKey: 'userId', as: 'user' });
   
   // PostMedia associations
-  db.PostMedia.belongsTo(db.Post, { foreignKey: 'post_id', as: 'post' });
+  db.PostMedia.belongsTo(db.Post, { foreignKey: 'postId', as: 'post' });
   
   // PostShare associations
-  db.PostShare.belongsTo(db.Post, { foreignKey: 'post_id', as: 'post' });
-  db.PostShare.belongsTo(db.UserTable, { foreignKey: 'user_id', as: 'user' });
+  db.PostShare.belongsTo(db.Post, { foreignKey: 'postId', as: 'post' });
+  db.PostShare.belongsTo(db.UserTable, { foreignKey: 'userId', as: 'user' });
   
   // Product associations
-  db.Product.belongsTo(db.UserTable, { foreignKey: 'seller_id', as: 'seller' });
+  db.Product.belongsTo(db.UserTable, { foreignKey: 'sellerId', as: 'seller' });
   
   // ProductCategory associations
-  db.ProductCategory.hasMany(db.GroupBuy, { foreignKey: 'category_id', as: 'groupBuys' });
+  db.ProductCategory.hasMany(db.GroupBuy, { foreignKey: 'categoryId', as: 'groupBuys' });
   
   // SavedProduct associations
-  db.SavedProduct.belongsTo(db.Product, { foreignKey: 'product_id', as: 'product' });
-  db.SavedProduct.belongsTo(db.UserTable, { foreignKey: 'user_id', as: 'user' });
+  db.SavedProduct.belongsTo(db.Product, { foreignKey: 'productId', as: 'product' });
+  db.SavedProduct.belongsTo(db.UserTable, { foreignKey: 'userId', as: 'user' });
   
   // SavedPost associations
-  db.SavedPost.belongsTo(db.Post, { foreignKey: 'post_id', as: 'post' });
-  db.SavedPost.belongsTo(db.UserTable, { foreignKey: 'user_id', as: 'user' });
+  db.SavedPost.belongsTo(db.Post, { foreignKey: 'postId', as: 'post' });
+  db.SavedPost.belongsTo(db.UserTable, { foreignKey: 'userId', as: 'user' });
   
 
   
   // Auction associations
-  db.Auction.belongsTo(db.UserTable, { foreignKey: 'seller_id', as: 'seller' });
-  db.Auction.hasMany(db.AuctionBid, { foreignKey: 'auction_id', as: 'bids' });
-  db.Auction.hasMany(db.AuctionWatcher, { foreignKey: 'auction_id', as: 'watchers' });
+  db.Auction.belongsTo(db.UserTable, { foreignKey: 'sellerId', as: 'seller' });
+  db.Auction.hasMany(db.AuctionBid, { foreignKey: 'auctionId', as: 'bids' });
+  db.Auction.hasMany(db.AuctionWatcher, { foreignKey: 'auctionId', as: 'watchers' });
   
   // AuctionBid associations
-  db.AuctionBid.belongsTo(db.Auction, { foreignKey: 'auction_id', as: 'auction' });
-  db.AuctionBid.belongsTo(db.UserTable, { foreignKey: 'bidder_id', as: 'bidder' });
+  db.AuctionBid.belongsTo(db.Auction, { foreignKey: 'auctionId', as: 'auction' });
+  db.AuctionBid.belongsTo(db.UserTable, { foreignKey: 'bidderId', as: 'bidder' });
   
   // AuctionWatcher associations
-  db.AuctionWatcher.belongsTo(db.Auction, { foreignKey: 'auction_id', as: 'auction' });
-  db.AuctionWatcher.belongsTo(db.UserTable, { foreignKey: 'user_id', as: 'user' });
+  db.AuctionWatcher.belongsTo(db.Auction, { foreignKey: 'auctionId', as: 'auction' });
+  db.AuctionWatcher.belongsTo(db.UserTable, { foreignKey: 'userId', as: 'user' });
   
   // Conversation associations
-  db.Conversation.hasMany(db.ConversationParticipant, { foreignKey: 'conversation_id', as: 'participants' });
-  db.Conversation.hasMany(db.Message, { foreignKey: 'conversation_id', as: 'messages' });
+  db.Conversation.hasMany(db.ConversationParticipant, { foreignKey: 'conversationId', as: 'participants' });
+  db.Conversation.hasMany(db.Message, { foreignKey: 'conversationId', as: 'messages' });
   
   // ConversationParticipant associations
-  db.ConversationParticipant.belongsTo(db.Conversation, { foreignKey: 'conversation_id', as: 'conversation' });
-  db.ConversationParticipant.belongsTo(db.UserTable, { foreignKey: 'user_id', as: 'user' });
+  db.ConversationParticipant.belongsTo(db.Conversation, { foreignKey: 'conversationId', as: 'conversation' });
+  db.ConversationParticipant.belongsTo(db.UserTable, { foreignKey: 'userId', as: 'user' });
   
   // Message associations
-  db.Message.belongsTo(db.Conversation, { foreignKey: 'conversation_id', as: 'conversation' });
-  db.Message.belongsTo(db.UserTable, { foreignKey: 'sender_id', as: 'sender' });
-  db.Message.hasMany(db.MessageReaction, { foreignKey: 'message_id', as: 'reactions' });
+  db.Message.belongsTo(db.Conversation, { foreignKey: 'conversationId', as: 'conversation' });
+  db.Message.belongsTo(db.UserTable, { foreignKey: 'senderId', as: 'sender' });
+  db.Message.hasMany(db.MessageReaction, { foreignKey: 'messageId', as: 'reactions' });
   
   // MessageReaction associations
-  db.MessageReaction.belongsTo(db.Message, { foreignKey: 'message_id', as: 'message' });
-  db.MessageReaction.belongsTo(db.UserTable, { foreignKey: 'user_id', as: 'user' });
+  db.MessageReaction.belongsTo(db.Message, { foreignKey: 'messageId', as: 'message' });
+  db.MessageReaction.belongsTo(db.UserTable, { foreignKey: 'userId', as: 'user' });
   
   // Notification associations
-  db.Notification.belongsTo(db.UserTable, { foreignKey: 'user_id', as: 'user' });
+  db.Notification.belongsTo(db.UserTable, { foreignKey: 'userId', as: 'user' });
   
   // SellerDocument associations
-  db.SellerDocument.belongsTo(db.UserTable, { foreignKey: 'user_id', as: 'user' });
+  db.SellerDocument.belongsTo(db.UserTable, { foreignKey: 'userId', as: 'user' });
   
   // SellersTable associations
-  db.SellersTable.belongsTo(db.UserTable, { foreignKey: 'user_id', as: 'user' });
+  db.SellersTable.belongsTo(db.UserTable, { foreignKey: 'userId', as: 'user' });
   
   // GroupBuy associations
-  db.GroupBuy.belongsTo(db.UserTable, { foreignKey: 'creator_id', as: 'creator' });
-  db.GroupBuy.belongsTo(db.UserTable, { foreignKey: 'seller_id', as: 'seller' });
-  db.GroupBuy.belongsTo(db.ProductCategory, { foreignKey: 'category_id', as: 'groupBuyCategory' });
-  db.GroupBuy.hasMany(db.GroupBuyParticipant, { foreignKey: 'group_buy_id', as: 'participants' });
+  db.GroupBuy.belongsTo(db.UserTable, { foreignKey: 'creatorId', as: 'creator' });
+  db.GroupBuy.belongsTo(db.UserTable, { foreignKey: 'sellerId', as: 'seller' });
+  db.GroupBuy.belongsTo(db.ProductCategory, { foreignKey: 'categoryId', as: 'groupBuyCategory' });
+  db.GroupBuy.hasMany(db.GroupBuyParticipant, { foreignKey: 'groupBuyId', as: 'participants' });
   
   // GroupBuyParticipant associations
-  db.GroupBuyParticipant.belongsTo(db.GroupBuy, { foreignKey: 'group_buy_id', as: 'groupBuy' });
-  db.GroupBuyParticipant.belongsTo(db.UserTable, { foreignKey: 'user_id', as: 'user' });
+  db.GroupBuyParticipant.belongsTo(db.GroupBuy, { foreignKey: 'groupBuyId', as: 'groupBuy' });
+  db.GroupBuyParticipant.belongsTo(db.UserTable, { foreignKey: 'userId', as: 'user' });
   
   // SwapDeal associations
-  db.SwapDeal.belongsTo(db.UserTable, { foreignKey: 'initiator_id', as: 'initiator' });
-  db.SwapDeal.belongsTo(db.UserTable, { foreignKey: 'responder_id', as: 'responder' });
-  db.SwapDeal.belongsTo(db.Product, { foreignKey: 'initiator_item_id', as: 'initiatorItem' });
-  db.SwapDeal.belongsTo(db.Product, { foreignKey: 'responder_item_id', as: 'responderItem' });
+  db.SwapDeal.belongsTo(db.UserTable, { foreignKey: 'initiatorId', as: 'initiator' });
+  db.SwapDeal.belongsTo(db.UserTable, { foreignKey: 'responderId', as: 'responder' });
+  db.SwapDeal.belongsTo(db.Product, { foreignKey: 'initiatorItemId', as: 'initiatorItem' });
+  db.SwapDeal.belongsTo(db.Product, { foreignKey: 'responderItemId', as: 'responderItem' });
 
   // Buyer Need associations
-  db.BuyerNeed.belongsTo(db.UserTable, { foreignKey: 'buyer_id', as: 'buyer' });
-  db.BuyerNeed.belongsTo(db.ProductCategory, { foreignKey: 'category_id', as: 'category' });
-  db.BuyerNeed.hasMany(db.BuyerNeedResponse, { foreignKey: 'buyer_need_id', as: 'responses' });
+  db.BuyerNeed.belongsTo(db.UserTable, { foreignKey: 'buyerId', as: 'buyer' });
+  db.BuyerNeed.belongsTo(db.ProductCategory, { foreignKey: 'categoryId', as: 'category' });
+  db.BuyerNeed.hasMany(db.BuyerNeedResponse, { foreignKey: 'buyerNeedId', as: 'responses' });
   
   // Buyer Need Response associations
-  db.BuyerNeedResponse.belongsTo(db.BuyerNeed, { foreignKey: 'buyer_need_id', as: 'buyerNeed' });
-  db.BuyerNeedResponse.belongsTo(db.UserTable, { foreignKey: 'seller_id', as: 'seller' });
+  db.BuyerNeedResponse.belongsTo(db.BuyerNeed, { foreignKey: 'buyerNeedId', as: 'buyerNeed' });
+  db.BuyerNeedResponse.belongsTo(db.UserTable, { foreignKey: 'sellerId', as: 'seller' });
   
   // User associations for buyer needs
-  db.UserTable.hasMany(db.BuyerNeed, { foreignKey: 'buyer_id', as: 'buyerNeeds' });
-  db.UserTable.hasMany(db.BuyerNeedResponse, { foreignKey: 'seller_id', as: 'sellerResponses' });
+  db.UserTable.hasMany(db.BuyerNeed, { foreignKey: 'buyerId', as: 'buyerNeeds' });
+  db.UserTable.hasMany(db.BuyerNeedResponse, { foreignKey: 'sellerId', as: 'sellerResponses' });
   
   // ProductCategory associations for buyer needs
-  db.ProductCategory.hasMany(db.BuyerNeed, { foreignKey: 'category_id', as: 'buyerNeeds' });
+  db.ProductCategory.hasMany(db.BuyerNeed, { foreignKey: 'categoryId', as: 'buyerNeeds' });
 
   // Market Analytics associations
-  db.MarketAnalytics.belongsTo(db.ProductCategory, { foreignKey: 'category_id', as: 'category' });
-  db.ProductCategory.hasMany(db.MarketAnalytics, { foreignKey: 'category_id', as: 'marketMetrics' });
+  db.MarketAnalytics.belongsTo(db.ProductCategory, { foreignKey: 'categoryId', as: 'category' });
+  db.ProductCategory.hasMany(db.MarketAnalytics, { foreignKey: 'categoryId', as: 'marketMetrics' });
   
   // Search Analytics associations
-  db.SearchAnalytics.belongsTo(db.UserTable, { foreignKey: 'user_id', as: 'user' });
-  db.SearchAnalytics.belongsTo(db.ProductCategory, { foreignKey: 'category_id', as: 'category' });
-  db.UserTable.hasMany(db.SearchAnalytics, { foreignKey: 'user_id', as: 'searchHistory' });
-  db.ProductCategory.hasMany(db.SearchAnalytics, { foreignKey: 'category_id', as: 'searchAnalytics' });
+  db.SearchAnalytics.belongsTo(db.UserTable, { foreignKey: 'userId', as: 'user' });
+  db.SearchAnalytics.belongsTo(db.ProductCategory, { foreignKey: 'categoryId', as: 'category' });
+  db.UserTable.hasMany(db.SearchAnalytics, { foreignKey: 'userId', as: 'searchHistory' });
+  db.ProductCategory.hasMany(db.SearchAnalytics, { foreignKey: 'categoryId', as: 'searchAnalytics' });
   
   // User Behavior Analytics associations
-  db.UserBehaviorAnalytics.belongsTo(db.UserTable, { foreignKey: 'user_id', as: 'user' });
-  db.UserTable.hasMany(db.UserBehaviorAnalytics, { foreignKey: 'user_id', as: 'behaviorHistory' });
+  db.UserBehaviorAnalytics.belongsTo(db.UserTable, { foreignKey: 'userId', as: 'user' });
+  db.UserTable.hasMany(db.UserBehaviorAnalytics, { foreignKey: 'userId', as: 'behaviorHistory' });
 
   // Advanced Notifications associations
-  db.AdvancedNotification.belongsTo(db.UserTable, { foreignKey: 'user_id', as: 'user' });
-  db.UserTable.hasMany(db.AdvancedNotification, { foreignKey: 'user_id', as: 'notifications' });
+  db.AdvancedNotification.belongsTo(db.UserTable, { foreignKey: 'userId', as: 'user' });
+  db.UserTable.hasMany(db.AdvancedNotification, { foreignKey: 'userId', as: 'notifications' });
   
   // User Notification Preferences associations
-  db.UserNotificationPreference.belongsTo(db.UserTable, { foreignKey: 'user_id', as: 'user' });
-  db.UserTable.hasMany(db.UserNotificationPreference, { foreignKey: 'user_id', as: 'notificationPreferences' });
+  db.UserNotificationPreference.belongsTo(db.UserTable, { foreignKey: 'userId', as: 'user' });
+  db.UserTable.hasMany(db.UserNotificationPreference, { foreignKey: 'userId', as: 'notificationPreferences' });
   
   // Heavy Distributor associations
   db.HeavyDistributor.belongsTo(db.SellersTable, { foreignKey: 'supplierId', as: 'supplier' });

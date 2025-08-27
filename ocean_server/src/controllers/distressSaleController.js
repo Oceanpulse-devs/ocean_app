@@ -101,7 +101,7 @@ class DistressSaleController {
 
       // Build filter conditions
       const whereClause = {
-        isDistressSale: true,
+        // isDistressSale: true, // Temporarily commented out until database columns are added
         status: 'active',
         isAvailable: true
       };
@@ -133,13 +133,17 @@ class DistressSaleController {
       }
 
       // Get distress sales with pagination and sorting
+      console.log('Querying distress sales with filters:', whereClause);
+      console.log('Available models:', Object.keys(db));
+      console.log('UserTable model:', db.UserTable ? 'Available' : 'Not available');
+      
       const { count, rows: distressSales } = await db.Product.findAndCountAll({
         where: whereClause,
         include: [
           {
-            model: db.SellersTable,
+            model: db.UserTable,
             as: 'seller',
-            attributes: ['id', 'businessName', 'businessAddress', 'phone', 'email', 'verificationStatus']
+            attributes: ['id', 'fullName', 'location', 'email', 'accountType', 'profilePicture']
           }
         ],
         order: [[sortBy, sortOrder]],
@@ -147,12 +151,20 @@ class DistressSaleController {
         offset: parseInt(offset)
       });
 
+      // Log the results for debugging
+      console.log(`Found ${count} distress sales`);
+      console.log('Sample distress sale:', distressSales[0] ? JSON.stringify(distressSales[0], null, 2) : 'No sales found');
+
+      // Filter out products without valid seller data
+      const validDistressSales = distressSales.filter(sale => sale.seller && sale.seller.id);
+      console.log(`Filtered to ${validDistressSales.length} valid distress sales with seller data`);
+
       // Calculate total pages
       const totalPages = Math.ceil(count / limit);
 
       res.json({
         success: true,
-        data: distressSales,
+        data: validDistressSales,
         pagination: {
           currentPage: parseInt(page),
           totalPages,
@@ -178,13 +190,13 @@ class DistressSaleController {
       const distressSale = await db.Product.findOne({
         where: {
           id,
-          isDistressSale: true
+          // isDistressSale: true // Temporarily commented out until database columns are added
         },
         include: [
           {
-            model: db.SellersTable,
+            model: db.UserTable,
             as: 'seller',
-            attributes: ['id', 'businessName', 'businessAddress', 'phone', 'email', 'verificationStatus']
+            attributes: ['id', 'fullName', 'location', 'email', 'accountType', 'profilePicture']
           }
         ]
       });
@@ -316,7 +328,7 @@ class DistressSaleController {
     try {
       const stats = await db.Product.findAll({
         where: {
-          isDistressSale: true,
+          // isDistressSale: true, // Temporarily commented out until database columns are added
           status: 'active'
         },
         attributes: [
@@ -332,7 +344,7 @@ class DistressSaleController {
       // Get total distress sales count
       const totalCount = await db.Product.count({
         where: {
-          isDistressSale: true,
+          // isDistressSale: true, // Temporarily commented out until database columns are added
           status: 'active'
         }
       });
@@ -340,7 +352,7 @@ class DistressSaleController {
       // Get category distribution
       const categoryStats = await db.Product.findAll({
         where: {
-          isDistressSale: true,
+          // isDistressSale: true, // Temporarily commented out until database columns are added
           status: 'active'
         },
         attributes: [

@@ -1,5 +1,6 @@
 const { Product, ProductCategory, SavedProduct, UserTable, SellersTable, UserFollows } = require('../../models');
 const { Op, Sequelize } = require('sequelize');
+const cloudinaryService = require('../services/cloudinaryService');
 
 // Get all products with search and filters
 const getProducts = async (req, res) => {
@@ -71,15 +72,9 @@ const getProducts = async (req, res) => {
             where: whereClause,
             include: [
                 {
-                    model: SellersTable,
+                    model: UserTable,
                     as: 'seller',
-                    include: [
-                        {
-                            model: UserTable,
-                            as: 'user',
-                            attributes: ['id', 'fullName', 'email', 'profilePicture', 'accountType', 'accountStatus']
-                        }
-                    ]
+                    attributes: ['id', 'fullName', 'email', 'profilePicture', 'accountType', 'accountStatus']
                 }
             ],
             order: orderClause,
@@ -144,15 +139,9 @@ const getProduct = async (req, res) => {
             where: { id: productId, status: 'active' },
             include: [
                 {
-                    model: SellersTable,
+                    model: UserTable,
                     as: 'seller',
-                    include: [
-                        {
-                            model: UserTable,
-                            as: 'user',
-                            attributes: ['id', 'fullName', 'email', 'profilePicture', 'accountType', 'accountStatus']
-                        }
-                    ]
+                    attributes: ['id', 'fullName', 'email', 'profilePicture', 'accountType', 'accountStatus']
                 }
             ]
         });
@@ -229,14 +218,14 @@ const createProduct = async (req, res) => {
             });
         }
 
-        // Validate images
-        if (!images || !Array.isArray(images) || images.length === 0) {
+        // Validate images/files
+        if (!req.files || req.files.length === 0) {
             return res.status(400).json({
                 message: "At least one product image is required"
             });
         }
 
-        // Create product
+        // Create product first
         const product = await Product.create({
             sellerId: seller.id,
             title: title.trim(),
@@ -248,22 +237,38 @@ const createProduct = async (req, res) => {
             subcategory: subcategory?.trim(),
             condition,
             location: location.trim(),
-            images
+            images: [] // Will be populated with Cloudinary URLs
         });
+
+        // Upload images to Cloudinary
+        const imageUrls = [];
+        for (let i = 0; i < req.files.length; i++) {
+            const file = req.files[i];
+            try {
+                const uploadResult = await cloudinaryService.uploadProductImage(file.buffer, product.id);
+                
+                if (!uploadResult.success) {
+                    console.error('Cloudinary upload failed:', uploadResult.error);
+                    throw new Error(`Failed to upload ${file.originalname}: ${uploadResult.error}`);
+                }
+                
+                imageUrls.push(uploadResult.url);
+            } catch (error) {
+                console.error(`Error processing file ${file.originalname}:`, error);
+                throw error;
+            }
+        }
+
+        // Update product with image URLs
+        await product.update({ images: imageUrls });
 
         // Get created product with associations
         const createdProduct = await Product.findByPk(product.id, {
             include: [
                 {
-                    model: SellersTable,
+                    model: UserTable,
                     as: 'seller',
-                    include: [
-                        {
-                            model: UserTable,
-                            as: 'user',
-                            attributes: ['id', 'fullName', 'email', 'profilePicture', 'accountType', 'accountStatus']
-                        }
-                    ]
+                    attributes: ['id', 'fullName', 'email', 'profilePicture', 'accountType', 'accountStatus']
                 }
             ]
         });
@@ -315,15 +320,9 @@ const updateProduct = async (req, res) => {
         const updatedProduct = await Product.findByPk(productId, {
             include: [
                 {
-                    model: SellersTable,
+                    model: UserTable,
                     as: 'seller',
-                    include: [
-                        {
-                            model: UserTable,
-                            as: 'user',
-                            attributes: ['id', 'fullName', 'email', 'profilePicture', 'accountType', 'accountStatus']
-                        }
-                    ]
+                    attributes: ['id', 'fullName', 'email', 'profilePicture', 'accountType', 'accountStatus']
                 }
             ]
         });
@@ -445,15 +444,9 @@ const getSavedProducts = async (req, res) => {
                     where: { status: 'active', isAvailable: true },
                     include: [
                         {
-                            model: SellersTable,
+                            model: UserTable,
                             as: 'seller',
-                            include: [
-                                {
-                                    model: UserTable,
-                                    as: 'user',
-                                    attributes: ['id', 'fullName', 'email', 'profilePicture', 'accountType', 'accountStatus']
-                                }
-                            ]
+                            attributes: ['id', 'fullName', 'email', 'profilePicture', 'accountType', 'accountStatus']
                         }
                     ]
                 }
@@ -541,15 +534,9 @@ const getSellerProducts = async (req, res) => {
             },
             include: [
                 {
-                    model: SellersTable,
+                    model: UserTable,
                     as: 'seller',
-                    include: [
-                        {
-                            model: UserTable,
-                            as: 'user',
-                            attributes: ['id', 'fullName', 'email', 'profilePicture', 'accountType', 'accountStatus']
-                        }
-                    ]
+                    attributes: ['id', 'fullName', 'email', 'profilePicture', 'accountType', 'accountStatus']
                 }
             ],
             order: [[Sequelize.fn('RAND')]],

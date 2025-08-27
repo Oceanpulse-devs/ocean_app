@@ -80,8 +80,19 @@ app.use(session({
 app.use(passport.initialize());
 app.use(passport.session());
 
+// Health check endpoint for Railway
+app.get('/health', (req, res) => {
+    res.status(200).json({ 
+        status: 'OK', 
+        timestamp: new Date().toISOString(),
+        uptime: process.uptime()
+    });
+});
+
 app.use(cors({
-    origin: ['http://localhost:3000', 'http://localhost:5173', 'http://127.0.0.1:3000', 'http://127.0.0.1:5173'],
+    origin: process.env.NODE_ENV === 'production' 
+        ? [process.env.FRONTEND_URL, 'https://your-frontend-domain.com'] // Add your frontend URL here
+        : ['http://localhost:3000', 'http://localhost:5173', 'http://127.0.0.1:3000', 'http://127.0.0.1:5173'],
     credentials: true, // Allow cookies to be sent with requests
 }));
 

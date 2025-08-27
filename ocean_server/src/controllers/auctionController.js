@@ -185,15 +185,9 @@ const getAuctions = async (req, res) => {
       where: whereClause,
       include: [
         {
-          model: SellersTable,
+          model: UserTable,
           as: 'seller',
-          include: [
-            {
-              model: UserTable,
-              as: 'user',
-              attributes: ['id', 'fullName', 'email']
-            }
-          ]
+          attributes: ['id', 'fullName', 'email', 'profilePicture', 'location']
         },
         {
           model: AuctionBid,
@@ -233,15 +227,9 @@ const getAuction = async (req, res) => {
     const auction = await Auction.findByPk(auctionId, {
       include: [
         {
-          model: SellersTable,
+          model: UserTable,
           as: 'seller',
-          include: [
-            {
-              model: UserTable,
-              as: 'user',
-              attributes: ['id', 'fullName', 'email']
-            }
-          ]
+          attributes: ['id', 'fullName', 'email', 'profilePicture', 'location']
         },
         {
           model: AuctionBid,
@@ -536,15 +524,9 @@ const getUserBids = async (req, res) => {
           as: 'auction',
           include: [
             {
-              model: SellersTable,
+              model: UserTable,
               as: 'seller',
-              include: [
-                {
-                  model: UserTable,
-                  as: 'user',
-                  attributes: ['id', 'fullName']
-                }
-              ]
+              attributes: ['id', 'fullName', 'profilePicture']
             }
           ]
         }

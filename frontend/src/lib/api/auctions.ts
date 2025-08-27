@@ -12,7 +12,7 @@ export interface Auction {
   minimumBidIncrement: number;
   startTime: string;
   endTime: string;
-  status: 'upcoming' | 'active' | 'ended' | 'cancelled';
+  status: 'draft' | 'active' | 'paused' | 'ended' | 'cancelled' | 'sold';
   category: string;
   condition: 'new' | 'like_new' | 'good' | 'fair' | 'poor';
   location: string;
@@ -31,10 +31,16 @@ export interface Auction {
   updatedAt: string;
   seller?: {
     id: string;
-    businessName: string;
-    businessDescription?: string;
-    verificationStatus: string;
+    fullName: string;
+    email: string;
+    profilePicture?: string;
+    location?: string;
   };
+  bids?: Array<{
+    id: string;
+    bidAmount: number;
+    createdAt: string;
+  }>;
   isWatching?: boolean;
   isFollowingSeller?: boolean;
   userBid?: {
@@ -89,6 +95,7 @@ export async function getAuctions(params?: {
   minPrice?: number;
   maxPrice?: number;
   location?: string;
+  search?: string;
   sortBy?: 'currentPrice' | 'endTime' | 'totalBids' | 'views';
   sortOrder?: 'ASC' | 'DESC';
 }) {

@@ -1,5 +1,6 @@
 const { Post, PostMedia, PostLike, PostComment, PostShare, SavedPost, UserTable, UserFollows } = require('../../models');
 const { Op, Sequelize } = require('sequelize');
+const cloudinaryService = require('../services/cloudinaryService');
 
 // Get feed with region filtering and random ordering
 const getFeed = async (req, res) => {
@@ -171,18 +172,32 @@ const createPost = async (req, res) => {
 
         // Add media if provided (optional - pictures are always optional)
         if (req.files && req.files.length > 0) {
-            const mediaPromises = req.files.map((file, index) => {
-                // Determine media type from file mimetype
-                const mediaType = file.mimetype.startsWith('image/') ? 'image' : 'video';
-                
-                return PostMedia.create({
-                    postId: post.id,
-                    mediaType: mediaType,
-                    mediaUrl: `/uploads/${file.filename}`, // Store the file path
-                    thumbnailUrl: mediaType === 'image' ? `/uploads/${file.filename}` : null,
-                    mediaOrder: index,
-                    altText: file.originalname
-                });
+            const mediaPromises = req.files.map(async (file, index) => {
+                try {
+                    // Determine media type from file mimetype
+                    const mediaType = file.mimetype.startsWith('image/') ? 'image' : 'video';
+                    
+                    // Upload to Cloudinary
+                    const uploadResult = await cloudinaryService.uploadPostMedia(file.buffer, post.id);
+                    
+                    if (!uploadResult.success) {
+                        console.error('Cloudinary upload failed:', uploadResult.error);
+                        throw new Error(`Failed to upload ${file.originalname}: ${uploadResult.error}`);
+                    }
+                    
+                    // Create PostMedia record with Cloudinary URLs
+                    return PostMedia.create({
+                        postId: post.id,
+                        mediaType: mediaType,
+                        mediaUrl: uploadResult.url,
+                        thumbnailUrl: uploadResult.thumbnailUrl,
+                        mediaOrder: index,
+                        altText: file.originalname
+                    });
+                } catch (error) {
+                    console.error(`Error processing file ${file.originalname}:`, error);
+                    throw error;
+                }
             });
             await Promise.all(mediaPromises);
         }

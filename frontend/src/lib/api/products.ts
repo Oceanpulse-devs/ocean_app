@@ -22,9 +22,11 @@ export interface Product {
   updatedAt: string;
   seller?: {
     id: string;
-    businessName: string;
-    businessDescription?: string;
-    verificationStatus: string;
+    fullName: string;
+    email: string;
+    profilePicture?: string;
+    accountType: string;
+    accountStatus: string;
   };
   isSaved?: boolean;
   isFollowingSeller?: boolean;

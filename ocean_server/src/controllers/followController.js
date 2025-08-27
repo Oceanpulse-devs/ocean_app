@@ -25,8 +25,8 @@ const followUser = async (req, res) => {
         // Check if already following
         const existingFollow = await UserFollows.findOne({
             where: {
-                userId: followerId,
-                followsUserId: targetUserId
+                user_id: followerId,
+                follows_user_id: targetUserId
             }
         });
 
@@ -36,8 +36,8 @@ const followUser = async (req, res) => {
 
         // Create follow relationship
         await UserFollows.create({
-            userId: followerId,
-            followsUserId: targetUserId
+            user_id: followerId,
+            follows_user_id: targetUserId
         });
 
         res.status(201).json({ 
@@ -74,8 +74,8 @@ const unfollowUser = async (req, res) => {
         // Check if follow relationship exists
         const existingFollow = await UserFollows.findOne({
             where: {
-                userId: followerId,
-                followsUserId: targetUserId
+                user_id: followerId,
+                follows_user_id: targetUserId
             }
         });
 
@@ -116,7 +116,7 @@ const getFollowers = async (req, res) => {
 
         // Get followers with pagination
         const followers = await UserFollows.findAndCountAll({
-            where: { followsUserId: userId },
+            where: { follows_user_id: userId },
             include: [{
                 model: UserTable,
                 as: 'follower',
@@ -162,7 +162,7 @@ const getFollowing = async (req, res) => {
 
         // Get following with pagination
         const following = await UserFollows.findAndCountAll({
-            where: { userId: userId },
+            where: { user_id: userId },
             include: [{
                 model: UserTable,
                 as: 'followed',
@@ -208,8 +208,8 @@ const checkFollowStatus = async (req, res) => {
         // Check follow status
         const followStatus = await UserFollows.findOne({
             where: {
-                userId: currentUserId,
-                followsUserId: targetUserId
+                user_id: currentUserId,
+                follows_user_id: targetUserId
             }
         });
 
@@ -240,12 +240,12 @@ const getFollowStats = async (req, res) => {
 
         // Get follower count
         const followerCount = await UserFollows.count({
-            where: { followsUserId: userId }
+            where: { follows_user_id: userId }
         });
 
         // Get following count
         const followingCount = await UserFollows.count({
-            where: { userId: userId }
+            where: { user_id: userId }
         });
 
         res.status(200).json({
@@ -280,9 +280,9 @@ const getMutualFollowers = async (req, res) => {
         const mutualFollowers = await UserTable.sequelize.query(`
             SELECT DISTINCT u.id, u.fullName, u.email, u.profilePicture, u.accountType, u.accountStatus
             FROM UserTable u
-            INNER JOIN UserFollows uf1 ON u.id = uf1.userId
-            INNER JOIN UserFollows uf2 ON u.id = uf2.followsUserId
-            WHERE uf1.followsUserId = :userId AND uf2.userId = :userId
+            INNER JOIN UserFollows uf1 ON u.id = uf1.user_id
+            INNER JOIN UserFollows uf2 ON u.id = uf2.follows_user_id
+            WHERE uf1.follows_user_id = :userId AND uf2.user_id = :userId
             ORDER BY u.fullName
             LIMIT :limit OFFSET :offset
         `, {
@@ -294,9 +294,9 @@ const getMutualFollowers = async (req, res) => {
         const totalCount = await UserTable.sequelize.query(`
             SELECT COUNT(DISTINCT u.id) as count
             FROM UserTable u
-            INNER JOIN UserFollows uf1 ON u.id = uf1.userId
-            INNER JOIN UserFollows uf2 ON u.id = uf2.followsUserId
-            WHERE uf1.followsUserId = :userId AND uf2.userId = :userId
+            INNER JOIN UserFollows uf1 ON u.id = uf1.user_id
+            INNER JOIN UserFollows uf2 ON u.id = uf2.follows_user_id
+            WHERE uf1.follows_user_id = :userId AND uf2.user_id = :userId
         `, {
             replacements: { userId },
             type: UserTable.sequelize.QueryTypes.SELECT

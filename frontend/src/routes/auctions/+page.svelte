@@ -1,143 +1,156 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { getAuctions, getAuctionCategories, type Auction } from '../../lib/api/auctions';
 
-  // Mock data - will be replaced with actual API calls
-  let auctions = [
-    {
-      id: '1',
-      seller: {
-        name: "MBT CEO",
-        avatar: "/test.jpg.jpg",
-        username: "@mbtceo",
-        timestamp: "21 February, 05 PM"
-      },
-      product: {
-        name: "Nike Sneakers",
-        location: "Ikeja",
-        brand: "Nike",
-        price: 120,
-        currentBid: 120,
-        description: "Don't miss out! 🔥 Place your bid now and grab this deal before it's gone! 🔥 The best offer wins—will it be yours?",
-        images: [
-          "/test.jpg.jpg",
-          "/wrigglyLine2.png",
-          "/test.jpg.jpg",
-          "/wrigglyLine2.png"
-        ]
-      }
-    },
-    {
-      id: '2',
-      seller: {
-        name: "Jessy Stores",
-        avatar: "/wrigglyLine2.png",
-        username: "@jessy",
-        timestamp: "22 February, 10 AM"
-      },
-      product: {
-        name: "Apple AirPods Pro",
-        location: "Lekki",
-        brand: "Apple",
-        price: 200,
-        currentBid: 210,
-        description: "Brand new AirPods Pro, sealed box. Auction ends soon!",
-        images: [
-          "/wrigglyLine2.png",
-          "/test.jpg.jpg"
-        ]
-      }
-    },
-    {
-      id: '3',
-      seller: {
-        name: "Tola Thompson",
-        avatar: "/test.jpg.jpg",
-        username: "@tola",
-        timestamp: "23 February, 2 PM"
-      },
-      product: {
-        name: "Samsung Galaxy S21",
-        location: "Victoria Island",
-        brand: "Samsung",
-        price: 350,
-        currentBid: 370,
-        description: "Slightly used Galaxy S21, comes with box and charger.",
-        images: [
-          "/test.jpg.jpg",
-          "/wrigglyLine2.png"
-        ]
-      }
-    },
-    {
-      id: '4',
-      seller: {
-        name: "Cody Fisher Stores",
-        avatar: "/wrigglyLine2.png",
-        username: "@codyfisher",
-        timestamp: "24 February, 11 AM"
-      },
-      product: {
-        name: "Unisex iPhone 13 Pro Case",
-        location: "Yaba",
-        brand: "Apple",
-        price: 30,
-        currentBid: 35,
-        description: "Trendy iPhone 13 Pro case, fits perfectly. Place your bid!",
-        images: [
-          "/wrigglyLine2.png",
-          "/test.jpg.jpg"
-        ]
-      }
-    },
-    {
-      id: '5',
-      seller: {
-        name: "Thompson Stores",
-        avatar: "/test.jpg.jpg",
-        username: "@thompson",
-        timestamp: "25 February, 4 PM"
-      },
-      product: {
-        name: "Original White Apple Earbuds",
-        location: "Ikeja",
-        brand: "Apple",
-        price: 50,
-        currentBid: 55,
-        description: "Original Apple earbuds, barely used. Auction ends today!",
-        images: [
-          "/test.jpg.jpg",
-          "/wrigglyLine2.png"
-        ]
-      }
-    },
-    {
-      id: '6',
-      seller: {
-        name: "MTB CEO",
-        avatar: "/wrigglyLine2.png",
-        username: "@mbtceo",
-        timestamp: "26 February, 9 AM"
-      },
-      product: {
-        name: "Original White iPhone Charger",
-        location: "Ajah",
-        brand: "Apple",
-        price: 25,
-        currentBid: 28,
-        description: "Genuine iPhone charger, fast charging. Place your bid now!",
-        images: [
-          "/wrigglyLine2.png",
-          "/test.jpg.jpg"
-        ]
-      }
-    }
-  ];
+  // State management
+  let auctions: Auction[] = [];
+  let isLoading = true;
+  let errorMessage = '';
+  let searchQuery = '';
+  let selectedCategory = '';
+  let selectedLocation = '';
+  let selectedStatus = '';
+  let selectedSortBy: 'currentPrice' | 'endTime' | 'totalBids' | 'views' = 'endTime';
+  let selectedSortOrder: 'ASC' | 'DESC' = 'ASC';
+  
+  // Pagination
+  let currentPage = 1;
+  let totalPages = 1;
+  let totalItems = 0;
+  let itemsPerPage = 20;
+
+  // Categories for filters
+  let categories: string[] = [];
 
   let currentBid = 120;
   let bidAmount = "";
-  let selectedAuction = auctions[0]; // For demo, showing first auction
+  let selectedAuction: Auction | null = null;
   let currentImageIndex = 0;
   let autoplayInterval: ReturnType<typeof setInterval>;
+
+  onMount(async () => {
+    await loadAuctions();
+    await loadCategories();
+  });
+
+  async function loadAuctions() {
+    try {
+      isLoading = true;
+      errorMessage = '';
+
+      const response = await getAuctions({
+        page: currentPage,
+        limit: itemsPerPage,
+        status: selectedStatus || undefined,
+        category: selectedCategory || undefined,
+        location: selectedLocation || undefined,
+        search: searchQuery || undefined,
+        sortBy: selectedSortBy,
+        sortOrder: selectedSortOrder
+      });
+
+      // Backend returns data directly without success field
+      if (response.auctions) {
+        auctions = response.auctions || [];
+        totalItems = response.total || 0;
+        totalPages = response.totalPages || 1;
+        currentPage = response.currentPage || 1;
+        
+        // Set selected auction for slider
+        if (auctions.length > 0) {
+          selectedAuction = auctions[0];
+        }
+        
+        console.log('Loaded auctions:', auctions);
+      } else if (response.message) {
+        // Backend returned an error message
+        errorMessage = response.message;
+        auctions = [];
+      } else {
+        errorMessage = 'Failed to load auctions';
+        auctions = [];
+      }
+    } catch (error: unknown) {
+      console.error('Error loading auctions:', error);
+      errorMessage = error instanceof Error ? error.message : 'Failed to load auctions';
+      auctions = [];
+    } finally {
+      isLoading = false;
+    }
+  }
+
+  async function loadCategories() {
+    try {
+      const response = await getAuctionCategories();
+      // Backend returns data directly without success field
+      if (response.categories) {
+        categories = response.categories?.map((cat: { name: string; count: number }) => cat.name) || [];
+      } else if (response.message) {
+        console.error('Error loading categories:', response.message);
+      }
+    } catch (error) {
+      console.error('Error loading categories:', error);
+    }
+  }
+
+  // Search and filter functions
+  function handleSearch() {
+    currentPage = 1;
+    loadAuctions();
+  }
+
+  function handleFilterChange() {
+    currentPage = 1;
+    loadAuctions();
+  }
+
+  function handleSortChange() {
+    loadAuctions();
+  }
+
+  function handlePageChange(page: number) {
+    currentPage = page;
+    loadAuctions();
+  }
+
+  // Watch for filter changes
+  $: if (selectedCategory || selectedLocation || selectedStatus) {
+    handleFilterChange();
+  }
+
+  $: if (selectedSortBy || selectedSortOrder) {
+    handleSortChange();
+  }
+
+  // Utility functions
+  function formatTimeLeft(endTime: string): string {
+    const now = new Date();
+    const end = new Date(endTime);
+    const diff = end.getTime() - now.getTime();
+    
+    if (diff <= 0) {
+      return 'Ended';
+    }
+    
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    
+    if (days > 0) {
+      return `${days}d ${hours}h`;
+    } else if (hours > 0) {
+      return `${hours}h ${minutes}m`;
+    } else {
+      return `${minutes}m`;
+    }
+  }
+
+  function formatCurrency(amount: number): string {
+    return new Intl.NumberFormat('en-NG', {
+      style: 'currency',
+      currency: 'NGN'
+    }).format(amount);
+  }
 
   function handleBid() {
     if (parseFloat(bidAmount) > currentBid) {
@@ -166,9 +179,14 @@
     <div class="search-bar">
       <div class="search-input">
         <svg xmlns="http://www.w3.org/2000/svg" class="search-icon" viewBox="0 0 24 24">
-          <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+          <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
         </svg>
-        <input type="text" placeholder="Search for product by text or image" />
+        <input 
+          type="text" 
+          placeholder="Search for product by text or image" 
+          bind:value={searchQuery}
+          on:input={handleSearch}
+        />
         <button class="camera-btn">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
             <path d="M12 15.2a3.2 3.2 0 100-6.4 3.2 3.2 0 000 6.4z"/>
@@ -178,13 +196,61 @@
       </div>
     </div>
 
+    <!-- Filters -->
+    <div class="filters-section">
+      <div class="filter-group">
+        <select bind:value={selectedCategory} on:change={handleFilterChange}>
+          <option value="">All Categories</option>
+          {#each categories as category}
+            <option value={category}>{category}</option>
+          {/each}
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <select bind:value={selectedLocation} on:change={handleFilterChange}>
+          <option value="">All Locations</option>
+          <option value="Lagos">Lagos</option>
+          <option value="Abuja">Abuja</option>
+          <option value="Kano">Kano</option>
+          <option value="Port Harcourt">Port Harcourt</option>
+          <option value="Kaduna">Kaduna</option>
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <select bind:value={selectedStatus} on:change={handleFilterChange}>
+          <option value="">All Status</option>
+          <option value="active">Active</option>
+          <option value="upcoming">Upcoming</option>
+          <option value="ended">Ended</option>
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <select bind:value={selectedSortBy} on:change={handleSortChange}>
+          <option value="endTime">End Time</option>
+          <option value="currentPrice">Price</option>
+          <option value="totalBids">Most Bids</option>
+          <option value="views">Most Viewed</option>
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <select bind:value={selectedSortOrder} on:change={handleSortChange}>
+          <option value="ASC">Ascending</option>
+          <option value="DESC">Descending</option>
+        </select>
+      </div>
+    </div>
+
   <div class="auction-slider">
     <div class="slider-image-wrapper">
       {#if auctions && auctions.length > 0}
-        <img src={auctions[currentImageIndex].product.images[0]} alt="Auction Banner" class="slider-image" />
+        <img src={auctions[currentImageIndex].images?.[0] || '/test.jpg.jpg'} alt="Auction Banner" class="slider-image" />
         <div class="slider-text-overlay">
-          <h2>{auctions[currentImageIndex].product.name}</h2>
-          <p>{auctions[currentImageIndex].product.description}</p>
+          <h2>{auctions[currentImageIndex].title}</h2>
+          <p>{auctions[currentImageIndex].description}</p>
         </div>
         <button class="slider-arrow left" on:click={previousImage}>&lt;</button>
         <button class="slider-arrow right" on:click={nextImage}>&gt;</button>
@@ -199,31 +265,91 @@
         </div>
       </div>
 
-  <div class="auctions-grid">
+    <!-- Error Message -->
+    {#if errorMessage}
+      <div class="error-message">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="15" y1="9" x2="9" y2="15"/>
+          <line x1="9" y1="9" x2="15" y2="15"/>
+        </svg>
+        {errorMessage}
+        <button class="retry-btn" on:click={loadAuctions}>Retry</button>
+      </div>
+    {/if}
+
+    <!-- Loading State -->
+    {#if isLoading}
+      <div class="loading-state">
+        <div class="spinner"></div>
+        <p>Loading auctions...</p>
+      </div>
+    {:else if auctions.length === 0}
+      <div class="no-results">
+        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"/>
+          <path d="m21 21-4.35-4.35"/>
+        </svg>
+        <h3>No auctions found</h3>
+        <p>Try adjusting your search criteria or check back later</p>
+      </div>
+    {:else}
+      <div class="auctions-grid">
     {#each auctions as auction (auction.id)}
       <div class="auction-card">
         <div class="auction-image">
-          <img src={auction.product.images[0]} alt={auction.product.name} />
+          <img src={auction.images?.[0] || '/test.jpg.jpg'} alt={auction.title} />
         </div>
         <div class="auction-info">
-          <div class="auction-title">{auction.product.name}</div>
+          <div class="auction-title">{auction.title}</div>
           <div class="auction-meta">
-            <span class="current-bid">Current Bid: <b>${auction.product.currentBid}</b></span>
+            <span class="current-bid">Current Bid: <b>{formatCurrency(auction.currentPrice)}</b></span>
             <span class="time-left">
               <svg class="clock-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 1.75A10.25 10.25 0 1 0 22.25 12 10.262 10.262 0 0 0 12 1.75zm0 18.5A8.25 8.25 0 1 1 20.25 12 8.26 8.26 0 0 1 12 20.25zm.75-8.5V7a.75.75 0 0 0-1.5 0v5a.75.75 0 0 0 .44.68l3.5 1.5a.75.75 0 1 0 .58-1.38z"/></svg>
-              <span>Ends in: <b>01:23:45</b></span>
+              <span>Ends in: <b>{formatTimeLeft(auction.endTime)}</b></span>
             </span>
           </div>
           <div class="auction-seller">
-            <img src={auction.seller.avatar} alt={auction.seller.name} class="seller-avatar" />
-            <span class="seller-name">{auction.seller.name}</span>
+            <img src={auction.seller?.profilePicture || '/wrigglyLine2.png'} alt={auction.seller?.fullName || 'Seller'} class="seller-avatar" />
+            <span class="seller-name">{auction.seller?.fullName || 'Unknown Seller'}</span>
           </div>
           <a class="view-auction-btn" href={`/auctions/${auction.id}`}>View Auction</a>
         </div>
       </div>
     {/each}
-    </div>
-</div>
+      </div>
+
+      <!-- Pagination -->
+      {#if totalPages > 1}
+        <div class="pagination">
+          <button 
+            class="pagination-btn" 
+            disabled={currentPage === 1}
+            on:click={() => handlePageChange(currentPage - 1)}
+          >
+            Previous
+          </button>
+          
+          {#each Array(totalPages) as _, i}
+            <button 
+              class="pagination-btn {i + 1 === currentPage ? 'active' : ''}"
+              on:click={() => handlePageChange(i + 1)}
+            >
+              {i + 1}
+            </button>
+          {/each}
+          
+          <button 
+            class="pagination-btn" 
+            disabled={currentPage === totalPages}
+            on:click={() => handlePageChange(currentPage + 1)}
+          >
+            Next
+          </button>
+        </div>
+      {/if}
+    {/if}
+  </div>
 
 <style>
   .auctions-content {
@@ -322,6 +448,24 @@
       font-size: 1.5rem;
     }
 
+    .filters-section {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .filter-group select {
+      width: 100%;
+    }
+
+    .search-input {
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .search-input input {
+      width: 100%;
+    }
+
     .stat-label {
       font-size: 0.9rem;
     }
@@ -410,6 +554,117 @@
     outline: none;
     font-size: 1rem;
     color: #2D3748;
+    background: transparent;
+  }
+
+  .filters-section {
+    display: flex;
+    gap: 1rem;
+    margin: 1rem 0;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .filter-group select {
+    padding: 0.5rem 1rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.5rem;
+    background: white;
+    font-size: 0.875rem;
+    min-width: 120px;
+  }
+
+  .error-message {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: #fef2f2;
+    color: #dc2626;
+    border: 1px solid #fecaca;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    margin: 1rem 0;
+    max-width: 600px;
+    width: 100%;
+  }
+
+  .retry-btn {
+    margin-left: auto;
+    background: #dc2626;
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 0.25rem;
+    cursor: pointer;
+  }
+
+  .loading-state {
+    text-align: center;
+    padding: 3rem;
+  }
+
+  .spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid #e2e8f0;
+    border-top: 4px solid #667eea;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 1rem;
+  }
+
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+
+  .no-results {
+    text-align: center;
+    padding: 3rem;
+    color: #64748b;
+  }
+
+  .no-results svg {
+    margin-bottom: 1rem;
+    color: #cbd5e1;
+  }
+
+  .no-results h3 {
+    margin-bottom: 0.5rem;
+    color: #475569;
+  }
+
+  .pagination {
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+    margin: 2rem 0;
+    padding: 1rem;
+  }
+
+  .pagination-btn {
+    padding: 0.5rem 1rem;
+    border: 1px solid #e2e8f0;
+    background: white;
+    color: #374151;
+    border-radius: 0.25rem;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .pagination-btn:hover:not(:disabled) {
+    background: #f3f4f6;
+  }
+
+  .pagination-btn.active {
+    background: #6366F1;
+    color: white;
+    border-color: #6366F1;
+  }
+
+  .pagination-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
   }
 
   .camera-btn {

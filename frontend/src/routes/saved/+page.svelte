@@ -52,11 +52,8 @@
       saves: number;
     seller: {
         id: string;
-        user: {
-          id: string;
-          fullName: string;
-          profilePicture?: string;
-        };
+        fullName: string;
+        profilePicture?: string;
       };
     };
   }
@@ -378,12 +375,12 @@
                   </div>
                   
                   <div class="seller-info">
-                    <img 
-                      src={savedProduct.product.seller.user.profilePicture || '/wrigglyLine2.png'} 
-                      alt={savedProduct.product.seller.user.fullName}
-                      class="seller-avatar"
-                    />
-                    <span class="seller-name">{savedProduct.product.seller.user.fullName}</span>
+                                    <img 
+                  src={savedProduct.product.seller.profilePicture || '/wrigglyLine2.png'}
+                  alt={savedProduct.product.seller.fullName}
+                  class="seller-avatar"
+                />
+                <span class="seller-name">{savedProduct.product.seller.fullName}</span>
                   </div>
 
                   <div class="product-stats">
