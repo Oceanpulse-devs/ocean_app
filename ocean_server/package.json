@@ -4,8 +4,7 @@
   "main": "index.js",
   "scripts": {
     "dev": "nodemon server.js",
-    "pro": "node server.js",
-    "start": "node server.js"
+    "pro": "node server.js"
   },
   "author": "",
   "license": "ISC",
@@ -16,7 +15,7 @@
     "cloudinary": "^1.41.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
-    "dotenv": "^16.5.0",
+    "dotenv": "^16.5.0",nice
     "express": "^5.1.0",
     "express-session": "^1.18.2",
     "fs": "^0.0.1-security",
