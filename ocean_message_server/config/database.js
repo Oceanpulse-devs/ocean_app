@@ -18,14 +18,12 @@ if (env === 'production') {
     pool: {
       max: 20,
       min: 5,
-      acquire: 30000,
+      acquire: 60000,
       idle: 10000
     },
     dialectOptions: {
       ssl: false, // Railway internal connections don't need SSL
-      connectTimeout: 60000,
-      acquireTimeout: 60000,
-      timeout: 60000
+      connectTimeout: 60000
     }
   };
 } else {
@@ -41,7 +39,7 @@ if (env === 'production') {
     pool: {
       max: 10,
       min: 0,
-      acquire: 30000,
+      acquire: 60000,
       idle: 10000
     }
   };
