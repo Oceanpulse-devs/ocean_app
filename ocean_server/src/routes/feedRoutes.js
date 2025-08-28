@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const authMiddleware = require('../middleware/authMiddleware');
-const feedController = require('../controllers/feedController');
+const feedController = require('../controllers/feedcontroller');
 
 // Test route to check if server is working
 router.get('/api/test', (req, res) => {
