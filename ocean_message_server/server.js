@@ -13,6 +13,7 @@ const path = require('path');
 dotenv.config({ path: './config.env' });
 
 // Import database and middleware
+const { testConnection } = require('./config/database');
 const db = require('./models');
 const authMiddleware = require('./src/middleware/authMiddleware');
 const socketAuthMiddleware = require('./src/middleware/socketAuthMiddleware');
@@ -146,7 +147,7 @@ app.use('*', (req, res) => {
 
 // Database connection and server start
 // Messaging server connects to existing tables (created by main server)
-db.sequelize.authenticate()
+testConnection()
   .then(() => {
     console.log('✅ Database connected successfully');
     startServer();
