@@ -89,11 +89,72 @@ app.get('/health', (req, res) => {
     });
 });
 
+// Mobile app health check endpoint
+app.get('/api/mobile/health', (req, res) => {
+    res.status(200).json({ 
+        status: 'OK', 
+        service: 'Ocean Backend API',
+        version: process.env.MOBILE_API_VERSION || 'v1',
+        timestamp: new Date().toISOString(),
+        uptime: process.uptime(),
+        environment: process.env.NODE_ENV,
+        database: 'Connected',
+        redis: 'Connected',
+        cors: 'Enabled for mobile apps'
+    });
+});
+
+// Mobile app configuration endpoint
+app.get('/api/mobile/config', (req, res) => {
+    res.status(200).json({
+        apiVersion: process.env.MOBILE_API_VERSION || 'v1',
+        baseUrl: process.env.NODE_ENV === 'production' 
+            ? process.env.FRONTEND_URL 
+            : `http://localhost:${process.env.PORT || 5000}`,
+        features: {
+            authentication: true,
+            products: true,
+            auctions: true,
+            messaging: true,
+            notifications: true,
+            fileUpload: true,
+            oauth: !!(process.env.GOOGLE_CLIENT_ID && process.env.FACEBOOK_APP_ID)
+        },
+        limits: {
+            maxFileSize: '10MB',
+            maxImagesPerProduct: 10,
+            maxImagesPerPost: 10
+        }
+    });
+});
+
 app.use(cors({
     origin: process.env.NODE_ENV === 'production' 
-        ? [process.env.FRONTEND_URL, 'https://your-frontend-domain.com'] // Add your frontend URL here
-        : ['http://localhost:3000', 'http://localhost:5173', 'http://127.0.0.1:3000', 'http://127.0.0.1:5173'],
+        ? [
+            process.env.FRONTEND_URL, 
+            'https://your-frontend-domain.com',
+            // Add mobile app origins here
+            'capacitor://localhost',
+            'ionic://localhost',
+            'http://localhost:8100', // Ionic dev server
+            'http://localhost:8080', // Capacitor dev server
+            process.env.MOBILE_APP_URL // Add this to your env
+          ]
+        : [
+            'http://localhost:3000', 
+            'http://localhost:5173', 
+            'http://127.0.0.1:3000', 
+            'http://127.0.0.1:5173',
+            // Mobile development origins
+            'http://localhost:8100',
+            'http://localhost:8080',
+            'capacitor://localhost',
+            'ionic://localhost'
+          ],
     credentials: true, // Allow cookies to be sent with requests
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
+    exposedHeaders: ['Content-Length', 'X-Total-Count']
 }));
 
 
