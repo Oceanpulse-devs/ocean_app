@@ -39,161 +39,139 @@ export default function ProfileScreen() {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#1F2937" />
+      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
       
-      {/* Header */}
+      {/* Modern Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
-          <Text style={styles.backText}>Back</Text>
+          <Ionicons name="arrow-back" size={24} color="#1F2937" />
         </TouchableOpacity>
+        <Text style={styles.headerTitle}>Profile</Text>
         <TouchableOpacity style={styles.moreButton}>
-          <Ionicons name="ellipsis-vertical" size={24} color="#FFFFFF" />
+          <Ionicons name="ellipsis-vertical" size={24} color="#1F2937" />
         </TouchableOpacity>
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Profile Banner and Avatar */}
-        <View style={styles.bannerContainer}>
-          <View style={styles.banner}>
-            <Text style={styles.bannerPlaceholder}>🌺🌸🌼</Text>
-          </View>
-          <View style={styles.avatarContainer}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarPlaceholder}>👩</Text>
+        {/* Modern Profile Header */}
+        <View style={styles.profileHeader}>
+          <View style={styles.avatarSection}>
+            <View style={styles.avatarContainer}>
+              <View style={styles.avatar}>
+                <Text style={styles.avatarPlaceholder}>👩‍💼</Text>
+              </View>
+              <View style={styles.verifiedBadge}>
+                <Ionicons name="checkmark" size={12} color="#FFFFFF" />
+              </View>
             </View>
-          </View>
-        </View>
-
-        {/* Seller Information */}
-        <View style={styles.sellerInfo}>
-          <View style={styles.nameRow}>
-            <View style={styles.nameContainer}>
+            <View style={styles.profileInfo}>
               <Text style={styles.sellerName}>{sellerData.name}</Text>
               <Text style={styles.sellerUsername}>{sellerData.username}</Text>
-            </View>
-            <View style={styles.actionIcons}>
-              <TouchableOpacity style={styles.iconButton}>
-                <Text style={styles.iconText}>👤</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.iconButton}>
-                <Ionicons name="ellipsis-vertical" size={20} color="#6B7280" />
-              </TouchableOpacity>
+              <View style={styles.statusContainer}>
+                <View style={styles.statusDot} />
+                <Text style={styles.statusText}>Active {sellerData.lastActive}</Text>
+              </View>
             </View>
           </View>
 
-          {/* Statistics */}
-          <View style={styles.statsContainer}>
-            <View style={styles.statItem}>
+          {/* Modern Stats */}
+          <View style={styles.statsGrid}>
+            <View style={styles.statCard}>
               <Text style={styles.statNumber}>{sellerData.posts}</Text>
-              <Text style={styles.statLabel}>Posts</Text>
+              <Text style={styles.statLabel}>Products</Text>
             </View>
-            <View style={styles.statItem}>
+            <View style={styles.statCard}>
               <Text style={styles.statNumber}>{sellerData.followers}</Text>
               <Text style={styles.statLabel}>Followers</Text>
             </View>
-            <View style={styles.statItem}>
+            <View style={styles.statCard}>
               <Text style={styles.statNumber}>{sellerData.following}</Text>
               <Text style={styles.statLabel}>Following</Text>
             </View>
           </View>
         </View>
 
-        {/* Message Seller Section */}
-        <View style={styles.messageSection}>
-          <View style={styles.messageLeft}>
-            <View style={styles.messageAvatar}>
-              <Text style={styles.messageAvatarPlaceholder}>👩</Text>
-            </View>
-            <View style={styles.messageInfo}>
-              <Text style={styles.messageName}>{sellerData.name}</Text>
-              <Text style={styles.messageTime}>{sellerData.lastActive}</Text>
-            </View>
-          </View>
-          <View style={styles.messageRight}>
-            <TouchableOpacity style={styles.iconButton}>
-              <Text style={styles.iconText}>👤</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.messageButton}>
-              <Text style={styles.messageButtonText}>Message Me</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Product Listing Details */}
-        <View style={styles.productSection}>
-          <Text style={styles.sectionTitle}>Product Details</Text>
-          
-          {sellerData.products.map((product, index) => (
-            <View key={product.id} style={styles.productDetails}>
-              <View style={styles.productRow}>
-                <Text style={styles.productLabel}>Product Name</Text>
-                <Text style={styles.productValue}>{product.name}</Text>
-              </View>
-              <View style={styles.productRow}>
-                <Text style={styles.productLabel}>Price</Text>
-                <Text style={styles.productValue}>{product.price}</Text>
-              </View>
-              <View style={styles.productRow}>
-                <Text style={styles.productLabel}>Brand</Text>
-                <Text style={styles.productValue}>{product.brand}</Text>
-              </View>
-              <View style={styles.productRow}>
-                <Text style={styles.productLabel}>Location</Text>
-                <Text style={styles.productValue}>{product.location}</Text>
-              </View>
-            </View>
-          ))}
-        </View>
-
-        {/* Product Images Grid */}
-        <View style={styles.imagesSection}>
-          <Text style={styles.sectionTitle}>Product Images</Text>
-          <View style={styles.imageGrid}>
-            <View style={styles.mainImage}>
-              <Text style={styles.imagePlaceholder}>🏪</Text>
-              <Text style={styles.imageCaption}>Store Front</Text>
-            </View>
-            <View style={styles.sideImages}>
-              <View style={styles.smallImage}>
-                <Text style={styles.imagePlaceholder}>👟</Text>
-                <Text style={styles.imageCaption}>Sneaker Detail</Text>
-              </View>
-              <View style={styles.smallImage}>
-                <Text style={styles.imagePlaceholder}>👟</Text>
-                <Text style={styles.imageCaption}>Wearing</Text>
-              </View>
-            </View>
-          </View>
-        </View>
-
-        {/* Action Buttons */}
-        <View style={styles.actionButtons}>
-          <TouchableOpacity 
-            style={[styles.followButton, isFollowing && styles.followingButton]}
-            onPress={() => setIsFollowing(!isFollowing)}
-          >
-            <Text style={[styles.followButtonText, isFollowing && styles.followingButtonText]}>
-              {isFollowing ? 'Following' : 'Follow'}
-            </Text>
+        {/* Quick Actions */}
+        <View style={styles.quickActions}>
+          <TouchableOpacity style={styles.messageButton}>
+            <Ionicons name="chatbubble-outline" size={20} color="#FFFFFF" />
+            <Text style={styles.messageButtonText}>Message Seller</Text>
           </TouchableOpacity>
-          
-          <TouchableOpacity style={styles.viewProductsButton}>
-            <Text style={styles.viewProductsButtonText}>View All Products</Text>
+          <TouchableOpacity style={styles.shareButton}>
+            <Ionicons name="share-outline" size={20} color="#6B46C1" />
+            <Text style={styles.shareButtonText}>Share Profile</Text>
           </TouchableOpacity>
+        </View>
+
+        {/* Featured Products */}
+        <View style={styles.featuredSection}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Featured Products</Text>
+            <TouchableOpacity style={styles.viewAllButton}>
+              <Text style={styles.viewAllText}>View All</Text>
+              <Ionicons name="chevron-forward" size={16} color="#6B46C1" />
+            </TouchableOpacity>
+          </View>
+          
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.productsScroll}>
+            {sellerData.products.map((product, index) => (
+              <View key={product.id} style={styles.productCard}>
+                <View style={styles.productImage}>
+                  <Text style={styles.productEmoji}>👟</Text>
+                </View>
+                <View style={styles.productInfo}>
+                  <Text style={styles.productName}>{product.name}</Text>
+                  <Text style={styles.productBrand}>{product.brand}</Text>
+                  <Text style={styles.productPrice}>{product.price}</Text>
+                  <View style={styles.productLocation}>
+                    <Ionicons name="location-outline" size={12} color="#6B7280" />
+                    <Text style={styles.locationText}>{product.location}</Text>
+                  </View>
+                </View>
+              </View>
+            ))}
+          </ScrollView>
         </View>
 
         {/* Seller Tools */}
         <View style={styles.sellerTools}>
           <Text style={styles.sellerToolsTitle}>Seller Tools</Text>
-          <TouchableOpacity 
-            style={styles.demandButton}
-            onPress={() => router.push('/product-demand')}
-          >
-            <Ionicons name="trending-up-outline" size={20} color="#FFFFFF" />
-            <Text style={styles.demandButtonText}>Product Demand Analytics</Text>
-            <Ionicons name="chevron-forward" size={16} color="#FFFFFF" />
-          </TouchableOpacity>
+          <View style={styles.toolsGrid}>
+            <TouchableOpacity 
+              style={styles.toolCard}
+              onPress={() => router.push('/product-demand')}
+            >
+              <View style={styles.toolIcon}>
+                <Ionicons name="trending-up-outline" size={24} color="#6B46C1" />
+              </View>
+              <Text style={styles.toolTitle}>Demand Analytics</Text>
+              <Text style={styles.toolDescription}>View trending products</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity style={styles.toolCard}>
+              <View style={styles.toolIcon}>
+                <Ionicons name="analytics-outline" size={24} color="#6B46C1" />
+              </View>
+              <Text style={styles.toolTitle}>Sales Report</Text>
+              <Text style={styles.toolDescription}>Track your performance</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity style={styles.toolCard}>
+              <View style={styles.toolIcon}>
+                <Ionicons name="storefront-outline" size={24} color="#6B46C1" />
+              </View>
+              <Text style={styles.toolTitle}>My Store</Text>
+              <Text style={styles.toolDescription}>Manage products</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity style={styles.toolCard}>
+              <View style={styles.toolIcon}>
+                <Ionicons name="settings-outline" size={24} color="#6B46C1" />
+              </View>
+              <Text style={styles.toolTitle}>Settings</Text>
+              <Text style={styles.toolDescription}>Account preferences</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </ScrollView>
     </View>
@@ -203,10 +181,10 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1F2937',
+    backgroundColor: '#F8FAFC',
   },
   
-  // Header
+  // Modern Header
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -215,19 +193,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 20,
     backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
   },
   backButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    padding: 8,
   },
-  backText: {
-    fontSize: 16,
-    color: '#FFFFFF',
-    marginLeft: 8,
-    fontWeight: '500',
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1F2937',
   },
   moreButton: {
-    padding: 4,
+    padding: 8,
   },
   
   // Content
@@ -235,23 +213,21 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   
-  // Banner and Avatar
-  bannerContainer: {
-    position: 'relative',
+  // Modern Profile Header
+  profileHeader: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 20,
+    paddingVertical: 24,
+    marginBottom: 12,
   },
-  banner: {
-    height: 200,
-    backgroundColor: '#374151',
-    justifyContent: 'center',
+  avatarSection: {
+    flexDirection: 'row',
     alignItems: 'center',
-  },
-  bannerPlaceholder: {
-    fontSize: 48,
+    marginBottom: 20,
   },
   avatarContainer: {
-    position: 'absolute',
-    bottom: -40,
-    left: 20,
+    position: 'relative',
+    marginRight: 16,
   },
   avatar: {
     width: 80,
@@ -260,243 +236,204 @@ const styles = StyleSheet.create({
     backgroundColor: '#F3F4F6',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 4,
+    borderWidth: 3,
     borderColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   avatarPlaceholder: {
     fontSize: 32,
   },
-  
-  // Seller Information
-  sellerInfo: {
-    backgroundColor: '#FFFFFF',
-    paddingTop: 50,
-    paddingHorizontal: 20,
-    paddingBottom: 20,
+  verifiedBadge: {
+    position: 'absolute',
+    bottom: 2,
+    right: 2,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#10B981',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
   },
-  nameRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 20,
-  },
-  nameContainer: {
+  profileInfo: {
     flex: 1,
   },
   sellerName: {
     fontSize: 24,
-    fontWeight: 'bold',
+    fontWeight: '700',
     color: '#1F2937',
     marginBottom: 4,
   },
   sellerUsername: {
     fontSize: 16,
     color: '#6B7280',
+    marginBottom: 8,
   },
-  actionIcons: {
+  statusContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
   },
-  iconButton: {
-    padding: 8,
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#10B981',
+    marginRight: 6,
   },
-  iconText: {
-    fontSize: 20,
+  statusText: {
+    fontSize: 14,
+    color: '#6B7280',
   },
   
-  // Statistics
-  statsContainer: {
+  // Modern Stats Grid
+  statsGrid: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
+    gap: 12,
   },
-  statItem: {
+  statCard: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    padding: 16,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
   statNumber: {
     fontSize: 20,
-    fontWeight: 'bold',
+    fontWeight: '700',
     color: '#1F2937',
     marginBottom: 4,
   },
   statLabel: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#6B7280',
+    fontWeight: '500',
   },
   
-  // Message Section
-  messageSection: {
-    backgroundColor: '#FFFFFF',
+  // Quick Actions
+  quickActions: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
-  },
-  messageLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  messageAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#F3F4F6',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  messageAvatarPlaceholder: {
-    fontSize: 20,
-  },
-  messageInfo: {
-    flex: 1,
-  },
-  messageName: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#1F2937',
-    marginBottom: 2,
-  },
-  messageTime: {
-    fontSize: 14,
-    color: '#6B7280',
-  },
-  messageRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
     gap: 12,
+    backgroundColor: '#FFFFFF',
+    marginBottom: 12,
   },
   messageButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: '#6B46C1',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 20,
+    paddingVertical: 12,
+    borderRadius: 12,
+    gap: 8,
   },
   messageButtonText: {
     color: '#FFFFFF',
-    fontSize: 14,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  shareButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F3F4F6',
+    paddingVertical: 12,
+    borderRadius: 12,
+    gap: 8,
+  },
+  shareButtonText: {
+    color: '#6B46C1',
+    fontSize: 16,
     fontWeight: '600',
   },
   
-  // Product Section
-  productSection: {
+  // Featured Products
+  featuredSection: {
     backgroundColor: '#FFFFFF',
     paddingHorizontal: 20,
     paddingVertical: 20,
-    borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
+    marginBottom: 12,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
     color: '#1F2937',
-    marginBottom: 16,
   },
-  productDetails: {
-    backgroundColor: '#F9FAFB',
-    borderRadius: 12,
-    padding: 16,
-  },
-  productRow: {
+  viewAllButton: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    gap: 4,
   },
-  productLabel: {
-    fontSize: 16,
-    fontWeight: '500',
+  viewAllText: {
+    fontSize: 14,
     color: '#6B46C1',
-  },
-  productValue: {
-    fontSize: 16,
-    color: '#1F2937',
     fontWeight: '500',
   },
-  
-  // Images Section
-  imagesSection: {
-    backgroundColor: '#FFFFFF',
+  productsScroll: {
+    marginHorizontal: -20,
     paddingHorizontal: 20,
-    paddingVertical: 20,
-    borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
   },
-  imageGrid: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  mainImage: {
-    flex: 2,
-    height: 200,
-    backgroundColor: '#F3F4F6',
+  productCard: {
+    width: 160,
+    backgroundColor: '#F8FAFC',
     borderRadius: 12,
+    marginRight: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    overflow: 'hidden',
+  },
+  productImage: {
+    height: 100,
+    backgroundColor: '#F3F4F6',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  sideImages: {
-    flex: 1,
-    gap: 12,
-  },
-  smallImage: {
-    flex: 1,
-    backgroundColor: '#F3F4F6',
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  imagePlaceholder: {
+  productEmoji: {
     fontSize: 32,
-    marginBottom: 8,
   },
-  imageCaption: {
+  productInfo: {
+    padding: 12,
+  },
+  productName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1F2937',
+    marginBottom: 4,
+  },
+  productBrand: {
     fontSize: 12,
     color: '#6B7280',
-    textAlign: 'center',
+    marginBottom: 4,
   },
-  
-  // Action Buttons
-  actionButtons: {
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 20,
-    paddingVertical: 20,
-    borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
-    gap: 12,
+  productPrice: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#6B46C1',
+    marginBottom: 8,
   },
-  followButton: {
-    backgroundColor: '#6B46C1',
-    paddingVertical: 12,
-    borderRadius: 8,
+  productLocation: {
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 4,
   },
-  followingButton: {
-    backgroundColor: '#F3F4F6',
-  },
-  followButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  followingButtonText: {
-    color: '#374151',
-  },
-  viewProductsButton: {
-    backgroundColor: '#F3F4F6',
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  viewProductsButtonText: {
-    color: '#374151',
-    fontSize: 16,
-    fontWeight: '600',
+  locationText: {
+    fontSize: 10,
+    color: '#6B7280',
   },
   
   // Seller Tools
@@ -504,8 +441,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     paddingHorizontal: 20,
     paddingVertical: 20,
-    borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
   },
   sellerToolsTitle: {
     fontSize: 18,
@@ -513,19 +448,40 @@ const styles = StyleSheet.create({
     color: '#1F2937',
     marginBottom: 16,
   },
-  demandButton: {
+  toolsGrid: {
     flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#6B46C1',
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    borderRadius: 12,
+    flexWrap: 'wrap',
     gap: 12,
   },
-  demandButtonText: {
-    flex: 1,
-    color: '#FFFFFF',
-    fontSize: 16,
+  toolCard: {
+    width: (width - 60) / 2,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  toolIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#F0F9FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  toolTitle: {
+    fontSize: 14,
     fontWeight: '600',
+    color: '#1F2937',
+    marginBottom: 4,
+    textAlign: 'center',
+  },
+  toolDescription: {
+    fontSize: 12,
+    color: '#6B7280',
+    textAlign: 'center',
+    lineHeight: 16,
   },
 });
