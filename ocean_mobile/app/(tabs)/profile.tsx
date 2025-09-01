@@ -182,6 +182,19 @@ export default function ProfileScreen() {
             <Text style={styles.viewProductsButtonText}>View All Products</Text>
           </TouchableOpacity>
         </View>
+
+        {/* Seller Tools */}
+        <View style={styles.sellerTools}>
+          <Text style={styles.sellerToolsTitle}>Seller Tools</Text>
+          <TouchableOpacity 
+            style={styles.demandButton}
+            onPress={() => router.push('/product-demand')}
+          >
+            <Ionicons name="trending-up-outline" size={20} color="#FFFFFF" />
+            <Text style={styles.demandButtonText}>Product Demand Analytics</Text>
+            <Ionicons name="chevron-forward" size={16} color="#FFFFFF" />
+          </TouchableOpacity>
+        </View>
       </ScrollView>
     </View>
   );
@@ -482,6 +495,36 @@ const styles = StyleSheet.create({
   },
   viewProductsButtonText: {
     color: '#374151',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  
+  // Seller Tools
+  sellerTools: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+  },
+  sellerToolsTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1F2937',
+    marginBottom: 16,
+  },
+  demandButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#6B46C1',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    gap: 12,
+  },
+  demandButtonText: {
+    flex: 1,
+    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
   },

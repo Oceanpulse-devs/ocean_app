@@ -46,6 +46,7 @@ export default function TabLayout() {
         name="upload"
         options={{
           title: 'Upload',
+          headerShown: false,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="add-circle" size={size + 4} color={color} />
           ),

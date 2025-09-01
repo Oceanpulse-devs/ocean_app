@@ -40,8 +40,14 @@ export default function SideNavigation({ isVisible, onClose, onNavigate }: SideN
     {
       id: 'product-demand',
       title: 'Product Demand',
-      icon: 'eye-outline',
-      onPress: () => console.log('Product Demand pressed'),
+      icon: 'trending-up-outline',
+      onPress: () => {
+        console.log('Product Demand pressed');
+        if (onNavigate) {
+          onNavigate('product-demand');
+        }
+        onClose();
+      },
     },
     {
       id: 'distress-sale',
@@ -59,26 +65,39 @@ export default function SideNavigation({ isVisible, onClose, onNavigate }: SideN
       id: 'swap-deals',
       title: 'Swap Deals',
       icon: 'swap-horizontal-outline',
-      onPress: () => console.log('Swap Deals pressed'),
+      onPress: () => {
+        console.log('Swap Deals pressed');
+        if (onNavigate) {
+          onNavigate('swap-deal-upload');
+        }
+        onClose();
+      },
     },
     {
       id: 'bulk-purchase',
       title: 'Bulk Purchase',
-      icon: 'documents-outline',
-      onPress: () => console.log('Bulk Purchase pressed'),
+      icon: 'people-outline',
+      onPress: () => {
+        console.log('Bulk Purchase pressed');
+        if (onNavigate) {
+          onNavigate('bulk-purchase-upload');
+        }
+        onClose();
+      },
     },
     {
       id: 'auctions',
       title: 'Auctions',
       icon: 'hammer-outline',
-      onPress: () => console.log('Auctions pressed'),
+      onPress: () => {
+        console.log('Auctions pressed');
+        if (onNavigate) {
+          onNavigate('auctions');
+        }
+        onClose();
+      },
     },
-    {
-      id: 'heavy-distributor',
-      title: 'Heavy Distributor',
-      icon: 'business-outline',
-      onPress: () => console.log('Heavy Distributor pressed'),
-    },
+
     {
       id: 'settings',
       title: 'Settings',

@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { View, StyleSheet, Dimensions } from 'react-native';
+import { View, StyleSheet, Dimensions, StatusBar, Image, Text } from 'react-native';
 import { router } from 'expo-router';
 
 const { width, height } = Dimensions.get('window');
@@ -16,12 +16,20 @@ export default function SplashScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Logo placeholder - will be replaced with actual logo */}
+      <StatusBar barStyle="light-content" backgroundColor="#000000" />
+      
+      {/* Ocean Logo */}
       <View style={styles.logoContainer}>
-        <View style={styles.logo}>
-          <View style={styles.wave1} />
-          <View style={styles.wave2} />
-          <View style={styles.wave3} />
+        <Image 
+          source={require('../assets/images/oceanlogo-removebg-preview (1).png')}
+          style={styles.logo}
+          resizeMode="contain"
+        />
+        
+        {/* App Name */}
+        <View style={styles.appNameContainer}>
+          <Text style={styles.appName}>OCEAN</Text>
+          <Text style={styles.tagline}>Marketplace</Text>
         </View>
       </View>
     </View>
@@ -31,7 +39,7 @@ export default function SplashScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#000000',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -40,37 +48,24 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   logo: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    borderWidth: 3,
-    borderColor: '#6B46C1',
-    justifyContent: 'center',
+    width: 200,
+    height: 200,
+    marginBottom: 30,
+  },
+  appNameContainer: {
     alignItems: 'center',
-    position: 'relative',
   },
-  wave1: {
-    position: 'absolute',
-    width: 80,
-    height: 4,
-    backgroundColor: '#6B46C1',
-    borderRadius: 2,
-    top: 35,
+  appName: {
+    fontSize: 32,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: 4,
+    marginBottom: 8,
   },
-  wave2: {
-    position: 'absolute',
-    width: 60,
-    height: 4,
-    backgroundColor: '#A78BFA',
-    borderRadius: 2,
-    top: 50,
-  },
-  wave3: {
-    position: 'absolute',
-    width: 40,
-    height: 4,
-    backgroundColor: '#C4B5FD',
-    borderRadius: 2,
-    top: 65,
+  tagline: {
+    fontSize: 16,
+    fontWeight: '300',
+    color: '#20E6CC',
+    letterSpacing: 2,
   },
 });

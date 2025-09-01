@@ -627,8 +627,11 @@ export default function FeedScreen() {
                 <View style={styles.notificationBadge} />
               </View>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.headerButton}>
-              <Ionicons name="cart-outline" size={24} color="#1F2937" />
+            <TouchableOpacity 
+              style={styles.headerButton}
+              onPress={() => router.push('/saved')}
+            >
+              <Ionicons name="bookmark-outline" size={24} color="#1F2937" />
             </TouchableOpacity>
           </View>
         </View>
@@ -702,9 +705,21 @@ export default function FeedScreen() {
           } else if (route === 'settings') {
             // Navigate to settings page
             router.push('/settings');
+          } else if (route === 'product-demand') {
+            // Navigate to product demand page
+            router.push('/product-demand');
           } else if (route === 'distress-sale') {
             // Navigate to products page with distress filter
             router.push('/(tabs)/products');
+          } else if (route === 'swap-deal-upload') {
+            // Navigate to swap deal upload page
+            router.push('/swap-deal-upload');
+          } else if (route === 'bulk-purchase-upload') {
+            // Navigate to bulk purchase upload page
+            router.push('/bulk-purchase-upload');
+          } else if (route === 'auctions') {
+            // Navigate to auctions page
+            router.push('/auctions');
           }
         }}
       />
