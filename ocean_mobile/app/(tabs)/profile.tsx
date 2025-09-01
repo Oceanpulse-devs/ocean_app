@@ -21,6 +21,7 @@ export default function ProfileScreen() {
   const sellerData = {
     name: 'MBT CEO',
     username: '@mbt_ceo',
+    bio: 'Premium sneaker reseller with authentic products. Specializing in limited editions and rare finds. Fast shipping across Nigeria! 👟✨',
     posts: 46,
     followers: '2.8K',
     following: 200,
@@ -64,31 +65,32 @@ export default function ProfileScreen() {
                 <Ionicons name="checkmark" size={12} color="#FFFFFF" />
               </View>
             </View>
-            <View style={styles.profileInfo}>
-              <Text style={styles.sellerName}>{sellerData.name}</Text>
-              <Text style={styles.sellerUsername}>{sellerData.username}</Text>
-              <View style={styles.statusContainer}>
-                <View style={styles.statusDot} />
-                <Text style={styles.statusText}>Active {sellerData.lastActive}</Text>
-              </View>
-            </View>
+                         <View style={styles.profileInfo}>
+               <Text style={styles.sellerName}>{sellerData.name}</Text>
+               <Text style={styles.sellerUsername}>{sellerData.username}</Text>
+               <View style={styles.statusContainer}>
+                 <View style={styles.statusDot} />
+                 <Text style={styles.statusText}>Active {sellerData.lastActive}</Text>
+               </View>
+               <Text style={styles.bioText}>{sellerData.bio}</Text>
+             </View>
           </View>
 
-          {/* Modern Stats */}
-          <View style={styles.statsGrid}>
-            <View style={styles.statCard}>
-              <Text style={styles.statNumber}>{sellerData.posts}</Text>
-              <Text style={styles.statLabel}>Products</Text>
-            </View>
-            <View style={styles.statCard}>
-              <Text style={styles.statNumber}>{sellerData.followers}</Text>
-              <Text style={styles.statLabel}>Followers</Text>
-            </View>
-            <View style={styles.statCard}>
-              <Text style={styles.statNumber}>{sellerData.following}</Text>
-              <Text style={styles.statLabel}>Following</Text>
-            </View>
-          </View>
+                     {/* Modern Stats */}
+           <View style={styles.statsGrid}>
+             <TouchableOpacity style={styles.statCard} onPress={() => router.push('/my-products')}>
+               <Text style={styles.statNumber}>{sellerData.posts}</Text>
+               <Text style={styles.statLabel}>Products</Text>
+             </TouchableOpacity>
+             <TouchableOpacity style={styles.statCard} onPress={() => router.push('/followers' as any)}>
+               <Text style={styles.statNumber}>{sellerData.followers}</Text>
+               <Text style={styles.statLabel}>Followers</Text>
+             </TouchableOpacity>
+             <TouchableOpacity style={styles.statCard} onPress={() => router.push('/following' as any)}>
+               <Text style={styles.statNumber}>{sellerData.following}</Text>
+               <Text style={styles.statLabel}>Following</Text>
+             </TouchableOpacity>
+           </View>
         </View>
 
         {/* Quick Actions */}
@@ -137,40 +139,40 @@ export default function ProfileScreen() {
         <View style={styles.sellerTools}>
           <Text style={styles.sellerToolsTitle}>Seller Tools</Text>
           <View style={styles.toolsGrid}>
-            <TouchableOpacity 
-              style={styles.toolCard}
-              onPress={() => router.push('/product-demand')}
-            >
-              <View style={styles.toolIcon}>
-                <Ionicons name="trending-up-outline" size={24} color="#6B46C1" />
-              </View>
-              <Text style={styles.toolTitle}>Demand Analytics</Text>
-              <Text style={styles.toolDescription}>View trending products</Text>
-            </TouchableOpacity>
+                         <TouchableOpacity 
+               style={styles.toolCard}
+               onPress={() => router.push('/product-demand')}
+             >
+               <View style={styles.toolIcon}>
+                 <Ionicons name="trending-up-outline" size={24} color="#10B981" />
+               </View>
+               <Text style={styles.toolTitle}>Demand Analytics</Text>
+               <Text style={styles.toolDescription}>View trending products</Text>
+             </TouchableOpacity>
             
-            <TouchableOpacity style={styles.toolCard}>
-              <View style={styles.toolIcon}>
-                <Ionicons name="analytics-outline" size={24} color="#6B46C1" />
-              </View>
-              <Text style={styles.toolTitle}>Sales Report</Text>
-              <Text style={styles.toolDescription}>Track your performance</Text>
-            </TouchableOpacity>
+                         <TouchableOpacity style={styles.toolCard}>
+               <View style={styles.toolIcon}>
+                 <Ionicons name="analytics-outline" size={24} color="#F59E0B" />
+               </View>
+               <Text style={styles.toolTitle}>Sales Report</Text>
+               <Text style={styles.toolDescription}>Track your performance</Text>
+             </TouchableOpacity>
             
-            <TouchableOpacity style={styles.toolCard}>
-              <View style={styles.toolIcon}>
-                <Ionicons name="storefront-outline" size={24} color="#6B46C1" />
-              </View>
-              <Text style={styles.toolTitle}>My Store</Text>
-              <Text style={styles.toolDescription}>Manage products</Text>
-            </TouchableOpacity>
+                         <TouchableOpacity style={styles.toolCard}>
+               <View style={styles.toolIcon}>
+                 <Ionicons name="storefront-outline" size={24} color="#10B981" />
+               </View>
+               <Text style={styles.toolTitle}>My Store</Text>
+               <Text style={styles.toolDescription}>Manage products</Text>
+             </TouchableOpacity>
             
-            <TouchableOpacity style={styles.toolCard}>
-              <View style={styles.toolIcon}>
-                <Ionicons name="settings-outline" size={24} color="#6B46C1" />
-              </View>
-              <Text style={styles.toolTitle}>Settings</Text>
-              <Text style={styles.toolDescription}>Account preferences</Text>
-            </TouchableOpacity>
+                         <TouchableOpacity style={styles.toolCard}>
+               <View style={styles.toolIcon}>
+                 <Ionicons name="settings-outline" size={24} color="#F59E0B" />
+               </View>
+               <Text style={styles.toolTitle}>Settings</Text>
+               <Text style={styles.toolDescription}>Account preferences</Text>
+             </TouchableOpacity>
           </View>
         </View>
       </ScrollView>
@@ -254,7 +256,7 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: '#10B981',
+    backgroundColor: '#3B82F6',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
@@ -289,6 +291,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#6B7280',
   },
+  bioText: {
+    fontSize: 14,
+    color: '#374151',
+    lineHeight: 20,
+    marginTop: 8,
+    fontStyle: 'italic',
+  },
   
   // Modern Stats Grid
   statsGrid: {
@@ -303,6 +312,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
   },
   statNumber: {
     fontSize: 20,
@@ -330,10 +344,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#6B46C1',
+    backgroundColor: '#8B5CF6',
     paddingVertical: 12,
     borderRadius: 12,
     gap: 8,
+    shadowColor: '#8B5CF6',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
   },
   messageButtonText: {
     color: '#FFFFFF',
@@ -351,7 +370,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   shareButtonText: {
-    color: '#6B46C1',
+    color: '#10B981',
     fontSize: 16,
     fontWeight: '600',
   },
@@ -381,7 +400,7 @@ const styles = StyleSheet.create({
   },
   viewAllText: {
     fontSize: 14,
-    color: '#6B46C1',
+    color: '#F59E0B',
     fontWeight: '500',
   },
   productsScroll: {
@@ -423,7 +442,7 @@ const styles = StyleSheet.create({
   productPrice: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#6B46C1',
+    color: '#10B981',
     marginBottom: 8,
   },
   productLocation: {
@@ -466,7 +485,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#F0F9FF',
+    backgroundColor: '#FEF3C7',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 12,

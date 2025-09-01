@@ -86,6 +86,18 @@ export default function SideNavigation({ isVisible, onClose, onNavigate }: SideN
       },
     },
     {
+      id: 'heavy-distributor',
+      title: 'Heavy Distributor',
+      icon: 'business-outline',
+      onPress: () => {
+        console.log('Heavy Distributor pressed');
+        if (onNavigate) {
+          onNavigate('heavy-distributor');
+        }
+        onClose();
+      },
+    },
+    {
       id: 'auctions',
       title: 'Auctions',
       icon: 'hammer-outline',

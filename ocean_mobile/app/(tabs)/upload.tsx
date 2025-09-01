@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -12,13 +12,24 @@ import {
   Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 
 export default function UploadScreen() {
+  const params = useLocalSearchParams();
   const [selectedUploadType, setSelectedUploadType] = useState<string | null>(null);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [showFeedSubSelection, setShowFeedSubSelection] = useState(false);
   const [userType, setUserType] = useState<'buyer' | 'seller'>('seller'); // Mock user type
+
+  // Handle query parameter for direct navigation to product form
+  useEffect(() => {
+    if (params.type === 'product') {
+      const productOption = uploadOptions.find(option => option.id === 'product');
+      if (productOption) {
+        handleUploadOptionPress(productOption);
+      }
+    }
+  }, [params.type]);
 
   // Upload options configuration
   const uploadOptions = [

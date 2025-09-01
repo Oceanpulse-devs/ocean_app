@@ -17,6 +17,101 @@ import SideNavigation from '../../components/SideNavigation';
 
 const { width, height } = Dimensions.get('window');
 
+// Mock data for user stories (24-hour temporary content)
+const mockStories = [
+  {
+    id: '1',
+    user: {
+      name: 'Sarah Johnson',
+      avatar: '👩‍💼',
+      verified: true,
+      isFollowing: true,
+    },
+    hasStory: true,
+    storyCount: 3,
+    lastStoryTime: '2 hours ago',
+    isViewed: false,
+  },
+  {
+    id: '2',
+    user: {
+      name: 'TechStore NG',
+      avatar: '🏪',
+      verified: true,
+      isFollowing: true,
+    },
+    hasStory: true,
+    storyCount: 1,
+    lastStoryTime: '5 hours ago',
+    isViewed: true,
+  },
+  {
+    id: '3',
+    user: {
+      name: 'Mike Johnson',
+      avatar: '👨‍💼',
+      verified: false,
+      isFollowing: true,
+    },
+    hasStory: true,
+    storyCount: 2,
+    lastStoryTime: '1 hour ago',
+    isViewed: false,
+  },
+  {
+    id: '4',
+    user: {
+      name: 'Emma Davis',
+      avatar: '👩‍🎨',
+      verified: false,
+      isFollowing: true,
+    },
+    hasStory: false,
+    storyCount: 0,
+    lastStoryTime: null,
+    isViewed: false,
+  },
+  {
+    id: '5',
+    user: {
+      name: 'Alex Chen',
+      avatar: '👨‍💻',
+      verified: true,
+      isFollowing: true,
+    },
+    hasStory: true,
+    storyCount: 4,
+    lastStoryTime: '30 min ago',
+    isViewed: false,
+  },
+  {
+    id: '6',
+    user: {
+      name: 'Fashion Hub',
+      avatar: '👗',
+      verified: true,
+      isFollowing: true,
+    },
+    hasStory: true,
+    storyCount: 1,
+    lastStoryTime: '8 hours ago',
+    isViewed: true,
+  },
+  {
+    id: '7',
+    user: {
+      name: 'Add Story',
+      avatar: '+',
+      verified: false,
+      isFollowing: false,
+  },
+    hasStory: false,
+    storyCount: 0,
+    lastStoryTime: null,
+    isViewed: false,
+  },
+];
+
 // Mock data for feed posts (mixed seller and buyer posts)
 const mockPosts = [
   {
@@ -663,32 +758,65 @@ export default function FeedScreen() {
         contentContainerStyle={styles.feedContainer}
         ListHeaderComponent={
           <View style={styles.storiesContainer}>
-            <Text style={styles.storiesTitle}>Trending Now</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              <TouchableOpacity style={styles.storyItem}>
-                <View style={styles.storyAvatar}>
-                  <Text style={styles.storyEmoji}>🔥</Text>
-                </View>
-                <Text style={styles.storyText}>Hot Deals</Text>
+            <View style={styles.storiesHeader}>
+              <Text style={styles.storiesTitle}>Stories</Text>
+              <TouchableOpacity style={styles.viewAllButton}>
+                <Text style={styles.viewAllText}>View All</Text>
+                <Ionicons name="chevron-forward" size={16} color="#6B46C1" />
               </TouchableOpacity>
-              <TouchableOpacity style={styles.storyItem}>
-                <View style={styles.storyAvatar}>
-                  <Text style={styles.storyEmoji}>⚡</Text>
-                </View>
-                <Text style={styles.storyText}>Flash Sales</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.storyItem}>
-                <View style={styles.storyAvatar}>
-                  <Text style={styles.storyEmoji}>🎯</Text>
-                </View>
-                <Text style={styles.storyText}>Group Buys</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.storyItem}>
-                <View style={styles.storyAvatar}>
-                  <Text style={styles.storyEmoji}>🔄</Text>
-                </View>
-                <Text style={styles.storyText}>Swap Deals</Text>
-              </TouchableOpacity>
+            </View>
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.storiesScrollContainer}
+            >
+              {mockStories.map((story, index) => (
+                <TouchableOpacity 
+                  key={story.id} 
+                  style={styles.storyItem}
+                  onPress={() => {
+                    if (story.id === '7') {
+                      // Add story functionality
+                      router.push('/(tabs)/upload?type=story');
+                    } else if (story.hasStory) {
+                      router.push(`/story/${story.id}`);
+                    }
+                  }}
+                >
+                  <View style={[
+                    styles.storyRing, 
+                    story.hasStory && !story.isViewed 
+                      ? styles.storyRingUnviewed 
+                      : story.hasStory && story.isViewed 
+                        ? styles.storyRingViewed 
+                        : styles.storyRingNoStory
+                  ]}>
+                    <View style={styles.storyAvatar}>
+                      <Text style={styles.storyEmoji}>{story.user.avatar}</Text>
+                      {story.user.verified && (
+                        <View style={styles.verifiedBadge}>
+                          <Ionicons name="checkmark" size={8} color="#FFFFFF" />
+                        </View>
+                      )}
+                      {story.hasStory && story.storyCount > 1 && (
+                        <View style={styles.storyCountBadge}>
+                          <Text style={styles.storyCountText}>{story.storyCount}</Text>
+                        </View>
+                      )}
+                    </View>
+                  </View>
+                  <View style={styles.storyInfo}>
+                    <Text style={styles.storyName} numberOfLines={1}>
+                      {story.id === '7' ? 'Add Story' : story.user.name}
+                    </Text>
+                    {story.hasStory && story.lastStoryTime && (
+                      <Text style={styles.storyTime} numberOfLines={1}>
+                        {story.lastStoryTime}
+                      </Text>
+                    )}
+                  </View>
+                </TouchableOpacity>
+              ))}
             </ScrollView>
           </View>
         }
@@ -710,13 +838,16 @@ export default function FeedScreen() {
             router.push('/product-demand');
           } else if (route === 'distress-sale') {
             // Navigate to products page with distress filter
-            router.push('/(tabs)/products');
+            router.push('/(tabs)/products?distress=true');
           } else if (route === 'swap-deal-upload') {
             // Navigate to swap deal upload page
             router.push('/swap-deal-upload');
           } else if (route === 'bulk-purchase-upload') {
             // Navigate to bulk purchase upload page
             router.push('/bulk-purchase-upload');
+          } else if (route === 'heavy-distributor') {
+            // Navigate to heavy distributor page
+            router.push('/heavy-distributor');
           } else if (route === 'auctions') {
             // Navigate to auctions page
             router.push('/auctions');
@@ -790,33 +921,112 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     marginBottom: 10,
   },
-  storiesTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1F2937',
+  storiesHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 16,
+  },
+  storiesTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1F2937',
+  },
+  viewAllButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  viewAllText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#6B46C1',
+  },
+  storiesScrollContainer: {
+    paddingRight: 20,
   },
   storyItem: {
     alignItems: 'center',
-    marginRight: 20,
+    marginRight: 16,
+    width: 80,
   },
-  storyAvatar: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#F3F4F6',
+  storyRing: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    borderWidth: 3,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 8,
+  },
+  storyRingUnviewed: {
+    borderColor: '#E91E63',
+    borderWidth: 3,
+  },
+  storyRingViewed: {
+    borderColor: '#9CA3AF',
     borderWidth: 2,
-    borderColor: '#6B46C1',
+  },
+  storyRingNoStory: {
+    borderColor: '#E5E7EB',
+    borderWidth: 2,
+  },
+  storyAvatar: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
   },
   storyEmoji: {
-    fontSize: 24,
+    fontSize: 28,
   },
-  storyText: {
+  verifiedBadge: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: '#3B82F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+  },
+  storyCountBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    backgroundColor: '#EF4444',
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+  },
+  storyCountText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  storyInfo: {
+    alignItems: 'center',
+    width: '100%',
+  },
+  storyName: {
     fontSize: 12,
-    color: '#6B7280',
+    fontWeight: '600',
+    color: '#1F2937',
+    textAlign: 'center',
+    marginBottom: 2,
+  },
+  storyTime: {
+    fontSize: 10,
+    color: '#9CA3AF',
     textAlign: 'center',
   },
   

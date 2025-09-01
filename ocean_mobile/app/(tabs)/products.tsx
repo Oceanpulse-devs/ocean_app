@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,11 +11,13 @@ import {
   Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 
 const { width } = Dimensions.get('window');
 
 export default function ProductsScreen() {
+  const params = useLocalSearchParams();
+  
   // Mock product data
   const mockProducts = [
     {
@@ -219,6 +221,13 @@ export default function ProductsScreen() {
   const [showDistressOnly, setShowDistressOnly] = useState(false);
   const [products, setProducts] = useState(mockProducts);
 
+  // Handle distress parameter from navigation
+  useEffect(() => {
+    if (params.distress === 'true') {
+      setShowDistressOnly(true);
+    }
+  }, [params.distress]);
+
   const categories = [
     'All',
     'Electronics',
@@ -395,9 +404,6 @@ export default function ProductsScreen() {
                <Ionicons name="notifications-outline" size={24} color="#1F2937" />
                <View style={styles.notificationBadge} />
              </View>
-           </TouchableOpacity>
-           <TouchableOpacity style={styles.headerButton}>
-             <Ionicons name="cart-outline" size={24} color="#1F2937" />
            </TouchableOpacity>
          </View>
        </View>
