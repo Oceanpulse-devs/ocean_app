@@ -6,6 +6,7 @@ import {
   TextInput,
   TouchableOpacity,
   Dimensions,
+  ScrollView,
 } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -15,31 +16,39 @@ const { width } = Dimensions.get('window');
 export default function CreateAccountScreen() {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
+  const [country, setCountry] = useState('');
+  const [city, setCity] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  const handleNext = () => {
-    if (fullName && email) {
-      router.push('/auth/create-account-step2');
+  const handleGetStarted = () => {
+    if (fullName && email && country && city && password && confirmPassword && password === confirmPassword) {
+      router.push('/auth/otp-verification');
     }
   };
+
+  const togglePasswordVisibility = () => setShowPassword(!showPassword);
+  const toggleConfirmPasswordVisibility = () => setShowConfirmPassword(!showConfirmPassword);
 
   const handleSignIn = () => {
     router.push('/auth/login');
   };
 
   return (
-    <View style={styles.container}>
-      {/* Logo */}
-      <View style={styles.logoContainer}>
-        <View style={styles.logo}>
-          <View style={styles.wave1} />
-          <View style={styles.wave2} />
+    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+      <View style={styles.content}>
+        {/* Logo */}
+        <View style={styles.logoContainer}>
+          <View style={styles.logo}>
+            <View style={styles.wave1} />
+            <View style={styles.wave2} />
+          </View>
         </View>
-      </View>
 
-      {/* Title */}
-      <Text style={styles.title}>Create your Account</Text>
-
-
+        {/* Title */}
+        <Text style={styles.title}>Create your Account</Text>
 
       {/* Input Fields */}
       <View style={styles.inputContainer}>
@@ -67,13 +76,89 @@ export default function CreateAccountScreen() {
           />
         </View>
 
+        <View style={styles.inputField}>
+          <Ionicons name="globe" size={20} color="#6B7280" style={styles.inputIcon} />
+          <TextInput
+            style={styles.textInput}
+            placeholder="Country"
+            value={country}
+            onChangeText={setCountry}
+            placeholderTextColor="#9CA3AF"
+          />
+          <Ionicons name="chevron-down" size={20} color="#6B7280" />
+        </View>
+
+        <View style={styles.inputField}>
+          <Ionicons name="business" size={20} color="#6B7280" style={styles.inputIcon} />
+          <TextInput
+            style={styles.textInput}
+            placeholder="City"
+            value={city}
+            onChangeText={setCity}
+            placeholderTextColor="#9CA3AF"
+          />
+          <Ionicons name="chevron-down" size={20} color="#6B7280" />
+        </View>
+
+        <View style={styles.inputField}>
+          <Ionicons name="lock-closed" size={20} color="#6B7280" style={styles.inputIcon} />
+          <TextInput
+            style={styles.textInput}
+            placeholder="Create Password"
+            value={password}
+            onChangeText={setPassword}
+            placeholderTextColor="#9CA3AF"
+            secureTextEntry={!showPassword}
+          />
+          <TouchableOpacity onPress={togglePasswordVisibility}>
+            <Ionicons 
+              name={showPassword ? "eye-off" : "eye"} 
+              size={20} 
+              color="#6B7280" 
+            />
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.inputField}>
+          <Ionicons name="lock-closed" size={20} color="#6B7280" style={styles.inputIcon} />
+          <TextInput
+            style={styles.textInput}
+            placeholder="Confirm Password"
+            value={confirmPassword}
+            onChangeText={setConfirmPassword}
+            placeholderTextColor="#9CA3AF"
+            secureTextEntry={!showConfirmPassword}
+          />
+          <TouchableOpacity onPress={toggleConfirmPasswordVisibility}>
+            <Ionicons 
+              name={showConfirmPassword ? "eye-off" : "eye"} 
+              size={20} 
+              color="#6B7280" 
+            />
+          </TouchableOpacity>
+        </View>
 
       </View>
 
-      {/* Next Button */}
-      <TouchableOpacity style={styles.nextButton} onPress={handleNext}>
-        <Text style={styles.nextButtonText}>Next</Text>
+      {/* Get Started Button */}
+      <TouchableOpacity style={styles.getStartedButton} onPress={handleGetStarted}>
+        <Text style={styles.getStartedButtonText}>Get Started</Text>
       </TouchableOpacity>
+
+      {/* Separator */}
+      <View style={styles.separator}>
+        <View style={styles.separatorLine} />
+        <Text style={styles.separatorText}>OR</Text>
+        <View style={styles.separatorLine} />
+      </View>
+
+      {/* Social Login Buttons */}
+      <View style={styles.socialContainer}>
+        <TouchableOpacity style={styles.socialButton}>
+          <Ionicons name="logo-google" size={20} color="#DB4437" />
+          <Text style={styles.socialButtonText}>Sign Up with Google</Text>
+        </TouchableOpacity>
+      </View>
 
       {/* Footer */}
       <View style={styles.footer}>
@@ -84,7 +169,8 @@ export default function CreateAccountScreen() {
           </Text>
         </Text>
       </View>
-    </View>
+      </View>
+    </ScrollView>
   );
 }
 
@@ -92,8 +178,11 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FFFFFF',
+  },
+  content: {
     paddingHorizontal: 24,
     paddingTop: 60,
+    paddingBottom: 40,
   },
   logoContainer: {
     alignItems: 'center',
@@ -155,7 +244,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#1F2937',
   },
-  nextButton: {
+  getStartedButton: {
     backgroundColor: '#6B46C1',
     paddingVertical: 16,
     borderRadius: 12,
@@ -170,10 +259,46 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 8,
   },
-  nextButtonText: {
+  getStartedButtonText: {
     color: '#FFFFFF',
     fontSize: 18,
     fontWeight: '600',
+  },
+  separator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 32,
+  },
+  separatorLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#E5E7EB',
+  },
+  separatorText: {
+    marginHorizontal: 16,
+    color: '#6B7280',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  socialContainer: {
+    marginBottom: 32,
+  },
+  socialButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 12,
+    paddingVertical: 16,
+    marginBottom: 16,
+    backgroundColor: '#FFFFFF',
+  },
+  socialButtonText: {
+    marginLeft: 12,
+    fontSize: 16,
+    color: '#1F2937',
+    fontWeight: '500',
   },
   footer: {
     alignItems: 'center',

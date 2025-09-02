@@ -6,6 +6,7 @@ import {
   Dimensions,
   ScrollView,
   TouchableOpacity,
+  Image,
 } from 'react-native';
 import { router } from 'expo-router';
 
@@ -19,17 +20,17 @@ export default function OnboardingScreen() {
     {
       title: 'Post what you Sell',
       description: 'Share your products with the world',
-      illustration: '📱💬', // Placeholder emoji - will be replaced with actual illustration
+      image: require('../../assets/images/onboarding1.png'),
     },
     {
       title: 'Buy what you see',
       description: 'Discover amazing products from others',
-      illustration: '🛍️📱', // Placeholder emoji - will be replaced with actual illustration
+      image: require('../../assets/images/onboaridng2.png'),
     },
     {
       title: 'Buy, Sell & Socialise',
       description: 'Connect with buyers and sellers',
-      illustration: '👥📍', // Placeholder emoji - will be replaced with actual illustration
+      image: require('../../assets/images/onboaring3.png'),
     },
   ];
 
@@ -66,12 +67,13 @@ export default function OnboardingScreen() {
       >
         {onboardingData.map((item, index) => (
           <View key={index} style={styles.slide}>
-            {/* Illustration Placeholder */}
-            <View style={styles.illustrationContainer}>
-              <Text style={styles.illustrationPlaceholder}>{item.illustration}</Text>
-              <View style={styles.illustrationBox}>
-                {/* This will be replaced with actual illustrations */}
-              </View>
+            {/* Onboarding Image */}
+            <View style={styles.imageContainer}>
+              <Image
+                source={item.image}
+                style={styles.onboardingImage}
+                resizeMode="contain"
+              />
             </View>
 
             {/* Title */}
@@ -130,24 +132,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 40,
   },
-  illustrationContainer: {
+  imageContainer: {
     alignItems: 'center',
     marginBottom: 40,
-  },
-  illustrationPlaceholder: {
-    fontSize: 80,
-    marginBottom: 20,
-  },
-  illustrationBox: {
-    width: 200,
-    height: 200,
-    backgroundColor: '#F3F4F6',
-    borderRadius: 20,
+    width: '100%',
+    height: height * 0.4,
     justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#E5E7EB',
-    borderStyle: 'dashed',
+  },
+  onboardingImage: {
+    width: '100%',
+    height: '100%',
+    maxWidth: 300,
+    maxHeight: 300,
   },
   title: {
     fontSize: 28,

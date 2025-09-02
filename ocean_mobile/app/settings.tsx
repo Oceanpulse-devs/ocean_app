@@ -7,17 +7,19 @@ import {
   TouchableOpacity,
   Switch,
   Dimensions,
+  StatusBar,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import { useTheme } from '../contexts/ThemeContext';
 
 const { width, height } = Dimensions.get('window');
 
 export default function SettingsScreen() {
+  const { isDarkMode, toggleDarkMode, colors } = useTheme();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [locationSharing, setLocationSharing] = useState(true);
-  const [darkMode, setDarkMode] = useState(false);
   const [autoSave, setAutoSave] = useState(true);
 
   const settingsSections = [
@@ -177,8 +179,8 @@ export default function SettingsScreen() {
           subtitle: 'Switch between light and dark themes',
           icon: 'moon-outline',
           type: 'switch',
-          value: darkMode,
-          onValueChange: setDarkMode,
+          value: isDarkMode,
+          onValueChange: toggleDarkMode,
         },
         {
           id: 'language',
@@ -204,16 +206,16 @@ export default function SettingsScreen() {
     return (
       <TouchableOpacity
         key={item.id}
-        style={styles.settingItem}
+        style={dynamicStyles.settingItem}
         onPress={item.type === 'navigate' ? item.onPress : undefined}
       >
         <View style={styles.settingLeft}>
-          <View style={styles.iconContainer}>
-            <Ionicons name={item.icon as any} size={20} color="#6B46C1" />
+          <View style={dynamicStyles.iconContainer}>
+            <Ionicons name={item.icon as any} size={20} color={colors.primary} />
           </View>
           <View style={styles.settingText}>
-            <Text style={styles.settingTitle}>{item.title}</Text>
-            <Text style={styles.settingSubtitle}>{item.subtitle}</Text>
+            <Text style={dynamicStyles.settingTitle}>{item.title}</Text>
+            <Text style={dynamicStyles.settingSubtitle}>{item.subtitle}</Text>
           </View>
         </View>
         
@@ -221,25 +223,149 @@ export default function SettingsScreen() {
           <Switch
             value={item.value}
             onValueChange={item.onValueChange}
-            trackColor={{ false: '#E5E7EB', true: '#6B46C1' }}
+            trackColor={{ false: colors.border, true: colors.primary }}
             thumbColor={item.value ? '#FFFFFF' : '#FFFFFF'}
           />
         ) : (
-          <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+          <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
         )}
       </TouchableOpacity>
     );
   };
 
+  const dynamicStyles = StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    header: {
+      backgroundColor: colors.surface,
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingTop: 50,
+      paddingBottom: 20,
+      paddingHorizontal: 20,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    backText: {
+      fontSize: 16,
+      color: colors.text,
+      marginLeft: 8,
+      fontWeight: '500',
+    },
+    headerTitle: {
+      fontSize: 20,
+      fontWeight: 'bold',
+      color: colors.text,
+    },
+    sectionTitle: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: colors.text,
+      marginBottom: 12,
+      paddingHorizontal: 4,
+    },
+    sectionContent: {
+      backgroundColor: colors.surface,
+      borderRadius: 12,
+      overflow: 'hidden',
+      shadowColor: '#000',
+      shadowOffset: {
+        width: 0,
+        height: 1,
+      },
+      shadowOpacity: 0.05,
+      shadowRadius: 3,
+      elevation: 2,
+    },
+    settingItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 16,
+      paddingVertical: 16,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    iconContainer: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: colors.border,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginRight: 16,
+    },
+    settingTitle: {
+      fontSize: 16,
+      fontWeight: '500',
+      color: colors.text,
+      marginBottom: 2,
+    },
+    settingSubtitle: {
+      fontSize: 14,
+      color: colors.textSecondary,
+    },
+    actionButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.surface,
+      paddingHorizontal: 16,
+      paddingVertical: 16,
+      borderRadius: 12,
+      marginBottom: 12,
+      shadowColor: '#000',
+      shadowOffset: {
+        width: 0,
+        height: 1,
+      },
+      shadowOpacity: 0.05,
+      shadowRadius: 3,
+      elevation: 2,
+    },
+    actionButtonText: {
+      fontSize: 16,
+      color: colors.text,
+      marginLeft: 16,
+      fontWeight: '500',
+    },
+    versionText: {
+      fontSize: 14,
+      color: colors.textSecondary,
+    },
+    signOutButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: 24,
+      paddingVertical: 16,
+      borderRadius: 12,
+      marginBottom: 12,
+    },
+    signOutButtonText: {
+      fontSize: 16,
+      color: '#FFFFFF',
+      marginLeft: 12,
+      fontWeight: '600',
+    },
+  });
+
   return (
-    <View style={styles.container}>
+    <View style={dynamicStyles.container}>
+      <StatusBar 
+        barStyle={isDarkMode ? "light-content" : "dark-content"} 
+        backgroundColor={colors.surface} 
+        translucent 
+      />
       {/* Header */}
-      <View style={styles.header}>
+      <View style={dynamicStyles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={24} color="#1F2937" />
-          <Text style={styles.backText}>Back</Text>
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
+          <Text style={dynamicStyles.backText}>Back</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Settings</Text>
+        <Text style={dynamicStyles.headerTitle}>Settings</Text>
         <View style={styles.headerRight} />
       </View>
 
@@ -247,8 +373,8 @@ export default function SettingsScreen() {
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {settingsSections.map((section, sectionIndex) => (
           <View key={sectionIndex} style={styles.section}>
-            <Text style={styles.sectionTitle}>{section.title}</Text>
-            <View style={styles.sectionContent}>
+            <Text style={dynamicStyles.sectionTitle}>{section.title}</Text>
+            <View style={dynamicStyles.sectionContent}>
               {section.items.map((item) => renderSettingItem(item))}
             </View>
           </View>
@@ -256,25 +382,39 @@ export default function SettingsScreen() {
 
         {/* Additional Actions */}
         <View style={styles.additionalActions}>
-          <TouchableOpacity style={styles.actionButton}>
-            <Ionicons name="help-circle-outline" size={20} color="#6B46C1" />
-            <Text style={styles.actionButtonText}>Help & Support</Text>
+          <TouchableOpacity style={dynamicStyles.actionButton}>
+            <Ionicons name="help-circle-outline" size={20} color={colors.primary} />
+            <Text style={dynamicStyles.actionButtonText}>Help & Support</Text>
           </TouchableOpacity>
           
-          <TouchableOpacity style={styles.actionButton}>
-            <Ionicons name="document-text-outline" size={20} color="#6B46C1" />
-            <Text style={styles.actionButtonText}>Terms of Service</Text>
+          <TouchableOpacity style={dynamicStyles.actionButton}>
+            <Ionicons name="document-text-outline" size={20} color={colors.primary} />
+            <Text style={dynamicStyles.actionButtonText}>Terms of Service</Text>
           </TouchableOpacity>
           
-          <TouchableOpacity style={styles.actionButton}>
-            <Ionicons name="shield-checkmark-outline" size={20} color="#6B46C1" />
-            <Text style={styles.actionButtonText}>Privacy Policy</Text>
+          <TouchableOpacity style={dynamicStyles.actionButton}>
+            <Ionicons name="shield-checkmark-outline" size={20} color={colors.primary} />
+            <Text style={dynamicStyles.actionButtonText}>Privacy Policy</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Sign Out Button */}
+        <View style={styles.signOutSection}>
+          <TouchableOpacity 
+            style={[dynamicStyles.signOutButton, { backgroundColor: colors.error }]}
+            onPress={() => {
+              // TODO: Implement logout functionality
+              console.log('Sign out pressed');
+            }}
+          >
+            <Ionicons name="log-out-outline" size={20} color="#FFFFFF" />
+            <Text style={dynamicStyles.signOutButtonText}>Sign Out</Text>
           </TouchableOpacity>
         </View>
 
         {/* App Version */}
         <View style={styles.versionContainer}>
-          <Text style={styles.versionText}>Ocean Marketplace v1.0.0</Text>
+          <Text style={dynamicStyles.versionText}>Ocean Marketplace v1.0.0</Text>
         </View>
       </ScrollView>
     </View>
@@ -390,6 +530,9 @@ const styles = StyleSheet.create({
   
   // Additional Actions
   additionalActions: {
+    marginBottom: 24,
+  },
+  signOutSection: {
     marginBottom: 24,
   },
   actionButton: {
