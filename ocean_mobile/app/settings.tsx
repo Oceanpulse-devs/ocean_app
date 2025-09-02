@@ -34,11 +34,11 @@ export default function SettingsScreen() {
         },
         {
           id: 'verification',
-          title: 'Verification Status',
+          title: 'Seller Verification',
           subtitle: 'Get verified seller badge',
           icon: 'checkmark-circle-outline',
           type: 'navigate',
-          onPress: () => console.log('Verification'),
+          onPress: () => router.push('/seller-verification-requirements'),
         },
         {
           id: 'privacy',

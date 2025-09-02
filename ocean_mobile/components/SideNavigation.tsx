@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   Dimensions,
   Animated,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -130,14 +131,25 @@ export default function SideNavigation({ isVisible, onClose, onNavigate }: SideN
     <View style={styles.overlay}>
       <TouchableOpacity style={styles.backdrop} onPress={onClose} />
       <Animated.View style={[styles.sideNav, { transform: [{ translateX: slideAnim }] }]}>
-        {/* Header with Close Button */}
+        {/* Header with Logo and Close Button */}
         <View style={styles.header}>
-          <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-            <Ionicons name="close" size={24} color="#1F2937" />
-          </TouchableOpacity>
+          <View style={styles.headerContent}>
+            <View style={styles.logoContainer}>
+              <Image
+                source={require('../assets/images/oceanlogo-removebg-preview (1).png')}
+                style={styles.logo}
+                resizeMode="contain"
+              />
+              <View style={styles.appNameContainer}>
+                <Text style={styles.appName}>OCEAN</Text>
+                <Text style={styles.tagline}>Marketplace</Text>
+              </View>
+            </View>
+            <TouchableOpacity style={styles.closeButton} onPress={onClose}>
+              <Ionicons name="close" size={24} color="#1F2937" />
+            </TouchableOpacity>
+          </View>
         </View>
-
-        
 
         {/* Menu Items */}
         <View style={styles.menuContainer}>
@@ -199,17 +211,46 @@ const styles = StyleSheet.create({
   
   // Header
   header: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
     paddingTop: 50,
-    paddingRight: 20,
+    paddingHorizontal: 20,
     paddingBottom: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  headerContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  logoContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  logo: {
+    width: 40,
+    height: 40,
+    marginRight: 12,
+  },
+  appNameContainer: {
+    flex: 1,
+  },
+  appName: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1F2937',
+    letterSpacing: 1,
+  },
+  tagline: {
+    fontSize: 12,
+    color: '#6B7280',
+    fontWeight: '500',
+    marginTop: -2,
   },
   closeButton: {
     padding: 8,
+    marginLeft: 12,
   },
-  
-
   
   // Menu Items
   menuContainer: {

@@ -139,40 +139,49 @@ export default function ProfileScreen() {
         <View style={styles.sellerTools}>
           <Text style={styles.sellerToolsTitle}>Seller Tools</Text>
           <View style={styles.toolsGrid}>
-                         <TouchableOpacity 
-               style={styles.toolCard}
-               onPress={() => router.push('/product-demand')}
-             >
-               <View style={styles.toolIcon}>
-                 <Ionicons name="trending-up-outline" size={24} color="#10B981" />
-               </View>
-               <Text style={styles.toolTitle}>Demand Analytics</Text>
-               <Text style={styles.toolDescription}>View trending products</Text>
-             </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.toolCard}
+              onPress={() => router.push('/product-demand')}
+            >
+              <View style={styles.toolIcon}>
+                <Ionicons name="trending-up-outline" size={24} color="#10B981" />
+              </View>
+              <Text style={styles.toolTitle}>Demand Analytics</Text>
+              <Text style={styles.toolDescription}>View trending products</Text>
+            </TouchableOpacity>
             
-                         <TouchableOpacity style={styles.toolCard}>
-               <View style={styles.toolIcon}>
-                 <Ionicons name="analytics-outline" size={24} color="#F59E0B" />
-               </View>
-               <Text style={styles.toolTitle}>Sales Report</Text>
-               <Text style={styles.toolDescription}>Track your performance</Text>
-             </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.toolCard}
+              onPress={() => router.push('/my-products')}
+            >
+              <View style={styles.toolIcon}>
+                <Ionicons name="storefront-outline" size={24} color="#10B981" />
+              </View>
+              <Text style={styles.toolTitle}>My Store</Text>
+              <Text style={styles.toolDescription}>Manage products</Text>
+            </TouchableOpacity>
             
-                         <TouchableOpacity style={styles.toolCard}>
-               <View style={styles.toolIcon}>
-                 <Ionicons name="storefront-outline" size={24} color="#10B981" />
-               </View>
-               <Text style={styles.toolTitle}>My Store</Text>
-               <Text style={styles.toolDescription}>Manage products</Text>
-             </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.toolCard}
+              onPress={() => router.push('/seller-verification-requirements')}
+            >
+              <View style={styles.toolIcon}>
+                <Ionicons name="shield-checkmark-outline" size={24} color="#6B46C1" />
+              </View>
+              <Text style={styles.toolTitle}>Get Verified</Text>
+              <Text style={styles.toolDescription}>Verify your seller account</Text>
+            </TouchableOpacity>
             
-                         <TouchableOpacity style={styles.toolCard}>
-               <View style={styles.toolIcon}>
-                 <Ionicons name="settings-outline" size={24} color="#F59E0B" />
-               </View>
-               <Text style={styles.toolTitle}>Settings</Text>
-               <Text style={styles.toolDescription}>Account preferences</Text>
-             </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.toolCard}
+              onPress={() => router.push('/settings')}
+            >
+              <View style={styles.toolIcon}>
+                <Ionicons name="settings-outline" size={24} color="#F59E0B" />
+              </View>
+              <Text style={styles.toolTitle}>Settings</Text>
+              <Text style={styles.toolDescription}>Account preferences</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </ScrollView>

@@ -249,7 +249,7 @@ export default function NotificationsScreen() {
       
       <View style={styles.header}>
         <TouchableOpacity style={styles.menuButton} onPress={() => router.back()}>
-          <Ionicons name="menu" size={24} color="#1F2937" />
+          <Ionicons name="arrow-back" size={24} color="#1F2937" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Notification</Text>
         <View style={styles.headerRight}>
