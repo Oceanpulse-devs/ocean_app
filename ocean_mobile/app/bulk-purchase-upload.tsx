@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,20 +8,69 @@ import {
   ScrollView,
   StatusBar,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import { useAuth } from '../contexts/AuthContext';
+import apiService from '../services/api';
 
 export default function BulkPurchaseUploadScreen() {
+  const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [productName, setProductName] = useState('');
   const [productDescription, setProductDescription] = useState('');
+  const [categories, setCategories] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSearch = () => {
-    // Mock search logic
-    Alert.alert('Search', 'Searching for bulk purchase opportunities...');
-    router.push('/bulk-purchase-product');
+  // Fetch categories on component mount
+  useEffect(() => {
+    fetchCategories();
+  }, []);
+
+  const fetchCategories = async () => {
+    try {
+      const response = await apiService.get('/api/categories');
+      setCategories(response.data || []);
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+    }
+  };
+
+  const handleSearch = async () => {
+    // Validation
+    if (!searchQuery.trim() && !productName.trim()) {
+      Alert.alert('Error', 'Please enter a search query or product name');
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+
+      const bulkPurchaseData = {
+        searchQuery: searchQuery.trim(),
+        category: selectedCategory,
+        productName: productName.trim(),
+        productDescription: productDescription.trim(),
+        userId: user?.id
+      };
+
+      const response = await apiService.post('/api/group-buys/create', bulkPurchaseData);
+      
+      Alert.alert('Success', 'Bulk purchase request created successfully!', [
+        {
+          text: 'OK',
+          onPress: () => router.push('/bulk-purchase-product')
+        }
+      ]);
+
+    } catch (error) {
+      console.error('Bulk purchase creation error:', error);
+      Alert.alert('Error', 'Failed to create bulk purchase request. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleImageUpload = () => {
@@ -147,8 +196,16 @@ export default function BulkPurchaseUploadScreen() {
         </View>
 
         {/* Search Button */}
-        <TouchableOpacity style={styles.searchButton} onPress={handleSearch}>
-          <Text style={styles.searchButtonText}>Search</Text>
+        <TouchableOpacity 
+          style={[styles.searchButton, isLoading && styles.searchButtonDisabled]} 
+          onPress={handleSearch}
+          disabled={isLoading}
+        >
+          {isLoading ? (
+            <ActivityIndicator size="small" color="#FFFFFF" />
+          ) : (
+            <Text style={styles.searchButtonText}>Search</Text>
+          )}
         </TouchableOpacity>
       </ScrollView>
     </View>
@@ -312,17 +369,18 @@ const styles = StyleSheet.create({
   
   // Search Button
   searchButton: {
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#6B46C1',
     paddingVertical: 16,
     borderRadius: 12,
     marginBottom: 32,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
+  },
+  searchButtonDisabled: {
+    opacity: 0.6,
   },
   searchButtonText: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#6B7280',
+    color: '#FFFFFF',
     textAlign: 'center',
   },
 });

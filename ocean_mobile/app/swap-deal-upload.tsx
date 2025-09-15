@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,20 +8,77 @@ import {
   ScrollView,
   StatusBar,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import { useAuth } from '../contexts/AuthContext';
+import apiService from '../services/api';
 
 export default function SwapDealUploadScreen() {
+  const { user } = useAuth();
   const [productToSwap, setProductToSwap] = useState('');
   const [categoryToSwap, setCategoryToSwap] = useState('');
   const [brandToSwap, setBrandToSwap] = useState('');
   const [description, setDescription] = useState('');
+  const [categories, setCategories] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleUpload = () => {
-    // Mock upload logic
-    Alert.alert('Success', 'Swap deal uploaded successfully!');
-    router.push('/swap-deal-vendors');
+  // Fetch categories on component mount
+  useEffect(() => {
+    fetchCategories();
+  }, []);
+
+  const fetchCategories = async () => {
+    try {
+      const response = await apiService.get('/api/categories');
+      setCategories(response.data || []);
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+    }
+  };
+
+  const handleUpload = async () => {
+    // Validation
+    if (!productToSwap.trim()) {
+      Alert.alert('Error', 'Product name is required');
+      return;
+    }
+    if (!categoryToSwap) {
+      Alert.alert('Error', 'Category is required');
+      return;
+    }
+    if (!description.trim()) {
+      Alert.alert('Error', 'Description is required');
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+
+      const swapDealData = {
+        productToSwap: productToSwap.trim(),
+        categoryToSwap,
+        brandToSwap: brandToSwap.trim(),
+        description: description.trim(),
+        userId: user?.id
+      };
+
+      const response = await apiService.post('/api/swap-deals/create', swapDealData);
+      
+      Alert.alert('Success', 'Swap deal uploaded successfully!', [
+        {
+          text: 'OK',
+          onPress: () => router.push('/swap-deal-vendors')
+        }
+      ]);
+
+    } catch (error) {
+      console.error('Swap deal creation error:', error);
+      Alert.alert('Error', 'Failed to create swap deal. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleImageUpload = () => {
@@ -128,8 +185,16 @@ export default function SwapDealUploadScreen() {
         </View>
 
         {/* Submit Button */}
-        <TouchableOpacity style={styles.submitButton} onPress={handleUpload}>
-          <Text style={styles.submitButtonText}>Submit Swap Deal</Text>
+        <TouchableOpacity 
+          style={[styles.submitButton, isLoading && styles.submitButtonDisabled]} 
+          onPress={handleUpload}
+          disabled={isLoading}
+        >
+          {isLoading ? (
+            <ActivityIndicator size="small" color="#FFFFFF" />
+          ) : (
+            <Text style={styles.submitButtonText}>Submit Swap Deal</Text>
+          )}
         </TouchableOpacity>
       </ScrollView>
     </View>
@@ -259,6 +324,9 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderRadius: 12,
     marginBottom: 32,
+  },
+  submitButtonDisabled: {
+    opacity: 0.6,
   },
   submitButtonText: {
     fontSize: 18,

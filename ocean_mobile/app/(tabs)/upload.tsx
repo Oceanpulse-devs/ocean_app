@@ -10,16 +10,39 @@ import {
   Modal,
   TextInput,
   Image,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
+import { useAuth } from '../../contexts/AuthContext';
+import apiService from '../../services/api';
 
 export default function UploadScreen() {
+  const { user } = useAuth();
   const params = useLocalSearchParams();
   const [selectedUploadType, setSelectedUploadType] = useState<string | null>(null);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [showFeedSubSelection, setShowFeedSubSelection] = useState(false);
-  const [userType, setUserType] = useState<'buyer' | 'seller'>('seller'); // Mock user type
+  const [userType, setUserType] = useState<'buyer' | 'seller'>('seller');
+  const [categories, setCategories] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    title: '',
+    description: '',
+    price: '',
+    minBudget: '',
+    maxBudget: '',
+    category: '',
+    condition: 'Good',
+    location: '',
+    images: []
+  });
+
+  // Fetch categories and determine user type
+  useEffect(() => {
+    fetchCategories();
+    determineUserType();
+  }, []);
 
   // Handle query parameter for direct navigation to product form
   useEffect(() => {
@@ -30,6 +53,23 @@ export default function UploadScreen() {
       }
     }
   }, [params.type]);
+
+  const fetchCategories = async () => {
+    try {
+      const response = await apiService.get('/api/categories');
+      setCategories(response.data || []);
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+    }
+  };
+
+  const determineUserType = () => {
+    if (user?.role === 'seller' || user?.role === 'pending-seller') {
+      setUserType('seller');
+    } else {
+      setUserType('buyer');
+    }
+  };
 
   // Upload options configuration
   const uploadOptions = [
@@ -137,11 +177,92 @@ export default function UploadScreen() {
     setShowUploadModal(true);
   };
 
-  const handleUpload = () => {
-    // Mock upload logic
-    Alert.alert('Success', `${selectedUploadType} uploaded successfully!`);
-    setShowUploadModal(false);
-    setSelectedUploadType(null);
+  const handleUpload = async () => {
+    try {
+      setIsLoading(true);
+
+      // Validate form data
+      if (!formData.title.trim()) {
+        Alert.alert('Error', 'Title is required');
+        return;
+      }
+      if (!formData.description.trim()) {
+        Alert.alert('Error', 'Description is required');
+        return;
+      }
+
+      let response;
+      
+      if (selectedUploadType?.startsWith('feed-post')) {
+        const feedType = selectedUploadType.split('-')[2];
+        const postData = {
+          postType: 'product',
+          postSubType: feedType,
+          content: formData.description,
+          productName: formData.title,
+          price: feedType === 'seller' ? formData.price : null,
+          minBudget: feedType === 'buyer' ? formData.minBudget : null,
+          maxBudget: feedType === 'buyer' ? formData.maxBudget : null,
+          currency: 'NGN',
+          location: formData.location,
+          category: formData.category,
+          condition: formData.condition
+        };
+
+        response = await apiService.post('/api/posts', postData);
+      } else if (selectedUploadType === 'product') {
+        const productData = {
+          title: formData.title,
+          description: formData.description,
+          price: formData.price,
+          currency: 'NGN',
+          category: formData.category,
+          condition: formData.condition,
+          location: formData.location
+        };
+
+        response = await apiService.post('/api/products', productData);
+      } else if (selectedUploadType === 'distress') {
+        const distressData = {
+          title: formData.title,
+          description: formData.description,
+          price: formData.price,
+          originalPrice: parseFloat(formData.price) * 1.2, // Mock original price
+          discountPercentage: 20,
+          urgencyLevel: 'high',
+          distressReason: 'Moving sale',
+          category: formData.category,
+          condition: formData.condition,
+          location: formData.location
+        };
+
+        response = await apiService.post('/api/distress-sales/create', distressData);
+      } else {
+        Alert.alert('Error', 'Upload type not supported yet');
+        return;
+      }
+
+      Alert.alert('Success', `${selectedUploadType} uploaded successfully!`);
+      setShowUploadModal(false);
+      setSelectedUploadType(null);
+      setFormData({
+        title: '',
+        description: '',
+        price: '',
+        minBudget: '',
+        maxBudget: '',
+        category: '',
+        condition: 'Good',
+        location: '',
+        images: []
+      });
+
+    } catch (error) {
+      console.error('Upload error:', error);
+      Alert.alert('Error', 'Failed to upload. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const renderUploadOption = (option: any) => {
@@ -343,6 +464,8 @@ export default function UploadScreen() {
                   style={styles.textInput}
                   placeholder={`Enter ${option.title.toLowerCase()} title`}
                   placeholderTextColor="#9CA3AF"
+                  value={formData.title}
+                  onChangeText={(text) => setFormData(prev => ({ ...prev, title: text }))}
                 />
               </View>
 
@@ -354,6 +477,8 @@ export default function UploadScreen() {
                   placeholderTextColor="#9CA3AF"
                   multiline
                   numberOfLines={4}
+                  value={formData.description}
+                  onChangeText={(text) => setFormData(prev => ({ ...prev, description: text }))}
                 />
               </View>
 
@@ -366,13 +491,17 @@ export default function UploadScreen() {
                       placeholder="₦0.00"
                       placeholderTextColor="#9CA3AF"
                       keyboardType="numeric"
+                      value={formData.price}
+                      onChangeText={(text) => setFormData(prev => ({ ...prev, price: text }))}
                     />
                   </View>
 
                   <View style={styles.inputGroup}>
                     <Text style={styles.inputLabel}>Category</Text>
                     <TouchableOpacity style={styles.categorySelector}>
-                      <Text style={styles.categorySelectorText}>Select Category</Text>
+                      <Text style={styles.categorySelectorText}>
+                        {formData.category || 'Select Category'}
+                      </Text>
                       <Ionicons name="chevron-down" size={20} color="#6B7280" />
                     </TouchableOpacity>
                   </View>
@@ -388,6 +517,8 @@ export default function UploadScreen() {
                       placeholder="Min ₦0"
                       placeholderTextColor="#9CA3AF"
                       keyboardType="numeric"
+                      value={formData.minBudget}
+                      onChangeText={(text) => setFormData(prev => ({ ...prev, minBudget: text }))}
                     />
                     <Text style={styles.budgetSeparator}>to</Text>
                     <TextInput
@@ -395,6 +526,8 @@ export default function UploadScreen() {
                       placeholder="Max ₦0"
                       placeholderTextColor="#9CA3AF"
                       keyboardType="numeric"
+                      value={formData.maxBudget}
+                      onChangeText={(text) => setFormData(prev => ({ ...prev, maxBudget: text }))}
                     />
                   </View>
                 </View>
@@ -454,11 +587,22 @@ export default function UploadScreen() {
 
           <View style={styles.modalFooter}>
             <TouchableOpacity
-              style={[styles.uploadButton, { backgroundColor: option.color }]}
+              style={[
+                styles.uploadButton, 
+                { backgroundColor: option.color },
+                isLoading && styles.uploadButtonDisabled
+              ]}
               onPress={handleUpload}
+              disabled={isLoading}
             >
-              <Ionicons name="cloud-upload-outline" size={20} color="#FFFFFF" />
-              <Text style={styles.uploadButtonText}>Upload {option.title}</Text>
+              {isLoading ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <Ionicons name="cloud-upload-outline" size={20} color="#FFFFFF" />
+              )}
+              <Text style={styles.uploadButtonText}>
+                {isLoading ? 'Uploading...' : `Upload ${option.title}`}
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -899,6 +1043,9 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingVertical: 16,
     borderRadius: 12,
+  },
+  uploadButtonDisabled: {
+    opacity: 0.6,
   },
   uploadButtonText: {
     fontSize: 16,

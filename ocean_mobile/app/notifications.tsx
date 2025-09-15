@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,104 +6,44 @@ import {
   FlatList,
   TouchableOpacity,
   StatusBar,
+  ActivityIndicator,
+  Alert,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import { useAuth } from '../contexts/AuthContext';
+import apiService from '../services/api';
 
 export default function NotificationsScreen() {
-  // Mock notification data with different types
-  const mockNotifications = [
-    // Comment notifications
-    {
-      id: '1',
-      type: 'comment',
-      isRead: false,
-      user: { name: 'Ray Arnold', avatar: '👨‍💼', verified: false },
-      content: 'left 6 comments on your post',
-      comment: '"Looking gooood"',
-      time: '2 hours ago',
-      postId: 'post123',
-    },
-    {
-      id: '2',
-      type: 'comment',
-      isRead: true,
-      user: { name: 'Ray Arnold', avatar: '👨‍💼', verified: false },
-      content: 'left 6 comments on your post',
-      comment: '"Looking gooood"',
-      time: '2 hours ago',
-      postId: 'post123',
-    },
-    
-    // Follow notifications
-    {
-      id: '3',
-      type: 'follow',
-      isRead: false,
-      user: { name: 'Lex Murphy', avatar: '👩‍🎨', verified: false },
-      content: 'Followed you',
-      time: '2 hours ago',
-      userId: 'user456',
-    },
-    
-    // Like notifications
-    {
-      id: '4',
-      type: 'like',
-      isRead: false,
-      user: { name: 'Mike Chen', avatar: '👨‍💻', verified: false },
-      content: 'liked your post',
-      time: '3 hours ago',
-      postId: 'post456',
-    },
-    
-    // Offer notifications
-    {
-      id: '5',
-      type: 'offer',
-      isRead: false,
-      user: { name: 'David Brown', avatar: '👨‍🔧', verified: false },
-      content: 'made an offer on your iPhone 14 Pro',
-      offer: '₦800,000',
-      time: '4 hours ago',
-      productId: 'prod123',
-    },
-    
-    // Message notifications
-    {
-      id: '6',
-      type: 'message',
-      isRead: false,
-      user: { name: 'Alex Chen', avatar: '👨‍💻', verified: false },
-      content: 'sent you a message',
-      message: '"Hi! I\'m interested in your iPhone..."',
-      time: '1 hour ago',
-      chatId: 'chat123',
-    },
-    
-    // Auction notifications
-    {
-      id: '7',
-      type: 'auction',
-      isRead: false,
-      user: { name: 'System', avatar: '🏪', verified: true },
-      content: 'Your auction for iPhone 14 Pro ends in 2 hours',
-      time: '30 minutes ago',
-      auctionId: 'auction123',
-    },
-    
-    // System notifications
-    {
-      id: '8',
-      type: 'system',
-      isRead: false,
-      user: { name: 'Ocean App', avatar: '🌊', verified: true },
-      content: 'New features available! Check out our latest updates.',
-      time: '1 day ago',
-    },
-  ];
+  const { user } = useAuth();
+  const [notifications, setNotifications] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const [notifications, setNotifications] = useState(mockNotifications);
+  // Fetch notifications data
+  useEffect(() => {
+    fetchNotifications();
+  }, []);
+
+  const fetchNotifications = async () => {
+    try {
+      setIsLoading(true);
+      const response = await apiService.get('/api/notifications');
+      setNotifications(response.data.notifications || []);
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+      Alert.alert('Error', 'Failed to load notifications');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await fetchNotifications();
+    setRefreshing(false);
+  };
 
   const getNotificationIcon = (type: string) => {
     switch (type) {
@@ -131,48 +71,92 @@ export default function NotificationsScreen() {
     }
   };
 
-  const handleFollowAction = (notificationId: string, action: 'follow' | 'decline') => {
-    setNotifications(prev => 
-      prev.map(notif => 
-        notif.id === notificationId 
-          ? { ...notif, isRead: true }
-          : notif
-      )
-    );
+  const handleFollowAction = async (notificationId: string, action: 'follow' | 'decline') => {
+    try {
+      if (action === 'follow') {
+        // Find the notification to get the userId
+        const notification = notifications.find(n => n.id === notificationId);
+        if (notification?.userId) {
+          await apiService.post('/api/follow', { targetUserId: notification.userId });
+        }
+      }
+      
+      // Mark notification as read
+      await apiService.put(`/api/notifications/${notificationId}/read`);
+      
+      // Update local state
+      setNotifications(prev => 
+        prev.map(notif => 
+          notif.id === notificationId 
+            ? { ...notif, isRead: true }
+            : notif
+        )
+      );
+    } catch (error) {
+      console.error('Error handling follow action:', error);
+      Alert.alert('Error', 'Failed to process follow action');
+    }
   };
 
-  const markAllAsRead = () => {
-    setNotifications(prev => 
-      prev.map(notif => ({ ...notif, isRead: true }))
-    );
+  const markAllAsRead = async () => {
+    try {
+      await apiService.put('/api/notifications/mark-all-read');
+      setNotifications(prev => 
+        prev.map(notif => ({ ...notif, isRead: true }))
+      );
+    } catch (error) {
+      console.error('Error marking all as read:', error);
+      Alert.alert('Error', 'Failed to mark all notifications as read');
+    }
   };
 
-  const handleNotificationPress = (notification: any) => {
-    setNotifications(prev => 
-      prev.map(notif => 
-        notif.id === notification.id 
-          ? { ...notif, isRead: true }
-          : notif
-      )
-    );
+  const handleNotificationPress = async (notification: any) => {
+    try {
+      // Mark notification as read
+      await apiService.put(`/api/notifications/${notification.id}/read`);
+      
+      // Update local state
+      setNotifications(prev => 
+        prev.map(notif => 
+          notif.id === notification.id 
+            ? { ...notif, isRead: true }
+            : notif
+        )
+      );
 
-    switch (notification.type) {
-      case 'comment':
-      case 'like':
-        router.push(`/product-detail?id=${notification.postId}`);
-        break;
-      case 'follow':
-        router.push('/(tabs)/profile');
-        break;
-      case 'offer':
-        router.push(`/product-detail?id=${notification.productId}`);
-        break;
-      case 'message':
-        router.push('/chat/1' as any);
-        break;
-      case 'auction':
-        router.push('/product-detail');
-        break;
+      // Navigate based on notification type
+      switch (notification.type) {
+        case 'comment':
+        case 'like':
+          if (notification.postId) {
+            router.push(`/product-detail?id=${notification.postId}`);
+          }
+          break;
+        case 'follow':
+          router.push('/(tabs)/profile');
+          break;
+        case 'offer':
+          if (notification.productId) {
+            router.push(`/product-detail?id=${notification.productId}`);
+          }
+          break;
+        case 'message':
+          if (notification.chatId) {
+            router.push(`/chat/${notification.chatId}` as any);
+          }
+          break;
+        case 'auction':
+          if (notification.auctionId) {
+            router.push(`/auction/${notification.auctionId}` as any);
+          }
+          break;
+        default:
+          // For system notifications, just mark as read
+          break;
+      }
+    } catch (error) {
+      console.error('Error handling notification press:', error);
+      Alert.alert('Error', 'Failed to process notification');
     }
   };
 
@@ -187,7 +171,15 @@ export default function NotificationsScreen() {
       {!item.isRead && <View style={styles.unreadDot} />}
       
       <View style={styles.avatarContainer}>
-        <Text style={styles.avatarText}>{item.user.avatar}</Text>
+        {item.user.avatar && item.user.avatar !== '🌊' && item.user.avatar !== '👨‍💼' && item.user.avatar !== '👩‍🎨' && item.user.avatar !== '👨‍💻' && item.user.avatar !== '👨‍🔧' && item.user.avatar !== '🏪' ? (
+          <Image 
+            source={{ uri: item.user.avatar }} 
+            style={styles.avatarImage}
+            resizeMode="cover"
+          />
+        ) : (
+          <Text style={styles.avatarText}>{item.user.avatar || '👤'}</Text>
+        )}
         {item.user.verified && (
           <View style={styles.verifiedBadge}>
             <Ionicons name="checkmark-circle" size={12} color="#3B82F6" />
@@ -243,6 +235,30 @@ export default function NotificationsScreen() {
     </TouchableOpacity>
   );
 
+  if (isLoading) {
+    return (
+      <View style={styles.container}>
+        <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.menuButton} onPress={() => router.back()}>
+            <Ionicons name="arrow-back" size={24} color="#1F2937" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Notification</Text>
+          <View style={styles.headerRight}>
+            <View style={styles.notificationIcon}>
+              <Ionicons name="notifications" size={24} color="#6B46C1" />
+              <View style={styles.notificationBadge} />
+            </View>
+          </View>
+        </View>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#6B46C1" />
+          <Text style={styles.loadingText}>Loading notifications...</Text>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
@@ -278,13 +294,22 @@ export default function NotificationsScreen() {
         </TouchableOpacity>
       </View>
       
-      <FlatList
-        data={notifications}
-        renderItem={renderNotification}
-        keyExtractor={(item) => item.id}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.listContainer}
-      />
+      {notifications.length > 0 ? (
+        <FlatList
+          data={notifications}
+          renderItem={renderNotification}
+          keyExtractor={(item) => item.id}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.listContainer}
+          refreshing={refreshing}
+          onRefresh={handleRefresh}
+        />
+      ) : (
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyText}>No notifications yet</Text>
+          <Text style={styles.emptySubtext}>You'll see notifications here when people interact with your content</Text>
+        </View>
+      )}
     </View>
   );
 }
@@ -478,5 +503,46 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginLeft: 8,
+  },
+  
+  // Loading styles
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#6B7280',
+  },
+  
+  // Empty state styles
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+    paddingHorizontal: 20,
+  },
+  emptyText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#6B7280',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  emptySubtext: {
+    fontSize: 14,
+    color: '#9CA3AF',
+    textAlign: 'center',
+  },
+  
+  // Avatar image styles
+  avatarImage: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
   },
 });

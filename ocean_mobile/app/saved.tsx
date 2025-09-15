@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,160 +8,50 @@ import {
   ScrollView,
   StatusBar,
   Dimensions,
+  ActivityIndicator,
+  Alert,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import { useAuth } from '../contexts/AuthContext';
+import apiService from '../services/api';
 
 const { width } = Dimensions.get('window');
 
 export default function SavedScreen() {
+  const { user } = useAuth();
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [savedItems, setSavedItems] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  // Mock saved data
-  const mockSavedItems = [
-    // Saved Products
-    {
-      id: '1',
-      type: 'product',
-      name: 'iPhone 14 Pro Max',
-      price: '₦850,000',
-      originalPrice: '₦950,000',
-      condition: 'Like New',
-      category: 'Electronics',
-      location: 'Lagos, Nigeria',
-      seller: {
-        name: 'Sarah Johnson',
-        avatar: '👩‍💼',
-        verified: true,
-        rating: 4.8,
-      },
-      images: ['📱', '📱', '📱'],
-      description: 'Selling my iPhone 14 Pro Max in excellent condition. Only used for 6 months.',
-      likes: 156,
-      timeAgo: '2 hours ago',
-      isLiked: false,
-      isSaved: true,
-      savedDate: '2024-01-15',
-    },
-    {
-      id: '2',
-      type: 'product',
-      name: 'Gaming Laptop Bundle',
-      price: '₦450,000',
-      originalPrice: '₦520,000',
-      condition: 'Brand New',
-      category: 'Electronics',
-      location: 'Abuja, Nigeria',
-      seller: {
-        name: 'TechStore NG',
-        avatar: '🏪',
-        verified: true,
-        rating: 4.9,
-      },
-      images: ['💻', '🎮', '🎧'],
-      description: 'Brand new gaming laptop with RTX 4060, 16GB RAM, 512GB SSD.',
-      likes: 89,
-      timeAgo: '5 hours ago',
-      isLiked: true,
-      isSaved: true,
-      savedDate: '2024-01-14',
-    },
-    {
-      id: '3',
-      type: 'product',
-      name: 'Designer Handbag Collection',
-      price: '₦120,000',
-      originalPrice: '₦180,000',
-      condition: 'Good',
-      category: 'Fashion',
-      location: 'Port Harcourt, Nigeria',
-      seller: {
-        name: 'Fashion Hub',
-        avatar: '👗',
-        verified: false,
-        rating: 4.5,
-      },
-      images: ['👜', '👜', '👜'],
-      description: 'Authentic designer handbags at wholesale prices. Limited stock available!',
-      likes: 234,
-      timeAgo: '1 day ago',
-      isLiked: false,
-      isSaved: true,
-      savedDate: '2024-01-13',
-    },
-    // Saved Feed Posts
-    {
-      id: '4',
-      type: 'feed-post',
-      postType: 'seller',
-      name: 'MacBook Air M2 - Great Deal!',
-      price: '₦1,200,000',
-      originalPrice: '₦1,400,000',
-      condition: 'Brand New',
-      category: 'Electronics',
-      location: 'Lagos, Nigeria',
-      seller: {
-        name: 'Apple Store NG',
-        avatar: '🍎',
-        verified: true,
-        rating: 4.9,
-      },
-      images: ['💻', '💻', '💻'],
-      description: 'Brand new MacBook Air M2 256GB. Sealed in box with warranty. Perfect for students and professionals.',
-      likes: 312,
-      timeAgo: '2 weeks ago',
-      isLiked: false,
-      isSaved: true,
-      savedDate: '2024-01-12',
-    },
-    {
-      id: '5',
-      type: 'feed-post',
-      postType: 'buyer',
-      name: 'Looking for iPhone 13 Pro',
-      budget: '₦600,000 - ₦700,000',
-      condition: 'Like New',
-      category: 'Electronics',
-      location: 'Lagos, Nigeria',
-      buyer: {
-        name: 'John Doe',
-        avatar: '👨‍💼',
-        verified: false,
-        rating: 4.2,
-      },
-      images: ['📱'],
-      description: 'Looking for iPhone 13 Pro in good condition. Budget is flexible. Please contact if you have one to sell.',
-      likes: 45,
-      timeAgo: '3 days ago',
-      isLiked: false,
-      isSaved: true,
-      savedDate: '2024-01-11',
-    },
-    {
-      id: '6',
-      type: 'product',
-      name: 'Toyota Camry 2019',
-      price: '₦8,500,000',
-      originalPrice: '₦9,200,000',
-      condition: 'Used',
-      category: 'Automotive',
-      location: 'Kano, Nigeria',
-      seller: {
-        name: 'Auto Dealer Pro',
-        avatar: '🚗',
-        verified: true,
-        rating: 4.7,
-      },
-      images: ['🚗', '🚗', '🚗'],
-      description: 'Well-maintained Toyota Camry with full service history. Perfect condition.',
-      likes: 67,
-      timeAgo: '3 days ago',
-      isLiked: false,
-      isSaved: true,
-      savedDate: '2024-01-10',
-    },
-  ];
+  // Fetch saved items data
+  useEffect(() => {
+    fetchSavedItems();
+  }, [selectedCategory]);
+
+  const fetchSavedItems = async () => {
+    try {
+      setIsLoading(true);
+      const response = await apiService.get('/api/saved-items', {
+        params: { category: selectedCategory }
+      });
+      setSavedItems(response.data.savedItems || []);
+    } catch (error) {
+      console.error('Error fetching saved items:', error);
+      Alert.alert('Error', 'Failed to load saved items');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await fetchSavedItems();
+    setRefreshing(false);
+  };
 
   const categories = [
     'All',
@@ -179,21 +69,30 @@ export default function SavedScreen() {
     }
   };
 
-  const handleRemoveSaved = (itemId: string) => {
-    // Mock remove from saved
-    console.log('Remove from saved:', itemId);
+  const handleRemoveSaved = async (itemId: string, itemType: string) => {
+    try {
+      if (itemType === 'product') {
+        await apiService.post(`/api/products/${itemId}/save`);
+      } else if (itemType === 'feed-post') {
+        await apiService.post(`/api/posts/${itemId}/save`);
+      }
+      
+      // Remove from local state
+      setSavedItems(prev => prev.filter(item => item.id !== itemId));
+      
+      Alert.alert('Success', 'Item removed from saved');
+    } catch (error) {
+      console.error('Error removing saved item:', error);
+      Alert.alert('Error', 'Failed to remove item from saved');
+    }
   };
 
   const handleMessageSeller = (item: any) => {
     router.push('/chat/1' as any);
   };
 
-  // Filter items based on selected category
-  const filteredItems = selectedCategory === 'All' 
-    ? mockSavedItems 
-    : selectedCategory === 'Feed Posts'
-    ? mockSavedItems.filter(item => item.type === 'feed-post')
-    : mockSavedItems.filter(item => item.category === selectedCategory);
+  // Filter items based on selected category (now handled by backend)
+  const filteredItems = savedItems;
 
   const renderProductCard = ({ item }: { item: any }) => (
     <TouchableOpacity
@@ -202,11 +101,19 @@ export default function SavedScreen() {
     >
       {/* Product Image */}
       <View style={styles.productImage}>
-        <Text style={styles.imagePlaceholder}>{item.images[0]}</Text>
+        {item.images && item.images[0] && item.images[0] !== '📦' && item.images[0] !== '📱' && item.images[0] !== '💻' && item.images[0] !== '👜' && item.images[0] !== '🚗' ? (
+          <Image 
+            source={{ uri: item.images[0] }} 
+            style={styles.productImage}
+            resizeMode="cover"
+          />
+        ) : (
+          <Text style={styles.imagePlaceholder}>{item.images?.[0] || '📦'}</Text>
+        )}
         <View style={styles.imageOverlay}>
           <TouchableOpacity
             style={styles.removeButton}
-            onPress={() => handleRemoveSaved(item.id)}
+            onPress={() => handleRemoveSaved(item.id, item.type)}
           >
             <Ionicons name="bookmark" size={20} color="#6B46C1" />
           </TouchableOpacity>
@@ -243,20 +150,38 @@ export default function SavedScreen() {
         </Text>
         
         <View style={styles.sellerRow}>
-          <Text style={styles.sellerAvatar}>
-            {item.type === 'feed-post' && item.postType === 'buyer' ? item.buyer.avatar : item.seller.avatar}
-          </Text>
+          {item.type === 'feed-post' && item.postType === 'buyer' ? (
+            item.buyer?.avatar && item.buyer.avatar !== '👤' ? (
+              <Image 
+                source={{ uri: item.buyer.avatar }} 
+                style={styles.sellerAvatarImage}
+                resizeMode="cover"
+              />
+            ) : (
+              <Text style={styles.sellerAvatar}>{item.buyer?.avatar || '👤'}</Text>
+            )
+          ) : (
+            item.seller?.avatar && item.seller.avatar !== '👤' ? (
+              <Image 
+                source={{ uri: item.seller.avatar }} 
+                style={styles.sellerAvatarImage}
+                resizeMode="cover"
+              />
+            ) : (
+              <Text style={styles.sellerAvatar}>{item.seller?.avatar || '👤'}</Text>
+            )
+          )}
           <View style={styles.sellerInfo}>
             <View style={styles.sellerNameRow}>
               <Text style={styles.sellerName}>
-                {item.type === 'feed-post' && item.postType === 'buyer' ? item.buyer.name : item.seller.name}
+                {item.type === 'feed-post' && item.postType === 'buyer' ? item.buyer?.name : item.seller?.name}
               </Text>
-              {(item.type === 'feed-post' && item.postType === 'buyer' ? item.buyer.verified : item.seller.verified) && (
+              {(item.type === 'feed-post' && item.postType === 'buyer' ? item.buyer?.verified : item.seller?.verified) && (
                 <Ionicons name="checkmark-circle" size={12} color="#3B82F6" />
               )}
             </View>
             <Text style={styles.sellerRating}>
-              ⭐ {item.type === 'feed-post' && item.postType === 'buyer' ? item.buyer.rating : item.seller.rating}
+              ⭐ {item.type === 'feed-post' && item.postType === 'buyer' ? item.buyer?.rating : item.seller?.rating}
             </Text>
           </View>
         </View>
@@ -402,7 +327,12 @@ export default function SavedScreen() {
       </View>
 
       {/* Items List */}
-      {filteredItems.length > 0 ? (
+      {isLoading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#6B46C1" />
+          <Text style={styles.loadingText}>Loading saved items...</Text>
+        </View>
+      ) : filteredItems.length > 0 ? (
         <FlatList
           data={filteredItems}
           renderItem={viewMode === 'grid' ? renderProductCard : renderListItem}
@@ -411,6 +341,8 @@ export default function SavedScreen() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.itemsContainer}
           columnWrapperStyle={viewMode === 'grid' ? styles.productRow : undefined}
+          refreshing={refreshing}
+          onRefresh={handleRefresh}
         />
       ) : (
         <View style={styles.emptyState}>
@@ -805,5 +737,25 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#FFFFFF',
+  },
+  
+  // Loading styles
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#6B7280',
+  },
+  
+  // Avatar image styles
+  sellerAvatarImage: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
   },
 });

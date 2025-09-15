@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,11 +9,15 @@ import {
   TextInput,
   Alert,
   Switch,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import { useAuth } from '../contexts/AuthContext';
+import apiService from '../services/api';
 
 export default function AuctionCreateScreen() {
+  const { user } = useAuth();
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -34,19 +38,22 @@ export default function AuctionCreateScreen() {
     autoExtend: false,
     autoExtendMinutes: '5'
   });
+  const [categories, setCategories] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const categories = [
-    'Electronics',
-    'Jewelry',
-    'Home & Garden',
-    'Musical Instruments',
-    'Automotive',
-    'Fashion',
-    'Sports',
-    'Books',
-    'Art & Collectibles',
-    'Antiques'
-  ];
+  // Fetch categories on component mount
+  useEffect(() => {
+    fetchCategories();
+  }, []);
+
+  const fetchCategories = async () => {
+    try {
+      const response = await apiService.get('/api/categories');
+      setCategories(response.data || []);
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+    }
+  };
 
   const conditions = [
     'New',
@@ -65,7 +72,7 @@ export default function AuctionCreateScreen() {
     }));
   };
 
-  const handleCreateAuction = () => {
+  const handleCreateAuction = async () => {
     // Validation
     if (!formData.title || !formData.description || !formData.startingPrice || 
         !formData.startTime || !formData.endTime || !formData.category || 
@@ -101,14 +108,48 @@ export default function AuctionCreateScreen() {
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Create',
-          onPress: () => {
-            // Mock auction creation
-            Alert.alert('Success', 'Auction created successfully!', [
-              {
-                text: 'OK',
-                onPress: () => router.push('/auctions')
-              }
-            ]);
+          onPress: async () => {
+            try {
+              setIsLoading(true);
+
+              const auctionData = {
+                title: formData.title,
+                description: formData.description,
+                startingPrice: parseFloat(formData.startingPrice),
+                reservePrice: formData.reservePrice ? parseFloat(formData.reservePrice) : null,
+                minimumBidIncrement: parseFloat(formData.minimumBidIncrement),
+                startTime: new Date(formData.startTime).toISOString(),
+                endTime: new Date(formData.endTime).toISOString(),
+                category: formData.category,
+                subcategory: formData.subcategory,
+                condition: formData.condition,
+                location: formData.location,
+                tags: formData.tags ? formData.tags.split(',').map(tag => tag.trim()) : [],
+                shippingInfo: {
+                  cost: formData.shippingCost ? parseFloat(formData.shippingCost) : null,
+                  method: formData.shippingMethod,
+                  estimatedDays: formData.estimatedDays ? parseInt(formData.estimatedDays) : null
+                },
+                returnPolicy: formData.returnPolicy,
+                autoExtend: formData.autoExtend,
+                autoExtendMinutes: formData.autoExtend ? parseInt(formData.autoExtendMinutes) : null
+              };
+
+              const response = await apiService.post('/api/auctions', auctionData);
+              
+              Alert.alert('Success', 'Auction created successfully!', [
+                {
+                  text: 'OK',
+                  onPress: () => router.push('/auctions')
+                }
+              ]);
+
+            } catch (error) {
+              console.error('Auction creation error:', error);
+              Alert.alert('Error', 'Failed to create auction. Please try again.');
+            } finally {
+              setIsLoading(false);
+            }
           }
         }
       ]
@@ -176,10 +217,15 @@ export default function AuctionCreateScreen() {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Create Auction</Text>
         <TouchableOpacity
-          style={styles.saveButton}
+          style={[styles.saveButton, isLoading && styles.saveButtonDisabled]}
           onPress={handleCreateAuction}
+          disabled={isLoading}
         >
-          <Text style={styles.saveButtonText}>Create</Text>
+          {isLoading ? (
+            <ActivityIndicator size="small" color="#FFFFFF" />
+          ) : (
+            <Text style={styles.saveButtonText}>Create</Text>
+          )}
         </TouchableOpacity>
       </View>
 
@@ -311,6 +357,9 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     backgroundColor: '#6B46C1',
     borderRadius: 8,
+  },
+  saveButtonDisabled: {
+    opacity: 0.6,
   },
   saveButtonText: {
     fontSize: 16,
