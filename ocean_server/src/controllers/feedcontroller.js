@@ -130,12 +130,17 @@ const createPost = async (req, res) => {
         
         const {
             postType = 'product',
+            postSubType = 'seller', // 'buyer' or 'seller'
             content,
             productName,
             brand,
             price,
-            currency = 'USD',
+            minBudget,
+            maxBudget,
+            currency = 'NGN',
             location,
+            category,
+            condition,
             tags
         } = req.body;
 
@@ -148,6 +153,9 @@ const createPost = async (req, res) => {
         if (!content) {
             return res.status(400).json({ message: "content is required" });
         }
+        if (!postSubType || !['buyer', 'seller'].includes(postSubType)) {
+            return res.status(400).json({ message: "postSubType must be 'buyer' or 'seller'" });
+        }
 
         // Get user's region and country
         const user = await UserTable.findByPk(userId);
@@ -159,12 +167,17 @@ const createPost = async (req, res) => {
         const post = await Post.create({
             userId,
             postType,
+            postSubType,
             content,
             productName,
             brand,
             price: price ? parseFloat(price) : null,
+            minBudget: minBudget ? parseFloat(minBudget) : null,
+            maxBudget: maxBudget ? parseFloat(maxBudget) : null,
             currency,
             location,
+            category,
+            condition,
             userRegion: user.region || 'Unknown',
             userCountry: user.country || 'Unknown',
             tags: tags ? (typeof tags === 'string' ? JSON.parse(tags) : tags) : null

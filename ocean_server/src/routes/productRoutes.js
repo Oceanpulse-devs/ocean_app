@@ -15,7 +15,9 @@ router.put('/api/products/:productId', authMiddleware, productController.updateP
 router.delete('/api/products/:productId', authMiddleware, productController.deleteProduct);
 router.post('/api/products/:productId/save', authMiddleware, productController.toggleSaveProduct);
 router.get('/api/saved-products', authMiddleware, productController.getSavedProducts);
+router.get('/api/saved-items', authMiddleware, productController.getAllSavedItems);
 router.get('/api/my-products', authMiddleware, productController.getMyProducts);
+router.get('/api/categories', productController.getCategories);
 
 
 

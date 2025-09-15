@@ -65,7 +65,7 @@ const sendEmailNotification = async (userId, title, message, type) => {
 const getUserNotifications = async (req, res) => {
   try {
     const userId = req.user.id;
-    const { page = 1, limit = 10, unreadOnly = false } = req.query;
+    const { page = 1, limit = 20, unreadOnly = false } = req.query;
     const offset = (page - 1) * limit;
 
     let whereClause = { userId };
@@ -81,23 +81,86 @@ const getUserNotifications = async (req, res) => {
       include: [{
         model: UserTable,
         as: 'user',
-        attributes: ['fullName', 'email']
+        attributes: ['id', 'fullName', 'email', 'profilePicture', 'accountType', 'accountStatus']
       }]
+    });
+
+    // Format notifications for frontend
+    const formattedNotifications = notifications.rows.map((notification) => {
+      const notificationData = notification.toJSON();
+      const metadata = notificationData.metadata || {};
+      
+      // Map backend types to frontend types
+      const typeMapping = {
+        'info': 'system',
+        'success': 'system',
+        'warning': 'system',
+        'error': 'system',
+        'admin': 'system'
+      };
+
+      // Determine notification type from category or metadata
+      let frontendType = 'system';
+      if (metadata.type) {
+        frontendType = metadata.type;
+      } else if (notificationData.category === 'seller_application') {
+        frontendType = 'system';
+      }
+
+      // Format time
+      const timeAgo = getTimeAgo(notificationData.createdAt);
+
+      return {
+        id: notificationData.id,
+        type: frontendType,
+        isRead: notificationData.isRead,
+        user: {
+          name: notificationData.user?.fullName || 'System',
+          avatar: notificationData.user?.profilePicture || '🌊',
+          verified: notificationData.user?.accountStatus === 'verified'
+        },
+        content: notificationData.message,
+        comment: metadata.comment || null,
+        message: metadata.message || null,
+        offer: metadata.offer || null,
+        time: timeAgo,
+        postId: metadata.postId || null,
+        productId: metadata.productId || null,
+        userId: metadata.userId || null,
+        chatId: metadata.chatId || null,
+        auctionId: metadata.auctionId || null
+      };
     });
 
     res.status(200).json({
       message: "Notifications retrieved successfully",
-      notifications: notifications.rows,
-      pagination: {
-        currentPage: parseInt(page),
-        totalPages: Math.ceil(notifications.count / limit),
-        totalNotifications: notifications.count,
-        notificationsPerPage: parseInt(limit)
+      data: {
+        notifications: formattedNotifications,
+        pagination: {
+          currentPage: parseInt(page),
+          totalPages: Math.ceil(notifications.count / limit),
+          totalNotifications: notifications.count,
+          hasNextPage: offset + limit < notifications.count,
+          hasPrevPage: page > 1
+        }
       }
     });
   } catch (error) {
     res.status(500).json({ message: "Error retrieving notifications", error: error.message });
   }
+};
+
+// Helper function to format time ago
+const getTimeAgo = (date) => {
+  const now = new Date();
+  const diffInSeconds = Math.floor((now - new Date(date)) / 1000);
+  
+  if (diffInSeconds < 60) return 'Just now';
+  if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} minutes ago`;
+  if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} hours ago`;
+  if (diffInSeconds < 2592000) return `${Math.floor(diffInSeconds / 86400)} days ago`;
+  if (diffInSeconds < 31536000) return `${Math.floor(diffInSeconds / 2592000)} months ago`;
+  return `${Math.floor(diffInSeconds / 31536000)} years ago`;
 };
 
 // Mark notification as read

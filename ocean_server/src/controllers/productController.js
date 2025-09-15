@@ -1,4 +1,4 @@
-const { Product, ProductCategory, SavedProduct, UserTable, SellersTable, UserFollows } = require('../../models');
+const { Product, ProductCategory, SavedProduct, SavedPost, Post, UserTable, SellersTable, UserFollows } = require('../../models');
 const { Op, Sequelize } = require('sequelize');
 const cloudinaryService = require('../services/cloudinaryService');
 
@@ -492,9 +492,23 @@ const getCategories = async (req, res) => {
             order: [['sortOrder', 'ASC'], ['name', 'ASC']]
         });
 
+        // Format categories for frontend
+        const formattedCategories = categories.map(category => ({
+            id: category.id,
+            name: category.name,
+            description: category.description,
+            icon: category.icon,
+            subcategories: category.subcategories ? category.subcategories.map(sub => ({
+                id: sub.id,
+                name: sub.name,
+                description: sub.description,
+                icon: sub.icon
+            })) : []
+        }));
+
         res.status(200).json({
             message: "Categories retrieved successfully",
-            data: categories
+            data: formattedCategories
         });
 
     } catch (error) {
@@ -662,6 +676,206 @@ const getMyProducts = async (req, res) => {
     }
 };
 
+// Get all saved items (products + posts) for user
+const getAllSavedItems = async (req, res) => {
+    try {
+        const { page = 1, limit = 20, category } = req.query;
+        const offset = (page - 1) * limit;
+        const userId = req.user.id;
+
+        // Get saved products
+        const savedProducts = await SavedProduct.findAndCountAll({
+            where: { userId },
+            include: [
+                {
+                    model: Product,
+                    as: 'product',
+                    where: { status: 'active', isAvailable: true },
+                    include: [
+                        {
+                            model: UserTable,
+                            as: 'seller',
+                            attributes: ['id', 'fullName', 'email', 'profilePicture', 'accountType', 'accountStatus']
+                        }
+                    ]
+                }
+            ],
+            limit: parseInt(limit),
+            offset: offset,
+            order: [['createdAt', 'DESC']]
+        });
+
+        // Get saved posts
+        const savedPosts = await SavedPost.findAndCountAll({
+            where: { userId },
+            include: [
+                {
+                    model: Post,
+                    as: 'post',
+                    where: { status: 'active' },
+                    include: [
+                        {
+                            model: UserTable,
+                            as: 'user',
+                            attributes: ['id', 'fullName', 'email', 'profilePicture', 'accountType', 'accountStatus']
+                        }
+                    ]
+                }
+            ],
+            limit: parseInt(limit),
+            offset: offset,
+            order: [['createdAt', 'DESC']]
+        });
+
+        // Format saved products for frontend
+        const formattedProducts = savedProducts.rows.map((savedItem) => {
+            const product = savedItem.product;
+            const seller = product.seller;
+            
+            return {
+                id: savedItem.id,
+                type: 'product',
+                name: product.title,
+                price: `${product.currency || 'NGN'} ${product.price}`,
+                originalPrice: product.originalPrice ? `${product.currency || 'NGN'} ${product.originalPrice}` : null,
+                condition: product.condition,
+                category: product.category,
+                location: product.location,
+                seller: {
+                    name: seller.fullName,
+                    avatar: seller.profilePicture || '👤',
+                    verified: seller.accountStatus === 'verified',
+                    rating: 4.5 // TODO: Add rating to UserTable model
+                },
+                images: product.images || ['📦'],
+                description: product.description,
+                likes: product.likes || 0,
+                timeAgo: getTimeAgo(savedItem.createdAt),
+                isLiked: false, // TODO: Check if user liked this product
+                isSaved: true,
+                savedDate: savedItem.createdAt.toISOString().split('T')[0]
+            };
+        });
+
+        // Format saved posts for frontend
+        const formattedPosts = savedPosts.rows.map((savedItem) => {
+            const post = savedItem.post;
+            const user = post.user;
+            
+            // Determine if it's a buyer or seller post based on content
+            const isBuyerPost = post.content.toLowerCase().includes('looking for') || 
+                               post.content.toLowerCase().includes('want to buy') ||
+                               post.content.toLowerCase().includes('need');
+            
+            return {
+                id: savedItem.id,
+                type: 'feed-post',
+                postType: isBuyerPost ? 'buyer' : 'seller',
+                name: post.title,
+                price: isBuyerPost ? null : extractPriceFromContent(post.content),
+                budget: isBuyerPost ? extractBudgetFromContent(post.content) : null,
+                originalPrice: null,
+                condition: extractConditionFromContent(post.content),
+                category: extractCategoryFromContent(post.content),
+                location: extractLocationFromContent(post.content),
+                seller: {
+                    name: user.fullName,
+                    avatar: user.profilePicture || '👤',
+                    verified: user.accountStatus === 'verified',
+                    rating: 4.5 // TODO: Add rating to UserTable model
+                },
+                buyer: isBuyerPost ? {
+                    name: user.fullName,
+                    avatar: user.profilePicture || '👤',
+                    verified: user.accountStatus === 'verified',
+                    rating: 4.5
+                } : null,
+                images: ['📱'], // TODO: Get actual post images
+                description: post.content,
+                likes: post.likesCount || 0,
+                timeAgo: getTimeAgo(savedItem.createdAt),
+                isLiked: false, // TODO: Check if user liked this post
+                isSaved: true,
+                savedDate: savedItem.createdAt.toISOString().split('T')[0]
+            };
+        });
+
+        // Combine and sort by saved date
+        const allSavedItems = [...formattedProducts, ...formattedPosts]
+            .sort((a, b) => new Date(b.savedDate) - new Date(a.savedDate));
+
+        // Apply category filter if specified
+        const filteredItems = category && category !== 'All' 
+            ? allSavedItems.filter(item => {
+                if (category === 'Feed Posts') return item.type === 'feed-post';
+                return item.category === category;
+            })
+            : allSavedItems;
+
+        res.status(200).json({
+            message: "All saved items retrieved successfully",
+            data: {
+                savedItems: filteredItems,
+                pagination: {
+                    currentPage: parseInt(page),
+                    totalPages: Math.ceil(filteredItems.length / limit),
+                    totalItems: filteredItems.length,
+                    hasNextPage: offset + limit < filteredItems.length,
+                    hasPrevPage: page > 1
+                }
+            }
+        });
+
+    } catch (error) {
+        console.error('Get all saved items error:', error);
+        res.status(500).json({ message: "Error retrieving saved items", error: error.message });
+    }
+};
+
+// Helper functions for extracting data from post content
+const getTimeAgo = (date) => {
+    const now = new Date();
+    const diffInSeconds = Math.floor((now - new Date(date)) / 1000);
+    
+    if (diffInSeconds < 60) return 'Just now';
+    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} minutes ago`;
+    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} hours ago`;
+    if (diffInSeconds < 2592000) return `${Math.floor(diffInSeconds / 86400)} days ago`;
+    if (diffInSeconds < 31536000) return `${Math.floor(diffInSeconds / 2592000)} months ago`;
+    return `${Math.floor(diffInSeconds / 31536000)} years ago`;
+};
+
+const extractPriceFromContent = (content) => {
+    const priceMatch = content.match(/₦[\d,]+/);
+    return priceMatch ? priceMatch[0] : null;
+};
+
+const extractBudgetFromContent = (content) => {
+    const budgetMatch = content.match(/₦[\d,]+.*?₦[\d,]+/);
+    return budgetMatch ? budgetMatch[0] : null;
+};
+
+const extractConditionFromContent = (content) => {
+    const conditions = ['Brand New', 'Like New', 'Good', 'Used', 'Fair'];
+    return conditions.find(condition => 
+        content.toLowerCase().includes(condition.toLowerCase())
+    ) || 'Good';
+};
+
+const extractCategoryFromContent = (content) => {
+    const categories = ['Electronics', 'Fashion', 'Automotive', 'Home', 'Sports'];
+    return categories.find(category => 
+        content.toLowerCase().includes(category.toLowerCase())
+    ) || 'General';
+};
+
+const extractLocationFromContent = (content) => {
+    const locations = ['Lagos', 'Abuja', 'Port Harcourt', 'Kano', 'Ibadan'];
+    return locations.find(location => 
+        content.toLowerCase().includes(location.toLowerCase())
+    ) || 'Nigeria';
+};
+
 module.exports = {
     getProducts,
     getProduct,
@@ -672,5 +886,6 @@ module.exports = {
     getSavedProducts,
     getCategories,
     getSellerProducts,
-    getMyProducts
+    getMyProducts,
+    getAllSavedItems
 }; 
