@@ -13,6 +13,10 @@ router.post('/api/unfollow', authMiddleware, followController.unfollowUser);
 router.get('/api/users/:userId/followers', followController.getFollowers);
 router.get('/api/users/:userId/following', followController.getFollowing);
 
+// Alternative routes for compatibility
+router.get('/api/follow/:userId/followers', followController.getFollowers);
+router.get('/api/follow/:userId/following', followController.getFollowing);
+
 // Check follow status
 router.get('/api/users/:targetUserId/follow-status', authMiddleware, followController.checkFollowStatus);
 

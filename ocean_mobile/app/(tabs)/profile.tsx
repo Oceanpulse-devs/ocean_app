@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,35 +8,84 @@ import {
   Image,
   Dimensions,
   StatusBar,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import { useAuth } from '../../contexts/AuthContext';
+import { getUserDisplayRole, getRoleColor, canAccessSellerFeatures, canCreateAuctions } from '../../utils/permissions';
+import apiService, { User } from '../../services/api';
 
 const { width, height } = Dimensions.get('window');
 
 export default function ProfileScreen() {
+  const { user } = useAuth();
   const [isFollowing, setIsFollowing] = useState(false);
+  const [profileData, setProfileData] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Mock seller data
-  const sellerData = {
-    name: 'MBT CEO',
-    username: '@mbt_ceo',
-    bio: 'Premium sneaker reseller with authentic products. Specializing in limited editions and rare finds. Fast shipping across Nigeria! 👟✨',
-    posts: 46,
-    followers: '2.8K',
-    following: 200,
-    lastActive: '1st February, 03PM',
-    products: [
-      {
-        id: '1',
-        name: 'Nike Sneakers',
-        price: '$30',
-        brand: 'Nike',
-        location: 'Lagos, Nigeria',
-        images: ['👟', '👟', '👟'], // Placeholder emojis for now
-      },
-    ],
+  // Fetch profile data
+  useEffect(() => {
+    const fetchProfileData = async () => {
+      try {
+        setIsLoading(true);
+        const response = await apiService.getProfile();
+        setProfileData(response.user);
+      } catch (error) {
+        console.error('Error fetching profile data:', error);
+        Alert.alert('Error', 'Failed to load profile data');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (user) {
+      fetchProfileData();
+    }
+  }, [user]);
+
+
+  // Format numbers for display
+  const formatNumber = (num: number): string => {
+    if (num >= 1000) {
+      return (num / 1000).toFixed(1) + 'K';
+    }
+    return num.toString();
   };
+
+  // Get display data from backend or fallback to user data
+  const displayData = profileData || user;
+  const sellerData = {
+    name: displayData?.fullName || 'User',
+    username: displayData?.username || `@${displayData?.fullName?.toLowerCase().replace(/\s+/g, '_')}` || '@user',
+    bio: displayData?.bio || 'Ocean App user',
+    posts: displayData?.productsCount || 0,
+    followers: formatNumber(displayData?.followersCount || 0),
+    following: displayData?.followingCount || 0,
+    lastActive: displayData?.lastActive || 'Recently',
+    products: displayData?.featuredProducts || [],
+  };
+
+  if (isLoading) {
+    return (
+      <View style={styles.container}>
+        <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+            <Ionicons name="arrow-back" size={24} color="#1F2937" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Profile</Text>
+          <TouchableOpacity style={styles.moreButton}>
+            <Ionicons name="ellipsis-vertical" size={24} color="#1F2937" />
+          </TouchableOpacity>
+        </View>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#6B46C1" />
+          <Text style={styles.loadingText}>Loading profile...</Text>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -68,6 +117,14 @@ export default function ProfileScreen() {
                          <View style={styles.profileInfo}>
                <Text style={styles.sellerName}>{sellerData.name}</Text>
                <Text style={styles.sellerUsername}>{sellerData.username}</Text>
+               
+               {/* Role Badge */}
+               {user && (
+                 <View style={[styles.roleBadge, { backgroundColor: getRoleColor(user) }]}>
+                   <Text style={styles.roleText}>{getUserDisplayRole(user)}</Text>
+                 </View>
+               )}
+               
                <View style={styles.statusContainer}>
                  <View style={styles.statusDot} />
                  <Text style={styles.statusText}>Active {sellerData.lastActive}</Text>
@@ -78,10 +135,13 @@ export default function ProfileScreen() {
 
                      {/* Modern Stats */}
            <View style={styles.statsGrid}>
-             <TouchableOpacity style={styles.statCard} onPress={() => router.push('/my-products')}>
-               <Text style={styles.statNumber}>{sellerData.posts}</Text>
-               <Text style={styles.statLabel}>Products</Text>
-             </TouchableOpacity>
+             {/* Only show Products for sellers */}
+             {canAccessSellerFeatures(user) && (
+               <TouchableOpacity style={styles.statCard} onPress={() => router.push('/my-products')}>
+                 <Text style={styles.statNumber}>{sellerData.posts}</Text>
+                 <Text style={styles.statLabel}>Products</Text>
+               </TouchableOpacity>
+             )}
              <TouchableOpacity style={styles.statCard} onPress={() => router.push('/followers' as any)}>
                <Text style={styles.statNumber}>{sellerData.followers}</Text>
                <Text style={styles.statLabel}>Followers</Text>
@@ -105,72 +165,112 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Featured Products */}
-        <View style={styles.featuredSection}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Featured Products</Text>
-            <TouchableOpacity style={styles.viewAllButton}>
-              <Text style={styles.viewAllText}>View All</Text>
-              <Ionicons name="chevron-forward" size={16} color="#6B46C1" />
-            </TouchableOpacity>
-          </View>
-          
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.productsScroll}>
-            {sellerData.products.map((product, index) => (
-              <View key={product.id} style={styles.productCard}>
-                <View style={styles.productImage}>
-                  <Text style={styles.productEmoji}>👟</Text>
-                </View>
-                <View style={styles.productInfo}>
-                  <Text style={styles.productName}>{product.name}</Text>
-                  <Text style={styles.productBrand}>{product.brand}</Text>
-                  <Text style={styles.productPrice}>{product.price}</Text>
-                  <View style={styles.productLocation}>
-                    <Ionicons name="location-outline" size={12} color="#6B7280" />
-                    <Text style={styles.locationText}>{product.location}</Text>
+        {/* Featured Products - Only show for sellers */}
+        {canAccessSellerFeatures(user) && (
+          <View style={styles.featuredSection}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Featured Products</Text>
+              <TouchableOpacity style={styles.viewAllButton}>
+                <Text style={styles.viewAllText}>View All</Text>
+                <Ionicons name="chevron-forward" size={16} color="#6B46C1" />
+              </TouchableOpacity>
+            </View>
+            
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.productsScroll}>
+              {sellerData.products.length > 0 ? (
+                sellerData.products.map((product, index) => (
+                  <View key={product.id} style={styles.productCard}>
+                    <View style={styles.productImage}>
+                      {product.images && product.images.length > 0 ? (
+                        <Image 
+                          source={{ uri: product.images[0] }} 
+                          style={styles.productImage}
+                          resizeMode="cover"
+                        />
+                      ) : (
+                        <Text style={styles.productEmoji}>📦</Text>
+                      )}
+                    </View>
+                    <View style={styles.productInfo}>
+                      <Text style={styles.productName}>{product.title}</Text>
+                      <Text style={styles.productBrand}>{product.brand || 'No Brand'}</Text>
+                      <Text style={styles.productPrice}>{product.currency} {product.price}</Text>
+                      <View style={styles.productLocation}>
+                        <Ionicons name="location-outline" size={12} color="#6B7280" />
+                        <Text style={styles.locationText}>{product.location}</Text>
+                      </View>
+                    </View>
                   </View>
+                ))
+              ) : (
+                <View style={styles.noProductsContainer}>
+                  <Text style={styles.noProductsText}>No products yet</Text>
+                  <Text style={styles.noProductsSubtext}>Start selling to showcase your items here</Text>
                 </View>
-              </View>
-            ))}
-          </ScrollView>
-        </View>
+              )}
+            </ScrollView>
+          </View>
+        )}
 
-        {/* Seller Tools */}
+        {/* Seller Tools - Only show for sellers */}
+        {canAccessSellerFeatures(user) && (
+          <View style={styles.sellerTools}>
+            <Text style={styles.sellerToolsTitle}>Seller Tools</Text>
+            <View style={styles.toolsGrid}>
+              <TouchableOpacity 
+                style={styles.toolCard}
+                onPress={() => router.push('/product-demand')}
+              >
+                <View style={styles.toolIcon}>
+                  <Ionicons name="trending-up-outline" size={24} color="#10B981" />
+                </View>
+                <Text style={styles.toolTitle}>Demand Analytics</Text>
+                <Text style={styles.toolDescription}>View trending products</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.toolCard}
+                onPress={() => router.push('/my-products')}
+              >
+                <View style={styles.toolIcon}>
+                  <Ionicons name="storefront-outline" size={24} color="#10B981" />
+                </View>
+                <Text style={styles.toolTitle}>My Store</Text>
+                <Text style={styles.toolDescription}>Manage products</Text>
+              </TouchableOpacity>
+              
+              {canCreateAuctions(user) && (
+                <TouchableOpacity 
+                  style={styles.toolCard}
+                  onPress={() => router.push('/auction-create')}
+                >
+                  <View style={styles.toolIcon}>
+                    <Ionicons name="gavel-outline" size={24} color="#8B5CF6" />
+                  </View>
+                  <Text style={styles.toolTitle}>Create Auction</Text>
+                  <Text style={styles.toolDescription}>Start an auction</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+        )}
+
+        {/* General Tools - Available to all users */}
         <View style={styles.sellerTools}>
-          <Text style={styles.sellerToolsTitle}>Seller Tools</Text>
+          <Text style={styles.sellerToolsTitle}>Account Tools</Text>
           <View style={styles.toolsGrid}>
-            <TouchableOpacity 
-              style={styles.toolCard}
-              onPress={() => router.push('/product-demand')}
-            >
-              <View style={styles.toolIcon}>
-                <Ionicons name="trending-up-outline" size={24} color="#10B981" />
-              </View>
-              <Text style={styles.toolTitle}>Demand Analytics</Text>
-              <Text style={styles.toolDescription}>View trending products</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={styles.toolCard}
-              onPress={() => router.push('/my-products')}
-            >
-              <View style={styles.toolIcon}>
-                <Ionicons name="storefront-outline" size={24} color="#10B981" />
-              </View>
-              <Text style={styles.toolTitle}>My Store</Text>
-              <Text style={styles.toolDescription}>Manage products</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={styles.toolCard}
-              onPress={() => router.push('/seller-verification-requirements')}
-            >
-              <View style={styles.toolIcon}>
-                <Ionicons name="shield-checkmark-outline" size={24} color="#6B46C1" />
-              </View>
-              <Text style={styles.toolTitle}>Get Verified</Text>
-              <Text style={styles.toolDescription}>Verify your seller account</Text>
-            </TouchableOpacity>
+            {!canAccessSellerFeatures(user) && (
+              <TouchableOpacity 
+                style={styles.toolCard}
+                onPress={() => router.push('/seller-verification-requirements')}
+              >
+                <View style={styles.toolIcon}>
+                  <Ionicons name="shield-checkmark-outline" size={24} color="#6B46C1" />
+                </View>
+                <Text style={styles.toolTitle}>Become a Seller</Text>
+                <Text style={styles.toolDescription}>Start selling on Ocean</Text>
+              </TouchableOpacity>
+            )}
             
             <TouchableOpacity 
               style={styles.toolCard}
@@ -306,6 +406,18 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginTop: 8,
     fontStyle: 'italic',
+  },
+  roleBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
+    marginBottom: 8,
+  },
+  roleText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '600',
   },
   
   // Modern Stats Grid
@@ -511,5 +623,43 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     textAlign: 'center',
     lineHeight: 16,
+  },
+  
+  // Loading styles
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#6B7280',
+  },
+  
+  // No products styles
+  noProductsContainer: {
+    width: 160,
+    height: 120,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderStyle: 'dashed',
+  },
+  noProductsText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#6B7280',
+    marginBottom: 4,
+  },
+  noProductsSubtext: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    textAlign: 'center',
+    paddingHorizontal: 8,
   },
 });

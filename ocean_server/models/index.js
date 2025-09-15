@@ -103,6 +103,10 @@ const setupAssociations = () => {
   db.UserTable.hasMany(db.UserFollows, { foreignKey: 'userId', as: 'following' });
   db.UserTable.hasMany(db.UserFollows, { foreignKey: 'followsUserId', as: 'followers' });
   
+  // UserFollows associations
+  db.UserFollows.belongsTo(db.UserTable, { foreignKey: 'userId', as: 'user' });
+  db.UserFollows.belongsTo(db.UserTable, { foreignKey: 'followsUserId', as: 'followedUser' });
+  
   // Post associations
   db.Post.belongsTo(db.UserTable, { foreignKey: 'userId', as: 'user' });
   db.Post.hasMany(db.PostComment, { foreignKey: 'postId', as: 'comments' });

@@ -285,7 +285,10 @@ export default function ProductDemandScreen() {
           <Ionicons name="arrow-back" size={24} color="#1F2937" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Product Demand</Text>
-        <TouchableOpacity style={styles.analyticsButton}>
+        <TouchableOpacity 
+          style={styles.analyticsButton}
+          onPress={() => router.push('/buyer-search-insight')}
+        >
           <Ionicons name="analytics-outline" size={24} color="#6B46C1" />
         </TouchableOpacity>
       </View>

@@ -7,13 +7,17 @@ import {
   TouchableOpacity,
   Dimensions,
   ScrollView,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useAuth } from '../../contexts/AuthContext';
 
 const { width } = Dimensions.get('window');
 
 export default function CreateAccountScreen() {
+  const { signup, isLoading } = useAuth();
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [country, setCountry] = useState('');
@@ -22,10 +26,71 @@ export default function CreateAccountScreen() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [errors, setErrors] = useState<{[key: string]: string}>({});
 
-  const handleGetStarted = () => {
-    if (fullName && email && country && city && password && confirmPassword && password === confirmPassword) {
-      router.push('/auth/otp-verification');
+  const validateForm = () => {
+    const newErrors: {[key: string]: string} = {};
+
+    if (!fullName.trim()) {
+      newErrors.fullName = 'Full name is required';
+    } else if (fullName.trim().length < 2) {
+      newErrors.fullName = 'Full name must be at least 2 characters';
+    }
+
+    if (!email.trim()) {
+      newErrors.email = 'Email is required';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      newErrors.email = 'Please enter a valid email address';
+    }
+
+    if (!country.trim()) {
+      newErrors.country = 'Country is required';
+    }
+
+    if (!city.trim()) {
+      newErrors.city = 'City is required';
+    }
+
+    if (!password) {
+      newErrors.password = 'Password is required';
+    } else if (password.length < 8) {
+      newErrors.password = 'Password must be at least 8 characters';
+    } else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(password)) {
+      newErrors.password = 'Password must contain uppercase, lowercase, and number';
+    }
+
+    if (!confirmPassword) {
+      newErrors.confirmPassword = 'Please confirm your password';
+    } else if (password !== confirmPassword) {
+      newErrors.confirmPassword = 'Passwords do not match';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleGetStarted = async () => {
+    if (!validateForm()) {
+      return;
+    }
+
+    try {
+      await signup({
+        fullName: fullName.trim(),
+        email: email.trim().toLowerCase(),
+        password,
+        confirmPassword,
+        agreeTerms: true, // Assuming user agrees by proceeding
+      });
+      
+      // Navigate to OTP verification or main app
+      router.replace('/(tabs)');
+    } catch (error: any) {
+      Alert.alert(
+        'Signup Failed',
+        error.message || 'An error occurred during signup. Please try again.',
+        [{ text: 'OK' }]
+      );
     }
   };
 
@@ -58,10 +123,16 @@ export default function CreateAccountScreen() {
             style={styles.textInput}
             placeholder="Full Name"
             value={fullName}
-            onChangeText={setFullName}
+            onChangeText={(text) => {
+              setFullName(text);
+              if (errors.fullName) {
+                setErrors(prev => ({ ...prev, fullName: '' }));
+              }
+            }}
             placeholderTextColor="#9CA3AF"
           />
         </View>
+        {errors.fullName && <Text style={styles.errorText}>{errors.fullName}</Text>}
 
         <View style={styles.inputField}>
           <Ionicons name="mail" size={20} color="#6B7280" style={styles.inputIcon} />
@@ -69,12 +140,18 @@ export default function CreateAccountScreen() {
             style={styles.textInput}
             placeholder="Email"
             value={email}
-            onChangeText={setEmail}
+            onChangeText={(text) => {
+              setEmail(text);
+              if (errors.email) {
+                setErrors(prev => ({ ...prev, email: '' }));
+              }
+            }}
             placeholderTextColor="#9CA3AF"
             keyboardType="email-address"
             autoCapitalize="none"
           />
         </View>
+        {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
 
         <View style={styles.inputField}>
           <Ionicons name="globe" size={20} color="#6B7280" style={styles.inputIcon} />
@@ -82,11 +159,17 @@ export default function CreateAccountScreen() {
             style={styles.textInput}
             placeholder="Country"
             value={country}
-            onChangeText={setCountry}
+            onChangeText={(text) => {
+              setCountry(text);
+              if (errors.country) {
+                setErrors(prev => ({ ...prev, country: '' }));
+              }
+            }}
             placeholderTextColor="#9CA3AF"
           />
           <Ionicons name="chevron-down" size={20} color="#6B7280" />
         </View>
+        {errors.country && <Text style={styles.errorText}>{errors.country}</Text>}
 
         <View style={styles.inputField}>
           <Ionicons name="business" size={20} color="#6B7280" style={styles.inputIcon} />
@@ -94,11 +177,17 @@ export default function CreateAccountScreen() {
             style={styles.textInput}
             placeholder="City"
             value={city}
-            onChangeText={setCity}
+            onChangeText={(text) => {
+              setCity(text);
+              if (errors.city) {
+                setErrors(prev => ({ ...prev, city: '' }));
+              }
+            }}
             placeholderTextColor="#9CA3AF"
           />
           <Ionicons name="chevron-down" size={20} color="#6B7280" />
         </View>
+        {errors.city && <Text style={styles.errorText}>{errors.city}</Text>}
 
         <View style={styles.inputField}>
           <Ionicons name="lock-closed" size={20} color="#6B7280" style={styles.inputIcon} />
@@ -106,7 +195,12 @@ export default function CreateAccountScreen() {
             style={styles.textInput}
             placeholder="Create Password"
             value={password}
-            onChangeText={setPassword}
+            onChangeText={(text) => {
+              setPassword(text);
+              if (errors.password) {
+                setErrors(prev => ({ ...prev, password: '' }));
+              }
+            }}
             placeholderTextColor="#9CA3AF"
             secureTextEntry={!showPassword}
           />
@@ -118,6 +212,7 @@ export default function CreateAccountScreen() {
             />
           </TouchableOpacity>
         </View>
+        {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
 
         <View style={styles.inputField}>
           <Ionicons name="lock-closed" size={20} color="#6B7280" style={styles.inputIcon} />
@@ -125,7 +220,12 @@ export default function CreateAccountScreen() {
             style={styles.textInput}
             placeholder="Confirm Password"
             value={confirmPassword}
-            onChangeText={setConfirmPassword}
+            onChangeText={(text) => {
+              setConfirmPassword(text);
+              if (errors.confirmPassword) {
+                setErrors(prev => ({ ...prev, confirmPassword: '' }));
+              }
+            }}
             placeholderTextColor="#9CA3AF"
             secureTextEntry={!showConfirmPassword}
           />
@@ -137,12 +237,21 @@ export default function CreateAccountScreen() {
             />
           </TouchableOpacity>
         </View>
+        {errors.confirmPassword && <Text style={styles.errorText}>{errors.confirmPassword}</Text>}
 
       </View>
 
       {/* Get Started Button */}
-      <TouchableOpacity style={styles.getStartedButton} onPress={handleGetStarted}>
-        <Text style={styles.getStartedButtonText}>Get Started</Text>
+      <TouchableOpacity 
+        style={[styles.getStartedButton, isLoading && styles.disabledButton]} 
+        onPress={handleGetStarted}
+        disabled={isLoading}
+      >
+        {isLoading ? (
+          <ActivityIndicator color="#FFFFFF" size="small" />
+        ) : (
+          <Text style={styles.getStartedButtonText}>Get Started</Text>
+        )}
       </TouchableOpacity>
 
       {/* Separator */}
@@ -310,5 +419,15 @@ const styles = StyleSheet.create({
   footerLink: {
     color: '#6B46C1',
     fontWeight: '600',
+  },
+  errorText: {
+    color: '#EF4444',
+    fontSize: 12,
+    marginTop: 4,
+    marginBottom: 8,
+    marginLeft: 4,
+  },
+  disabledButton: {
+    opacity: 0.6,
   },
 });

@@ -36,6 +36,14 @@ module.exports = (sequelize, DataTypes) =>{
                 notEmpty:true,
             }
         },
+        username:{
+            type:DataTypes.STRING,
+            allowNull: true,
+            unique: true,
+            validate:{
+                notEmpty:false,
+            }
+        },
         email:{
             type:DataTypes.STRING,
             allowNull: false,
@@ -90,6 +98,14 @@ module.exports = (sequelize, DataTypes) =>{
         website:{
             type:DataTypes.STRING,
             allowNull: true,
+            validate:{
+                notEmpty:false,
+            }
+        },
+        lastActive:{
+            type:DataTypes.DATE,
+            allowNull: true,
+            defaultValue: DataTypes.NOW,
             validate:{
                 notEmpty:false,
             }

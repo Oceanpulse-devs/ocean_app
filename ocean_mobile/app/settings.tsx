@@ -8,19 +8,47 @@ import {
   Switch,
   Dimensions,
   StatusBar,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useTheme } from '../contexts/ThemeContext';
+import { useAuth } from '../contexts/AuthContext';
 
 const { width, height } = Dimensions.get('window');
 
 export default function SettingsScreen() {
   const { isDarkMode, toggleDarkMode, colors } = useTheme();
+  const { logout } = useAuth();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [locationSharing, setLocationSharing] = useState(true);
   const [autoSave, setAutoSave] = useState(true);
+
+  const handleLogout = () => {
+    Alert.alert(
+      'Sign Out',
+      'Are you sure you want to sign out?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Sign Out',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await logout();
+              router.replace('/auth/login');
+            } catch (error) {
+              Alert.alert('Error', 'Failed to sign out. Please try again.');
+            }
+          },
+        },
+      ]
+    );
+  };
 
   const settingsSections = [
     {
@@ -402,10 +430,7 @@ export default function SettingsScreen() {
         <View style={styles.signOutSection}>
           <TouchableOpacity 
             style={[dynamicStyles.signOutButton, { backgroundColor: colors.error }]}
-            onPress={() => {
-              // TODO: Implement logout functionality
-              console.log('Sign out pressed');
-            }}
+            onPress={handleLogout}
           >
             <Ionicons name="log-out-outline" size={20} color="#FFFFFF" />
             <Text style={dynamicStyles.signOutButtonText}>Sign Out</Text>

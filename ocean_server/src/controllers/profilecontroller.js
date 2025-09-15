@@ -1,5 +1,5 @@
-const { where } = require('sequelize');
-const {UserTable, SellersTable} = require('../../models')
+const { where, Op } = require('sequelize');
+const {UserTable, SellersTable, UserFollows, Product} = require('../../models')
 
 const currentUserprofile = async(req,res)=>{
   try {
@@ -11,11 +11,40 @@ const currentUserprofile = async(req,res)=>{
    }
    
    const alsoSeller = await SellersTable.findOne({where:{userId:id}})
+   
+   // Get follow statistics
+   const followersCount = await UserFollows.count({
+     where: { followsUserId: id }
+   });
+   
+   const followingCount = await UserFollows.count({
+     where: { userId: id }
+   });
+   
+   // Get products count
+   const productsCount = await Product.count({
+     where: { sellerId: id }
+   });
+   
+   // Get featured products (latest 3 products)
+   const featuredProducts = await Product.findAll({
+     where: { 
+       sellerId: id,
+       status: 'active',
+       isAvailable: true
+     },
+     order: [['createdAt', 'DESC']],
+     limit: 3,
+     attributes: ['id', 'title', 'price', 'currency', 'brand', 'location', 'images', 'condition']
+   });
+   
    const fullName = currentUser.fullName
    const email = currentUser.email
+   const username = currentUser.username || `@${currentUser.fullName.toLowerCase().replace(/\s+/g, '_')}`
    const role = currentUser.accountType
    const accountStatus = currentUser.accountStatus
    const createdAt = currentUser.createdAt
+   const lastActive = currentUser.lastActive || currentUser.updatedAt
    let verificationStatus = alsoSeller ? alsoSeller.verificationStatus : null;
    
    // Format join date
@@ -24,16 +53,40 @@ const currentUserprofile = async(req,res)=>{
      year: 'numeric' 
    })}`;
    
+   // Format last active date
+   const lastActiveFormatted = lastActive ? 
+     `${new Date(lastActive).getDate()}${getOrdinalSuffix(new Date(lastActive).getDate())} ${new Date(lastActive).toLocaleDateString('en-US', { month: 'long' })}, ${new Date(lastActive).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}` :
+     'Recently';
+   
+   // Helper function for ordinal suffixes
+   function getOrdinalSuffix(day) {
+     if (day >= 11 && day <= 13) return 'th';
+     switch (day % 10) {
+       case 1: return 'st';
+       case 2: return 'nd';
+       case 3: return 'rd';
+       default: return 'th';
+     }
+   }
+   
    // Basic profile info for all users with actual database values
    const profileInfo = {
      id: currentUser.id,
      fullName, 
-     email, 
-     role,
+     email,
+     username,
+     role, // Current role for permissions
+     accountType: role, // Account classification (same as role for now)
      accountStatus,
      createdAt,
      joinDate,
+     lastActive: lastActiveFormatted,
      verificationStatus,
+     // Social stats
+     followersCount,
+     followingCount,
+     productsCount,
+     featuredProducts,
      // Use actual database values with fallbacks
      profilePicture: currentUser.profilePicture || "/default-avatar.jpg",
      coverPicture: currentUser.coverPicture || "/default-cover.jpg",
@@ -54,7 +107,10 @@ const currentUserprofile = async(req,res)=>{
      profileInfo.bio = alsoSeller.businessDescription || "Professional seller on Ocean App";
    }
    
-   return res.status(200).json({profileInfo})
+   return res.status(200).json({
+     message: "Profile retrieved successfully",
+     user: profileInfo
+   })
    
   } catch (error) {
     console.error("Profile error:", error);

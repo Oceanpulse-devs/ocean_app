@@ -6,21 +6,54 @@ import {
   TextInput,
   TouchableOpacity,
   Dimensions,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useAuth } from '../../contexts/AuthContext';
 
 const { width } = Dimensions.get('window');
 
 export default function LoginScreen() {
+  const { login, isLoading } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [errors, setErrors] = useState<{[key: string]: string}>({});
 
-  const handleLogin = () => {
-    if (email && password) {
-      // Navigate to main app after login
+  const validateForm = () => {
+    const newErrors: {[key: string]: string} = {};
+
+    if (!email.trim()) {
+      newErrors.email = 'Email is required';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      newErrors.email = 'Please enter a valid email address';
+    }
+
+    if (!password) {
+      newErrors.password = 'Password is required';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleLogin = async () => {
+    if (!validateForm()) {
+      return;
+    }
+
+    try {
+      await login(email.trim().toLowerCase(), password);
+      // Navigate to main app after successful login
       router.replace('/(tabs)');
+    } catch (error: any) {
+      Alert.alert(
+        'Login Failed',
+        error.message || 'Invalid email or password. Please try again.',
+        [{ text: 'OK' }]
+      );
     }
   };
 
@@ -51,12 +84,18 @@ export default function LoginScreen() {
             style={styles.textInput}
             placeholder="Email"
             value={email}
-            onChangeText={setEmail}
+            onChangeText={(text) => {
+              setEmail(text);
+              if (errors.email) {
+                setErrors(prev => ({ ...prev, email: '' }));
+              }
+            }}
             placeholderTextColor="#9CA3AF"
             keyboardType="email-address"
             autoCapitalize="none"
           />
         </View>
+        {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
 
         <View style={styles.inputField}>
           <Ionicons name="lock-closed" size={20} color="#6B7280" style={styles.inputIcon} />
@@ -64,7 +103,12 @@ export default function LoginScreen() {
             style={styles.textInput}
             placeholder="Enter Password"
             value={password}
-            onChangeText={setPassword}
+            onChangeText={(text) => {
+              setPassword(text);
+              if (errors.password) {
+                setErrors(prev => ({ ...prev, password: '' }));
+              }
+            }}
             placeholderTextColor="#9CA3AF"
             secureTextEntry={!showPassword}
           />
@@ -76,6 +120,7 @@ export default function LoginScreen() {
             />
           </TouchableOpacity>
         </View>
+        {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
 
         {/* Forgot Password Link */}
         <TouchableOpacity style={styles.forgotPasswordLink} onPress={() => router.push('/auth/forgot-password')}>
@@ -86,8 +131,16 @@ export default function LoginScreen() {
       </View>
 
       {/* Next Button */}
-      <TouchableOpacity style={styles.nextButton} onPress={handleLogin}>
-        <Text style={styles.nextButtonText}>Next</Text>
+      <TouchableOpacity 
+        style={[styles.nextButton, isLoading && styles.disabledButton]} 
+        onPress={handleLogin}
+        disabled={isLoading}
+      >
+        {isLoading ? (
+          <ActivityIndicator color="#FFFFFF" size="small" />
+        ) : (
+          <Text style={styles.nextButtonText}>Next</Text>
+        )}
       </TouchableOpacity>
 
       {/* Google Login */}
@@ -231,5 +284,15 @@ const styles = StyleSheet.create({
   footerLink: {
     color: '#6B46C1',
     fontWeight: '600',
+  },
+  errorText: {
+    color: '#EF4444',
+    fontSize: 12,
+    marginTop: 4,
+    marginBottom: 8,
+    marginLeft: 4,
+  },
+  disabledButton: {
+    opacity: 0.6,
   },
 });

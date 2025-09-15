@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "ocean_mobile",
-    "slug": "ocean_mobile",
+    "slug": "ocean-iocaiyudoaz1uqzytds4p",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -16,7 +16,8 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "package": "com.jimxicode.oceaniocaiyudoaz1uqzytds4p"
     },
     "web": {
       "bundler": "metro",
@@ -37,6 +38,19 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "4222b2bf-102e-4a43-a8f7-832d18d027d6"
+      }
+    },
+    "owner": "jimxicode",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/4222b2bf-102e-4a43-a8f7-832d18d027d6"
     }
   }
 }

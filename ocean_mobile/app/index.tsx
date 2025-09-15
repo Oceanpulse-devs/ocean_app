@@ -1,18 +1,29 @@
 import React, { useEffect } from 'react';
-import { View, StyleSheet, Dimensions, StatusBar, Image, Text } from 'react-native';
+import { View, StyleSheet, Dimensions, StatusBar, Image, Text, ActivityIndicator } from 'react-native';
 import { router } from 'expo-router';
+import { useAuth } from '../contexts/AuthContext';
 
 const { width, height } = Dimensions.get('window');
 
 export default function SplashScreen() {
-  useEffect(() => {
-    // Navigate to onboarding after 2 seconds
-    const timer = setTimeout(() => {
-      router.replace('/onboarding/');
-    }, 2000);
+  const { isAuthenticated, isLoading } = useAuth();
 
-    return () => clearTimeout(timer);
-  }, []);
+  useEffect(() => {
+    // Wait for authentication check to complete
+    if (!isLoading) {
+      const timer = setTimeout(() => {
+        if (isAuthenticated) {
+          // User is logged in, go directly to main app
+          router.replace('/(tabs)');
+        } else {
+          // User is not logged in, go to onboarding
+          router.replace('/onboarding/');
+        }
+      }, 1500); // Reduced time since we're checking auth status
+
+      return () => clearTimeout(timer);
+    }
+  }, [isAuthenticated, isLoading]);
 
   return (
     <View style={styles.container}>
@@ -32,6 +43,14 @@ export default function SplashScreen() {
           <Text style={styles.tagline}>Marketplace</Text>
         </View>
       </View>
+
+      {/* Loading Indicator */}
+      {isLoading && (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#20E6CC" />
+          <Text style={styles.loadingText}>Loading...</Text>
+        </View>
+      )}
     </View>
   );
 }
@@ -67,5 +86,17 @@ const styles = StyleSheet.create({
     fontWeight: '300',
     color: '#20E6CC',
     letterSpacing: 2,
+  },
+  loadingContainer: {
+    position: 'absolute',
+    bottom: 100,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    marginTop: 12,
+    fontWeight: '300',
   },
 });

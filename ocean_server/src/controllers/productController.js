@@ -589,7 +589,78 @@ const getSellerProducts = async (req, res) => {
     }
 };
 
+// Get current user's products
+const getMyProducts = async (req, res) => {
+    try {
+        const currentUserId = req.user.id;
+        const { page = 1, limit = 20 } = req.query;
+        const offset = (page - 1) * limit;
 
+        const products = await Product.findAndCountAll({
+            where: { 
+                sellerId: currentUserId
+            },
+            include: [
+                {
+                    model: UserTable,
+                    as: 'seller',
+                    attributes: ['id', 'fullName', 'email', 'profilePicture', 'accountType', 'accountStatus']
+                }
+            ],
+            order: [['createdAt', 'DESC']],
+            limit: parseInt(limit),
+            offset: parseInt(offset)
+        });
+
+        // Format products for frontend
+        const formattedProducts = products.rows.map((product) => {
+            const productData = product.toJSON();
+            
+            return {
+                id: productData.id,
+                name: productData.title,
+                price: productData.price,
+                originalPrice: productData.originalPrice,
+                brand: productData.brand,
+                location: productData.location,
+                status: productData.status,
+                views: productData.views || 0,
+                likes: productData.likes || 0,
+                image: productData.images && productData.images.length > 0 ? productData.images[0] : '📦',
+                isDistress: productData.isDistressSale || false,
+                createdAt: productData.createdAt ? 
+                    new Date(productData.createdAt).toLocaleDateString('en-US', { 
+                        month: 'short', 
+                        day: 'numeric' 
+                    }) : 'Recently',
+                currency: productData.currency || 'NGN',
+                condition: productData.condition,
+                description: productData.description,
+                images: productData.images || [],
+                urgencyLevel: productData.urgencyLevel,
+                discountPercentage: productData.discountPercentage
+            };
+        });
+
+        res.status(200).json({
+            message: "My products retrieved successfully",
+            data: {
+                products: formattedProducts,
+                pagination: {
+                    currentPage: parseInt(page),
+                    totalPages: Math.ceil(products.count / limit),
+                    totalProducts: products.count,
+                    hasNextPage: offset + limit < products.count,
+                    hasPrevPage: page > 1
+                }
+            }
+        });
+
+    } catch (error) {
+        console.error('Get my products error:', error);
+        res.status(500).json({ message: "Error retrieving products", error: error.message });
+    }
+};
 
 module.exports = {
     getProducts,
@@ -600,5 +671,6 @@ module.exports = {
     toggleSaveProduct,
     getSavedProducts,
     getCategories,
-    getSellerProducts
+    getSellerProducts,
+    getMyProducts
 }; 

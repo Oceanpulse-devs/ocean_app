@@ -9,12 +9,21 @@ import {
   Image,
 } from 'react-native';
 import { router } from 'expo-router';
+import { useAuth } from '../../contexts/AuthContext';
 
 const { width, height } = Dimensions.get('window');
 
 export default function OnboardingScreen() {
+  const { isAuthenticated } = useAuth();
   const [currentIndex, setCurrentIndex] = useState(0);
   const scrollViewRef = useRef<ScrollView>(null);
+
+  // If user is already authenticated, skip onboarding
+  React.useEffect(() => {
+    if (isAuthenticated) {
+      router.replace('/(tabs)');
+    }
+  }, [isAuthenticated]);
 
   const onboardingData = [
     {

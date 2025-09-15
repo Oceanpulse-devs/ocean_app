@@ -7,11 +7,11 @@ module.exports = (sequelize, DataTypes) => {
       defaultValue: DataTypes.UUIDV4,
       primaryKey: true,
     },
-    user_id: {
+    userId: {
       type: DataTypes.UUID,
       allowNull: false,
     },
-    follows_user_id: {
+    followsUserId: {
       type: DataTypes.UUID,
       allowNull: false,
     }
@@ -21,7 +21,7 @@ module.exports = (sequelize, DataTypes) => {
     indexes: [
       {
         unique: true,
-        fields: ['user_id', 'follows_user_id']
+        fields: ['userId', 'followsUserId']
       }
     ]
   });
@@ -30,12 +30,12 @@ module.exports = (sequelize, DataTypes) => {
 
   UserFollows.associate = function(models) {
     UserFollows.belongsTo(models.UserTable, {
-      foreignKey: 'user_id',
+      foreignKey: 'userId',
       as: 'user'
     });
     
     UserFollows.belongsTo(models.UserTable, {
-      foreignKey: 'follows_user_id',
+      foreignKey: 'followsUserId',
       as: 'followedUser'
     });
   };

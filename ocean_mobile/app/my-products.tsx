@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,85 +8,46 @@ import {
   FlatList,
   StatusBar,
   Dimensions,
+  ActivityIndicator,
+  Alert,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import { useAuth } from '../contexts/AuthContext';
+import apiService from '../services/api';
 
 const { width } = Dimensions.get('window');
 
 export default function MyProductsScreen() {
-  const [myProducts] = useState([
-    {
-      id: '1',
-      name: 'Nike Air Max 270',
-      price: '$120',
-      originalPrice: '$150',
-      brand: 'Nike',
-      location: 'Lagos, Nigeria',
-      status: 'active',
-      views: 45,
-      likes: 12,
-      image: '👟',
-      isDistress: false,
-      createdAt: '2 days ago',
-    },
-    {
-      id: '2',
-      name: 'Adidas Ultraboost',
-      price: '$180',
-      originalPrice: '$220',
-      brand: 'Adidas',
-      location: 'Lagos, Nigeria',
-      status: 'active',
-      views: 32,
-      likes: 8,
-      image: '👟',
-      isDistress: true,
-      createdAt: '1 week ago',
-    },
-    {
-      id: '3',
-      name: 'Jordan Retro 1',
-      price: '$200',
-      originalPrice: '$250',
-      brand: 'Jordan',
-      location: 'Lagos, Nigeria',
-      status: 'sold',
-      views: 67,
-      likes: 23,
-      image: '👟',
-      isDistress: false,
-      createdAt: '3 days ago',
-    },
-    {
-      id: '4',
-      name: 'Converse Chuck Taylor',
-      price: '$60',
-      originalPrice: '$80',
-      brand: 'Converse',
-      location: 'Lagos, Nigeria',
-      status: 'active',
-      views: 28,
-      likes: 5,
-      image: '👟',
-      isDistress: false,
-      createdAt: '5 days ago',
-    },
-    {
-      id: '5',
-      name: 'Vans Old Skool',
-      price: '$70',
-      originalPrice: '$90',
-      brand: 'Vans',
-      location: 'Lagos, Nigeria',
-      status: 'draft',
-      views: 0,
-      likes: 0,
-      image: '👟',
-      isDistress: false,
-      createdAt: '1 day ago',
-    },
-  ]);
+  const { user } = useAuth();
+  const [myProducts, setMyProducts] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Fetch products data
+  useEffect(() => {
+    fetchProducts();
+  }, []);
+
+  const fetchProducts = async () => {
+    try {
+      setIsLoading(true);
+      const response = await apiService.get('/api/my-products');
+      setMyProducts(response.data.products || []);
+    } catch (error) {
+      console.error('Error fetching products:', error);
+      Alert.alert('Error', 'Failed to load products');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await fetchProducts();
+    setRefreshing(false);
+  };
 
   const [selectedFilter, setSelectedFilter] = useState('all');
 
@@ -102,7 +63,15 @@ export default function MyProductsScreen() {
   const renderProduct = ({ item }) => (
     <TouchableOpacity style={styles.productCard}>
       <View style={styles.productImage}>
-        <Text style={styles.productEmoji}>{item.image}</Text>
+        {item.image && item.image !== '📦' ? (
+          <Image 
+            source={{ uri: item.image }} 
+            style={styles.productImage}
+            resizeMode="cover"
+          />
+        ) : (
+          <Text style={styles.productEmoji}>{item.image || '📦'}</Text>
+        )}
         {item.isDistress && (
           <View style={styles.distressBadge}>
             <Text style={styles.distressText}>🔥 URGENT</Text>
@@ -134,8 +103,10 @@ export default function MyProductsScreen() {
         <Text style={styles.productBrand}>{item.brand}</Text>
         
         <View style={styles.priceContainer}>
-          <Text style={styles.productPrice}>{item.price}</Text>
-          <Text style={styles.originalPrice}>{item.originalPrice}</Text>
+          <Text style={styles.productPrice}>{item.currency} {item.price}</Text>
+          {item.originalPrice && (
+            <Text style={styles.originalPrice}>{item.currency} {item.originalPrice}</Text>
+          )}
         </View>
         
         <View style={styles.productLocation}>
@@ -168,6 +139,27 @@ export default function MyProductsScreen() {
       </View>
     </TouchableOpacity>
   );
+
+  if (isLoading) {
+    return (
+      <View style={styles.container}>
+        <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+            <Ionicons name="arrow-back" size={24} color="#1F2937" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>My Products</Text>
+          <TouchableOpacity style={styles.addButton} onPress={() => router.push('/(tabs)/upload?type=product')}>
+            <Ionicons name="add" size={24} color="#8B5CF6" />
+          </TouchableOpacity>
+        </View>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#8B5CF6" />
+          <Text style={styles.loadingText}>Loading products...</Text>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -214,13 +206,34 @@ export default function MyProductsScreen() {
       </View>
 
       {/* Products List */}
-      <FlatList
-        data={filteredProducts}
-        renderItem={renderProduct}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.productsList}
-        showsVerticalScrollIndicator={false}
-      />
+      {filteredProducts.length > 0 ? (
+        <FlatList
+          data={filteredProducts}
+          renderItem={renderProduct}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.productsList}
+          showsVerticalScrollIndicator={false}
+          refreshing={refreshing}
+          onRefresh={handleRefresh}
+        />
+      ) : (
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyText}>No products found</Text>
+          <Text style={styles.emptySubtext}>
+            {selectedFilter === 'all' 
+              ? "Start by adding your first product!" 
+              : `No ${selectedFilter} products found`
+            }
+          </Text>
+          <TouchableOpacity 
+            style={styles.addFirstButton}
+            onPress={() => router.push('/(tabs)/upload?type=product')}
+          >
+            <Ionicons name="add" size={20} color="#FFFFFF" />
+            <Text style={styles.addFirstButtonText}>Add Product</Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </View>
   );
 }
@@ -463,5 +476,55 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
     color: '#F59E0B',
+  },
+  
+  // Loading styles
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#6B7280',
+  },
+  
+  // Empty state styles
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+    paddingHorizontal: 20,
+  },
+  emptyText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#6B7280',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  emptySubtext: {
+    fontSize: 14,
+    color: '#9CA3AF',
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  addFirstButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#8B5CF6',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
+    gap: 8,
+  },
+  addFirstButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
 });

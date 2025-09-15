@@ -1,4 +1,4 @@
-const { UserTable, UserFollows } = require('../../models');
+const { UserTable, UserFollows, SellersTable } = require('../../models');
 
 // Follow a user
 const followUser = async (req, res) => {
@@ -25,8 +25,8 @@ const followUser = async (req, res) => {
         // Check if already following
         const existingFollow = await UserFollows.findOne({
             where: {
-                user_id: followerId,
-                follows_user_id: targetUserId
+                userId: followerId,
+                followsUserId: targetUserId
             }
         });
 
@@ -36,8 +36,8 @@ const followUser = async (req, res) => {
 
         // Create follow relationship
         await UserFollows.create({
-            user_id: followerId,
-            follows_user_id: targetUserId
+            userId: followerId,
+            followsUserId: targetUserId
         });
 
         res.status(201).json({ 
@@ -74,8 +74,8 @@ const unfollowUser = async (req, res) => {
         // Check if follow relationship exists
         const existingFollow = await UserFollows.findOne({
             where: {
-                user_id: followerId,
-                follows_user_id: targetUserId
+                userId: followerId,
+                followsUserId: targetUserId
             }
         });
 
@@ -107,6 +107,7 @@ const getFollowers = async (req, res) => {
         const { userId } = req.params;
         const { page = 1, limit = 20 } = req.query;
         const offset = (page - 1) * limit;
+        const currentUserId = req.user?.id;
 
         // Check if user exists
         const user = await UserTable.findByPk(userId);
@@ -116,21 +117,68 @@ const getFollowers = async (req, res) => {
 
         // Get followers with pagination
         const followers = await UserFollows.findAndCountAll({
-            where: { follows_user_id: userId },
-            include: [{
-                model: UserTable,
-                as: 'follower',
-                attributes: ['id', 'fullName', 'email', 'profilePicture', 'accountType', 'accountStatus']
-            }],
+            where: { followsUserId: userId },
             limit: parseInt(limit),
             offset: parseInt(offset),
             order: [['createdAt', 'DESC']]
         });
 
+        // Get user details for each follower
+        const followersWithDetails = await Promise.all(
+            followers.rows.map(async (follow) => {
+                const user = await UserTable.findByPk(follow.userId, {
+                    attributes: ['id', 'fullName', 'username', 'email', 'profilePicture', 'accountType', 'accountStatus', 'lastActive']
+                });
+                return { ...follow.toJSON(), user };
+            })
+        );
+
+        // Add follow status for each follower (if current user is logged in)
+        const followersWithStatus = await Promise.all(
+            followersWithDetails.map(async (follow) => {
+                const followerData = follow.user;
+                let isFollowingBack = false;
+                
+                if (currentUserId && currentUserId !== followerData.id) {
+                    const followStatus = await UserFollows.findOne({
+                        where: {
+                            userId: currentUserId,
+                            followsUserId: followerData.id
+                        }
+                    });
+                    isFollowingBack = !!followStatus;
+                }
+
+                return {
+                    id: followerData.id,
+                    name: followerData.fullName,
+                    username: followerData.username || `@${followerData.fullName.toLowerCase().replace(/\s+/g, '_')}`,
+                    avatar: followerData.profilePicture || '👤',
+                    lastActive: followerData.lastActive ? 
+                        `${new Date(followerData.lastActive).getDate()}${getOrdinalSuffix(new Date(followerData.lastActive).getDate())} ${new Date(followerData.lastActive).toLocaleDateString('en-US', { month: 'long' })}, ${new Date(followerData.lastActive).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}` :
+                        'Recently',
+                    isFollowing: isFollowingBack,
+                    accountType: followerData.accountType,
+                    accountStatus: followerData.accountStatus
+                };
+            })
+        );
+
+        // Helper function for ordinal suffixes
+        function getOrdinalSuffix(day) {
+            if (day >= 11 && day <= 13) return 'th';
+            switch (day % 10) {
+                case 1: return 'st';
+                case 2: return 'nd';
+                case 3: return 'rd';
+                default: return 'th';
+            }
+        }
+
         res.status(200).json({
             message: "Followers retrieved successfully",
             data: {
-                followers: followers.rows,
+                followers: followersWithStatus,
                 totalFollowers: followers.count,
                 pagination: {
                     currentPage: parseInt(page),
@@ -162,21 +210,62 @@ const getFollowing = async (req, res) => {
 
         // Get following with pagination
         const following = await UserFollows.findAndCountAll({
-            where: { user_id: userId },
-            include: [{
-                model: UserTable,
-                as: 'followed',
-                attributes: ['id', 'fullName', 'email', 'profilePicture', 'accountType', 'accountStatus']
-            }],
+            where: { userId: userId },
             limit: parseInt(limit),
             offset: parseInt(offset),
             order: [['createdAt', 'DESC']]
         });
 
+        // Get user details for each following
+        const followingWithDetails = await Promise.all(
+            following.rows.map(async (follow) => {
+                const user = await UserTable.findByPk(follow.followsUserId, {
+                    attributes: ['id', 'fullName', 'username', 'email', 'profilePicture', 'accountType', 'accountStatus', 'lastActive'],
+                    include: [{
+                        model: SellersTable,
+                        as: 'seller',
+                        attributes: ['category', 'businessName'],
+                        required: false
+                    }]
+                });
+                return { ...follow.toJSON(), followedUser: user };
+            })
+        );
+
+        // Format following data with category info
+        const followingWithData = followingWithDetails.map((follow) => {
+            const userData = follow.followedUser;
+            const sellerData = userData.seller;
+            
+            return {
+                id: userData.id,
+                name: userData.fullName,
+                username: userData.username || `@${userData.fullName.toLowerCase().replace(/\s+/g, '_')}`,
+                avatar: userData.profilePicture || '👤',
+                lastActive: userData.lastActive ? 
+                    `${new Date(userData.lastActive).getDate()}${getOrdinalSuffix(new Date(userData.lastActive).getDate())} ${new Date(userData.lastActive).toLocaleDateString('en-US', { month: 'long' })}, ${new Date(userData.lastActive).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}` :
+                    'Recently',
+                category: sellerData?.category || (userData.accountType === 'seller' ? 'Seller' : 'Buyer'),
+                accountType: userData.accountType,
+                accountStatus: userData.accountStatus
+            };
+        });
+
+        // Helper function for ordinal suffixes
+        function getOrdinalSuffix(day) {
+            if (day >= 11 && day <= 13) return 'th';
+            switch (day % 10) {
+                case 1: return 'st';
+                case 2: return 'nd';
+                case 3: return 'rd';
+                default: return 'th';
+            }
+        }
+
         res.status(200).json({
             message: "Following list retrieved successfully",
             data: {
-                following: following.rows,
+                following: followingWithData,
                 totalFollowing: following.count,
                 pagination: {
                     currentPage: parseInt(page),
@@ -208,8 +297,8 @@ const checkFollowStatus = async (req, res) => {
         // Check follow status
         const followStatus = await UserFollows.findOne({
             where: {
-                user_id: currentUserId,
-                follows_user_id: targetUserId
+                userId: currentUserId,
+                followsUserId: targetUserId
             }
         });
 
@@ -240,12 +329,12 @@ const getFollowStats = async (req, res) => {
 
         // Get follower count
         const followerCount = await UserFollows.count({
-            where: { follows_user_id: userId }
+            where: { followsUserId: userId }
         });
 
         // Get following count
         const followingCount = await UserFollows.count({
-            where: { user_id: userId }
+            where: { userId: userId }
         });
 
         res.status(200).json({

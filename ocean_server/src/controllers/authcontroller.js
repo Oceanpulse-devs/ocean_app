@@ -81,7 +81,8 @@ const signup = async(req, res) => {
             id: newUser.id,
             fullName: newUser.fullName,
             email: newUser.email,
-            accountType: newUser.accountType,
+            role: newUser.accountType, // Current role for permissions
+            accountType: newUser.accountType, // Account classification
             accountStatus: newUser.accountStatus
         }
     })
@@ -201,7 +202,9 @@ const login = async(req,res)=>{
             id: existingUser.id,
             fullName: existingUser.fullName,
             email: existingUser.email,
-        role: existingUser.accountType
+            role: existingUser.accountType, // Current role for permissions
+            accountType: existingUser.accountType, // Account classification
+            accountStatus: existingUser.accountStatus
         }
     })
    }catch(error){
