@@ -1,6 +1,6 @@
 const express = require('express')
 const router = express.Router()
-const {signup,login,forgotPassword,verifyResetCode,resetPassword,sellerRegistration} = require('../controllers/authcontroller')
+const {signup,login,forgotPassword,verifyResetCode,resetPassword,sellerRegistration,verifyEmail,resendVerificationEmail} = require('../controllers/authcontroller')
 const authMiddleware = require('../middleware/authMiddleware')
 const updateRoleBasedOnVerification = require('../middleware/sellerVerficationstatusWare')
 const updateVerificationStatusBasedOnDocuments = require('../middleware/sellerdocstatusWare')
@@ -73,6 +73,8 @@ router.get('/api/auth/facebook/callback', passport.authenticate('facebook', { fa
 
 router.post('/api/signup', signup)
 router.post('/api/login', login)
+router.post('/api/verify-email', verifyEmail)
+router.post('/api/resend-verification', resendVerificationEmail)
 router.post('/api/logout', (req, res) => {
     res.clearCookie('token');
     res.status(200).json({ message: 'Logged out successfully' });

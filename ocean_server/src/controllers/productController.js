@@ -479,18 +479,40 @@ const getSavedProducts = async (req, res) => {
 // Get product categories
 const getCategories = async (req, res) => {
     try {
-        const categories = await ProductCategory.findAll({
-            where: { isActive: true, parentId: null },
-            include: [
-                {
-                    model: ProductCategory,
-                    as: 'subcategories',
-                    where: { isActive: true },
-                    required: false
-                }
-            ],
-            order: [['sortOrder', 'ASC'], ['name', 'ASC']]
-        });
+        // Try to get categories from database
+        let categories = [];
+        try {
+            categories = await ProductCategory.findAll({
+                where: { isActive: true, parentId: null },
+                include: [
+                    {
+                        model: ProductCategory,
+                        as: 'subcategories',
+                        where: { isActive: true },
+                        required: false
+                    }
+                ],
+                order: [['sortOrder', 'ASC'], ['name', 'ASC']]
+            });
+        } catch (dbError) {
+            console.log('Database categories not available, using fallback');
+        }
+
+        // If no categories from database, use fallback
+        if (categories.length === 0) {
+            categories = [
+                { id: 1, name: 'Electronics', description: 'Electronic devices', icon: '📱', subcategories: [] },
+                { id: 2, name: 'Fashion', description: 'Clothing and accessories', icon: '👗', subcategories: [] },
+                { id: 3, name: 'Home & Garden', description: 'Home improvement items', icon: '🏠', subcategories: [] },
+                { id: 4, name: 'Automotive', description: 'Cars and auto parts', icon: '🚗', subcategories: [] },
+                { id: 5, name: 'Sports', description: 'Sports equipment', icon: '⚽', subcategories: [] },
+                { id: 6, name: 'Books', description: 'Books and magazines', icon: '📚', subcategories: [] },
+                { id: 7, name: 'Health & Beauty', description: 'Health and beauty products', icon: '💄', subcategories: [] },
+                { id: 8, name: 'Toys & Games', description: 'Toys and games', icon: '🎮', subcategories: [] },
+                { id: 9, name: 'Jewelry', description: 'Jewelry and watches', icon: '💍', subcategories: [] },
+                { id: 10, name: 'Art & Collectibles', description: 'Art and collectibles', icon: '🎨', subcategories: [] }
+            ];
+        }
 
         // Format categories for frontend
         const formattedCategories = categories.map(category => ({

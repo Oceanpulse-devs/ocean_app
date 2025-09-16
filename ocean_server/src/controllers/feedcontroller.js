@@ -2,6 +2,235 @@ const { Post, PostMedia, PostLike, PostComment, PostShare, SavedPost, UserTable,
 const { Op, Sequelize } = require('sequelize');
 const cloudinaryService = require('../services/cloudinaryService');
 
+// Get home feed with stories and mixed posts
+const getHomeFeed = async (req, res) => {
+    try {
+        const { page = 1, limit = 10 } = req.query;
+        const offset = (page - 1) * limit;
+        const currentUserId = req.user?.id;
+
+        // Get stories (users with recent posts)
+        const stories = await UserTable.findAll({
+            include: [
+                {
+                    model: Post,
+                    as: 'posts',
+                    where: {
+                        createdAt: {
+                            [Op.gte]: new Date(Date.now() - 24 * 60 * 60 * 1000) // Last 24 hours
+                        }
+                    },
+                    required: true,
+                    attributes: ['id', 'createdAt']
+                }
+            ],
+            attributes: ['id', 'fullName', 'profilePicture', 'accountStatus'],
+            limit: 10
+        });
+
+        // Format stories for frontend
+        const formattedStories = stories.map(story => ({
+            id: story.id,
+            user: {
+                name: story.fullName,
+                avatar: story.profilePicture || '👤',
+                verified: story.accountStatus === 'verified'
+            },
+            hasStory: true,
+            storyCount: story.posts.length,
+            lastStoryTime: getTimeAgo(story.posts[0]?.createdAt),
+            isViewed: false // TODO: Implement story viewing tracking
+        }));
+
+        // Get mixed feed posts (seller and buyer posts)
+        const posts = await Post.findAndCountAll({
+            where: {
+                status: 'active'
+            },
+            include: [
+                {
+                    model: UserTable,
+                    as: 'user',
+                    attributes: ['id', 'fullName', 'profilePicture', 'accountStatus', 'location']
+                },
+                {
+                    model: PostMedia,
+                    as: 'media',
+                    attributes: ['id', 'mediaType', 'mediaUrl', 'thumbnailUrl', 'mediaOrder'],
+                    order: [['mediaOrder', 'ASC']]
+                },
+                {
+                    model: PostLike,
+                    as: 'likes',
+                    attributes: ['id', 'userId']
+                },
+                {
+                    model: PostComment,
+                    as: 'comments',
+                    attributes: ['id', 'userId', 'content', 'createdAt'],
+                    include: [
+                        {
+                            model: UserTable,
+                            as: 'user',
+                            attributes: ['id', 'fullName', 'profilePicture', 'accountStatus']
+                        }
+                    ],
+                    limit: 3,
+                    order: [['createdAt', 'DESC']]
+                }
+            ],
+            order: [
+                ['createdAt', 'DESC']
+            ],
+            limit: parseInt(limit),
+            offset: parseInt(offset),
+            distinct: true
+        });
+
+        // Format posts for frontend
+        const formattedPosts = await Promise.all(
+            posts.rows.map(async (post) => {
+                const postData = post.toJSON();
+                
+                // Determine post type and format accordingly
+                let formattedPost;
+                
+                if (postData.postSubType === 'buyer') {
+                    // Buyer post format
+                    formattedPost = {
+                        id: postData.id,
+                        type: 'buyer',
+                        user: {
+                            name: postData.user.fullName,
+                            avatar: postData.user.profilePicture || '👤',
+                            verified: postData.user.accountStatus === 'verified',
+                            location: postData.user.location
+                        },
+                        wantToBuy: {
+                            title: postData.productName || 'Looking for...',
+                            budget: postData.minBudget && postData.maxBudget 
+                                ? `₦${parseInt(postData.minBudget).toLocaleString()} - ₦${parseInt(postData.maxBudget).toLocaleString()}`
+                                : 'Budget not specified',
+                            description: postData.content,
+                            images: postData.media?.map(m => m.mediaUrl) || [],
+                            category: postData.category,
+                            urgency: 'medium' // TODO: Add urgency field to posts
+                        },
+                        likes: postData.likes?.length || 0,
+                        comments: postData.comments?.length || 0,
+                        shares: 0, // TODO: Implement shares
+                        timeAgo: getTimeAgo(postData.createdAt),
+                        isLiked: false, // Will be set below
+                        isSaved: false, // Will be set below
+                        showComments: false,
+                        commentList: postData.comments?.map(comment => ({
+                            id: comment.id,
+                            user: {
+                                name: comment.user.fullName,
+                                avatar: comment.user.profilePicture || '👤',
+                                verified: comment.user.accountStatus === 'verified'
+                            },
+                            text: comment.content,
+                            timeAgo: getTimeAgo(comment.createdAt),
+                            likes: 0 // TODO: Add comment likes
+                        })) || []
+                    };
+                } else {
+                    // Seller post format
+                    formattedPost = {
+                        id: postData.id,
+                        user: {
+                            name: postData.user.fullName,
+                            avatar: postData.user.profilePicture || '👤',
+                            verified: postData.user.accountStatus === 'verified',
+                            location: postData.user.location
+                        },
+                        product: {
+                            name: postData.productName || 'Product',
+                            price: postData.price ? `₦${parseInt(postData.price).toLocaleString()}` : 'Price not specified',
+                            originalPrice: postData.originalPrice ? `₦${parseInt(postData.originalPrice).toLocaleString()}` : null,
+                            images: postData.media?.map(m => m.mediaUrl) || [],
+                            condition: postData.condition || 'Not specified',
+                            category: postData.category || 'General'
+                        },
+                        description: postData.content,
+                        likes: postData.likes?.length || 0,
+                        comments: postData.comments?.length || 0,
+                        shares: 0, // TODO: Implement shares
+                        timeAgo: getTimeAgo(postData.createdAt),
+                        isLiked: false, // Will be set below
+                        isSaved: false, // Will be set below
+                        showComments: false,
+                        commentList: postData.comments?.map(comment => ({
+                            id: comment.id,
+                            user: {
+                                name: comment.user.fullName,
+                                avatar: comment.user.profilePicture || '👤',
+                                verified: comment.user.accountStatus === 'verified'
+                            },
+                            text: comment.content,
+                            timeAgo: getTimeAgo(comment.createdAt),
+                            likes: 0 // TODO: Add comment likes
+                        })) || []
+                    };
+                }
+
+                // Add user engagement status
+                if (currentUserId) {
+                    // Check if user liked the post
+                    const userLike = await PostLike.findOne({
+                        where: { postId: post.id, userId: currentUserId }
+                    });
+                    formattedPost.isLiked = !!userLike;
+
+                    // Check if user saved the post
+                    const userSaved = await SavedPost.findOne({
+                        where: { postId: post.id, userId: currentUserId }
+                    });
+                    formattedPost.isSaved = !!userSaved;
+                }
+
+                return formattedPost;
+            })
+        );
+
+        res.status(200).json({
+            message: "Home feed retrieved successfully",
+            data: {
+                stories: formattedStories,
+                posts: formattedPosts,
+                pagination: {
+                    currentPage: parseInt(page),
+                    totalPages: Math.ceil(posts.count / limit),
+                    totalPosts: posts.count,
+                    hasNextPage: offset + limit < posts.count,
+                    hasPrevPage: page > 1
+                }
+            }
+        });
+
+    } catch (error) {
+        console.error('Get home feed error:', error);
+        res.status(500).json({ message: "Error retrieving home feed", error: error.message });
+    }
+};
+
+// Helper function to format time ago
+const getTimeAgo = (date) => {
+    if (!date) return 'Unknown';
+    
+    const now = new Date();
+    const postDate = new Date(date);
+    const diffInSeconds = Math.floor((now - postDate) / 1000);
+    
+    if (diffInSeconds < 60) return 'Just now';
+    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} min ago`;
+    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} hours ago`;
+    if (diffInSeconds < 2592000) return `${Math.floor(diffInSeconds / 86400)} days ago`;
+    
+    return postDate.toLocaleDateString();
+};
+
 // Get feed with region filtering and random ordering
 const getFeed = async (req, res) => {
     try {
@@ -128,6 +357,21 @@ const createPost = async (req, res) => {
         console.log('Create post request body:', req.body);
         console.log('Create post request files:', req.files);
         
+        // Parse form data - handle both multer parsed and raw FormData
+        let formData = {};
+        if (!req.files && req.body._parts) {
+            console.log('Files not parsed by multer, handling manually');
+            // Parse the _parts array to extract form data
+            req.body._parts.forEach(part => {
+                if (part[0] !== 'media') {
+                    formData[part[0]] = part[1];
+                }
+            });
+            console.log('Parsed form data:', formData);
+        } else {
+            formData = req.body;
+        }
+        
         const {
             postType = 'product',
             postSubType = 'seller', // 'buyer' or 'seller'
@@ -142,7 +386,7 @@ const createPost = async (req, res) => {
             category,
             condition,
             tags
-        } = req.body;
+        } = formData;
 
         const userId = req.user.id;
 
@@ -184,13 +428,31 @@ const createPost = async (req, res) => {
         });
 
         // Add media if provided (optional - pictures are always optional)
+        console.log('=== MEDIA PROCESSING DEBUG ===');
+        console.log('req.files:', req.files);
+        console.log('req.files length:', req.files ? req.files.length : 'no files');
+        console.log('req.body keys:', Object.keys(req.body));
+        console.log('req.body.media present:', !!req.body.media);
+        console.log('req.body.media_name present:', !!req.body.media_name);
+        console.log('req.body.media_type present:', !!req.body.media_type);
+        console.log('===============================');
+        
         if (req.files && req.files.length > 0) {
+            console.log(`Processing ${req.files.length} files`);
             const mediaPromises = req.files.map(async (file, index) => {
                 try {
+                    console.log(`Processing file ${index}:`, {
+                        name: file.originalname,
+                        size: file.size,
+                        mimetype: file.mimetype,
+                        bufferLength: file.buffer ? file.buffer.length : 'no buffer'
+                    });
+                    
                     // Determine media type from file mimetype
                     const mediaType = file.mimetype.startsWith('image/') ? 'image' : 'video';
                     
                     // Upload to Cloudinary
+                    console.log(`Uploading file ${index} to Cloudinary...`);
                     const uploadResult = await cloudinaryService.uploadPostMedia(file.buffer, post.id);
                     
                     if (!uploadResult.success) {
@@ -198,8 +460,10 @@ const createPost = async (req, res) => {
                         throw new Error(`Failed to upload ${file.originalname}: ${uploadResult.error}`);
                     }
                     
+                    console.log(`Cloudinary upload successful for file ${index}:`, uploadResult.url);
+                    
                     // Create PostMedia record with Cloudinary URLs
-                    return PostMedia.create({
+                    const mediaRecord = await PostMedia.create({
                         postId: post.id,
                         mediaType: mediaType,
                         mediaUrl: uploadResult.url,
@@ -207,12 +471,43 @@ const createPost = async (req, res) => {
                         mediaOrder: index,
                         altText: file.originalname
                     });
+                    
+                    console.log(`Created PostMedia record for file ${index}:`, mediaRecord.id);
+                    return mediaRecord;
                 } catch (error) {
                     console.error(`Error processing file ${file.originalname}:`, error);
                     throw error;
                 }
             });
             await Promise.all(mediaPromises);
+            console.log('All media files processed successfully');
+        } else if (req.body._parts) {
+            // Handle files from _parts array when multer fails
+            console.log('Processing files from _parts array');
+            const mediaParts = req.body._parts.filter(part => part[0] === 'media');
+            
+            if (mediaParts.length > 0) {
+                console.log(`Found ${mediaParts.length} media files in _parts`);
+                
+                // Process files from _parts array
+                const mediaPromises = mediaParts.map(async (part, index) => {
+                    try {
+                        // Extract file data from the part
+                        const fileData = part[1];
+                        console.log(`Processing file ${index}:`, fileData);
+                        
+                        // For now, we'll skip actual file processing since we can't easily extract the buffer
+                        // This is a limitation of the current approach
+                        console.log('Note: Files from _parts array cannot be processed with current implementation');
+                        return null;
+                    } catch (error) {
+                        console.error(`Error processing file ${index}:`, error);
+                        return null;
+                    }
+                });
+                
+                await Promise.all(mediaPromises);
+            }
         }
 
         // Get created post with associations
@@ -882,6 +1177,7 @@ const getUserPosts = async (req, res) => {
 };
 
 module.exports = {
+    getHomeFeed,
     getFeed,
     createPost,
     updatePost,

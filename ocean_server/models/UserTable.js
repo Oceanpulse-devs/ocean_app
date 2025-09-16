@@ -119,11 +119,49 @@ module.exports = (sequelize, DataTypes) =>{
             }
         },
         accountStatus:{
-            type:DataTypes.ENUM("active","suspended","deactivated"),
+            type:DataTypes.ENUM("pending","active","suspended","deactivated"),
             allowNull: false,
-            defaultValue:"active",
+            defaultValue:"pending",
             validate:{
                 notEmpty:true,
+            }
+        },
+        // Email verification fields
+        emailVerified:{
+            type:DataTypes.BOOLEAN,
+            allowNull: false,
+            defaultValue: false,
+            validate:{
+                notEmpty:false,
+            }
+        },
+        emailVerificationToken:{
+            type:DataTypes.STRING,
+            allowNull: true,
+            validate:{
+                notEmpty:false,
+            }
+        },
+        emailVerificationExpires:{
+            type:DataTypes.DATE,
+            allowNull: true,
+            validate:{
+                notEmpty:false,
+            }
+        },
+        // Password reset fields
+        passwordResetToken:{
+            type:DataTypes.STRING,
+            allowNull: true,
+            validate:{
+                notEmpty:false,
+            }
+        },
+        passwordResetExpires:{
+            type:DataTypes.DATE,
+            allowNull: true,
+            validate:{
+                notEmpty:false,
             }
         },
         createdAt:{

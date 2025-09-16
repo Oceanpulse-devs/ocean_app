@@ -1,7 +1,9 @@
 const {UserTable, SellersTable, SellerDocument} = require('../../models')
 const { sendSellerApplicationNotification, sendAdminNotification } = require('./notificationController')
+const { sendEmail, emailTemplates } = require('../services/emailService')
 const bcrypt = require('bcrypt')
 const jwt = require('jsonwebtoken')
+const crypto = require('crypto')
 const { where } = require('sequelize')
 const JWT_SECRET = process.env.JWT_SECRET
 const redisClient = require('../config/redisdb')
@@ -66,25 +68,62 @@ const signup = async(req, res) => {
 
    //hashing the password
     const hashedPassword = await bcrypt.hash(password, 10)
+    
+    // Generate email verification token
+    const emailVerificationToken = crypto.randomBytes(32).toString('hex')
+    const emailVerificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours
+    
     const newUser = await UserTable.create({
         fullName: fullName.trim(),
         email: email.toLowerCase().trim(),
         password: hashedPassword,
         agreeTerms,
         accountType: 'buyer', // Default to buyer
-        accountStatus: 'active' // Default to active
+        accountStatus: 'pending', // Pending until email verification
+        emailVerified: false,
+        emailVerificationToken,
+        emailVerificationExpires
     })
 
+    // Cache verification token in Redis for faster verification
+    try {
+        const redisKey = `email_verification:${emailVerificationToken}`;
+        await redisClient.setEx(redisKey, 86400, JSON.stringify({ // 24 hours
+            userId: newUser.id,
+            email: newUser.email,
+            fullName: newUser.fullName,
+            createdAt: new Date().toISOString()
+        }));
+        console.log('✅ Verification token cached in Redis:', redisKey);
+    } catch (redisError) {
+        console.error('❌ Redis caching failed (continuing without cache):', redisError.message);
+        // Continue without Redis caching - the system will still work
+    }
+
+    // Send verification email
+    const verificationLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/verify-email?token=${emailVerificationToken}`
+    const emailTemplate = emailTemplates.emailVerification(newUser.fullName, verificationLink)
+    
+    try {
+        await sendEmail(newUser.email, emailTemplate.subject, emailTemplate.html, 'verification')
+        console.log('✅ Verification email sent to:', newUser.email)
+    } catch (emailError) {
+        console.error('❌ Failed to send verification email:', emailError)
+        // Don't fail the signup if email fails, but log the error
+    }
+
     res.status(201).json({
-        message:"User created successfully",
+        message:"User created successfully. Please check your email to verify your account.",
         user: {
             id: newUser.id,
             fullName: newUser.fullName,
             email: newUser.email,
             role: newUser.accountType, // Current role for permissions
             accountType: newUser.accountType, // Account classification
-            accountStatus: newUser.accountStatus
-        }
+            accountStatus: newUser.accountStatus,
+            emailVerified: newUser.emailVerified
+        },
+        requiresVerification: true
     })
 }catch(error){
         console.error('Signup error:', error);
@@ -117,7 +156,23 @@ const login = async(req,res)=>{
         if(existingUser.accountStatus === 'suspended'){
             return res.status(403).json({message:"Your account has been suspended. Please contact support for assistance."})
         }
+        if(existingUser.accountStatus === 'pending'){
+            return res.status(403).json({
+                message:"Please verify your email address before logging in. Check your email for a verification link.",
+                requiresVerification: true,
+                email: existingUser.email
+            })
+        }
         return res.status(403).json({message:"Account is not active. Please contact support."})
+    }
+
+    //checking if email is verified
+    if(!existingUser.emailVerified){
+        return res.status(403).json({
+            message:"Please verify your email address before logging in. Check your email for a verification link.",
+            requiresVerification: true,
+            email: existingUser.email
+        })
     }
 
     // Check for account lockout
@@ -477,4 +532,209 @@ const sellerRegistration = async(req,res)=>{
 
 
 
-module.exports = {signup,login,forgotPassword,verifyResetCode,resetPassword,sellerRegistration};
+// Verify email address
+const verifyEmail = async (req, res) => {
+    try {
+        const { token } = req.body;
+
+        if (!token) {
+            return res.status(400).json({ message: "Verification token is required" });
+        }
+
+        // Check Redis cache first for faster verification
+        let user;
+        try {
+            const redisKey = `email_verification:${token}`;
+            const cachedUserData = await redisClient.get(redisKey);
+            
+            if (cachedUserData) {
+                // Token found in Redis cache
+                const userData = JSON.parse(cachedUserData);
+                user = await UserTable.findByPk(userData.userId);
+                console.log('✅ Email verification token found in Redis cache');
+            }
+        } catch (redisError) {
+            console.error('❌ Redis lookup failed (falling back to database):', redisError.message);
+        }
+        
+        // Fallback to database lookup if Redis failed or no cache found
+        if (!user) {
+            user = await UserTable.findOne({
+                where: {
+                    emailVerificationToken: token,
+                    emailVerificationExpires: {
+                        [where.gt]: new Date() // Token not expired
+                    }
+                }
+            });
+        }
+
+        if (!user) {
+            return res.status(400).json({ 
+                message: "Invalid or expired verification token" 
+            });
+        }
+
+        // Check if already verified (prevent double verification)
+        if (user.emailVerified) {
+            return res.status(400).json({ 
+                message: "Email is already verified" 
+            });
+        }
+
+        // Update user status
+        await user.update({
+            emailVerified: true,
+            accountStatus: 'active',
+            emailVerificationToken: null,
+            emailVerificationExpires: null
+        });
+
+        // Clear Redis cache
+        try {
+            await redisClient.del(redisKey);
+            
+            // Set user session in Redis for faster future logins
+            const sessionKey = `user_session:${user.id}`;
+            await redisClient.setEx(sessionKey, 3600, JSON.stringify({
+                id: user.id,
+                email: user.email,
+                emailVerified: true,
+                accountStatus: 'active',
+                lastVerified: new Date().toISOString()
+            }));
+        } catch (redisError) {
+            console.error('❌ Redis session caching failed:', redisError.message);
+        }
+
+        // Send confirmation email
+        try {
+            const emailTemplate = emailTemplates.emailVerified(user.fullName);
+            await sendEmail(user.email, emailTemplate.subject, emailTemplate.html, 'verification');
+            console.log('✅ Verification confirmation email sent to:', user.email);
+        } catch (emailError) {
+            console.error('❌ Failed to send confirmation email:', emailError);
+        }
+
+        res.status(200).json({
+            message: "Email verified successfully! Your account is now active.",
+            user: {
+                id: user.id,
+                fullName: user.fullName,
+                email: user.email,
+                accountStatus: user.accountStatus,
+                emailVerified: user.emailVerified
+            }
+        });
+
+    } catch (error) {
+        console.error('Email verification error:', error);
+        res.status(500).json({ message: "Error verifying email", error: error.message });
+    }
+};
+
+// Resend verification email
+const resendVerificationEmail = async (req, res) => {
+    try {
+        const { email } = req.body;
+
+        if (!email) {
+            return res.status(400).json({ message: "Email is required" });
+        }
+
+        // Rate limiting: Check if user has exceeded resend attempts
+        const rateLimitKey = `resend_rate_limit:${email.toLowerCase().trim()}`;
+        const resendAttempts = await redisClient.get(rateLimitKey);
+        
+        if (resendAttempts && parseInt(resendAttempts) >= 5) {
+            return res.status(429).json({ 
+                message: "Too many resend attempts. Please wait 1 hour before trying again.",
+                retryAfter: 3600 // 1 hour in seconds
+            });
+        }
+
+        // Find user
+        const user = await UserTable.findOne({ where: { email: email.toLowerCase().trim() } });
+
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        if (user.emailVerified) {
+            return res.status(400).json({ message: "Email is already verified" });
+        }
+
+        // Generate new verification token
+        const emailVerificationToken = crypto.randomBytes(32).toString('hex');
+        const emailVerificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+        // Update user with new token
+        await user.update({
+            emailVerificationToken,
+            emailVerificationExpires
+        });
+
+        // Cache new verification token in Redis
+        try {
+            const redisKey = `email_verification:${emailVerificationToken}`;
+            await redisClient.setEx(redisKey, 86400, JSON.stringify({ // 24 hours
+                userId: user.id,
+                email: user.email,
+                fullName: user.fullName,
+                createdAt: new Date().toISOString(),
+                resendCount: (await redisClient.get(`resend_count:${user.id}`) || 0) + 1
+            }));
+
+            // Track resend attempts in Redis
+            const resendKey = `resend_count:${user.id}`;
+            const currentCount = await redisClient.get(resendKey) || 0;
+            await redisClient.setEx(resendKey, 86400, parseInt(currentCount) + 1);
+        } catch (redisError) {
+            console.error('❌ Redis resend caching failed:', redisError.message);
+        }
+
+        // Send verification email
+        const verificationLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/verify-email?token=${emailVerificationToken}`;
+        const emailTemplate = emailTemplates.emailVerification(user.fullName, verificationLink);
+
+        try {
+            await sendEmail(user.email, emailTemplate.subject, emailTemplate.html, 'verification');
+            console.log('✅ Resend verification email sent to:', user.email);
+            console.log('✅ New verification token cached in Redis:', redisKey);
+            
+            // Increment rate limiting counter
+            try {
+                await redisClient.incr(rateLimitKey);
+                await redisClient.expire(rateLimitKey, 3600); // Expire after 1 hour
+            } catch (redisError) {
+                console.error('❌ Redis rate limiting failed:', redisError.message);
+            }
+            
+            res.status(200).json({
+                message: "Verification email sent successfully. Please check your email.",
+                resendCount: parseInt(currentCount) + 1,
+                remainingAttempts: Math.max(0, 5 - (parseInt(resendAttempts) + 1))
+            });
+        } catch (emailError) {
+            console.error('❌ Failed to resend verification email:', emailError);
+            res.status(500).json({ 
+                message: "Failed to send verification email. Please try again later." 
+            });
+        }
+
+    } catch (error) {
+        console.error('Resend verification error:', error);
+        res.status(500).json({ message: "Error resending verification email", error: error.message });
+    }
+};
+
+module.exports = {
+    signup,
+    login,
+    forgotPassword,
+    verifyResetCode,
+    resetPassword,
+    sellerRegistration,
+    verifyEmail,
+    resendVerificationEmail
+};

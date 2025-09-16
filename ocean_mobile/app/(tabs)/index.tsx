@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,10 +10,14 @@ import {
   Dimensions,
   FlatList,
   StatusBar,
+  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import SideNavigation from '../../components/SideNavigation';
+import { useAuth } from '../../contexts/AuthContext';
+import apiService from '../../services/api';
 
 const { width, height } = Dimensions.get('window');
 
@@ -401,10 +405,46 @@ const mockPosts = [
 ];
 
 export default function FeedScreen() {
+  const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [posts, setPosts] = useState(mockPosts);
+  const [stories, setStories] = useState(mockStories);
   const [isSideNavVisible, setIsSideNavVisible] = useState(false);
   const [commentInputs, setCommentInputs] = useState<{[key: string]: string}>({});
+  const [isLoading, setIsLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Fetch home feed data
+  const fetchHomeFeed = async () => {
+    try {
+      setIsLoading(true);
+      const response = await apiService.get('/api/home-feed');
+      
+      if (response.data) {
+        setStories(response.data.stories || mockStories);
+        setPosts(response.data.posts || mockPosts);
+      }
+    } catch (error) {
+      console.error('Error fetching home feed:', error);
+      // Keep mock data if API fails
+      setStories(mockStories);
+      setPosts(mockPosts);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Handle pull to refresh
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await fetchHomeFeed();
+    setRefreshing(false);
+  };
+
+  // Load data on component mount
+  useEffect(() => {
+    fetchHomeFeed();
+  }, []);
 
   const toggleLike = (postId: string) => {
     setPosts(posts.map(post => 
@@ -756,6 +796,27 @@ export default function FeedScreen() {
         keyExtractor={(item) => item.id}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.feedContainer}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            colors={['#6B46C1']}
+            tintColor="#6B46C1"
+          />
+        }
+        ListEmptyComponent={
+          isLoading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#6B46C1" />
+              <Text style={styles.loadingText}>Loading feed...</Text>
+            </View>
+          ) : (
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>No posts available</Text>
+              <Text style={styles.emptySubtext}>Pull to refresh or check back later</Text>
+            </View>
+          )
+        }
         ListHeaderComponent={
           <View style={styles.storiesContainer}>
             <View style={styles.storiesHeader}>
@@ -770,7 +831,7 @@ export default function FeedScreen() {
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.storiesScrollContainer}
             >
-              {mockStories.map((story, index) => (
+              {stories.map((story, index) => (
                 <TouchableOpacity 
                   key={story.id} 
                   style={styles.storyItem}
@@ -1387,5 +1448,35 @@ const styles = StyleSheet.create({
     height: 8,
     borderRadius: 4,
     backgroundColor: '#EF4444',
+  },
+  
+  // Loading and Empty States
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#6B7280',
+    marginTop: 12,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  emptyText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 8,
+  },
+  emptySubtext: {
+    fontSize: 14,
+    color: '#6B7280',
+    textAlign: 'center',
   },
 });

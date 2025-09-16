@@ -12,6 +12,7 @@ import {
   Image,
   ActivityIndicator,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '../../contexts/AuthContext';
@@ -26,6 +27,7 @@ export default function UploadScreen() {
   const [userType, setUserType] = useState<'buyer' | 'seller'>('seller');
   const [categories, setCategories] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [showCategoryPicker, setShowCategoryPicker] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -61,6 +63,96 @@ export default function UploadScreen() {
     } catch (error) {
       console.error('Error fetching categories:', error);
     }
+  };
+
+  // Image picker functions
+  const pickImage = async () => {
+    try {
+      // Request permissions
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Required', 'Sorry, we need camera roll permissions to select images!');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        allowsMultipleSelection: true,
+        quality: 0.8,
+        aspect: [4, 3],
+      });
+
+      if (!result.canceled && result.assets) {
+        const newImages = result.assets.map(asset => ({
+          uri: asset.uri,
+          type: 'image',
+          name: asset.fileName || `image_${Date.now()}.jpg`
+        }));
+        
+        setFormData(prev => ({
+          ...prev,
+          images: [...prev.images, ...newImages]
+        }));
+      }
+    } catch (error) {
+      console.error('Error picking image:', error);
+      Alert.alert('Error', 'Failed to pick image. Please try again.');
+    }
+  };
+
+  const takePhoto = async () => {
+    try {
+      // Request permissions
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Required', 'Sorry, we need camera permissions to take photos!');
+        return;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        quality: 0.8,
+        aspect: [4, 3],
+      });
+
+      if (!result.canceled && result.assets) {
+        const newImage = {
+          uri: result.assets[0].uri,
+          type: 'image',
+          name: `photo_${Date.now()}.jpg`
+        };
+        
+        setFormData(prev => ({
+          ...prev,
+          images: [...prev.images, newImage]
+        }));
+      }
+    } catch (error) {
+      console.error('Error taking photo:', error);
+      Alert.alert('Error', 'Failed to take photo. Please try again.');
+    }
+  };
+
+  const removeImage = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      images: prev.images.filter((_, i) => i !== index)
+    }));
+  };
+
+  const showImagePicker = () => {
+    Alert.alert(
+      'Add Image',
+      'Choose how you want to add an image',
+      [
+        { text: 'Camera', onPress: takePhoto },
+        { text: 'Gallery', onPress: pickImage },
+        { text: 'Cancel', style: 'cancel' }
+      ]
+    );
+  };
+
+  const handleCategorySelect = (category: string) => {
+    setFormData(prev => ({ ...prev, category }));
+    setShowCategoryPicker(false);
   };
 
   const determineUserType = () => {
@@ -184,10 +276,12 @@ export default function UploadScreen() {
       // Validate form data
       if (!formData.title.trim()) {
         Alert.alert('Error', 'Title is required');
+        setIsLoading(false);
         return;
       }
       if (!formData.description.trim()) {
         Alert.alert('Error', 'Description is required');
+        setIsLoading(false);
         return;
       }
 
@@ -195,34 +289,114 @@ export default function UploadScreen() {
       
       if (selectedUploadType?.startsWith('feed-post')) {
         const feedType = selectedUploadType.split('-')[2];
-        const postData = {
-          postType: 'product',
-          postSubType: feedType,
-          content: formData.description,
-          productName: formData.title,
-          price: feedType === 'seller' ? formData.price : null,
-          minBudget: feedType === 'buyer' ? formData.minBudget : null,
-          maxBudget: feedType === 'buyer' ? formData.maxBudget : null,
-          currency: 'NGN',
-          location: formData.location,
-          category: formData.category,
-          condition: formData.condition
-        };
+        
+        // Additional validation for feed posts
+        if (feedType === 'seller' && !formData.price.trim()) {
+          Alert.alert('Error', 'Price is required for seller posts');
+          setIsLoading(false);
+          return;
+        }
+        
+        // Create FormData for file upload
+        const formDataToSend = new FormData();
+        formDataToSend.append('postType', 'product');
+        formDataToSend.append('postSubType', feedType);
+        formDataToSend.append('content', formData.description);
+        formDataToSend.append('productName', formData.title);
+        formDataToSend.append('currency', 'NGN');
+        formDataToSend.append('location', formData.location || '');
+        formDataToSend.append('category', formData.category || '');
+        formDataToSend.append('condition', formData.condition);
+        
+        if (feedType === 'seller') {
+          formDataToSend.append('price', formData.price);
+        } else {
+          formDataToSend.append('minBudget', formData.minBudget || '');
+          formDataToSend.append('maxBudget', formData.maxBudget || '');
+        }
+        
+        // Add images as base64 data
+        console.log('Converting images to base64...');
+        console.log('Number of images:', formData.images.length);
+        
+        for (let i = 0; i < formData.images.length; i++) {
+          const image = formData.images[i];
+          console.log(`Processing image ${i}:`, {
+            uri: image.uri,
+            name: image.name,
+            type: image.type
+          });
+          
+          try {
+            // Convert image to base64
+            console.log(`Fetching image ${i} from URI...`);
+            const response = await fetch(image.uri);
+            console.log(`Response status for image ${i}:`, response.status);
+            
+            const blob = await response.blob();
+            console.log(`Blob size for image ${i}:`, blob.size);
+            
+            const base64 = await new Promise((resolve) => {
+              const reader = new FileReader();
+              reader.onloadend = () => {
+                console.log(`Base64 conversion complete for image ${i}, length:`, reader.result.length);
+                resolve(reader.result);
+              };
+              reader.readAsDataURL(blob);
+            });
+            
+            // Send as base64 string
+            if (base64 && base64.length > 0) {
+              formDataToSend.append('media', base64);
+              formDataToSend.append('media_name', image.name || `image_${i}.jpg`);
+              formDataToSend.append('media_type', 'image/jpeg');
+              
+              console.log(`Image ${i} added to FormData`);
+            } else {
+              console.error(`Base64 conversion failed for image ${i} - empty result`);
+            }
+          } catch (error) {
+            console.error(`Error converting image ${i} to base64:`, error);
+          }
+        }
 
-        response = await apiService.post('/api/posts', postData);
+        response = await apiService.post('/api/posts', formDataToSend);
       } else if (selectedUploadType === 'product') {
-        const productData = {
-          title: formData.title,
-          description: formData.description,
-          price: formData.price,
-          currency: 'NGN',
-          category: formData.category,
-          condition: formData.condition,
-          location: formData.location
-        };
+        // Additional validation for products
+        if (!formData.price.trim()) {
+          Alert.alert('Error', 'Price is required for products');
+          setIsLoading(false);
+          return;
+        }
+        
+        // Create FormData for file upload
+        const formDataToSend = new FormData();
+        formDataToSend.append('title', formData.title);
+        formDataToSend.append('description', formData.description);
+        formDataToSend.append('price', formData.price);
+        formDataToSend.append('currency', 'NGN');
+        formDataToSend.append('category', formData.category || '');
+        formDataToSend.append('condition', formData.condition);
+        formDataToSend.append('location', formData.location || '');
+        
+        // Add images
+        formData.images.forEach((image, index) => {
+          formDataToSend.append('media', {
+            uri: image.uri,
+            type: 'image/jpeg',
+            name: image.name
+          } as any);
+        });
 
-        response = await apiService.post('/api/products', productData);
+        response = await apiService.post('/api/products', formDataToSend);
       } else if (selectedUploadType === 'distress') {
+        // Additional validation for distress sales
+        if (!formData.price.trim()) {
+          Alert.alert('Error', 'Price is required for distress sales');
+          setIsLoading(false);
+          return;
+        }
+        
         const distressData = {
           title: formData.title,
           description: formData.description,
@@ -231,9 +405,9 @@ export default function UploadScreen() {
           discountPercentage: 20,
           urgencyLevel: 'high',
           distressReason: 'Moving sale',
-          category: formData.category,
+          category: formData.category || '',
           condition: formData.condition,
-          location: formData.location
+          location: formData.location || ''
         };
 
         response = await apiService.post('/api/distress-sales/create', distressData);
@@ -482,6 +656,31 @@ export default function UploadScreen() {
                 />
               </View>
 
+               <View style={styles.inputGroup}>
+                 <Text style={styles.inputLabel}>Add Photos</Text>
+                 <TouchableOpacity style={styles.photoUpload} onPress={showImagePicker}>
+                   <Ionicons name="camera-outline" size={32} color="#6B7280" />
+                   <Text style={styles.photoUploadText}>Tap to add photos</Text>
+                   <Text style={styles.photoUploadSubtext}>Up to 10 images</Text>
+                 </TouchableOpacity>
+                 
+                 {formData.images.length > 0 && (
+                   <View style={styles.imagePreviewContainer}>
+                     {formData.images.map((image, index) => (
+                       <View key={index} style={styles.imagePreview}>
+                         <Image source={{ uri: image.uri }} style={styles.previewImage} />
+                         <TouchableOpacity 
+                           style={styles.removeImageButton}
+                           onPress={() => removeImage(index)}
+                         >
+                           <Ionicons name="close-circle" size={20} color="#EF4444" />
+                         </TouchableOpacity>
+                       </View>
+                     ))}
+                   </View>
+                 )}
+               </View>
+
               {selectedUploadType.startsWith('feed-post-seller') && (
                 <>
                   <View style={styles.inputGroup}>
@@ -498,7 +697,10 @@ export default function UploadScreen() {
 
                   <View style={styles.inputGroup}>
                     <Text style={styles.inputLabel}>Category</Text>
-                    <TouchableOpacity style={styles.categorySelector}>
+                    <TouchableOpacity 
+                      style={styles.categorySelector}
+                      onPress={() => setShowCategoryPicker(true)}
+                    >
                       <Text style={styles.categorySelectorText}>
                         {formData.category || 'Select Category'}
                       </Text>
@@ -535,34 +737,33 @@ export default function UploadScreen() {
 
               {!selectedUploadType.startsWith('feed-post') && (
                 <>
-                  <View style={styles.inputGroup}>
-                    <Text style={styles.inputLabel}>Price *</Text>
-                    <TextInput
-                      style={styles.textInput}
-                      placeholder="₦0.00"
-                      placeholderTextColor="#9CA3AF"
-                      keyboardType="numeric"
-                    />
-                  </View>
+                   <View style={styles.inputGroup}>
+                     <Text style={styles.inputLabel}>Price *</Text>
+                     <TextInput
+                       style={styles.textInput}
+                       placeholder="₦0.00"
+                       placeholderTextColor="#9CA3AF"
+                       keyboardType="numeric"
+                       value={formData.price}
+                       onChangeText={(text) => setFormData(prev => ({ ...prev, price: text }))}
+                     />
+                   </View>
 
                   <View style={styles.inputGroup}>
                     <Text style={styles.inputLabel}>Category</Text>
-                    <TouchableOpacity style={styles.categorySelector}>
-                      <Text style={styles.categorySelectorText}>Select Category</Text>
+                    <TouchableOpacity 
+                      style={styles.categorySelector}
+                      onPress={() => setShowCategoryPicker(true)}
+                    >
+                      <Text style={styles.categorySelectorText}>
+                        {formData.category || 'Select Category'}
+                      </Text>
                       <Ionicons name="chevron-down" size={20} color="#6B7280" />
                     </TouchableOpacity>
                   </View>
                 </>
               )}
 
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Add Photos</Text>
-                <TouchableOpacity style={styles.photoUpload}>
-                  <Ionicons name="camera-outline" size={32} color="#6B7280" />
-                  <Text style={styles.photoUploadText}>Tap to add photos</Text>
-                  <Text style={styles.photoUploadSubtext}>Up to 10 images</Text>
-                </TouchableOpacity>
-              </View>
 
               {selectedUploadType === 'auction' && (
                 <View style={styles.inputGroup}>
@@ -605,6 +806,48 @@ export default function UploadScreen() {
               </Text>
             </TouchableOpacity>
           </View>
+        </View>
+      </Modal>
+    );
+  };
+
+  const renderCategoryPicker = () => {
+    if (!showCategoryPicker) return null;
+
+    return (
+      <Modal
+        visible={showCategoryPicker}
+        animationType="slide"
+        presentationStyle="pageSheet"
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={() => setShowCategoryPicker(false)}
+            >
+              <Ionicons name="close" size={24} color="#1F2937" />
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>Select Category</Text>
+            <View style={styles.placeholder} />
+          </View>
+
+          <ScrollView style={styles.modalContent}>
+            <View style={styles.categoryList}>
+              {categories.map((category: any, index: number) => (
+                <TouchableOpacity
+                  key={index}
+                  style={styles.categoryItem}
+                  onPress={() => handleCategorySelect(category.name || category)}
+                >
+                  <Text style={styles.categoryItemText}>
+                    {category.name || category}
+                  </Text>
+                  <Ionicons name="chevron-forward" size={20} color="#6B7280" />
+                </TouchableOpacity>
+              ))}
+            </View>
+          </ScrollView>
         </View>
       </Modal>
     );
@@ -678,6 +921,7 @@ export default function UploadScreen() {
 
       {renderFeedSubSelection()}
       {renderUploadModal()}
+      {renderCategoryPicker()}
     </View>
   );
 }
@@ -1131,6 +1375,75 @@ const styles = StyleSheet.create({
   budgetSeparator: {
     fontSize: 14,
     color: '#6B7280',
+    fontWeight: '500',
+  },
+  
+  // Image Upload Styles
+  imageUploadContainer: {
+    marginTop: 8,
+  },
+  addImageButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#E5E7EB',
+    borderStyle: 'dashed',
+  },
+  addImageText: {
+    fontSize: 16,
+    color: '#6B46C1',
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+  imagePreviewContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginTop: 12,
+    gap: 8,
+  },
+  imagePreview: {
+    position: 'relative',
+    width: 80,
+    height: 80,
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  previewImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  removeImageButton: {
+    position: 'absolute',
+    top: -5,
+    right: -5,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 10,
+  },
+  
+  // Category Picker Styles
+  categoryList: {
+    padding: 20,
+  },
+  categoryItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  categoryItemText: {
+    fontSize: 16,
+    color: '#1F2937',
     fontWeight: '500',
   },
 });

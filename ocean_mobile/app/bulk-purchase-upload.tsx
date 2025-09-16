@@ -81,17 +81,6 @@ export default function BulkPurchaseUploadScreen() {
     Alert.alert('Upload Video', 'Video upload functionality would be implemented here');
   };
 
-  const categories = [
-    'Electronics',
-    'Fashion',
-    'Automotive',
-    'Home & Garden',
-    'Sports',
-    'Books',
-    'Health',
-    'Beauty',
-  ];
-
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />

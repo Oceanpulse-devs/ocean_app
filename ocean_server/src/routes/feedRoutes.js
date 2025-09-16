@@ -10,28 +10,15 @@ router.get('/api/test', (req, res) => {
 });
 
 // Public routes (no authentication required)
+router.get('/api/home-feed', authMiddleware, feedController.getHomeFeed);
 router.get('/api/feed', feedController.getFeed);
 router.get('/api/posts/:postId', feedController.getPost);
 router.get('/api/search', feedController.searchPosts);
 
 // Protected routes (authentication required)
-router.post('/api/posts', authMiddleware, (req, res, next) => {
-  // Use multer for file uploads
-  const upload = req.app.locals.upload;
-  upload.array('media', 10)(req, res, (err) => {
-    if (err instanceof multer.MulterError) {
-      if (err.code === 'LIMIT_FILE_SIZE') {
-        return res.status(400).json({ message: 'File too large. Maximum size is 10MB.' });
-      }
-      if (err.code === 'LIMIT_FILE_COUNT') {
-        return res.status(400).json({ message: 'Too many files. Maximum is 10 files.' });
-      }
-    } else if (err) {
-      return res.status(400).json({ message: err.message });
-    }
-    next();
-  });
-}, feedController.createPost);
+const customFileParser = require('../middleware/customFileParser');
+
+router.post('/api/posts', authMiddleware, customFileParser, feedController.createPost);
 
 router.put('/api/posts/:postId', authMiddleware, (req, res, next) => {
   // Use multer for file uploads
