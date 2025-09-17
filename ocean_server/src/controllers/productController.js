@@ -218,6 +218,25 @@ const createProduct = async (req, res) => {
             });
         }
 
+        // Validate category
+        let categoryRecord;
+        // Try to find by UUID first
+        if (category.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
+            categoryRecord = await ProductCategory.findByPk(category);
+        } else {
+            // Try to find by name (for backward compatibility)
+            categoryRecord = await ProductCategory.findOne({ where: { name: category } });
+        }
+        
+        if (!categoryRecord) {
+            return res.status(400).json({
+                message: 'Invalid category. Please select a valid category from the list.'
+            });
+        }
+        
+        // Update category usage count
+        await categoryRecord.update({ usageCount: categoryRecord.usageCount + 1 });
+
         // Validate images/files
         if (!req.files || req.files.length === 0) {
             return res.status(400).json({
@@ -476,43 +495,44 @@ const getSavedProducts = async (req, res) => {
     }
 };
 
-// Get product categories
+// Get product categories (Universal Categories System)
 const getCategories = async (req, res) => {
     try {
-        // Try to get categories from database
-        let categories = [];
-        try {
-            categories = await ProductCategory.findAll({
-                where: { isActive: true, parentId: null },
-                include: [
-                    {
-                        model: ProductCategory,
-                        as: 'subcategories',
-                        where: { isActive: true },
-                        required: false
-                    }
-                ],
-                order: [['sortOrder', 'ASC'], ['name', 'ASC']]
-            });
-        } catch (dbError) {
-            console.log('Database categories not available, using fallback');
+        const { type = 'all' } = req.query; // 'all', 'system', 'custom'
+        
+        // Build where clause based on type
+        let whereClause = { isActive: true };
+        
+        if (type === 'system') {
+            whereClause.isCustom = false;
+        } else if (type === 'custom') {
+            whereClause.isCustom = true;
         }
+        // 'all' includes both system and custom categories
 
-        // If no categories from database, use fallback
-        if (categories.length === 0) {
-            categories = [
-                { id: 1, name: 'Electronics', description: 'Electronic devices', icon: '📱', subcategories: [] },
-                { id: 2, name: 'Fashion', description: 'Clothing and accessories', icon: '👗', subcategories: [] },
-                { id: 3, name: 'Home & Garden', description: 'Home improvement items', icon: '🏠', subcategories: [] },
-                { id: 4, name: 'Automotive', description: 'Cars and auto parts', icon: '🚗', subcategories: [] },
-                { id: 5, name: 'Sports', description: 'Sports equipment', icon: '⚽', subcategories: [] },
-                { id: 6, name: 'Books', description: 'Books and magazines', icon: '📚', subcategories: [] },
-                { id: 7, name: 'Health & Beauty', description: 'Health and beauty products', icon: '💄', subcategories: [] },
-                { id: 8, name: 'Toys & Games', description: 'Toys and games', icon: '🎮', subcategories: [] },
-                { id: 9, name: 'Jewelry', description: 'Jewelry and watches', icon: '💍', subcategories: [] },
-                { id: 10, name: 'Art & Collectibles', description: 'Art and collectibles', icon: '🎨', subcategories: [] }
-            ];
-        }
+        // Get categories from database
+        const categories = await ProductCategory.findAll({
+            where: whereClause,
+            include: [
+                {
+                    model: ProductCategory,
+                    as: 'subcategories',
+                    where: { isActive: true },
+                    required: false
+                },
+                {
+                    model: UserTable,
+                    as: 'creator',
+                    attributes: ['id', 'username', 'fullName'],
+                    required: false
+                }
+            ],
+            order: [
+                ['isCustom', 'ASC'], // System categories first
+                ['sortOrder', 'ASC'], 
+                ['name', 'ASC']
+            ]
+        });
 
         // Format categories for frontend
         const formattedCategories = categories.map(category => ({
@@ -520,22 +540,534 @@ const getCategories = async (req, res) => {
             name: category.name,
             description: category.description,
             icon: category.icon,
+            isCustom: category.isCustom,
+            usageCount: category.usageCount,
+            creator: category.creator ? {
+                id: category.creator.id,
+                username: category.creator.username,
+                fullName: category.creator.fullName
+            } : null,
             subcategories: category.subcategories ? category.subcategories.map(sub => ({
                 id: sub.id,
                 name: sub.name,
                 description: sub.description,
-                icon: sub.icon
+                icon: sub.icon,
+                isCustom: sub.isCustom,
+                usageCount: sub.usageCount
             })) : []
         }));
 
         res.status(200).json({
             message: "Categories retrieved successfully",
-            data: formattedCategories
+            data: formattedCategories,
+            meta: {
+                total: categories.length,
+                systemCategories: categories.filter(c => !c.isCustom).length,
+                customCategories: categories.filter(c => c.isCustom).length
+            }
         });
 
     } catch (error) {
         console.error('Get categories error:', error);
-        res.status(500).json({ message: "Error retrieving categories", error: error.message });
+        res.status(500).json({ 
+            message: "Error retrieving categories", 
+            error: error.message 
+        });
+    }
+};
+
+// Create custom category
+const createCustomCategory = async (req, res) => {
+    try {
+        const { name, description, icon } = req.body;
+        const userId = req.user.id;
+
+        // Validate required fields
+        if (!name || !description) {
+            return res.status(400).json({
+                success: false,
+                message: "Name and description are required"
+            });
+        }
+
+        // Check if category name already exists
+        const existingCategory = await ProductCategory.findOne({
+            where: { name: name.trim() }
+        });
+
+        if (existingCategory) {
+            return res.status(409).json({
+                success: false,
+                message: "A category with this name already exists"
+            });
+        }
+
+        // Create custom category
+        const customCategory = await ProductCategory.create({
+            name: name.trim(),
+            description: description.trim(),
+            icon: icon || '📦',
+            isCustom: true,
+            createdBy: userId,
+            usageCount: 0,
+            isActive: true,
+            sortOrder: 999 // Custom categories at the end
+        });
+
+        // Include creator information
+        const categoryWithCreator = await ProductCategory.findByPk(customCategory.id, {
+            include: [
+                {
+                    model: UserTable,
+                    as: 'creator',
+                    attributes: ['id', 'username', 'fullName']
+                }
+            ]
+        });
+
+        res.status(201).json({
+            success: true,
+            message: "Custom category created successfully",
+            data: {
+                id: categoryWithCreator.id,
+                name: categoryWithCreator.name,
+                description: categoryWithCreator.description,
+                icon: categoryWithCreator.icon,
+                isCustom: categoryWithCreator.isCustom,
+                usageCount: categoryWithCreator.usageCount,
+                creator: {
+                    id: categoryWithCreator.creator.id,
+                    username: categoryWithCreator.creator.username,
+                    fullName: categoryWithCreator.creator.fullName
+                }
+            }
+        });
+
+    } catch (error) {
+        console.error('Create custom category error:', error);
+        res.status(500).json({
+            success: false,
+            message: "Error creating custom category",
+            error: error.message
+        });
+    }
+};
+
+// Get user's custom categories
+const getCustomCategories = async (req, res) => {
+    try {
+        const userId = req.user.id;
+
+        const customCategories = await ProductCategory.findAll({
+            where: {
+                isCustom: true,
+                createdBy: userId,
+                isActive: true
+            },
+            include: [
+                {
+                    model: UserTable,
+                    as: 'creator',
+                    attributes: ['id', 'username', 'fullName']
+                }
+            ],
+            order: [['name', 'ASC']]
+        });
+
+        const formattedCategories = customCategories.map(category => ({
+            id: category.id,
+            name: category.name,
+            description: category.description,
+            icon: category.icon,
+            usageCount: category.usageCount,
+            createdAt: category.createdAt,
+            creator: {
+                id: category.creator.id,
+                username: category.creator.username,
+                fullName: category.creator.fullName
+            }
+        }));
+
+        res.status(200).json({
+            success: true,
+            message: "Custom categories retrieved successfully",
+            data: formattedCategories,
+            meta: {
+                total: customCategories.length
+            }
+        });
+
+    } catch (error) {
+        console.error('Get custom categories error:', error);
+        res.status(500).json({
+            success: false,
+            message: "Error retrieving custom categories",
+            error: error.message
+        });
+    }
+};
+
+// Update category usage count (called when products are created/updated)
+const updateCategoryUsage = async (categoryName, increment = true) => {
+    try {
+        const category = await ProductCategory.findOne({
+            where: { name: categoryName }
+        });
+
+        if (category) {
+            const newUsageCount = increment 
+                ? category.usageCount + 1 
+                : Math.max(0, category.usageCount - 1);
+            
+            await category.update({ usageCount: newUsageCount });
+            return true;
+        }
+        return false;
+    } catch (error) {
+        console.error('Update category usage error:', error);
+        return false;
+    }
+};
+
+// Search categories with advanced filtering
+const searchCategories = async (req, res) => {
+    try {
+        const { 
+            q, // search query
+            type = 'all', // 'all', 'system', 'custom'
+            sortBy = 'usageCount', // 'usageCount', 'name', 'createdAt'
+            sortOrder = 'DESC', // 'ASC', 'DESC'
+            limit = 20,
+            minUsage = 0,
+            maxUsage = null
+        } = req.query;
+
+        // Build where clause
+        let whereClause = { isActive: true };
+
+        // Type filter
+        if (type === 'system') {
+            whereClause.isCustom = false;
+        } else if (type === 'custom') {
+            whereClause.isCustom = true;
+        }
+
+        // Search query
+        if (q) {
+            whereClause[Op.or] = [
+                { name: { [Op.like]: `%${q}%` } },
+                { description: { [Op.like]: `%${q}%` } }
+            ];
+        }
+
+        // Usage range filter
+        if (minUsage || maxUsage) {
+            whereClause.usageCount = {};
+            if (minUsage) whereClause.usageCount[Op.gte] = parseInt(minUsage);
+            if (maxUsage) whereClause.usageCount[Op.lte] = parseInt(maxUsage);
+        }
+
+        // Build order clause
+        let orderClause = [];
+        if (sortBy === 'usageCount') {
+            orderClause.push(['usageCount', sortOrder]);
+        } else if (sortBy === 'name') {
+            orderClause.push(['name', sortOrder]);
+        } else if (sortBy === 'createdAt') {
+            orderClause.push(['createdAt', sortOrder]);
+        }
+        orderClause.push(['name', 'ASC']); // Secondary sort by name
+
+        const categories = await ProductCategory.findAndCountAll({
+            where: whereClause,
+            include: [
+                {
+                    model: UserTable,
+                    as: 'creator',
+                    attributes: ['id', 'username', 'fullName'],
+                    required: false
+                }
+            ],
+            order: orderClause,
+            limit: parseInt(limit),
+            offset: 0
+        });
+
+        const formattedCategories = categories.rows.map(category => ({
+            id: category.id,
+            name: category.name,
+            description: category.description,
+            icon: category.icon,
+            isCustom: category.isCustom,
+            usageCount: category.usageCount,
+            createdAt: category.createdAt,
+            creator: category.creator ? {
+                id: category.creator.id,
+                username: category.creator.username,
+                fullName: category.creator.fullName
+            } : null
+        }));
+
+        res.status(200).json({
+            success: true,
+            message: "Categories search completed",
+            data: formattedCategories,
+            meta: {
+                total: categories.count,
+                returned: formattedCategories.length,
+                searchQuery: q,
+                filters: {
+                    type,
+                    sortBy,
+                    sortOrder,
+                    minUsage,
+                    maxUsage
+                }
+            }
+        });
+
+    } catch (error) {
+        console.error('Search categories error:', error);
+        res.status(500).json({
+            success: false,
+            message: "Error searching categories",
+            error: error.message
+        });
+    }
+};
+
+// Get category analytics and trending data
+const getCategoryAnalytics = async (req, res) => {
+    try {
+        const { period = '30d' } = req.query; // '7d', '30d', '90d', 'all'
+
+        // Calculate date range
+        let dateFilter = {};
+        if (period !== 'all') {
+            const days = parseInt(period.replace('d', ''));
+            const startDate = new Date();
+            startDate.setDate(startDate.getDate() - days);
+            dateFilter = { createdAt: { [Op.gte]: startDate } };
+        }
+
+        // Get top categories by usage
+        const topCategories = await ProductCategory.findAll({
+            where: { 
+                isActive: true,
+                ...dateFilter
+            },
+            order: [['usageCount', 'DESC']],
+            limit: 10,
+            include: [
+                {
+                    model: UserTable,
+                    as: 'creator',
+                    attributes: ['id', 'username', 'fullName'],
+                    required: false
+                }
+            ]
+        });
+
+        // Get category distribution
+        const categoryStats = await ProductCategory.findAll({
+            where: { isActive: true },
+            attributes: [
+                'isCustom',
+                [Sequelize.fn('COUNT', Sequelize.col('id')), 'count'],
+                [Sequelize.fn('SUM', Sequelize.col('usageCount')), 'totalUsage']
+            ],
+            group: ['isCustom'],
+            raw: true
+        });
+
+        // Get recent custom categories
+        const recentCustomCategories = await ProductCategory.findAll({
+            where: { 
+                isCustom: true,
+                isActive: true,
+                ...dateFilter
+            },
+            order: [['createdAt', 'DESC']],
+            limit: 5,
+            include: [
+                {
+                    model: UserTable,
+                    as: 'creator',
+                    attributes: ['id', 'username', 'fullName']
+                }
+            ]
+        });
+
+        // Calculate growth metrics
+        const totalCategories = await ProductCategory.count({ where: { isActive: true } });
+        const systemCategories = await ProductCategory.count({ where: { isCustom: false, isActive: true } });
+        const customCategories = await ProductCategory.count({ where: { isCustom: true, isActive: true } });
+
+        res.status(200).json({
+            success: true,
+            message: "Category analytics retrieved successfully",
+            data: {
+                topCategories: topCategories.map(cat => ({
+                    id: cat.id,
+                    name: cat.name,
+                    icon: cat.icon,
+                    usageCount: cat.usageCount,
+                    isCustom: cat.isCustom,
+                    creator: cat.creator ? {
+                        username: cat.creator.username,
+                        fullName: cat.creator.fullName
+                    } : null
+                })),
+                distribution: {
+                    total: totalCategories,
+                    system: systemCategories,
+                    custom: customCategories,
+                    customPercentage: totalCategories > 0 ? Math.round((customCategories / totalCategories) * 100) : 0
+                },
+                recentCustom: recentCustomCategories.map(cat => ({
+                    id: cat.id,
+                    name: cat.name,
+                    icon: cat.icon,
+                    usageCount: cat.usageCount,
+                    createdAt: cat.createdAt,
+                    creator: {
+                        username: cat.creator.username,
+                        fullName: cat.creator.fullName
+                    }
+                })),
+                period,
+                generatedAt: new Date().toISOString()
+            }
+        });
+
+    } catch (error) {
+        console.error('Get category analytics error:', error);
+        res.status(500).json({
+            success: false,
+            message: "Error retrieving category analytics",
+            error: error.message
+        });
+    }
+};
+
+// Get trending categories (most used in recent period)
+const getTrendingCategories = async (req, res) => {
+    try {
+        const { period = '7d', limit = 10 } = req.query;
+
+        // Calculate date range
+        const days = parseInt(period.replace('d', ''));
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - days);
+
+        // Get trending categories (most used in recent period)
+        const trendingCategories = await ProductCategory.findAll({
+            where: { 
+                isActive: true,
+                usageCount: { [Op.gt]: 0 },
+                updatedAt: { [Op.gte]: startDate }
+            },
+            order: [['usageCount', 'DESC']],
+            limit: parseInt(limit),
+            include: [
+                {
+                    model: UserTable,
+                    as: 'creator',
+                    attributes: ['id', 'username', 'fullName'],
+                    required: false
+                }
+            ]
+        });
+
+        const formattedTrending = trendingCategories.map(category => ({
+            id: category.id,
+            name: category.name,
+            icon: category.icon,
+            usageCount: category.usageCount,
+            isCustom: category.isCustom,
+            trend: 'up', // Could be calculated based on usage change over time
+            creator: category.creator ? {
+                username: category.creator.username,
+                fullName: category.creator.fullName
+            } : null
+        }));
+
+        res.status(200).json({
+            success: true,
+            message: "Trending categories retrieved successfully",
+            data: formattedTrending,
+            meta: {
+                period,
+                limit: parseInt(limit),
+                generatedAt: new Date().toISOString()
+            }
+        });
+
+    } catch (error) {
+        console.error('Get trending categories error:', error);
+        res.status(500).json({
+            success: false,
+            message: "Error retrieving trending categories",
+            error: error.message
+        });
+    }
+};
+
+// Delete custom category (only by creator)
+const deleteCustomCategory = async (req, res) => {
+    try {
+        const { categoryId } = req.params;
+        const userId = req.user.id;
+
+        // Find the category
+        const category = await ProductCategory.findByPk(categoryId);
+        
+        if (!category) {
+            return res.status(404).json({
+                success: false,
+                message: "Category not found"
+            });
+        }
+
+        // Check if it's a custom category
+        if (!category.isCustom) {
+            return res.status(403).json({
+                success: false,
+                message: "Cannot delete system categories"
+            });
+        }
+
+        // Check if user is the creator
+        if (category.createdBy !== userId) {
+            return res.status(403).json({
+                success: false,
+                message: "You can only delete categories you created"
+            });
+        }
+
+        // Check if category is being used
+        if (category.usageCount > 0) {
+            return res.status(400).json({
+                success: false,
+                message: "Cannot delete category that is currently being used. Please contact support if you need to remove this category."
+            });
+        }
+
+        // Soft delete (set isActive to false)
+        await category.update({ isActive: false });
+
+        res.status(200).json({
+            success: true,
+            message: "Custom category deleted successfully"
+        });
+
+    } catch (error) {
+        console.error('Delete custom category error:', error);
+        res.status(500).json({
+            success: false,
+            message: "Error deleting custom category",
+            error: error.message
+        });
     }
 };
 
@@ -907,6 +1439,13 @@ module.exports = {
     toggleSaveProduct,
     getSavedProducts,
     getCategories,
+    createCustomCategory,
+    getCustomCategories,
+    deleteCustomCategory,
+    updateCategoryUsage,
+    searchCategories,
+    getCategoryAnalytics,
+    getTrendingCategories,
     getSellerProducts,
     getMyProducts,
     getAllSavedItems

@@ -1,0 +1,406 @@
+{
+	"info": {
+		"_postman_id": "ocean-swap-deals-collection",
+		"name": "Ocean - Swap Deals",
+		"description": "Complete collection for Ocean app swap deals and item trading endpoints. Updated for Universal Category System - supports both UUID and name-based category lookup.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Swap Deal CRUD",
+			"item": [
+				{
+					"name": "Create Swap Deal",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"Guitar for Camera Swap\",\n  \"description\": \"Looking to trade my vintage guitar for a professional camera\",\n  \"myItem\": {\n    \"name\": \"1965 Fender Stratocaster\",\n    \"description\": \"Vintage sunburst Stratocaster in excellent condition\",\n    \"category\": \"{{entertainment_category_id}}\",\n    \"condition\": \"Excellent\",\n    \"estimatedValue\": 2500,\n    \"images\": [\"https://example.com/guitar1.jpg\", \"https://example.com/guitar2.jpg\"],\n    \"tags\": [\"vintage\", \"guitar\", \"fender\", \"stratocaster\"]\n  },\n  \"wantedItem\": {\n    \"name\": \"Professional DSLR Camera\",\n    \"description\": \"Looking for Canon or Nikon DSLR with lenses\",\n    \"category\": \"{{tech_category_id}}\",\n    \"condition\": \"Good\",\n    \"estimatedValue\": 2500,\n    \"specifications\": [\"Full frame sensor\", \"Multiple lenses\", \"Low shutter count\"],\n    \"tags\": [\"camera\", \"dslr\", \"photography\", \"professional\"]\n  },\n  \"location\": {\n    \"city\": \"Los Angeles\",\n    \"state\": \"CA\",\n    \"country\": \"USA\",\n    \"meetingPreference\": \"public_place\"\n  },\n  \"swapType\": \"direct\",\n  \"urgency\": \"medium\",\n  \"expiryDate\": \"2024-03-15T23:59:59Z\",\n  \"additionalCash\": {\n    \"required\": false,\n    \"amount\": 0,\n    \"currency\": \"USD\"\n  },\n  \"contactInfo\": {\n    \"phone\": \"+1234567890\",\n    \"email\": \"trader@example.com\",\n    \"preferredContact\": \"phone\"\n  },\n  \"terms\": \"Both parties must inspect items before finalizing swap\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/swap-deals/create",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"swap-deals",
+								"create"
+							]
+						},
+						"description": "Create a new swap deal"
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Swap Deals",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/swap-deals/all?page=1&limit=20&category={{tech_category_id}}&status=active",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"swap-deals",
+								"all"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1",
+									"description": "Page number"
+								},
+								{
+									"key": "limit",
+									"value": "20",
+									"description": "Items per page"
+								},
+								{
+									"key": "category",
+									"value": "{{tech_category_id}}",
+									"description": "Filter by category (UUID or name)"
+								},
+								{
+									"key": "status",
+									"value": "active",
+									"description": "Filter by status (active, pending, completed, cancelled)"
+								}
+							]
+						},
+						"description": "Get all swap deals with filtering"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Swap Deal by ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/swap-deals/{{swapDealId}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"swap-deals",
+								"{{swapDealId}}"
+							]
+						},
+						"description": "Get specific swap deal details"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Swap Deal",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"Updated: Guitar for Camera Swap\",\n  \"description\": \"Updated description with more details\",\n  \"myItem\": {\n    \"estimatedValue\": 2800,\n    \"description\": \"Updated guitar description with additional details\"\n  },\n  \"additionalCash\": {\n    \"required\": true,\n    \"amount\": 200,\n    \"currency\": \"USD\"\n  },\n  \"expiryDate\": \"2024-03-20T23:59:59Z\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/swap-deals/{{swapDealId}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"swap-deals",
+								"{{swapDealId}}"
+							]
+						},
+						"description": "Update swap deal details"
+					},
+					"response": []
+				}
+			],
+			"description": "Swap deal CRUD operations"
+		},
+		{
+			"name": "Swap Deal Actions",
+			"item": [
+				{
+					"name": "Accept Swap Deal",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"message\": \"I'm interested in this swap! Let's discuss the details.\",\n  \"proposedMeetingLocation\": \"Starbucks on Main Street\",\n  \"proposedMeetingTime\": \"2024-01-20T14:00:00Z\",\n  \"contactInfo\": {\n    \"phone\": \"+1987654321\",\n    \"email\": \"interested@example.com\"\n  },\n  \"questions\": [\"Can you provide more photos of the guitar?\", \"What's the condition of the frets?\"]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/swap-deals/{{swapDealId}}/accept",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"swap-deals",
+								"{{swapDealId}}",
+								"accept"
+							]
+						},
+						"description": "Accept a swap deal"
+					},
+					"response": []
+				},
+				{
+					"name": "Reject Swap Deal",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"reason\": \"Not quite what I'm looking for\",\n  \"message\": \"Thanks for the offer, but I'm looking for something different.\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/swap-deals/{{swapDealId}}/reject",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"swap-deals",
+								"{{swapDealId}}",
+								"reject"
+							]
+						},
+						"description": "Reject a swap deal"
+					},
+					"response": []
+				},
+				{
+					"name": "Cancel Swap Deal",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"reason\": \"Item no longer available\",\n  \"message\": \"Sorry, I've decided to keep the guitar for now.\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/swap-deals/{{swapDealId}}/cancel",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"swap-deals",
+								"{{swapDealId}}",
+								"cancel"
+							]
+						},
+						"description": "Cancel a swap deal"
+					},
+					"response": []
+				},
+				{
+					"name": "Complete Swap Deal",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"completionDate\": \"2024-01-20T16:30:00Z\",\n  \"meetingLocation\": \"Starbucks on Main Street\",\n  \"bothPartiesPresent\": true,\n  \"itemsInspected\": true,\n  \"swapCompleted\": true,\n  \"notes\": \"Great transaction! Both parties satisfied with the swap.\",\n  \"feedback\": {\n    \"rating\": 5,\n    \"comment\": \"Excellent communication and smooth transaction\"\n  }\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/swap-deals/{{swapDealId}}/complete",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"swap-deals",
+								"{{swapDealId}}",
+								"complete"
+							]
+						},
+						"description": "Mark swap deal as completed"
+					},
+					"response": []
+				}
+			],
+			"description": "Swap deal actions and status management"
+		},
+		{
+			"name": "User Operations",
+			"item": [
+				{
+					"name": "Get User Swap Deals",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/swap-deals/user/me?status=active&type=created",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"swap-deals",
+								"user",
+								"me"
+							],
+							"query": [
+								{
+									"key": "status",
+									"value": "active",
+									"description": "Filter by status"
+								},
+								{
+									"key": "type",
+									"value": "created",
+									"description": "Filter by type (created, accepted, participated)"
+								}
+							]
+						},
+						"description": "Get current user's swap deals"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Swap Deal Stats",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/swap-deals/stats/overview?period=30d",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"swap-deals",
+								"stats",
+								"overview"
+							],
+							"query": [
+								{
+									"key": "period",
+									"value": "30d",
+									"description": "Time period for statistics"
+								}
+							]
+						},
+						"description": "Get swap deal statistics overview"
+					},
+					"response": []
+				}
+			],
+			"description": "User-specific swap deal operations"
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:5000",
+			"type": "string"
+		},
+		{
+			"key": "auth_token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "swapDealId",
+			"value": "",
+			"type": "string"
+		}
+	]
+}

@@ -1,4 +1,4 @@
-const { UserTable, UserFollows, SellersTable } = require('../../models');
+const { UserTable, UserFollows, SellersTable, ProductCategory } = require('../../models');
 
 // Follow a user
 const followUser = async (req, res) => {
@@ -225,7 +225,13 @@ const getFollowing = async (req, res) => {
                         model: SellersTable,
                         as: 'seller',
                         attributes: ['category', 'businessName'],
-                        required: false
+                        required: false,
+                        include: [{
+                            model: ProductCategory,
+                            as: 'categoryInfo',
+                            attributes: ['name', 'icon'],
+                            required: false
+                        }]
                     }]
                 });
                 return { ...follow.toJSON(), followedUser: user };
@@ -245,7 +251,7 @@ const getFollowing = async (req, res) => {
                 lastActive: userData.lastActive ? 
                     `${new Date(userData.lastActive).getDate()}${getOrdinalSuffix(new Date(userData.lastActive).getDate())} ${new Date(userData.lastActive).toLocaleDateString('en-US', { month: 'long' })}, ${new Date(userData.lastActive).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}` :
                     'Recently',
-                category: sellerData?.category || (userData.accountType === 'seller' ? 'Seller' : 'Buyer'),
+                category: sellerData?.categoryInfo?.name || (userData.accountType === 'seller' ? 'Seller' : 'Buyer'),
                 accountType: userData.accountType,
                 accountStatus: userData.accountStatus
             };

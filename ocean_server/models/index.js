@@ -201,20 +201,20 @@ const setupAssociations = () => {
   db.SwapDeal.belongsTo(db.Product, { foreignKey: 'responderItemId', as: 'responderItem' });
 
   // Buyer Need associations
-  db.BuyerNeed.belongsTo(db.UserTable, { foreignKey: 'buyerId', as: 'buyer' });
-  db.BuyerNeed.belongsTo(db.ProductCategory, { foreignKey: 'categoryId', as: 'category' });
-  db.BuyerNeed.hasMany(db.BuyerNeedResponse, { foreignKey: 'buyerNeedId', as: 'responses' });
+  db.BuyerNeed.belongsTo(db.UserTable, { foreignKey: 'buyer_id', as: 'buyer' });
+  db.BuyerNeed.belongsTo(db.ProductCategory, { foreignKey: 'category_id', as: 'category' });
+  db.BuyerNeed.hasMany(db.BuyerNeedResponse, { foreignKey: 'buyer_need_id', as: 'responses' });
   
   // Buyer Need Response associations
-  db.BuyerNeedResponse.belongsTo(db.BuyerNeed, { foreignKey: 'buyerNeedId', as: 'buyerNeed' });
-  db.BuyerNeedResponse.belongsTo(db.UserTable, { foreignKey: 'sellerId', as: 'seller' });
+  db.BuyerNeedResponse.belongsTo(db.BuyerNeed, { foreignKey: 'buyer_need_id', as: 'buyerNeed' });
+  db.BuyerNeedResponse.belongsTo(db.UserTable, { foreignKey: 'seller_id', as: 'seller' });
   
   // User associations for buyer needs
-  db.UserTable.hasMany(db.BuyerNeed, { foreignKey: 'buyerId', as: 'buyerNeeds' });
-  db.UserTable.hasMany(db.BuyerNeedResponse, { foreignKey: 'sellerId', as: 'sellerResponses' });
+  db.UserTable.hasMany(db.BuyerNeed, { foreignKey: 'buyer_id', as: 'buyerNeeds' });
+  db.UserTable.hasMany(db.BuyerNeedResponse, { foreignKey: 'seller_id', as: 'sellerResponses' });
   
   // ProductCategory associations for buyer needs
-  db.ProductCategory.hasMany(db.BuyerNeed, { foreignKey: 'categoryId', as: 'buyerNeeds' });
+  db.ProductCategory.hasMany(db.BuyerNeed, { foreignKey: 'category_id', as: 'buyerNeeds' });
 
   // Market Analytics associations
   db.MarketAnalytics.belongsTo(db.ProductCategory, { foreignKey: 'categoryId', as: 'category' });

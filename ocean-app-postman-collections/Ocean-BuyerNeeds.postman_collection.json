@@ -1,0 +1,702 @@
+{
+	"info": {
+		"_postman_id": "ocean-buyer-needs-collection",
+		"name": "Ocean - Buyer Needs",
+		"description": "Complete collection for Ocean app buyer needs and responses endpoints. Updated for Universal Category System - supports both UUID and name-based category lookup.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Buyer Needs CRUD",
+			"item": [
+				{
+					"name": "Create Buyer Need",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"Looking for Vintage Guitar\",\n  \"description\": \"I'm looking for a vintage Fender Stratocaster from the 1960s in good condition\",\n  \"category_id\": \"{{tech_category_id}}\",\n  \"budget\": {\n    \"min\": 1000,\n    \"max\": 3000,\n    \"currency\": \"USD\"\n  },\n  \"location\": {\n    \"city\": \"Los Angeles\",\n    \"state\": \"CA\",\n    \"country\": \"USA\",\n    \"radius\": 50\n  },\n  \"urgency\": \"medium\",\n  \"preferredCondition\": \"good\",\n  \"images\": [\"https://example.com/reference-guitar.jpg\"],\n  \"tags\": [\"vintage\", \"guitar\", \"fender\", \"stratocaster\"],\n  \"expiryDate\": \"2024-03-15T23:59:59Z\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/buyer-needs/create",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"buyer-needs",
+								"create"
+							]
+						},
+						"description": "Create a new buyer need"
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Buyer Needs",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/buyer-needs/all?page=1&limit=20&category_id={{tech_category_id}}&status=active",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"buyer-needs",
+								"all"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1",
+									"description": "Page number"
+								},
+								{
+									"key": "limit",
+									"value": "20",
+									"description": "Items per page"
+								},
+								{
+									"key": "category_id",
+									"value": "{{tech_category_id}}",
+									"description": "Filter by category ID (UUID or name)"
+								},
+								{
+									"key": "status",
+									"value": "active",
+									"description": "Filter by status (active, fulfilled, cancelled)"
+								}
+							]
+						},
+						"description": "Get all buyer needs with filtering"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Buyer Need by ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/buyer-needs/{{buyerNeedId}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"buyer-needs",
+								"{{buyerNeedId}}"
+							]
+						},
+						"description": "Get specific buyer need details"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Buyer Need",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"Updated: Looking for Vintage Guitar\",\n  \"description\": \"Updated description with more specific requirements\",\n  \"budget\": {\n    \"min\": 1200,\n    \"max\": 3500,\n    \"currency\": \"USD\"\n  },\n  \"urgency\": \"high\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/buyer-needs/{{buyerNeedId}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"buyer-needs",
+								"{{buyerNeedId}}"
+							]
+						},
+						"description": "Update buyer need details"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Buyer Need",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/buyer-needs/{{buyerNeedId}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"buyer-needs",
+								"{{buyerNeedId}}"
+							]
+						},
+						"description": "Delete a buyer need"
+					},
+					"response": []
+				}
+			],
+			"description": "Buyer needs CRUD operations"
+		},
+		{
+			"name": "Buyer Need Actions",
+			"item": [
+				{
+					"name": "Cancel Buyer Need",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"reason\": \"Found what I was looking for elsewhere\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/buyer-needs/{{buyerNeedId}}/cancel",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"buyer-needs",
+								"{{buyerNeedId}}",
+								"cancel"
+							]
+						},
+						"description": "Cancel a buyer need"
+					},
+					"response": []
+				},
+				{
+					"name": "Mark Buyer Need Fulfilled",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"fulfilledBy\": \"{{responseId}}\",\n  \"notes\": \"Great transaction, exactly what I was looking for!\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/buyer-needs/{{buyerNeedId}}/fulfill",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"buyer-needs",
+								"{{buyerNeedId}}",
+								"fulfill"
+							]
+						},
+						"description": "Mark buyer need as fulfilled"
+					},
+					"response": []
+				},
+				{
+					"name": "Get User Buyer Needs",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/buyer-needs/user/me?status=active",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"buyer-needs",
+								"user",
+								"me"
+							],
+							"query": [
+								{
+									"key": "status",
+									"value": "active",
+									"description": "Filter by status"
+								}
+							]
+						},
+						"description": "Get current user's buyer needs"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Buyer Need Stats",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/buyer-needs/stats/overview",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"buyer-needs",
+								"stats",
+								"overview"
+							]
+						},
+						"description": "Get buyer needs statistics overview"
+					},
+					"response": []
+				}
+			],
+			"description": "Buyer need actions and user-specific operations"
+		},
+		{
+			"name": "Buyer Need Responses",
+			"item": [
+				{
+					"name": "Create Response",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"message\": \"I have exactly what you're looking for!\",\n  \"productDetails\": {\n    \"name\": \"1965 Fender Stratocaster\",\n    \"condition\": \"Excellent\",\n    \"price\": 2800,\n    \"description\": \"Original 1965 Fender Stratocaster in sunburst finish\"\n  },\n  \"images\": [\"https://example.com/guitar1.jpg\", \"https://example.com/guitar2.jpg\"],\n  \"contactInfo\": {\n    \"phone\": \"+1234567890\",\n    \"email\": \"seller@example.com\"\n  },\n  \"availability\": \"immediate\",\n  \"shippingOptions\": {\n    \"localPickup\": true,\n    \"shipping\": true,\n    \"shippingCost\": 50\n  }\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/buyer-needs/{{buyerNeedId}}/responses",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"buyer-needs",
+								"{{buyerNeedId}}",
+								"responses"
+							]
+						},
+						"description": "Create a response to a buyer need"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Responses by Buyer Need",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/buyer-needs/{{buyerNeedId}}/responses?status=active",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"buyer-needs",
+								"{{buyerNeedId}}",
+								"responses"
+							],
+							"query": [
+								{
+									"key": "status",
+									"value": "active",
+									"description": "Filter by response status"
+								}
+							]
+						},
+						"description": "Get all responses for a specific buyer need"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Response by ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/buyer-needs/responses/{{responseId}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"buyer-needs",
+								"responses",
+								"{{responseId}}"
+							]
+						},
+						"description": "Get specific response details"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Response",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"message\": \"Updated: I can offer a better price!\",\n  \"productDetails\": {\n    \"price\": 2600,\n    \"description\": \"Updated description with better price\"\n  }\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/buyer-needs/responses/{{responseId}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"buyer-needs",
+								"responses",
+								"{{responseId}}"
+							]
+						},
+						"description": "Update a response"
+					},
+					"response": []
+				}
+			],
+			"description": "Buyer need responses management"
+		},
+		{
+			"name": "Response Actions",
+			"item": [
+				{
+					"name": "Accept Response",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"notes\": \"Perfect match! Let's proceed with the transaction.\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/buyer-needs/responses/{{responseId}}/accept",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"buyer-needs",
+								"responses",
+								"{{responseId}}",
+								"accept"
+							]
+						},
+						"description": "Accept a response to buyer need"
+					},
+					"response": []
+				},
+				{
+					"name": "Reject Response",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"reason\": \"Not quite what I'm looking for\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/buyer-needs/responses/{{responseId}}/reject",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"buyer-needs",
+								"responses",
+								"{{responseId}}",
+								"reject"
+							]
+						},
+						"description": "Reject a response to buyer need"
+					},
+					"response": []
+				},
+				{
+					"name": "Withdraw Response",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"reason\": \"Item no longer available\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/buyer-needs/responses/{{responseId}}/withdraw",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"buyer-needs",
+								"responses",
+								"{{responseId}}",
+								"withdraw"
+							]
+						},
+						"description": "Withdraw a response"
+					},
+					"response": []
+				},
+				{
+					"name": "Mark Response as Read",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/buyer-needs/responses/{{responseId}}/read",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"buyer-needs",
+								"responses",
+								"{{responseId}}",
+								"read"
+							]
+						},
+						"description": "Mark response as read"
+					},
+					"response": []
+				},
+				{
+					"name": "Provide Feedback",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"rating\": 5,\n  \"feedback\": \"Excellent communication and fast delivery!\",\n  \"transactionCompleted\": true\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/buyer-needs/responses/{{responseId}}/feedback",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"buyer-needs",
+								"responses",
+								"{{responseId}}",
+								"feedback"
+							]
+						},
+						"description": "Provide feedback on a response"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Seller Responses",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/buyer-needs/seller/responses?status=active",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"buyer-needs",
+								"seller",
+								"responses"
+							],
+							"query": [
+								{
+									"key": "status",
+									"value": "active",
+									"description": "Filter by response status"
+								}
+							]
+						},
+						"description": "Get current user's responses as a seller"
+					},
+					"response": []
+				}
+			],
+			"description": "Response actions and management"
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:5000",
+			"type": "string"
+		},
+		{
+			"key": "auth_token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "buyerNeedId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "responseId",
+			"value": "",
+			"type": "string"
+		}
+	]
+}

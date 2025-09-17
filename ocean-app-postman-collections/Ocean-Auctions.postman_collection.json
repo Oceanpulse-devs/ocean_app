@@ -1,0 +1,314 @@
+{
+	"info": {
+		"_postman_id": "ocean-auctions-collection",
+		"name": "Ocean - Auctions",
+		"description": "Complete collection for Ocean app auction endpoints. Updated for Universal Category System - supports both UUID and name-based category lookup.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Public Routes",
+			"item": [
+				{
+					"name": "Get All Auctions",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/auctions",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"auctions"
+							]
+						},
+						"description": "Get all auctions (public access)"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Auction Categories",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/auctions/categories",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"auctions",
+								"categories"
+							]
+						},
+						"description": "Get auction categories"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Single Auction",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/auction/{{auctionId}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"auction",
+								"{{auctionId}}"
+							]
+						},
+						"description": "Get single auction details"
+					},
+					"response": []
+				}
+			],
+			"description": "Public auction routes (no authentication required)"
+		},
+		{
+			"name": "Protected Routes",
+			"item": [
+				{
+					"name": "Create Auction",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"Vintage Guitar Auction\",\n  \"description\": \"Rare 1960s Fender Stratocaster in excellent condition\",\n  \"startingPrice\": 500.00,\n  \"reservePrice\": 1000.00,\n  \"buyNowPrice\": 2500.00,\n  \"category\": \"{{tech_category_id}}\",\n  \"condition\": \"Excellent\",\n  \"location\": \"Los Angeles, CA\",\n  \"startDate\": \"2024-01-15T10:00:00Z\",\n  \"endDate\": \"2024-01-22T18:00:00Z\",\n  \"images\": [\"https://example.com/guitar1.jpg\", \"https://example.com/guitar2.jpg\"],\n  \"tags\": [\"vintage\", \"guitar\", \"fender\", \"stratocaster\"],\n  \"shippingOptions\": {\n    \"freeShipping\": false,\n    \"shippingCost\": 50.00,\n    \"pickupAvailable\": true\n  }\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auctions",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"auctions"
+							]
+						},
+						"description": "Create a new auction"
+					},
+					"response": []
+				},
+				{
+					"name": "Place Bid",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"bidAmount\": 750.00,\n  \"autoBid\": false,\n  \"maxBid\": 1200.00\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auction/{{auctionId}}/bid",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"auction",
+								"{{auctionId}}",
+								"bid"
+							]
+						},
+						"description": "Place a bid on an auction"
+					},
+					"response": []
+				},
+				{
+					"name": "Toggle Watch Auction",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/auction/{{auctionId}}/watch",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"auction",
+								"{{auctionId}}",
+								"watch"
+							]
+						},
+						"description": "Watch or unwatch an auction"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Auction",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"Updated Auction Title\",\n  \"description\": \"Updated auction description\",\n  \"buyNowPrice\": 3000.00\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auction/{{auctionId}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"auction",
+								"{{auctionId}}"
+							]
+						},
+						"description": "Update auction details"
+					},
+					"response": []
+				},
+				{
+					"name": "Cancel Auction",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/auction/{{auctionId}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"auction",
+								"{{auctionId}}"
+							]
+						},
+						"description": "Cancel an auction"
+					},
+					"response": []
+				}
+			],
+			"description": "Protected auction routes (authentication required)"
+		},
+		{
+			"name": "User-Specific Routes",
+			"item": [
+				{
+					"name": "Get User Auctions",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/user/auctions",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"user",
+								"auctions"
+							]
+						},
+						"description": "Get current user's auctions"
+					},
+					"response": []
+				},
+				{
+					"name": "Get User Bids",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/user/bids",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"user",
+								"bids"
+							]
+						},
+						"description": "Get current user's bids"
+					},
+					"response": []
+				}
+			],
+			"description": "User-specific auction routes"
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:5000",
+			"type": "string"
+		},
+		{
+			"key": "auth_token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "auctionId",
+			"value": "",
+			"type": "string"
+		}
+	]
+}

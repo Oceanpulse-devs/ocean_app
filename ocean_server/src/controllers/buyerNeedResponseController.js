@@ -142,7 +142,7 @@ class BuyerNeedResponseController {
           {
             model: db.UserTable,
             as: 'seller',
-            attributes: ['id', 'username', 'profile_picture', 'location']
+            attributes: ['id', 'username', 'profilePicture', 'location']
           }
         ],
         order: [['created_at', 'DESC']],
@@ -181,7 +181,7 @@ class BuyerNeedResponseController {
           {
             model: db.UserTable,
             as: 'seller',
-            attributes: ['id', 'username', 'profile_picture', 'email', 'location']
+            attributes: ['id', 'username', 'profilePicture', 'email', 'location']
           },
           {
             model: db.BuyerNeed,

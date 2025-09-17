@@ -1,0 +1,352 @@
+{
+	"info": {
+		"_postman_id": "ocean-group-buy-collection",
+		"name": "Ocean - Group Buy",
+		"description": "Complete collection for Ocean app group buy endpoints. Updated for Universal Category System - supports both UUID and name-based category lookup.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Group Buy CRUD",
+			"item": [
+				{
+					"name": "Create Group Buy",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"Bulk Electronics Purchase\",\n  \"description\": \"Group buy for electronics at wholesale prices\",\n  \"productName\": \"iPhone 15 Pro\",\n  \"targetPrice\": 899.99,\n  \"originalPrice\": 999.99,\n  \"minParticipants\": 10,\n  \"maxParticipants\": 50,\n  \"category\": \"{{tech_category_id}}\",\n  \"endDate\": \"2024-12-31T23:59:59Z\",\n  \"location\": \"New York, NY\",\n  \"images\": [\"https://example.com/product-image.jpg\"],\n  \"tags\": [\"electronics\", \"bulk-buy\", \"wholesale\"]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/group-buy/create",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"group-buy",
+								"create"
+							]
+						},
+						"description": "Create a new group buy"
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Group Buys",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/group-buy/all",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"group-buy",
+								"all"
+							]
+						},
+						"description": "Get all group buys"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Group Buy by ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/group-buy/{{groupBuyId}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"group-buy",
+								"{{groupBuyId}}"
+							]
+						},
+						"description": "Get specific group buy details"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Group Buy",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"Updated Group Buy Title\",\n  \"description\": \"Updated description\",\n  \"targetPrice\": 799.99,\n  \"minParticipants\": 15\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/group-buy/{{groupBuyId}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"group-buy",
+								"{{groupBuyId}}"
+							]
+						},
+						"description": "Update group buy details"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Group Buy",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/group-buy/{{groupBuyId}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"group-buy",
+								"{{groupBuyId}}"
+							]
+						},
+						"description": "Delete a group buy"
+					},
+					"response": []
+				}
+			],
+			"description": "Group Buy CRUD operations"
+		},
+		{
+			"name": "Group Buy Participation",
+			"item": [
+				{
+					"name": "Join Group Buy",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"quantity\": 2,\n  \"notes\": \"Interested in bulk purchase\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/group-buy/{{groupBuyId}}/join",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"group-buy",
+								"{{groupBuyId}}",
+								"join"
+							]
+						},
+						"description": "Join a group buy"
+					},
+					"response": []
+				},
+				{
+					"name": "Leave Group Buy",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/group-buy/{{groupBuyId}}/leave",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"group-buy",
+								"{{groupBuyId}}",
+								"leave"
+							]
+						},
+						"description": "Leave a group buy"
+					},
+					"response": []
+				}
+			],
+			"description": "Group Buy participation operations"
+		},
+		{
+			"name": "User Operations",
+			"item": [
+				{
+					"name": "Get User Group Buys",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/group-buy/user/me",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"group-buy",
+								"user",
+								"me"
+							]
+						},
+						"description": "Get current user's group buys"
+					},
+					"response": []
+				},
+				{
+					"name": "Mark Group Buy Successful",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"status\": \"successful\",\n  \"notes\": \"Group buy completed successfully\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/group-buy/{{groupBuyId}}/successful",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"group-buy",
+								"{{groupBuyId}}",
+								"successful"
+							]
+						},
+						"description": "Mark group buy as successful (creator/admin only)"
+					},
+					"response": []
+				}
+			],
+			"description": "User-specific group buy operations"
+		},
+		{
+			"name": "Statistics",
+			"item": [
+				{
+					"name": "Get Group Buy Stats",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/group-buy/stats/overview",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"group-buy",
+								"stats",
+								"overview"
+							]
+						},
+						"description": "Get group buy statistics overview"
+					},
+					"response": []
+				}
+			],
+			"description": "Group Buy statistics"
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:5000",
+			"type": "string"
+		},
+		{
+			"key": "auth_token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "groupBuyId",
+			"value": "",
+			"type": "string"
+		}
+	]
+}

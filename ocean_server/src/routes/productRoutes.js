@@ -9,6 +9,13 @@ router.get('/api/categories', productController.getCategories);
 router.get('/api/products/seller/:sellerId', productController.getSellerProducts);
 router.get('/api/product/:productId', productController.getProduct);
 
+// System categories route (public)
+router.get('/api/categories/system', (req, res) => {
+    // Add type=system query parameter and call getCategories
+    req.query.type = 'system';
+    productController.getCategories(req, res);
+});
+
 // Protected routes (authentication required)
 router.post('/api/products', authMiddleware, productController.createProduct);
 router.put('/api/products/:productId', authMiddleware, productController.updateProduct);
@@ -17,7 +24,16 @@ router.post('/api/products/:productId/save', authMiddleware, productController.t
 router.get('/api/saved-products', authMiddleware, productController.getSavedProducts);
 router.get('/api/saved-items', authMiddleware, productController.getAllSavedItems);
 router.get('/api/my-products', authMiddleware, productController.getMyProducts);
-router.get('/api/categories', productController.getCategories);
+
+// Category management routes (authentication required)
+router.post('/api/categories/custom', authMiddleware, productController.createCustomCategory);
+router.get('/api/categories/custom', authMiddleware, productController.getCustomCategories);
+router.delete('/api/categories/custom/:categoryId', authMiddleware, productController.deleteCustomCategory);
+
+// Category search and analytics routes (public)
+router.get('/api/categories/search', productController.searchCategories);
+router.get('/api/categories/analytics', productController.getCategoryAnalytics);
+router.get('/api/categories/trending', productController.getTrendingCategories);
 
 
 

@@ -1,0 +1,347 @@
+{
+	"info": {
+		"_postman_id": "ocean-heavy-distributor-collection",
+		"name": "Ocean - Heavy Distributor",
+		"description": "Complete collection for Ocean app heavy distributor and wholesale operations endpoints. Updated for Universal Category System - supports both UUID and name-based category lookup.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Public Routes",
+			"item": [
+				{
+					"name": "Get All Distributors",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/heavy-distributors/all?page=1&limit=20&category={{tech_category_id}}&location=california",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"heavy-distributors",
+								"all"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1",
+									"description": "Page number"
+								},
+								{
+									"key": "limit",
+									"value": "20",
+									"description": "Items per page"
+								},
+								{
+									"key": "category",
+									"value": "{{tech_category_id}}",
+									"description": "Filter by category (UUID or name)"
+								},
+								{
+									"key": "location",
+									"value": "california",
+									"description": "Filter by location"
+								}
+							]
+						},
+						"description": "Get all heavy distributors (public access)"
+					},
+					"response": []
+				},
+				{
+					"name": "Search Distributors",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/heavy-distributors/search?q=electronics&category={{tech_category_id}}&minCapacity=1000",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"heavy-distributors",
+								"search"
+							],
+							"query": [
+								{
+									"key": "q",
+									"value": "electronics",
+									"description": "Search query"
+								},
+								{
+									"key": "category",
+									"value": "{{tech_category_id}}",
+									"description": "Filter by category (UUID or name)"
+								},
+								{
+									"key": "minCapacity",
+									"value": "1000",
+									"description": "Minimum capacity requirement"
+								}
+							]
+						},
+						"description": "Search distributors with filters"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Distributor by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/heavy-distributors/{{distributorId}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"heavy-distributors",
+								"{{distributorId}}"
+							]
+						},
+						"description": "Get specific distributor details"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Distributor Stats",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/heavy-distributors/{{distributorId}}/stats?period=30d",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"heavy-distributors",
+								"{{distributorId}}",
+								"stats"
+							],
+							"query": [
+								{
+									"key": "period",
+									"value": "30d",
+									"description": "Time period for statistics"
+								}
+							]
+						},
+						"description": "Get distributor statistics and performance"
+					},
+					"response": []
+				}
+			],
+			"description": "Public heavy distributor routes (no authentication required)"
+		},
+		{
+			"name": "Protected Routes",
+			"item": [
+				{
+					"name": "Create Distributor",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"companyName\": \"Mega Electronics Distributors\",\n  \"businessType\": \"wholesale_distributor\",\n  \"description\": \"Leading distributor of electronics and technology products\",\n  \"categories\": [\"Electronics\", \"Technology\", \"Gadgets\"],\n  \"capacity\": {\n    \"storageCapacity\": 50000,\n    \"monthlyVolume\": 1000000,\n    \"unit\": \"sq_ft\"\n  },\n  \"location\": {\n    \"address\": \"123 Distribution Center Blvd\",\n    \"city\": \"Los Angeles\",\n    \"state\": \"CA\",\n    \"zipCode\": \"90210\",\n    \"country\": \"USA\",\n    \"coordinates\": {\n      \"latitude\": 34.0522,\n      \"longitude\": -118.2437\n    }\n  },\n  \"contactInfo\": {\n    \"phone\": \"+1234567890\",\n    \"email\": \"contact@megadistributors.com\",\n    \"website\": \"https://megadistributors.com\",\n    \"contactPerson\": \"John Smith\"\n  },\n  \"businessDetails\": {\n    \"licenseNumber\": \"DL123456789\",\n    \"taxId\": \"12-3456789\",\n    \"yearsInBusiness\": 15,\n    \"employeeCount\": 250\n  },\n  \"services\": [\"bulk_sales\", \"wholesale\", \"logistics\", \"custom_packaging\"],\n  \"minimumOrder\": {\n    \"amount\": 10000,\n    \"currency\": \"USD\"\n  },\n  \"paymentTerms\": [\"net_30\", \"net_60\", \"cash_on_delivery\"],\n  \"shippingOptions\": {\n    \"localDelivery\": true,\n    \"nationwideShipping\": true,\n    \"internationalShipping\": false,\n    \"freightOptions\": true\n  },\n  \"certifications\": [\"ISO_9001\", \"FDA_approved\", \"CE_certified\"],\n  \"images\": [\"https://example.com/warehouse1.jpg\", \"https://example.com/warehouse2.jpg\"],\n  \"tags\": [\"wholesale\", \"bulk\", \"electronics\", \"distribution\"]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/heavy-distributors/create",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"heavy-distributors",
+								"create"
+							]
+						},
+						"description": "Create a new heavy distributor profile"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Distributor",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"companyName\": \"Updated Mega Electronics Distributors\",\n  \"description\": \"Updated description with expanded services\",\n  \"capacity\": {\n    \"storageCapacity\": 75000,\n    \"monthlyVolume\": 1500000,\n    \"unit\": \"sq_ft\"\n  },\n  \"services\": [\"bulk_sales\", \"wholesale\", \"logistics\", \"custom_packaging\", \"drop_shipping\"],\n  \"minimumOrder\": {\n    \"amount\": 8000,\n    \"currency\": \"USD\"\n  }\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/heavy-distributors/{{distributorId}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"heavy-distributors",
+								"{{distributorId}}"
+							]
+						},
+						"description": "Update distributor details"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Distributor",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/heavy-distributors/{{distributorId}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"heavy-distributors",
+								"{{distributorId}}"
+							]
+						},
+						"description": "Delete a distributor profile"
+					},
+					"response": []
+				}
+			],
+			"description": "Protected heavy distributor routes (authentication required)"
+		},
+		{
+			"name": "Inquiry Management",
+			"item": [
+				{
+					"name": "Create Inquiry",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"distributorId\": \"{{distributorId}}\",\n  \"inquiryType\": \"bulk_purchase\",\n  \"subject\": \"Bulk Electronics Purchase Inquiry\",\n  \"message\": \"We are interested in purchasing electronics in bulk for our retail chain. Please provide pricing and availability.\",\n  \"requirements\": {\n    \"productCategory\": \"Electronics\",\n    \"quantity\": 5000,\n    \"budget\": {\n      \"min\": 50000,\n      \"max\": 100000,\n      \"currency\": \"USD\"\n    },\n    \"deliveryDate\": \"2024-03-15T00:00:00Z\",\n    \"deliveryLocation\": {\n      \"city\": \"New York\",\n      \"state\": \"NY\",\n      \"country\": \"USA\"\n    }\n  },\n  \"contactInfo\": {\n    \"phone\": \"+1234567890\",\n    \"email\": \"buyer@retailchain.com\",\n    \"companyName\": \"Retail Chain Inc.\"\n  },\n  \"urgency\": \"medium\",\n  \"preferredContactMethod\": \"email\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/heavy-distributors/inquiry",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"heavy-distributors",
+								"inquiry"
+							]
+						},
+						"description": "Create an inquiry to a distributor"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Distributor Inquiries",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/heavy-distributors/{{distributorId}}/inquiries?status=pending&page=1&limit=20",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"heavy-distributors",
+								"{{distributorId}}",
+								"inquiries"
+							],
+							"query": [
+								{
+									"key": "status",
+									"value": "pending",
+									"description": "Filter by inquiry status (pending, responded, closed)"
+								},
+								{
+									"key": "page",
+									"value": "1",
+									"description": "Page number"
+								},
+								{
+									"key": "limit",
+									"value": "20",
+									"description": "Items per page"
+								}
+							]
+						},
+						"description": "Get inquiries for a specific distributor"
+					},
+					"response": []
+				}
+			],
+			"description": "Distributor inquiry management"
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:5000",
+			"type": "string"
+		},
+		{
+			"key": "auth_token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "distributorId",
+			"value": "",
+			"type": "string"
+		}
+	]
+}

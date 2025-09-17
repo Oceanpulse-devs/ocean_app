@@ -1,0 +1,947 @@
+{
+	"info": {
+		"_postman_id": "ocean-notifications-collection",
+		"name": "Ocean - Notifications",
+		"description": "Complete collection for Ocean app notification system endpoints",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Basic Notifications",
+			"item": [
+				{
+					"name": "Get User Notifications",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/notifications",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"notifications"
+							]
+						},
+						"description": "Get user notifications"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Unread Count",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/notifications/unread-count",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"notifications",
+								"unread-count"
+							]
+						},
+						"description": "Get unread notification count"
+					},
+					"response": []
+				},
+				{
+					"name": "Mark Notification as Read",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/notifications/{{notificationId}}/read",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"notifications",
+								"{{notificationId}}",
+								"read"
+							]
+						},
+						"description": "Mark a specific notification as read"
+					},
+					"response": []
+				},
+				{
+					"name": "Mark All Notifications as Read",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/notifications/mark-all-read",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"notifications",
+								"mark-all-read"
+							]
+						},
+						"description": "Mark all notifications as read"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Notification",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/notifications/{{notificationId}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"notifications",
+								"{{notificationId}}"
+							]
+						},
+						"description": "Delete a notification"
+					},
+					"response": []
+				}
+			],
+			"description": "Basic notification management"
+		},
+		{
+			"name": "Advanced Notifications",
+			"item": [
+				{
+					"name": "Create Notification",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"userId\": \"{{targetUserId}}\",\n  \"type\": \"auction_bid\",\n  \"title\": \"New Bid on Your Auction\",\n  \"message\": \"Someone placed a bid of $150 on your auction\",\n  \"data\": {\n    \"auctionId\": \"auction123\",\n    \"bidAmount\": 150,\n    \"bidderName\": \"John Doe\"\n  },\n  \"priority\": \"high\",\n  \"expiresAt\": \"2024-12-31T23:59:59Z\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/advanced-notifications/create",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"advanced-notifications",
+								"create"
+							]
+						},
+						"description": "Create a new notification"
+					},
+					"response": []
+				},
+				{
+					"name": "Get User Notifications (Advanced)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/advanced-notifications/user/{{userId}}?page=1&limit=20&type=auction_bid&unreadOnly=true",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"advanced-notifications",
+								"user",
+								"{{userId}}"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1",
+									"description": "Page number"
+								},
+								{
+									"key": "limit",
+									"value": "20",
+									"description": "Items per page"
+								},
+								{
+									"key": "type",
+									"value": "auction_bid",
+									"description": "Filter by notification type"
+								},
+								{
+									"key": "unreadOnly",
+									"value": "true",
+									"description": "Show only unread notifications"
+								}
+							]
+						},
+						"description": "Get user notifications with filtering and pagination"
+					},
+					"response": []
+				},
+				{
+					"name": "Mark Multiple as Read",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"notificationIds\": [\"{{notificationId1}}\", \"{{notificationId2}}\", \"{{notificationId3}}\"]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/advanced-notifications/mark-multiple-read",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"advanced-notifications",
+								"mark-multiple-read"
+							]
+						},
+						"description": "Mark multiple notifications as read"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Notification Stats",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/advanced-notifications/stats/{{userId}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"advanced-notifications",
+								"stats",
+								"{{userId}}"
+							]
+						},
+						"description": "Get notification statistics for a user"
+					},
+					"response": []
+				},
+				{
+					"name": "Create from Template",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"templateName\": \"auction_bid_notification\",\n  \"userId\": \"{{targetUserId}}\",\n  \"variables\": {\n    \"bidderName\": \"John Doe\",\n    \"bidAmount\": 150,\n    \"auctionTitle\": \"Vintage Guitar\"\n  }\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/advanced-notifications/from-template",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"advanced-notifications",
+								"from-template"
+							]
+						},
+						"description": "Create notification from template"
+					},
+					"response": []
+				},
+				{
+					"name": "Bulk Create Notifications",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"userIds\": [\"{{userId1}}\", \"{{userId2}}\", \"{{userId3}}\"],\n  \"type\": \"system_announcement\",\n  \"title\": \"System Maintenance Notice\",\n  \"message\": \"The system will be under maintenance from 2-4 AM EST\",\n  \"priority\": \"medium\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/advanced-notifications/bulk-create",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"advanced-notifications",
+								"bulk-create"
+							]
+						},
+						"description": "Create notifications for multiple users"
+					},
+					"response": []
+				}
+			],
+			"description": "Advanced notification features"
+		},
+		{
+			"name": "Notification Preferences",
+			"item": [
+				{
+					"name": "Get User Preferences",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/advanced-notifications/preferences/{{userId}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"advanced-notifications",
+								"preferences",
+								"{{userId}}"
+							]
+						},
+						"description": "Get user notification preferences"
+					},
+					"response": []
+				},
+				{
+					"name": "Update User Preference",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"notificationType\": \"auction_bid\",\n  \"emailEnabled\": true,\n  \"pushEnabled\": true,\n  \"smsEnabled\": false,\n  \"frequency\": \"immediate\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/advanced-notifications/preferences/{{userId}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"advanced-notifications",
+								"preferences",
+								"{{userId}}"
+							]
+						},
+						"description": "Create or update user notification preference"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Multiple Preferences",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"preferences\": [\n    {\n      \"notificationType\": \"auction_bid\",\n      \"emailEnabled\": true,\n      \"pushEnabled\": true,\n      \"smsEnabled\": false\n    },\n    {\n      \"notificationType\": \"product_like\",\n      \"emailEnabled\": false,\n      \"pushEnabled\": true,\n      \"smsEnabled\": false\n    }\n  ]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/advanced-notifications/preferences/{{userId}}/bulk",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"advanced-notifications",
+								"preferences",
+								"{{userId}}",
+								"bulk"
+							]
+						},
+						"description": "Update multiple notification preferences at once"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete User Preference",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/advanced-notifications/preferences/{{userId}}/{{notificationType}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"advanced-notifications",
+								"preferences",
+								"{{userId}}",
+								"{{notificationType}}"
+							]
+						},
+						"description": "Delete user notification preference"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Default Preferences",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/advanced-notifications/preferences/{{userId}}/defaults",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"advanced-notifications",
+								"preferences",
+								"{{userId}}",
+								"defaults"
+							]
+						},
+						"description": "Get default notification preferences for a user"
+					},
+					"response": []
+				},
+				{
+					"name": "Initialize User Preferences",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/advanced-notifications/preferences/{{userId}}/initialize",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"advanced-notifications",
+								"preferences",
+								"{{userId}}",
+								"initialize"
+							]
+						},
+						"description": "Initialize user with default notification preferences"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Preferences Summary",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/advanced-notifications/preferences/{{userId}}/summary",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"advanced-notifications",
+								"preferences",
+								"{{userId}}",
+								"summary"
+							]
+						},
+						"description": "Get notification preferences summary"
+					},
+					"response": []
+				}
+			],
+			"description": "Notification preferences management"
+		},
+		{
+			"name": "Notification Templates",
+			"item": [
+				{
+					"name": "Create Template",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"auction_bid_notification\",\n  \"title\": \"New Bid on {{auctionTitle}}\",\n  \"message\": \"{{bidderName}} placed a bid of ${{bidAmount}} on your auction\",\n  \"type\": \"auction_bid\",\n  \"priority\": \"high\",\n  \"channels\": [\"push\", \"email\"],\n  \"variables\": [\"bidderName\", \"bidAmount\", \"auctionTitle\"]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/advanced-notifications/templates",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"advanced-notifications",
+								"templates"
+							]
+						},
+						"description": "Create a new notification template"
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Templates",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/advanced-notifications/templates?type=auction_bid&active=true",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"advanced-notifications",
+								"templates"
+							],
+							"query": [
+								{
+									"key": "type",
+									"value": "auction_bid",
+									"description": "Filter by notification type"
+								},
+								{
+									"key": "active",
+									"value": "true",
+									"description": "Show only active templates"
+								}
+							]
+						},
+						"description": "Get all notification templates with filtering"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Template by ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/advanced-notifications/templates/{{templateId}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"advanced-notifications",
+								"templates",
+								"{{templateId}}"
+							]
+						},
+						"description": "Get template by ID"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Template",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"Updated: New Bid on {{auctionTitle}}\",\n  \"message\": \"{{bidderName}} placed a bid of ${{bidAmount}} on your auction. Good luck!\",\n  \"priority\": \"medium\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/advanced-notifications/templates/{{templateId}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"advanced-notifications",
+								"templates",
+								"{{templateId}}"
+							]
+						},
+						"description": "Update notification template"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Template Version",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"New Bid on {{auctionTitle}} - Version 2\",\n  \"message\": \"{{bidderName}} placed a bid of ${{bidAmount}} on your auction. This is version 2!\",\n  \"priority\": \"high\",\n  \"channels\": [\"push\", \"email\", \"sms\"]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/advanced-notifications/templates/{{templateId}}/version",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"advanced-notifications",
+								"templates",
+								"{{templateId}}",
+								"version"
+							]
+						},
+						"description": "Create new version of template"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Template",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/advanced-notifications/templates/{{templateId}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"advanced-notifications",
+								"templates",
+								"{{templateId}}"
+							]
+						},
+						"description": "Delete notification template"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Template Versions",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/advanced-notifications/templates/versions/{{templateName}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"advanced-notifications",
+								"templates",
+								"versions",
+								"{{templateName}}"
+							]
+						},
+						"description": "Get template versions"
+					},
+					"response": []
+				},
+				{
+					"name": "Activate Template Version",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/advanced-notifications/templates/{{templateId}}/activate",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"advanced-notifications",
+								"templates",
+								"{{templateId}}",
+								"activate"
+							]
+						},
+						"description": "Activate template version"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Template Stats",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/advanced-notifications/templates/stats",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"advanced-notifications",
+								"templates",
+								"stats"
+							]
+						},
+						"description": "Get template statistics"
+					},
+					"response": []
+				}
+			],
+			"description": "Notification template management"
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:5000",
+			"type": "string"
+		},
+		{
+			"key": "auth_token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "userId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "targetUserId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "notificationId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "notificationId1",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "notificationId2",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "notificationId3",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "templateId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "templateName",
+			"value": "auction_bid_notification",
+			"type": "string"
+		},
+		{
+			"key": "notificationType",
+			"value": "auction_bid",
+			"type": "string"
+		},
+		{
+			"key": "userId1",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "userId2",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "userId3",
+			"value": "",
+			"type": "string"
+		}
+	]
+}

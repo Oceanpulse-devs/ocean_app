@@ -1,0 +1,495 @@
+{
+	"info": {
+		"_postman_id": "ocean-feed-posts-collection",
+		"name": "Ocean - Feed & Posts",
+		"description": "Complete collection for Ocean app feed and posts endpoints. Updated for Universal Category System - supports both UUID and name-based category lookup.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Test Routes",
+			"item": [
+				{
+					"name": "Test Feed Routes",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/test",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"test"
+							]
+						},
+						"description": "Test route to check if feed routes are working"
+					},
+					"response": []
+				}
+			],
+			"description": "Test routes for feed functionality"
+		},
+		{
+			"name": "Public Routes",
+			"item": [
+				{
+					"name": "Get Feed",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/feed",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"feed"
+							]
+						},
+						"description": "Get public feed (no authentication required)"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Single Post",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/posts/{{postId}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"posts",
+								"{{postId}}"
+							]
+						},
+						"description": "Get single post details"
+					},
+					"response": []
+				},
+				{
+					"name": "Search Posts",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/search?q={{searchQuery}}&category={{tech_category_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"search"
+							],
+							"query": [
+								{
+									"key": "q",
+									"value": "{{searchQuery}}",
+									"description": "Search query"
+								},
+								{
+									"key": "category",
+									"value": "{{tech_category_id}}",
+									"description": "Category filter (UUID or name)"
+								}
+							]
+						},
+						"description": "Search posts by query and category"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Post Comments",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/posts/{{postId}}/comments",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"posts",
+								"{{postId}}",
+								"comments"
+							]
+						},
+						"description": "Get comments for a post"
+					},
+					"response": []
+				},
+				{
+					"name": "Get User Posts",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/users/{{userId}}/posts",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"users",
+								"{{userId}}",
+								"posts"
+							]
+						},
+						"description": "Get posts by specific user"
+					},
+					"response": []
+				}
+			],
+			"description": "Public feed and post routes (no authentication required)"
+		},
+		{
+			"name": "Protected Routes",
+			"item": [
+				{
+					"name": "Get Home Feed",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/home-feed",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"home-feed"
+							]
+						},
+						"description": "Get personalized home feed (authentication required)"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Post",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "multipart/form-data",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "content",
+									"value": "This is my new post content!",
+									"type": "text"
+								},
+								{
+									"key": "category",
+									"value": "{{tech_category_id}}",
+									"type": "text"
+								},
+								{
+									"key": "tags",
+									"value": "ocean,community",
+									"type": "text"
+								},
+								{
+									"key": "media",
+									"type": "file",
+									"src": []
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/posts",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"posts"
+							]
+						},
+						"description": "Create a new post with optional media"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Post",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "content",
+									"value": "Updated post content",
+									"type": "text"
+								},
+								{
+									"key": "category",
+									"value": "{{fashion_category_id}}",
+									"type": "text"
+								},
+								{
+									"key": "media",
+									"type": "file",
+									"src": []
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/posts/{{postId}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"posts",
+								"{{postId}}"
+							]
+						},
+						"description": "Update an existing post"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Post",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/posts/{{postId}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"posts",
+								"{{postId}}"
+							]
+						},
+						"description": "Delete a post"
+					},
+					"response": []
+				},
+				{
+					"name": "Toggle Like Post",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/posts/{{postId}}/like",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"posts",
+								"{{postId}}",
+								"like"
+							]
+						},
+						"description": "Like or unlike a post"
+					},
+					"response": []
+				},
+				{
+					"name": "Toggle Save Post",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/posts/{{postId}}/save",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"posts",
+								"{{postId}}",
+								"save"
+							]
+						},
+						"description": "Save or unsave a post"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Saved Posts",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/saved-posts",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"saved-posts"
+							]
+						},
+						"description": "Get user's saved posts"
+					},
+					"response": []
+				}
+			],
+			"description": "Protected feed and post routes (authentication required)"
+		},
+		{
+			"name": "Comments",
+			"item": [
+				{
+					"name": "Create Comment",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"content\": \"This is a great post! Thanks for sharing.\",\n  \"parentCommentId\": null\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/posts/{{postId}}/comments",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"posts",
+								"{{postId}}",
+								"comments"
+							]
+						},
+						"description": "Create a comment on a post"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Comment",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/comments/{{commentId}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"comments",
+								"{{commentId}}"
+							]
+						},
+						"description": "Delete a comment"
+					},
+					"response": []
+				}
+			],
+			"description": "Comment management"
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:5000",
+			"type": "string"
+		},
+		{
+			"key": "auth_token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "postId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "userId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "commentId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "searchQuery",
+			"value": "electronics",
+			"type": "string"
+		},
+		{
+			"key": "category",
+			"value": "{{tech_category_id}}",
+			"type": "string"
+		}
+	]
+}

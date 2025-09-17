@@ -1,0 +1,547 @@
+{
+	"info": {
+		"_postman_id": "ocean-products-collection",
+		"name": "Ocean - Products",
+		"description": "Complete collection for Ocean app product management endpoints",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Public Routes",
+			"item": [
+				{
+					"name": "Get All Products",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/products",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"products"
+							]
+						},
+						"description": "Get all products (public access)"
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Categories",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/categories?type=all",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"categories"
+							],
+							"query": [
+								{
+									"key": "type",
+									"value": "all",
+									"description": "all, system, custom"
+								}
+							]
+						},
+						"description": "Get all product categories (system + custom)"
+					},
+					"response": []
+				},
+				{
+					"name": "Get System Categories",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/categories/system",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"categories",
+								"system"
+							]
+						},
+						"description": "Get system categories only (Tech, Fashion, etc.)"
+					},
+					"response": []
+				},
+				{
+					"name": "Search Categories",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/categories/search?q=tech&type=all&sortBy=usageCount&sortOrder=DESC&limit=20",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"categories",
+								"search"
+							],
+							"query": [
+								{
+									"key": "q",
+									"value": "tech",
+									"description": "Search query (name or description)"
+								},
+								{
+									"key": "type",
+									"value": "all",
+									"description": "Filter: all, system, custom"
+								},
+								{
+									"key": "sortBy",
+									"value": "usageCount",
+									"description": "Sort by: usageCount, name, createdAt"
+								},
+								{
+									"key": "sortOrder",
+									"value": "DESC",
+									"description": "Sort order: ASC, DESC"
+								},
+								{
+									"key": "limit",
+									"value": "20",
+									"description": "Results limit"
+								},
+								{
+									"key": "minUsage",
+									"value": "",
+									"description": "Minimum usage count filter"
+								},
+								{
+									"key": "maxUsage",
+									"value": "",
+									"description": "Maximum usage count filter"
+								}
+							]
+						},
+						"description": "Advanced category search with filtering and sorting"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Category Analytics",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/categories/analytics?period=30d",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"categories",
+								"analytics"
+							],
+							"query": [
+								{
+									"key": "period",
+									"value": "30d",
+									"description": "Time period: 7d, 30d, 90d, all"
+								}
+							]
+						},
+						"description": "Get category analytics and statistics"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Trending Categories",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/categories/trending?period=7d&limit=10",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"categories",
+								"trending"
+							],
+							"query": [
+								{
+									"key": "period",
+									"value": "7d",
+									"description": "Trending period: 7d, 30d, 90d"
+								},
+								{
+									"key": "limit",
+									"value": "10",
+									"description": "Number of trending categories"
+								}
+							]
+						},
+						"description": "Get trending categories (most used recently)"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Custom Category",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Vintage Electronics\",\n  \"description\": \"Old-school electronics and gadgets\",\n  \"icon\": \"📻\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/categories/custom",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"categories",
+								"custom"
+							]
+						},
+						"description": "Create a custom category (requires authentication)"
+					},
+					"response": []
+				},
+				{
+					"name": "Get My Custom Categories",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/categories/custom",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"categories",
+								"custom"
+							]
+						},
+						"description": "Get user's custom categories (requires authentication)"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Custom Category",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/categories/custom/{{categoryId}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"categories",
+								"custom",
+								"{{categoryId}}"
+							]
+						},
+						"description": "Delete custom category (only by creator, requires authentication)"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Seller Products",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/products/seller/{{sellerId}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"products",
+								"seller",
+								"{{sellerId}}"
+							]
+						},
+						"description": "Get products by specific seller"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Single Product",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/product/{{productId}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"product",
+								"{{productId}}"
+							]
+						},
+						"description": "Get single product details"
+					},
+					"response": []
+				}
+			],
+			"description": "Public product routes (no authentication required)"
+		},
+		{
+			"name": "Protected Routes",
+			"item": [
+				{
+					"name": "Create Product",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Sample Product\",\n  \"description\": \"This is a sample product description\",\n  \"price\": 99.99,\n  \"category\": \"Electronics\",\n  \"quantity\": 10,\n  \"images\": [\"https://example.com/image1.jpg\"],\n  \"tags\": [\"electronics\", \"gadgets\"],\n  \"condition\": \"new\",\n  \"location\": \"New York, NY\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/products",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"products"
+							]
+						},
+						"description": "Create a new product (requires authentication)"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Product",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Updated Product Name\",\n  \"description\": \"Updated product description\",\n  \"price\": 149.99,\n  \"quantity\": 5\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/products/{{productId}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"products",
+								"{{productId}}"
+							]
+						},
+						"description": "Update an existing product"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Product",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/products/{{productId}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"products",
+								"{{productId}}"
+							]
+						},
+						"description": "Delete a product"
+					},
+					"response": []
+				},
+				{
+					"name": "Toggle Save Product",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/products/{{productId}}/save",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"products",
+								"{{productId}}",
+								"save"
+							]
+						},
+						"description": "Save or unsave a product"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Saved Products",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/saved-products",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"saved-products"
+							]
+						},
+						"description": "Get user's saved products"
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Saved Items",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/saved-items",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"saved-items"
+							]
+						},
+						"description": "Get all saved items (products, auctions, etc.)"
+					},
+					"response": []
+				},
+				{
+					"name": "Get My Products",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/my-products",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"my-products"
+							]
+						},
+						"description": "Get current user's products"
+					},
+					"response": []
+				}
+			],
+			"description": "Protected product routes (authentication required)"
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:5000",
+			"type": "string"
+		},
+		{
+			"key": "auth_token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "productId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "sellerId",
+			"value": "",
+			"type": "string"
+		}
+	]
+}

@@ -24,6 +24,15 @@ class DistressSaleController {
 
       const sellerId = req.user.id;
 
+      // Check if user is a verified seller
+      const seller = await db.SellersTable.findOne({ where: { userId: sellerId } });
+      if (!seller || seller.status !== 'verified') {
+        return res.status(403).json({
+          success: false,
+          message: 'Only verified sellers can create distress sales'
+        });
+      }
+
       // Validate distress sale data
       if (!originalPrice || !discountPercentage) {
         return res.status(400).json({
@@ -32,6 +41,9 @@ class DistressSaleController {
         });
       }
 
+      // Calculate the distress price if not provided
+      const calculatedPrice = price || (originalPrice * (1 - discountPercentage / 100));
+
       if (discountPercentage < 0 || discountPercentage > 100) {
         return res.status(400).json({
           success: false,
@@ -39,11 +51,39 @@ class DistressSaleController {
         });
       }
 
-      if (originalPrice <= price) {
+      if (originalPrice <= calculatedPrice) {
         return res.status(400).json({
           success: false,
           message: 'Original price must be greater than current price for distress sales'
         });
+      }
+
+      // Handle location field (convert object to string if needed)
+      let finalLocation = location;
+      if (location && typeof location === 'object') {
+        finalLocation = `${location.city || ''}, ${location.state || ''}, ${location.country || ''}`.trim().replace(/^,\s*|,\s*$/g, '');
+      }
+
+      // Validate category if provided
+      if (category) {
+        let categoryRecord;
+        // Try to find by UUID first
+        if (category.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
+          categoryRecord = await db.ProductCategory.findByPk(category);
+        } else {
+          // Try to find by name (for backward compatibility)
+          categoryRecord = await db.ProductCategory.findOne({ where: { name: category } });
+        }
+        
+        if (!categoryRecord) {
+          return res.status(400).json({
+            success: false,
+            message: 'Invalid category. Please select a valid category from the list.'
+          });
+        }
+        
+        // Update category usage count
+        await categoryRecord.update({ usageCount: categoryRecord.usageCount + 1 });
       }
 
       // Create the distress sale product
@@ -51,7 +91,7 @@ class DistressSaleController {
         sellerId,
         title,
         description,
-        price,
+        price: calculatedPrice,
         originalPrice,
         discountPercentage,
         urgencyLevel: urgencyLevel || 'medium',
@@ -61,7 +101,7 @@ class DistressSaleController {
         subcategory,
         brand,
         condition: condition || 'good',
-        location,
+        location: finalLocation,
         images: images || [],
         isDistressSale: true,
         status: 'active'

@@ -1,0 +1,313 @@
+{
+	"info": {
+		"_postman_id": "ocean-follow-system-collection",
+		"name": "Ocean - Follow System",
+		"description": "Complete collection for Ocean app follow system endpoints",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Follow Actions",
+			"item": [
+				{
+					"name": "Follow User",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"targetUserId\": \"{{targetUserId}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/follow",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"follow"
+							]
+						},
+						"description": "Follow a user"
+					},
+					"response": []
+				},
+				{
+					"name": "Unfollow User",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"targetUserId\": \"{{targetUserId}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/unfollow",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"unfollow"
+							]
+						},
+						"description": "Unfollow a user"
+					},
+					"response": []
+				},
+				{
+					"name": "Check Follow Status",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/users/{{targetUserId}}/follow-status",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"users",
+								"{{targetUserId}}",
+								"follow-status"
+							]
+						},
+						"description": "Check if current user follows a specific user"
+					},
+					"response": []
+				}
+			],
+			"description": "Follow and unfollow actions"
+		},
+		{
+			"name": "Followers & Following",
+			"item": [
+				{
+					"name": "Get User Followers",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/users/{{userId}}/followers?page=1&limit=20",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"users",
+								"{{userId}}",
+								"followers"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1",
+									"description": "Page number"
+								},
+								{
+									"key": "limit",
+									"value": "20",
+									"description": "Items per page"
+								}
+							]
+						},
+						"description": "Get list of users who follow a specific user"
+					},
+					"response": []
+				},
+				{
+					"name": "Get User Following",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/users/{{userId}}/following?page=1&limit=20",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"users",
+								"{{userId}}",
+								"following"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1",
+									"description": "Page number"
+								},
+								{
+									"key": "limit",
+									"value": "20",
+									"description": "Items per page"
+								}
+							]
+						},
+						"description": "Get list of users that a specific user follows"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Followers (Alternative Route)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/follow/{{userId}}/followers",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"follow",
+								"{{userId}}",
+								"followers"
+							]
+						},
+						"description": "Alternative route to get followers (for compatibility)"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Following (Alternative Route)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/follow/{{userId}}/following",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"follow",
+								"{{userId}}",
+								"following"
+							]
+						},
+						"description": "Alternative route to get following (for compatibility)"
+					},
+					"response": []
+				}
+			],
+			"description": "Get followers and following lists"
+		},
+		{
+			"name": "Follow Statistics",
+			"item": [
+				{
+					"name": "Get Follow Stats",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/users/{{userId}}/follow-stats",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"users",
+								"{{userId}}",
+								"follow-stats"
+							]
+						},
+						"description": "Get follow statistics for a user (followers count, following count, etc.)"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Mutual Followers",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/users/{{userId}}/mutual-followers?page=1&limit=20",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"users",
+								"{{userId}}",
+								"mutual-followers"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1",
+									"description": "Page number"
+								},
+								{
+									"key": "limit",
+									"value": "20",
+									"description": "Items per page"
+								}
+							]
+						},
+						"description": "Get mutual followers between current user and another user"
+					},
+					"response": []
+				}
+			],
+			"description": "Follow statistics and analytics"
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:5000",
+			"type": "string"
+		},
+		{
+			"key": "auth_token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "userId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "targetUserId",
+			"value": "",
+			"type": "string"
+		}
+	]
+}

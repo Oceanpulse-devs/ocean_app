@@ -9,6 +9,7 @@ class BuyerNeedController {
         title,
         description,
         category_id,
+        budget,
         budget_min,
         budget_max,
         currency,
@@ -19,6 +20,11 @@ class BuyerNeedController {
         contact_preference,
         additional_requirements
       } = req.body;
+
+      // Extract budget values from nested object or direct fields
+      const finalBudgetMin = budget?.min || budget_min;
+      const finalBudgetMax = budget?.max || budget_max;
+      const finalCurrency = budget?.currency || currency;
 
       const buyer_id = req.user.id;
 
@@ -31,7 +37,7 @@ class BuyerNeedController {
       }
 
       // Validate budget range
-      if (budget_min && budget_max && parseFloat(budget_min) > parseFloat(budget_max)) {
+      if (finalBudgetMin && finalBudgetMax && parseFloat(finalBudgetMin) > parseFloat(finalBudgetMax)) {
         return res.status(400).json({
           success: false,
           message: 'Minimum budget cannot be greater than maximum budget'
@@ -46,15 +52,26 @@ class BuyerNeedController {
         });
       }
 
-      // Check if category exists if provided
+      // Check if category exists if provided (supports both UUID and name)
       if (category_id) {
-        const category = await db.ProductCategory.findByPk(category_id);
+        let category;
+        // Try to find by UUID first
+        if (category_id.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
+          category = await db.ProductCategory.findByPk(category_id);
+        } else {
+          // Try to find by name (for backward compatibility)
+          category = await db.ProductCategory.findOne({ where: { name: category_id } });
+        }
+        
         if (!category) {
           return res.status(400).json({
             success: false,
-            message: 'Invalid category'
+            message: 'Invalid category. Please select a valid category from the list.'
           });
         }
+        
+        // Update category usage count
+        await category.update({ usageCount: category.usageCount + 1 });
       }
 
       // Set default expiration (30 days from now)
@@ -65,13 +82,13 @@ class BuyerNeedController {
         description,
         buyer_id,
         category_id,
-        budget_min: budget_min ? parseFloat(budget_min) : null,
-        budget_max: budget_max ? parseFloat(budget_max) : null,
-        currency: currency || 'USD',
-        location,
+        budget_min: finalBudgetMin ? parseFloat(finalBudgetMin) : null,
+        budget_max: finalBudgetMax ? parseFloat(finalBudgetMax) : null,
+        currency: finalCurrency || 'USD',
+        location: location ? (typeof location === 'object' ? `${location.city || ''}, ${location.state || ''}, ${location.country || ''}`.trim().replace(/^,\s*|,\s*$/g, '') : location) : null,
         urgency: urgency || 'medium',
         expires_at: expirationDate,
-        tags: tags ? JSON.parse(tags) : null,
+        tags: tags ? (typeof tags === 'string' ? tags.split(',').map(tag => tag.trim()) : tags) : null,
         contact_preference: contact_preference || 'message',
         additional_requirements,
         status: 'active'
@@ -161,12 +178,12 @@ class BuyerNeedController {
           {
             model: db.UserTable,
             as: 'buyer',
-            attributes: ['id', 'username', 'profile_picture', 'location']
+            attributes: ['id', 'username', 'profilePicture', 'location']
           },
           {
             model: db.ProductCategory,
             as: 'category',
-            attributes: ['id', 'name']
+            attributes: ['id', 'name', 'description', 'icon', 'isCustom', 'usageCount']
           }
         ],
         order: [[sort_by, sort_order.toUpperCase()]],
@@ -205,12 +222,12 @@ class BuyerNeedController {
           {
             model: db.UserTable,
             as: 'buyer',
-            attributes: ['id', 'username', 'profile_picture', 'email', 'location']
+            attributes: ['id', 'username', 'profilePicture', 'email', 'location']
           },
           {
             model: db.ProductCategory,
             as: 'category',
-            attributes: ['id', 'name']
+            attributes: ['id', 'name', 'description', 'icon', 'isCustom', 'usageCount']
           },
           {
             model: db.BuyerNeedResponse,
@@ -219,7 +236,7 @@ class BuyerNeedController {
               {
                 model: db.UserTable,
                 as: 'seller',
-                attributes: ['id', 'username', 'profile_picture', 'location']
+                attributes: ['id', 'username', 'profilePicture', 'location']
               }
             ],
             order: [['created_at', 'DESC']]
@@ -283,9 +300,29 @@ class BuyerNeedController {
         });
       }
 
+      // Extract budget values from nested object or direct fields
+      const finalBudgetMin = updateData.budget?.min || updateData.budget_min;
+      const finalBudgetMax = updateData.budget?.max || updateData.budget_max;
+      const finalCurrency = updateData.budget?.currency || updateData.currency;
+
+      // Update the updateData object with extracted values
+      if (finalBudgetMin !== undefined) updateData.budget_min = finalBudgetMin;
+      if (finalBudgetMax !== undefined) updateData.budget_max = finalBudgetMax;
+      if (finalCurrency !== undefined) updateData.currency = finalCurrency;
+
+      // Handle location field (convert object to string if needed)
+      if (updateData.location && typeof updateData.location === 'object') {
+        updateData.location = `${updateData.location.city || ''}, ${updateData.location.state || ''}, ${updateData.location.country || ''}`.trim().replace(/^,\s*|,\s*$/g, '');
+      }
+
+      // Handle tags field (convert string to array if needed)
+      if (updateData.tags && typeof updateData.tags === 'string') {
+        updateData.tags = updateData.tags.split(',').map(tag => tag.trim());
+      }
+
       // Validate budget range if updating
-      if (updateData.budget_min && updateData.budget_max) {
-        if (parseFloat(updateData.budget_min) > parseFloat(updateData.budget_max)) {
+      if (finalBudgetMin && finalBudgetMax) {
+        if (parseFloat(finalBudgetMin) > parseFloat(finalBudgetMax)) {
           return res.status(400).json({
             success: false,
             message: 'Minimum budget cannot be greater than maximum budget'
@@ -483,7 +520,7 @@ class BuyerNeedController {
           {
             model: db.ProductCategory,
             as: 'category',
-            attributes: ['id', 'name']
+            attributes: ['id', 'name', 'description', 'icon', 'isCustom', 'usageCount']
           },
           {
             model: db.BuyerNeedResponse,

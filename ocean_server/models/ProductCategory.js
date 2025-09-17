@@ -35,6 +35,25 @@ module.exports = (sequelize) => {
     sortOrder: {
       type: DataTypes.INTEGER,
       defaultValue: 0
+    },
+    isCustom: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+      comment: 'Whether this category was created by a user (custom) or is a system category'
+    },
+    createdBy: {
+      type: DataTypes.UUID,
+      allowNull: true,
+      comment: 'User ID who created this custom category (null for system categories)',
+      references: {
+        model: 'users',
+        key: 'id'
+      }
+    },
+    usageCount: {
+      type: DataTypes.INTEGER,
+      defaultValue: 0,
+      comment: 'Number of times this category has been used in products'
     }
   }, {
     tableName: 'productcategories',
@@ -51,6 +70,12 @@ module.exports = (sequelize) => {
     ProductCategory.belongsTo(ProductCategory, {
       foreignKey: 'parentId',
       as: 'parent'
+    });
+
+    // Association with UserTable for custom categories
+    ProductCategory.belongsTo(models.UserTable, {
+      foreignKey: 'createdBy',
+      as: 'creator'
     });
   };
 

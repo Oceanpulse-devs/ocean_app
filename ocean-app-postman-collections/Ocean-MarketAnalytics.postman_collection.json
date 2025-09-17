@@ -1,0 +1,437 @@
+{
+	"info": {
+		"_postman_id": "ocean-market-analytics-collection",
+		"name": "Ocean - Market Analytics",
+		"description": "Complete collection for Ocean app market analytics and insights endpoints. Updated for Universal Category System - supports both UUID and name-based category lookup.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Core Analytics",
+			"item": [
+				{
+					"name": "Track Metric",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"metricType\": \"product_view\",\n  \"entityId\": \"{{productId}}\",\n  \"entityType\": \"product\",\n  \"userId\": \"{{userId}}\",\n  \"metadata\": {\n    \"category\": \"{{tech_category_id}}\",\n    \"price\": 299.99,\n    \"location\": \"New York\"\n  },\n  \"timestamp\": \"2024-01-15T10:30:00Z\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/market-analytics/track",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"market-analytics",
+								"track"
+							]
+						},
+						"description": "Track a market metric event"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Market Overview",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/market-analytics/overview?period=30d&includeTrends=true",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"market-analytics",
+								"overview"
+							],
+							"query": [
+								{
+									"key": "period",
+									"value": "30d",
+									"description": "Time period (7d, 30d, 90d, 1y)"
+								},
+								{
+									"key": "includeTrends",
+									"value": "true",
+									"description": "Include trend analysis"
+								}
+							]
+						},
+						"description": "Get overall market analytics overview"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Category Analytics",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/market-analytics/category/{{tech_category_id}}?period=30d",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"market-analytics",
+								"category",
+								"{{tech_category_id}}"
+							],
+							"query": [
+								{
+									"key": "period",
+									"value": "30d",
+									"description": "Time period for analysis"
+								}
+							]
+						},
+						"description": "Get analytics for a specific category"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Search Analytics",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/market-analytics/search?period=7d&limit=50",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"market-analytics",
+								"search"
+							],
+							"query": [
+								{
+									"key": "period",
+									"value": "7d",
+									"description": "Time period for search analysis"
+								},
+								{
+									"key": "limit",
+									"value": "50",
+									"description": "Number of results to return"
+								}
+							]
+						},
+						"description": "Get search analytics and popular queries"
+					},
+					"response": []
+				},
+				{
+					"name": "Get User Behavior Analytics",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/market-analytics/user-behavior?period=30d&segment=all",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"market-analytics",
+								"user-behavior"
+							],
+							"query": [
+								{
+									"key": "period",
+									"value": "30d",
+									"description": "Time period for behavior analysis"
+								},
+								{
+									"key": "segment",
+									"value": "all",
+									"description": "User segment (all, buyers, sellers, new_users)"
+								}
+							]
+						},
+						"description": "Get user behavior analytics and patterns"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Market Trends",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/market-analytics/trends?period=90d&category={{tech_category_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"market-analytics",
+								"trends"
+							],
+							"query": [
+								{
+									"key": "period",
+									"value": "90d",
+									"description": "Time period for trend analysis"
+								},
+								{
+									"key": "category",
+									"value": "{{tech_category_id}}",
+									"description": "Category filter (UUID or name)"
+								}
+							]
+						},
+						"description": "Get market trends and forecasting data"
+					},
+					"response": []
+				}
+			],
+			"description": "Core market analytics endpoints"
+		},
+		{
+			"name": "Advanced Analytics",
+			"item": [
+				{
+					"name": "Get Category Performance",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/market-analytics/category/{{categoryId}}/performance?period=30d&metrics=sales,views,conversions",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"market-analytics",
+								"category",
+								"{{tech_category_id}}",
+								"performance"
+							],
+							"query": [
+								{
+									"key": "period",
+									"value": "30d",
+									"description": "Time period for performance analysis"
+								},
+								{
+									"key": "metrics",
+									"value": "sales,views,conversions",
+									"description": "Comma-separated metrics to include"
+								}
+							]
+						},
+						"description": "Get detailed category performance metrics"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Search Queries",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/market-analytics/search/queries?period=7d&type=popular&limit=100",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"market-analytics",
+								"search",
+								"queries"
+							],
+							"query": [
+								{
+									"key": "period",
+									"value": "7d",
+									"description": "Time period for query analysis"
+								},
+								{
+									"key": "type",
+									"value": "popular",
+									"description": "Query type (popular, trending, failed)"
+								},
+								{
+									"key": "limit",
+									"value": "100",
+									"description": "Number of queries to return"
+								}
+							]
+						},
+						"description": "Get detailed search query analytics"
+					},
+					"response": []
+				},
+				{
+					"name": "Get User Behavior Patterns",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/market-analytics/user-behavior/patterns?period=30d&patternType=conversion_funnel",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"market-analytics",
+								"user-behavior",
+								"patterns"
+							],
+							"query": [
+								{
+									"key": "period",
+									"value": "30d",
+									"description": "Time period for pattern analysis"
+								},
+								{
+									"key": "patternType",
+									"value": "conversion_funnel",
+									"description": "Pattern type (conversion_funnel, user_journey, engagement)"
+								}
+							]
+						},
+						"description": "Get detailed user behavior patterns"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Market Trends Forecast",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/market-analytics/trends/forecast?period=90d&forecastDays=30&category={{tech_category_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"market-analytics",
+								"trends",
+								"forecast"
+							],
+							"query": [
+								{
+									"key": "period",
+									"value": "90d",
+									"description": "Historical period for forecasting"
+								},
+								{
+									"key": "forecastDays",
+									"value": "30",
+									"description": "Number of days to forecast"
+								},
+								{
+									"key": "category",
+									"value": "{{tech_category_id}}",
+									"description": "Category for forecast (UUID or name)"
+								}
+							]
+						},
+						"description": "Get market trends forecast and predictions"
+					},
+					"response": []
+				}
+			],
+			"description": "Advanced analytics and detailed insights"
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:5000",
+			"type": "string"
+		},
+		{
+			"key": "auth_token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "userId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "productId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "categoryId",
+			"value": "{{tech_category_id}}",
+			"type": "string"
+		}
+	]
+}

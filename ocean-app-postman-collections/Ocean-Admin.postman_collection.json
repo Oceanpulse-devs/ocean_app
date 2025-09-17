@@ -1,0 +1,416 @@
+{
+	"info": {
+		"_postman_id": "ocean-admin-collection",
+		"name": "Ocean - Admin",
+		"description": "Complete collection for Ocean app admin management endpoints",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Seller Management",
+			"item": [
+				{
+					"name": "Get Pending Sellers",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/admin/pending-sellers?page=1&limit=20",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"pending-sellers"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1",
+									"description": "Page number"
+								},
+								{
+									"key": "limit",
+									"value": "20",
+									"description": "Items per page"
+								}
+							]
+						},
+						"description": "Get list of sellers pending approval"
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Sellers",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/admin/sellers?status=approved&page=1&limit=20",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"sellers"
+							],
+							"query": [
+								{
+									"key": "status",
+									"value": "approved",
+									"description": "Filter by status (pending, approved, rejected)"
+								},
+								{
+									"key": "page",
+									"value": "1",
+									"description": "Page number"
+								},
+								{
+									"key": "limit",
+									"value": "20",
+									"description": "Items per page"
+								}
+							]
+						},
+						"description": "Get all sellers with filtering"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Seller by ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/admin/sellers/{{sellerId}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"sellers",
+								"{{sellerId}}"
+							]
+						},
+						"description": "Get specific seller details"
+					},
+					"response": []
+				},
+				{
+					"name": "Approve Seller",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"sellerId\": \"{{sellerId}}\",\n  \"adminNotes\": \"All documents verified successfully. Business license and tax documents are valid.\",\n  \"approvedBy\": \"{{adminUserId}}\",\n  \"approvalDate\": \"2024-01-15T10:30:00Z\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/admin/approve-seller",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"approve-seller"
+							]
+						},
+						"description": "Approve a seller application"
+					},
+					"response": []
+				},
+				{
+					"name": "Reject Seller",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"sellerId\": \"{{sellerId}}\",\n  \"rejectionReason\": \"Incomplete documentation. Please provide valid business license.\",\n  \"rejectedBy\": \"{{adminUserId}}\",\n  \"rejectionDate\": \"2024-01-15T10:30:00Z\",\n  \"canReapply\": true,\n  \"reapplyAfter\": \"2024-02-15T00:00:00Z\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/admin/reject-seller",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"reject-seller"
+							]
+						},
+						"description": "Reject a seller application"
+					},
+					"response": []
+				},
+				{
+					"name": "Toggle Seller Status",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"sellerId\": \"{{sellerId}}\",\n  \"newStatus\": \"suspended\",\n  \"reason\": \"Violation of platform policies\",\n  \"adminNotes\": \"Seller found violating terms of service. Suspended pending review.\",\n  \"actionBy\": \"{{adminUserId}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/admin/toggle-seller-status",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"toggle-seller-status"
+							]
+						},
+						"description": "Toggle seller status (active/suspended/banned)"
+					},
+					"response": []
+				}
+			],
+			"description": "Seller management and approval system"
+		},
+		{
+			"name": "User Management",
+			"item": [
+				{
+					"name": "Get All Users",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/admin/users?status=active&role=buyer&page=1&limit=20",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"users"
+							],
+							"query": [
+								{
+									"key": "status",
+									"value": "active",
+									"description": "Filter by user status (active, suspended, banned)"
+								},
+								{
+									"key": "role",
+									"value": "buyer",
+									"description": "Filter by user role (buyer, seller, admin)"
+								},
+								{
+									"key": "page",
+									"value": "1",
+									"description": "Page number"
+								},
+								{
+									"key": "limit",
+									"value": "20",
+									"description": "Items per page"
+								}
+							]
+						},
+						"description": "Get all users with filtering"
+					},
+					"response": []
+				},
+				{
+					"name": "Get User by ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/admin/users/{{userId}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"users",
+								"{{userId}}"
+							]
+						},
+						"description": "Get specific user details"
+					},
+					"response": []
+				},
+				{
+					"name": "Toggle User Status",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"userId\": \"{{userId}}\",\n  \"newStatus\": \"suspended\",\n  \"reason\": \"Violation of community guidelines\",\n  \"adminNotes\": \"User reported for inappropriate behavior. Suspended for 7 days.\",\n  \"actionBy\": \"{{adminUserId}}\",\n  \"suspensionDuration\": 7,\n  \"suspensionUnit\": \"days\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/admin/toggle-user-status",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"toggle-user-status"
+							]
+						},
+						"description": "Toggle user status (active/suspended/banned)"
+					},
+					"response": []
+				}
+			],
+			"description": "User management and moderation"
+		},
+		{
+			"name": "Admin Statistics",
+			"item": [
+				{
+					"name": "Get Admin Stats",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/admin/stats?period=30d&includeDetails=true",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"stats"
+							],
+							"query": [
+								{
+									"key": "period",
+									"value": "30d",
+									"description": "Time period for statistics (7d, 30d, 90d, 1y)"
+								},
+								{
+									"key": "includeDetails",
+									"value": "true",
+									"description": "Include detailed breakdown"
+								}
+							]
+						},
+						"description": "Get comprehensive admin statistics and platform overview"
+					},
+					"response": []
+				}
+			],
+			"description": "Admin statistics and platform analytics"
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:5000",
+			"type": "string"
+		},
+		{
+			"key": "admin_auth_token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "sellerId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "userId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "adminUserId",
+			"value": "",
+			"type": "string"
+		}
+	]
+}

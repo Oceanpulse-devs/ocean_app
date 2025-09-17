@@ -1,4 +1,4 @@
-const { Auction, AuctionBid, AuctionWatcher, SellersTable, UserTable, Notification } = require('../../models');
+const { Auction, AuctionBid, AuctionWatcher, SellersTable, UserTable, Notification, ProductCategory } = require('../../models');
 const { Op, Sequelize } = require('sequelize');
 
 // Simple notification function to avoid circular dependency
@@ -61,6 +61,25 @@ const createAuction = async (req, res) => {
         message: 'Missing required fields'
       });
     }
+
+    // Validate category
+    let categoryRecord;
+    // Try to find by UUID first
+    if (category.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
+      categoryRecord = await ProductCategory.findByPk(category);
+    } else {
+      // Try to find by name (for backward compatibility)
+      categoryRecord = await ProductCategory.findOne({ where: { name: category } });
+    }
+    
+    if (!categoryRecord) {
+      return res.status(400).json({
+        message: 'Invalid category. Please select a valid category from the list.'
+      });
+    }
+    
+    // Update category usage count
+    await categoryRecord.update({ usageCount: categoryRecord.usageCount + 1 });
 
     if (startingPrice <= 0) {
       return res.status(400).json({

@@ -42,7 +42,9 @@ module.exports = (sequelize) => {
       type: DataTypes.STRING,
     },
     category: {
-      type: DataTypes.STRING,
+      type: DataTypes.UUID,
+      allowNull: true,
+      comment: 'Category UUID from ProductCategory table (Universal Category System)'
     },
     isVerified: {
       type: DataTypes.BOOLEAN,
@@ -126,6 +128,14 @@ module.exports = (sequelize) => {
       SellersTable.belongsTo(models.UserTable, {
         foreignKey: 'userId',
         as: 'user'
+      });
+    }
+    
+    // Association with ProductCategory (Universal Category System)
+    if (models.ProductCategory) {
+      SellersTable.belongsTo(models.ProductCategory, {
+        foreignKey: 'category',
+        as: 'categoryInfo'
       });
     }
   };

@@ -413,14 +413,33 @@ const resetPassword = async(req,res)=>{
     }
 };
 
-// Business category validation
-const validateBusinessCategory = (category) => {
-    const validCategories = [
-        'electronics', 'fashion', 'home', 'sports', 'books', 'automotive',
-        'health', 'beauty', 'food', 'jewelry', 'art', 'music', 'toys',
-        'garden', 'office', 'baby', 'pet', 'other'
-    ];
-    return validCategories.includes(category.toLowerCase());
+// Business category validation - Updated for Universal Category System
+const validateBusinessCategory = async (category) => {
+    try {
+        // Import ProductCategory model
+        const { ProductCategory } = require('../models');
+        
+        // Check if category exists in the universal category system
+        // Support both UUID and name lookup
+        let categoryRecord;
+        if (category.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
+            // UUID format
+            categoryRecord = await ProductCategory.findByPk(category);
+        } else {
+            // Name format
+            categoryRecord = await ProductCategory.findOne({ 
+                where: { 
+                    name: category,
+                    isActive: true 
+                } 
+            });
+        }
+        
+        return !!categoryRecord; // Return true if category exists
+    } catch (error) {
+        console.error('Error validating business category:', error);
+        return false;
+    }
 };
 
 // Document type validation
@@ -452,8 +471,8 @@ const sellerRegistration = async(req,res)=>{
             return res.status(400).json({message:"Business address must be at least 10 characters long"})
         }
 
-        if(!validateBusinessCategory(category)){
-            return res.status(400).json({message:"Invalid business category"})
+        if(!(await validateBusinessCategory(category))){
+            return res.status(400).json({message:"Invalid business category. Please select a valid category from the list."})
         }
 
         if(!validateDocumentType(documentType)){
@@ -490,6 +509,25 @@ const sellerRegistration = async(req,res)=>{
 
         const currentuser = await UserTable.findOne({where: {id: currentUserId}});
 
+        // Get the category record to store UUID and increment usage count
+        const { ProductCategory } = require('../models');
+        let categoryRecord;
+        if (category.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
+            categoryRecord = await ProductCategory.findByPk(category);
+        } else {
+            categoryRecord = await ProductCategory.findOne({ 
+                where: { 
+                    name: category,
+                    isActive: true 
+                } 
+            });
+        }
+
+        // Increment category usage count
+        if (categoryRecord) {
+            await categoryRecord.update({ usageCount: categoryRecord.usageCount + 1 });
+        }
+
         // Create seller record
         const newSeller = await SellersTable.create({
             userId: currentUserId,
@@ -500,7 +538,7 @@ const sellerRegistration = async(req,res)=>{
             businessAddress: businessAddress.trim(),
             country: currentuser.country,
             state: currentuser.state,
-            category: category.toLowerCase(),
+            category: categoryRecord ? categoryRecord.id : category.toLowerCase(), // Store UUID if available
             verificationStatus: 'pending'
         });
 
@@ -685,6 +723,11 @@ const resendVerificationEmail = async (req, res) => {
             emailVerificationExpires
         });
 
+        // Track resend attempts in Redis
+        const resendKey = `resend_count:${user.id}`;
+        const currentCount = await redisClient.get(resendKey) || 0;
+        const newResendCount = parseInt(currentCount) + 1;
+        
         // Cache new verification token in Redis
         const redisKey = `email_verification:${emailVerificationToken}`;
         try {
@@ -693,13 +736,10 @@ const resendVerificationEmail = async (req, res) => {
                 email: user.email,
                 fullName: user.fullName,
                 createdAt: new Date().toISOString(),
-                resendCount: (await redisClient.get(`resend_count:${user.id}`) || 0) + 1
+                resendCount: newResendCount
             }));
 
-            // Track resend attempts in Redis
-            const resendKey = `resend_count:${user.id}`;
-            const currentCount = await redisClient.get(resendKey) || 0;
-            await redisClient.setEx(resendKey, 86400, parseInt(currentCount) + 1);
+            await redisClient.setEx(resendKey, 86400, newResendCount);
         } catch (redisError) {
             console.error('❌ Redis resend caching failed:', redisError.message);
         }
@@ -726,8 +766,8 @@ const resendVerificationEmail = async (req, res) => {
             
             res.status(200).json({
                 message: "Verification email sent successfully. Please check your email.",
-                resendCount: parseInt(currentCount) + 1,
-                remainingAttempts: Math.max(0, 5 - (parseInt(resendAttempts) + 1))
+                resendCount: newResendCount,
+                remainingAttempts: Math.max(0, 5 - newResendCount)
             });
         } catch (emailError) {
             console.error('❌ Failed to resend verification email:', emailError);
