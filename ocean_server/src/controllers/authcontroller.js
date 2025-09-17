@@ -298,10 +298,18 @@ const forgotPassword = async(req,res)=>{
      //store in redis
      await redisClient.set(`reset:${email.toLowerCase().trim()}`, resetcode, {EX: 600})
      console.log("saved reset to redis.")
-     //sending reset code to users gmail
-     console.log(`Reset code for ${email} is ${resetcode}. please do not share this with anyone.`)
+     
+     //sending reset code via email
+     try {
+         const emailTemplate = emailTemplates.passwordReset(userEmail.fullName, resetcode);
+         await sendEmail(email, emailTemplate.subject, emailTemplate.html, 'password-reset');
+         console.log(`✅ Password reset code sent to: ${email}`);
+     } catch (emailError) {
+         console.error('❌ Failed to send password reset email:', emailError);
+         // Don't fail the request if email fails, but log the error
+     }
 
-     res.json({ message: 'Reset code generated and logged (for dev use).' });
+     res.json({ message: 'Reset code sent to your email address.' });
 
     }catch(error){
         res.status(500).json({ message: 'Error generating reset code', error: error.message });

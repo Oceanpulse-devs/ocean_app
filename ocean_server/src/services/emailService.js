@@ -309,30 +309,31 @@ const emailTemplates = {
     `
   }),
 
-  passwordReset: (userName, resetLink) => ({
+  passwordReset: (userName, resetCode) => ({
     subject: "Reset Your Password - Ocean App",
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #2c3e50;">Hello ${userName}!</h2>
         <p>You requested to reset your password for your Ocean App account.</p>
         <div style="text-align: center; margin: 30px 0;">
-          <a href="${resetLink}" 
-             style="background-color: #e74c3c; color: white; padding: 15px 30px; 
-                    text-decoration: none; border-radius: 5px; font-size: 16px;">
-            Reset Password
-          </a>
+          <div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; border: 2px solid #e74c3c;">
+            <h3 style="color: #e74c3c; margin: 0 0 10px 0;">Your Reset Code</h3>
+            <div style="font-size: 32px; font-weight: bold; color: #e74c3c; letter-spacing: 5px; margin: 15px 0;">
+              ${resetCode}
+            </div>
+            <p style="margin: 10px 0 0 0; color: #666; font-size: 14px;">Enter this code in the app to reset your password</p>
+          </div>
         </div>
-        <p>If the button doesn't work, copy and paste this link into your browser:</p>
-        <p style="word-break: break-all; color: #7f8c8d;">${resetLink}</p>
         <div style="background-color: #f8f9fa; padding: 20px; border-radius: 5px; margin: 20px 0;">
           <h3 style="color: #2c3e50;">Security Information:</h3>
           <ul>
-            <li>This link will expire in 1 hour</li>
-            <li>Only use this link once</li>
+            <li>This code will expire in 10 minutes</li>
+            <li>Only use this code once</li>
+            <li>Never share this code with anyone</li>
             <li>If you didn't request this, ignore this email</li>
           </ul>
         </div>
-        <p>If you didn't request a password reset, please contact our support team immediately.</p>
+        <p><strong>Important:</strong> If you didn't request a password reset, please contact our support team immediately.</p>
         <p>Best regards,<br>The Ocean App Team</p>
       </div>
     `
