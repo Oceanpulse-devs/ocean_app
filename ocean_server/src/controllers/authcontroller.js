@@ -546,8 +546,8 @@ const verifyEmail = async (req, res) => {
 
         // Check Redis cache first for faster verification
         let user;
+        const redisKey = `email_verification:${token}`;
         try {
-            const redisKey = `email_verification:${token}`;
             const cachedUserData = await redisClient.get(redisKey);
             
             if (cachedUserData) {

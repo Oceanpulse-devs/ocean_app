@@ -172,26 +172,37 @@ app.get('/verify-email', async (req, res) => {
             get: (header) => req.get(header)
         };
         
+        let result = { success: false, message: 'Verification failed' };
+        let statusCode = 400;
+        
         const mockRes = {
             status: (code) => ({
-                json: (data) => ({ statusCode: code, data })
+                json: (data) => {
+                    statusCode = code;
+                    result = data;
+                    return { statusCode: code, data };
+                }
             }),
-            json: (data) => ({ statusCode: 200, data })
+            json: (data) => {
+                statusCode = 200;
+                result = data;
+                return { statusCode: 200, data };
+            }
         };
         
-        let result;
         try {
-            const verificationResult = await verifyEmail(mockReq, mockRes);
-            result = verificationResult.data || { success: true, message: 'Email verified successfully' };
+            await verifyEmail(mockReq, mockRes);
+            // The result and statusCode are set by the mockRes methods above
         } catch (error) {
             console.error('Verification error:', error);
             result = { 
                 success: false, 
                 message: 'Verification failed: ' + error.message 
             };
+            statusCode = 500;
         }
 
-        if (result.success) {
+        if (statusCode === 200 && !result.message?.includes('already verified')) {
             // Success page
             res.send(`
                 <!DOCTYPE html>
@@ -211,6 +222,36 @@ app.get('/verify-email', async (req, res) => {
                     <div class="container">
                         <h2 class="success">🎉 Email Verified Successfully!</h2>
                         <p>Your email has been verified. You can now use all features of Ocean App.</p>
+                        <div class="info">
+                            <h3>📱 Next Steps:</h3>
+                            <p>1. Open the Ocean App on your mobile device</p>
+                            <p>2. Log in with your verified account</p>
+                            <p>3. Start exploring and connecting!</p>
+                        </div>
+                        <a href="#" onclick="window.close()" class="btn">Close</a>
+                    </div>
+                </body>
+                </html>
+            `);
+        } else if (result.message?.includes('already verified')) {
+            // Already verified page
+            res.send(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>Already Verified - Ocean App</title>
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <style>
+                        body { font-family: Arial, sans-serif; text-align: center; padding: 20px; background: #f5f5f5; }
+                        .container { max-width: 500px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+                        .info { color: #3498db; }
+                        .btn { background: #3498db; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block; margin: 10px; }
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <h2 class="info">✅ Email Already Verified</h2>
+                        <p>Your email is already verified! You can use all features of Ocean App.</p>
                         <div class="info">
                             <h3>📱 Next Steps:</h3>
                             <p>1. Open the Ocean App on your mobile device</p>
