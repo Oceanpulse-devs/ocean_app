@@ -160,7 +160,10 @@ app.get('/verify-email', async (req, res) => {
         }
 
         // Call your existing verification API
-        const verificationResponse = await fetch(`${req.protocol}://${req.get('host')}/api/auth/verify-email`, {
+        console.log(`🔍 Calling verification API: ${req.protocol}://${req.get('host')}/api/verify-email`);
+        console.log(`🔍 Token: ${token.substring(0, 10)}...`);
+        
+        const verificationResponse = await fetch(`${req.protocol}://${req.get('host')}/api/verify-email`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -168,7 +171,30 @@ app.get('/verify-email', async (req, res) => {
             body: JSON.stringify({ token })
         });
 
-        const result = await verificationResponse.json();
+        console.log(`🔍 Response status: ${verificationResponse.status}`);
+        console.log(`🔍 Response headers:`, verificationResponse.headers.get('content-type'));
+
+        let result;
+        try {
+            const responseText = await verificationResponse.text();
+            console.log(`🔍 Response body: ${responseText.substring(0, 200)}...`);
+            
+            if (responseText.startsWith('<')) {
+                // Response is HTML, not JSON
+                result = { 
+                    success: false, 
+                    message: 'Verification failed - server returned HTML instead of JSON' 
+                };
+            } else {
+                result = JSON.parse(responseText);
+            }
+        } catch (jsonError) {
+            console.error('JSON parse error:', jsonError);
+            result = { 
+                success: false, 
+                message: 'Verification failed - server returned invalid response' 
+            };
+        }
 
         if (verificationResponse.ok && result.success) {
             // Success page
