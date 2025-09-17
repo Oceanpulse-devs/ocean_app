@@ -13,7 +13,16 @@ const sendEmail = async (to, subject, message, type = 'info') => {
         auth: {
           user: process.env.EMAIL_USER,
           pass: process.env.EMAIL_PASS // This should be your Gmail App Password
-        }
+        },
+        // Add timeout and connection settings
+        connectionTimeout: 60000, // 60 seconds
+        greetingTimeout: 30000,   // 30 seconds
+        socketTimeout: 60000,     // 60 seconds
+        // Add pool settings for better connection management
+        pool: true,
+        maxConnections: 5,
+        maxMessages: 100,
+        rateLimit: 14 // max 14 emails per second
       });
 
       const mailOptions = {
