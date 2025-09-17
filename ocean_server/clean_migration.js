@@ -1,4 +1,5 @@
 const mysql = require('mysql2/promise');
+const dotenv = require('dotenv').config();
 
 async function cleanMigration() {
   let connection;
@@ -8,10 +9,10 @@ async function cleanMigration() {
     
     // Connect to Railway database
     connection = await mysql.createConnection({
-      host: 'yamabiko.proxy.rlwy.net',
-      user: 'root',
-      password: 'OVVGRKCISlIWypaMxggpNjuQwnAmOUjc',
-      database: 'railway',
+      host: process.env.DB_HOST,
+      user: process.env.RDB_USERNAME,
+      password: process.env.RDB_PASSWORD,
+      database: process.env.RDB_NAME,
       port: 37286,
       ssl: { rejectUnauthorized: false },
       acquireTimeout: 60000,
