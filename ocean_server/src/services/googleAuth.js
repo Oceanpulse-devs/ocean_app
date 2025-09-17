@@ -10,7 +10,7 @@ passport.use(new GoogleStrategy({
     clientID: process.env.GOOGLE_CLIENT_ID,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
     callbackURL: process.env.NODE_ENV === 'production' 
-        ? `${process.env.BACKEND_URL || 'https://your-backend-domain.com'}/api/auth/google/callback`
+        ? 'https://mainserver-production-7ad9.up.railway.app/api/auth/google/callback'
         : 'http://localhost:5000/api/auth/google/callback',
     scope: ['profile', 'email'],
     prompt: 'consent', // Force consent screen to appear
