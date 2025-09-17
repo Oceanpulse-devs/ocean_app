@@ -101,7 +101,10 @@ const signup = async(req, res) => {
     }
 
     // Send verification email
-    const verificationLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/verify-email?token=${emailVerificationToken}`
+    const backendUrl = process.env.NODE_ENV === 'production' 
+        ? process.env.RAILWAY_PUBLIC_DOMAIN || process.env.BACKEND_URL || 'https://your-backend-domain.com'
+        : 'http://localhost:5000';
+    const verificationLink = `${backendUrl}/verify-email?token=${emailVerificationToken}`
     const emailTemplate = emailTemplates.emailVerification(newUser.fullName, verificationLink)
     
     try {
@@ -694,7 +697,10 @@ const resendVerificationEmail = async (req, res) => {
         }
 
         // Send verification email
-        const verificationLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/verify-email?token=${emailVerificationToken}`;
+        const backendUrl = process.env.NODE_ENV === 'production' 
+            ? process.env.RAILWAY_PUBLIC_DOMAIN || process.env.BACKEND_URL || 'https://your-backend-domain.com'
+            : 'http://localhost:5000';
+        const verificationLink = `${backendUrl}/verify-email?token=${emailVerificationToken}`;
         const emailTemplate = emailTemplates.emailVerification(user.fullName, verificationLink);
 
         try {

@@ -128,6 +128,133 @@ app.get('/api/mobile/config', (req, res) => {
     });
 });
 
+// Email verification route - handles verification links from emails
+app.get('/verify-email', async (req, res) => {
+    try {
+        const { token } = req.query;
+        
+        if (!token) {
+            return res.status(400).send(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>Email Verification - Ocean App</title>
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <style>
+                        body { font-family: Arial, sans-serif; text-align: center; padding: 20px; background: #f5f5f5; }
+                        .container { max-width: 500px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+                        .error { color: #e74c3c; }
+                        .success { color: #27ae60; }
+                        .btn { background: #3498db; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block; margin: 10px; }
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <h2 class="error">❌ Invalid Verification Link</h2>
+                        <p>The verification link is missing or invalid.</p>
+                        <a href="#" onclick="window.close()" class="btn">Close</a>
+                    </div>
+                </body>
+                </html>
+            `);
+        }
+
+        // Call your existing verification API
+        const verificationResponse = await fetch(`${req.protocol}://${req.get('host')}/api/auth/verify-email`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ token })
+        });
+
+        const result = await verificationResponse.json();
+
+        if (verificationResponse.ok && result.success) {
+            // Success page
+            res.send(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>Email Verified - Ocean App</title>
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <style>
+                        body { font-family: Arial, sans-serif; text-align: center; padding: 20px; background: #f5f5f5; }
+                        .container { max-width: 500px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+                        .success { color: #27ae60; }
+                        .btn { background: #3498db; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block; margin: 10px; }
+                        .info { background: #e8f4fd; padding: 15px; border-radius: 5px; margin: 20px 0; }
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <h2 class="success">🎉 Email Verified Successfully!</h2>
+                        <p>Your email has been verified. You can now use all features of Ocean App.</p>
+                        <div class="info">
+                            <h3>📱 Next Steps:</h3>
+                            <p>1. Open the Ocean App on your mobile device</p>
+                            <p>2. Log in with your verified account</p>
+                            <p>3. Start exploring and connecting!</p>
+                        </div>
+                        <a href="#" onclick="window.close()" class="btn">Close</a>
+                    </div>
+                </body>
+                </html>
+            `);
+        } else {
+            // Error page
+            res.send(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>Verification Failed - Ocean App</title>
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <style>
+                        body { font-family: Arial, sans-serif; text-align: center; padding: 20px; background: #f5f5f5; }
+                        .container { max-width: 500px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+                        .error { color: #e74c3c; }
+                        .btn { background: #3498db; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block; margin: 10px; }
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <h2 class="error">❌ Verification Failed</h2>
+                        <p>${result.message || 'The verification link is invalid or has expired.'}</p>
+                        <p>Please request a new verification email from the app.</p>
+                        <a href="#" onclick="window.close()" class="btn">Close</a>
+                    </div>
+                </body>
+                </html>
+            `);
+        }
+
+    } catch (error) {
+        console.error('Email verification route error:', error);
+        res.status(500).send(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Server Error - Ocean App</title>
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <style>
+                    body { font-family: Arial, sans-serif; text-align: center; padding: 20px; background: #f5f5f5; }
+                    .container { max-width: 500px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+                    .error { color: #e74c3c; }
+                    .btn { background: #3498db; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block; margin: 10px; }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <h2 class="error">⚠️ Server Error</h2>
+                    <p>Something went wrong. Please try again later.</p>
+                    <a href="#" onclick="window.close()" class="btn">Close</a>
+                </div>
+            </body>
+            </html>
+        `);
+    }
+});
+
 app.use(cors({
     origin: process.env.NODE_ENV === 'production' 
         ? [
