@@ -159,44 +159,39 @@ app.get('/verify-email', async (req, res) => {
             `);
         }
 
-        // Call your existing verification API
-        console.log(`🔍 Calling verification API: ${req.protocol}://${req.get('host')}/api/verify-email`);
-        console.log(`🔍 Token: ${token.substring(0, 10)}...`);
+        // Call the verification function directly instead of making HTTP request
+        console.log(`🔍 Verifying token: ${token.substring(0, 10)}...`);
         
-        const verificationResponse = await fetch(`${req.protocol}://${req.get('host')}/api/verify-email`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ token })
-        });
-
-        console.log(`🔍 Response status: ${verificationResponse.status}`);
-        console.log(`🔍 Response headers:`, verificationResponse.headers.get('content-type'));
-
+        // Import the verification function
+        const { verifyEmail } = require('./src/controllers/authcontroller');
+        
+        // Create a mock request/response to call the verification function
+        const mockReq = {
+            body: { token },
+            protocol: req.protocol,
+            get: (header) => req.get(header)
+        };
+        
+        const mockRes = {
+            status: (code) => ({
+                json: (data) => ({ statusCode: code, data })
+            }),
+            json: (data) => ({ statusCode: 200, data })
+        };
+        
         let result;
         try {
-            const responseText = await verificationResponse.text();
-            console.log(`🔍 Response body: ${responseText.substring(0, 200)}...`);
-            
-            if (responseText.startsWith('<')) {
-                // Response is HTML, not JSON
-                result = { 
-                    success: false, 
-                    message: 'Verification failed - server returned HTML instead of JSON' 
-                };
-            } else {
-                result = JSON.parse(responseText);
-            }
-        } catch (jsonError) {
-            console.error('JSON parse error:', jsonError);
+            const verificationResult = await verifyEmail(mockReq, mockRes);
+            result = verificationResult.data || { success: true, message: 'Email verified successfully' };
+        } catch (error) {
+            console.error('Verification error:', error);
             result = { 
                 success: false, 
-                message: 'Verification failed - server returned invalid response' 
+                message: 'Verification failed: ' + error.message 
             };
         }
 
-        if (verificationResponse.ok && result.success) {
+        if (result.success) {
             // Success page
             res.send(`
                 <!DOCTYPE html>

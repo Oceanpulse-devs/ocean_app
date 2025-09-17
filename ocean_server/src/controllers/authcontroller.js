@@ -678,8 +678,8 @@ const resendVerificationEmail = async (req, res) => {
         });
 
         // Cache new verification token in Redis
+        const redisKey = `email_verification:${emailVerificationToken}`;
         try {
-            const redisKey = `email_verification:${emailVerificationToken}`;
             await redisClient.setEx(redisKey, 86400, JSON.stringify({ // 24 hours
                 userId: user.id,
                 email: user.email,
