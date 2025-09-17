@@ -47,13 +47,23 @@ const sendEmail = async (to, subject, message, type = 'info') => {
       const brevoPort = parseInt(process.env.BREVO_SMTP_PORT || '587', 10);
       const useSecure = brevoPort === 465;
 
+      // Get credentials with fallback
+      const brevoUser = process.env.BREVO_SMTP_USER || process.env.EMAIL_USER;
+      const brevoPass = process.env.BREVO_SMTP_PASS || process.env.EMAIL_PASS;
+
+      console.log('🔧 Brevo SMTP Configuration:');
+      console.log(`Host: ${brevoHost}`);
+      console.log(`Port: ${brevoPort}`);
+      console.log(`User: ${brevoUser}`);
+      console.log(`Pass: ${brevoPass ? '***SET***' : 'NOT SET'}`);
+
       const transporter = nodemailer.createTransport({
         host: brevoHost,
         port: brevoPort,
         secure: useSecure,
         auth: {
-          user: process.env.BREVO_SMTP_USER || process.env.EMAIL_USER,
-          pass: process.env.BREVO_SMTP_PASS || process.env.EMAIL_PASS
+          user: brevoUser,
+          pass: brevoPass
         },
         connectionTimeout: 60000,
         greetingTimeout: 30000,
@@ -103,6 +113,17 @@ const sendEmail = async (to, subject, message, type = 'info') => {
     return true;
   } catch (error) {
     console.error('Email service error:', error);
+    
+    // Additional debugging for Brevo
+    if (process.env.EMAIL_SERVICE === 'brevo') {
+      console.log('🔍 Brevo Debug Info:');
+      console.log(`EMAIL_SERVICE: ${process.env.EMAIL_SERVICE}`);
+      console.log(`BREVO_SMTP_USER: ${process.env.BREVO_SMTP_USER || 'NOT SET'}`);
+      console.log(`BREVO_SMTP_PASS: ${process.env.BREVO_SMTP_PASS ? 'SET' : 'NOT SET'}`);
+      console.log(`EMAIL_USER: ${process.env.EMAIL_USER || 'NOT SET'}`);
+      console.log(`EMAIL_PASS: ${process.env.EMAIL_PASS ? 'SET' : 'NOT SET'}`);
+    }
+    
     return false;
   }
 };
