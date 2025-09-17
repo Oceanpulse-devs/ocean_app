@@ -43,33 +43,7 @@ router.get('/api/auth/google/callback', passport.authenticate('google', { failur
     });
 }
 
-if (process.env.FACEBOOK_APP_ID && process.env.FACEBOOK_APP_SECRET) {
-//facebook:
-router.get('/api/auth/facebook', passport.authenticate('facebook', { scope: ['email'] }));
-router.get('/api/auth/facebook/callback', passport.authenticate('facebook', { failureRedirect: '/api/auth/facebook/failure' }), (req, res) => {
-        // Generate JWT token for the authenticated user
-        const token = jwt.sign(
-            { id: req.user.id, email: req.user.email, role: req.user.accountType },
-            JWT_SECRET,
-            { expiresIn: '7d' }
-        );
-        
-        // Set JWT token in HTTP-only cookie
-        res.cookie('token', token, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
-        });
-        
-        // Redirect to frontend with success
-        res.redirect(`${process.env.CLIENT_URL}/auth/success?provider=facebook`);
-    });
-    
-    // Facebook OAuth failure route
-    router.get('/api/auth/facebook/failure', (req, res) => {
-        res.redirect(`${process.env.CLIENT_URL}/auth/failure?provider=facebook`);
-    });
-}
+
 
 router.post('/api/signup', signup)
 router.post('/api/login', login)

@@ -14,14 +14,14 @@ module.exports = (sequelize, DataTypes) =>{
                 notEmpty:true,
             }
         },
-        // OAuth fields - will be added when implementing OAuth
-        // google_Id:{
-        //     type:DataTypes.STRING,
-        //     allowNull: true,
-        //     validate:{
-        //         notEmpty:false,
-        //     }
-        // },
+        // OAuth fields
+        google_Id:{
+            type:DataTypes.STRING,
+            allowNull: true,
+            validate:{
+                notEmpty:false,
+            }
+        },
         // facebook_Id:{
         //     type:DataTypes.STRING,
         //     allowNull: true,
