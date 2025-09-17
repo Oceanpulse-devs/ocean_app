@@ -35,6 +35,44 @@ const sendEmail = async (to, subject, message, type = 'info') => {
       await transporter.sendMail(mailOptions);
       console.log('✅ Email sent successfully via Gmail:', to);
       return true;
+    } else if (
+      process.env.EMAIL_SERVICE === 'brevo' &&
+      (process.env.BREVO_SMTP_USER || process.env.EMAIL_USER) &&
+      (process.env.BREVO_SMTP_PASS || process.env.EMAIL_PASS)
+    ) {
+      // Use Brevo (Sendinblue) via SMTP relay
+      const nodemailer = require('nodemailer');
+
+      const brevoHost = process.env.BREVO_SMTP_HOST || 'smtp-relay.brevo.com';
+      const brevoPort = parseInt(process.env.BREVO_SMTP_PORT || '587', 10);
+      const useSecure = brevoPort === 465;
+
+      const transporter = nodemailer.createTransport({
+        host: brevoHost,
+        port: brevoPort,
+        secure: useSecure,
+        auth: {
+          user: process.env.BREVO_SMTP_USER || process.env.EMAIL_USER,
+          pass: process.env.BREVO_SMTP_PASS || process.env.EMAIL_PASS
+        },
+        connectionTimeout: 60000,
+        greetingTimeout: 30000,
+        socketTimeout: 60000,
+        pool: true,
+        maxConnections: 5,
+        maxMessages: 100
+      });
+
+      const mailOptions = {
+        from: process.env.FROM_EMAIL || process.env.BREVO_FROM_EMAIL || process.env.BREVO_SMTP_USER || process.env.EMAIL_USER,
+        to: to,
+        subject: subject,
+        html: message
+      };
+
+      await transporter.sendMail(mailOptions);
+      console.log('✅ Email sent successfully via Brevo SMTP:', to);
+      return true;
     } else {
       // Fallback to console logging for development
       console.log('📧 EMAIL SERVICE - Sending email:');
@@ -43,7 +81,7 @@ const sendEmail = async (to, subject, message, type = 'info') => {
       console.log(`Message: ${message}`);
       console.log(`Type: ${type}`);
       console.log('---');
-      console.log('⚠️  Email service not configured. Add EMAIL_SERVICE, EMAIL_USER, EMAIL_PASS to .env');
+      console.log('⚠️  Email service not configured. Add EMAIL_SERVICE and provider credentials to .env');
       return true;
     }
 

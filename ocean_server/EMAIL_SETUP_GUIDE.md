@@ -31,6 +31,31 @@ FRONTEND_URL=http://localhost:3000
 2. Try signing up a new user
 3. Check your email for verification link
 
+## 🔧 Alternative: Brevo (Sendinblue) via SMTP
+
+### Step 1: Create Brevo Account
+1. Go to `https://www.brevo.com/`
+2. Create an account and verify your sender domain or email
+
+### Step 2: Get SMTP Credentials
+1. Go to Dashboard → SMTP & API
+2. Copy SMTP user (usually your email) and SMTP key (password)
+
+### Step 3: Update Environment Variables
+```env
+EMAIL_SERVICE=brevo
+BREVO_SMTP_HOST=smtp-relay.brevo.com
+BREVO_SMTP_PORT=587
+BREVO_SMTP_USER=your-brevo-smtp-user
+BREVO_SMTP_PASS=your-brevo-smtp-key
+BREVO_FROM_EMAIL=your-verified@domain.com
+FRONTEND_URL=http://localhost:3000
+```
+
+### Notes
+- Use port 587 (STARTTLS) on most hosts; use 465 with `BREVO_SMTP_PORT=465` if SSL is required
+- Make sure `BREVO_FROM_EMAIL` is a verified sender in Brevo
+
 ## 🔧 Alternative: SendGrid (Professional)
 
 ### Step 1: Create SendGrid Account
