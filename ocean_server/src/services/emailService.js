@@ -44,7 +44,7 @@ const sendEmail = async (to, subject, message, type = 'info') => {
       const nodemailer = require('nodemailer');
 
       const brevoHost = process.env.BREVO_SMTP_HOST || 'smtp-relay.brevo.com';
-      const brevoPort = parseInt(process.env.BREVO_SMTP_PORT || '587', 10);
+      const brevoPort = parseInt(process.env.BREVO_SMTP_PORT || '465', 10); // Try 465 first
       const useSecure = brevoPort === 465;
 
       // Get credentials with fallback
@@ -82,6 +82,45 @@ const sendEmail = async (to, subject, message, type = 'info') => {
 
       await transporter.sendMail(mailOptions);
       console.log('✅ Email sent successfully via Brevo SMTP:', to);
+      return true;
+    } else if (
+      process.env.EMAIL_SERVICE === 'brevo-api' &&
+      process.env.BREVO_API_KEY
+    ) {
+      // Use Brevo API (HTTP) instead of SMTP
+      const axios = require('axios');
+      
+      const brevoApiUrl = 'https://api.brevo.com/v3/smtp/email';
+      const brevoApiKey = process.env.BREVO_API_KEY;
+      
+      console.log('🔧 Brevo API Configuration:');
+      console.log(`API URL: ${brevoApiUrl}`);
+      console.log(`API Key: ${brevoApiKey ? '***SET***' : 'NOT SET'}`);
+      
+      const emailData = {
+        sender: {
+          email: process.env.BREVO_FROM_EMAIL || process.env.FROM_EMAIL,
+          name: 'Ocean App'
+        },
+        to: [
+          {
+            email: to,
+            name: 'User'
+          }
+        ],
+        subject: subject,
+        htmlContent: message
+      };
+      
+      const response = await axios.post(brevoApiUrl, emailData, {
+        headers: {
+          'accept': 'application/json',
+          'api-key': brevoApiKey,
+          'content-type': 'application/json'
+        }
+      });
+      
+      console.log('✅ Email sent successfully via Brevo API:', to);
       return true;
     } else {
       // Fallback to console logging for development
