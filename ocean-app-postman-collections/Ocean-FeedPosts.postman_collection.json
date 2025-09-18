@@ -2,7 +2,7 @@
 	"info": {
 		"_postman_id": "ocean-feed-posts-collection",
 		"name": "Ocean - Feed & Posts",
-		"description": "Complete collection for Ocean app feed and posts endpoints. Updated for Universal Category System - supports both UUID and name-based category lookup.",
+		"description": "Complete collection for Ocean app feed and posts endpoints. Updated for Universal Category System - supports both UUID and name-based category lookup. Includes separate routes for text-only posts (/api/posts/text) and posts with images (/api/posts).",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
 	"item": [
@@ -178,7 +178,7 @@
 					"response": []
 				},
 				{
-					"name": "Create Post",
+					"name": "Create Post (Text Only)",
 					"request": {
 						"method": "POST",
 						"header": [
@@ -189,7 +189,37 @@
 							},
 							{
 								"key": "Content-Type",
-								"value": "multipart/form-data",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"postType\": \"product\",\n  \"postSubType\": \"seller\",\n  \"content\": \"This is my new post content!\",\n  \"productName\": \"Test Product\",\n  \"price\": \"100\",\n  \"category\": \"{{tech_category_id}}\",\n  \"location\": \"Lagos, Nigeria\",\n  \"condition\": \"excellent\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/posts/text",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"posts",
+								"text"
+							]
+						},
+						"description": "Create a new text-only post (no images)"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Post (With Images)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
 								"type": "text"
 							}
 						],
@@ -197,8 +227,28 @@
 							"mode": "formdata",
 							"formdata": [
 								{
+									"key": "postType",
+									"value": "product",
+									"type": "text"
+								},
+								{
+									"key": "postSubType",
+									"value": "seller",
+									"type": "text"
+								},
+								{
 									"key": "content",
-									"value": "This is my new post content!",
+									"value": "This is my new post with images!",
+									"type": "text"
+								},
+								{
+									"key": "productName",
+									"value": "Test Product",
+									"type": "text"
+								},
+								{
+									"key": "price",
+									"value": "100",
 									"type": "text"
 								},
 								{
@@ -207,8 +257,13 @@
 									"type": "text"
 								},
 								{
-									"key": "tags",
-									"value": "ocean,community",
+									"key": "location",
+									"value": "Lagos, Nigeria",
+									"type": "text"
+								},
+								{
+									"key": "condition",
+									"value": "excellent",
 									"type": "text"
 								},
 								{
@@ -228,7 +283,7 @@
 								"posts"
 							]
 						},
-						"description": "Create a new post with optional media"
+						"description": "Create a new post with images (uploads to Cloudinary)"
 					},
 					"response": []
 				},

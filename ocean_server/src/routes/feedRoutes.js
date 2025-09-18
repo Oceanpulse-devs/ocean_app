@@ -18,7 +18,28 @@ router.get('/api/search', feedController.searchPosts);
 // Protected routes (authentication required)
 const customFileParser = require('../middleware/customFileParser');
 
-router.post('/api/posts', authMiddleware, customFileParser, feedController.createPost);
+// Unified route that handles both JSON and form-data
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 50 * 1024 * 1024, // 50MB limit
+    files: 10 // Max 10 files
+  },
+  fileFilter: (req, file, cb) => {
+    // Accept only images
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files are allowed!'), false);
+    }
+  }
+});
+
+// Route for text-only posts (no images)
+router.post('/api/posts/text', authMiddleware, feedController.createPost);
+
+// Main route - handles both JSON (no files) and form-data (with files)
+router.post('/api/posts', authMiddleware, upload.array('media', 10), feedController.createPost);
 
 router.put('/api/posts/:postId', authMiddleware, (req, res, next) => {
   // Use multer for file uploads
