@@ -22,15 +22,15 @@ const customFileParser = require('../middleware/customFileParser');
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 50 * 1024 * 1024, // 50MB limit
+    fileSize: 100 * 1024 * 1024, // 100MB limit (for videos)
     files: 10 // Max 10 files
   },
   fileFilter: (req, file, cb) => {
-    // Accept only images
-    if (file.mimetype.startsWith('image/')) {
+    // Accept images and videos
+    if (file.mimetype.startsWith('image/') || file.mimetype.startsWith('video/')) {
       cb(null, true);
     } else {
-      cb(new Error('Only image files are allowed!'), false);
+      cb(new Error('Only image and video files are allowed!'), false);
     }
   }
 });
@@ -67,6 +67,7 @@ router.get('/api/saved-posts', authMiddleware, feedController.getSavedPosts);
 // Comment routes
 router.post('/api/posts/:postId/comments', authMiddleware, feedController.createComment);
 router.get('/api/posts/:postId/comments', feedController.getComments);
+router.put('/api/comments/:commentId', authMiddleware, feedController.updateComment);
 router.delete('/api/comments/:commentId', authMiddleware, feedController.deleteComment);
 
 // User posts route

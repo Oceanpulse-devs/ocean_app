@@ -231,6 +231,23 @@ const getTimeAgo = (date) => {
     return postDate.toLocaleDateString();
 };
 
+// Helper function to generate tags from content
+const generateTagsFromContent = (content) => {
+    if (!content) return ['general'];
+    
+    // Simple keyword extraction - remove common words and extract meaningful terms
+    const commonWords = ['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'is', 'are', 'was', 'were', 'be', 'been', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might', 'can', 'this', 'that', 'these', 'those', 'i', 'you', 'he', 'she', 'it', 'we', 'they', 'me', 'him', 'her', 'us', 'them'];
+    
+    const words = content.toLowerCase()
+        .replace(/[^\w\s]/g, '') // Remove punctuation
+        .split(/\s+/)
+        .filter(word => word.length > 2 && !commonWords.includes(word))
+        .slice(0, 5); // Take first 5 meaningful words
+    
+    // Add 'general' if no meaningful words found
+    return words.length > 0 ? words : ['general'];
+};
+
 // Get feed with region filtering and random ordering
 const getFeed = async (req, res) => {
     try {
@@ -351,7 +368,7 @@ const getFeed = async (req, res) => {
     }
 };
 
-// Create a new post
+// Create a new post (Simplified Social Media Style)
 const createPost = async (req, res) => {
     try {
         console.log('Create post request body:', req.body);
@@ -372,33 +389,13 @@ const createPost = async (req, res) => {
             formData = req.body;
         }
         
-        const {
-            postType = 'product',
-            postSubType = 'seller', // 'buyer' or 'seller'
-            content,
-            productName,
-            brand,
-            price,
-            minBudget,
-            maxBudget,
-            currency = 'NGN',
-            location,
-            category,
-            condition,
-            tags
-        } = formData;
-
+        // Simple social media style - only content is required
+        const { content } = formData;
         const userId = req.user.id;
 
-        // Validate required fields
-        if (!postType) {
-            return res.status(400).json({ message: "postType is required" });
-        }
-        if (!content) {
-            return res.status(400).json({ message: "content is required" });
-        }
-        if (!postSubType || !['buyer', 'seller'].includes(postSubType)) {
-            return res.status(400).json({ message: "postSubType must be 'buyer' or 'seller'" });
+        // Validate required fields - only content is required now
+        if (!content || content.trim().length === 0) {
+            return res.status(400).json({ message: "Content is required" });
         }
 
         // Get user's region and country
@@ -407,46 +404,49 @@ const createPost = async (req, res) => {
             return res.status(404).json({ message: "User not found" });
         }
 
-        // Validate category if provided
-        if (category) {
-            let categoryRecord;
-            // Try to find by UUID first
-            if (category.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
-                categoryRecord = await ProductCategory.findByPk(category);
-            } else {
-                // Try to find by name (for backward compatibility)
-                categoryRecord = await ProductCategory.findOne({ where: { name: category } });
-            }
-            
-            if (!categoryRecord) {
-                return res.status(400).json({
-                    message: 'Invalid category. Please select a valid category from the list.'
-                });
-            }
-            
-            // Update category usage count
-            await categoryRecord.update({ usageCount: categoryRecord.usageCount + 1 });
-        }
-
-        // Create post
-        const post = await Post.create({
+        // Auto-fill all database columns with smart defaults
+        const autoFilledData = {
             userId,
-            postType,
-            postSubType,
-            content,
-            productName,
-            brand,
-            price: price ? parseFloat(price) : null,
-            minBudget: minBudget ? parseFloat(minBudget) : null,
-            maxBudget: maxBudget ? parseFloat(maxBudget) : null,
-            currency,
-            location,
-            category,
-            condition,
-            userRegion: user.region || 'Unknown',
-            userCountry: user.country || 'Unknown',
-            tags: tags ? (typeof tags === 'string' ? JSON.parse(tags) : tags) : null
-        });
+            postType: 'general', // Always 'general' for social media style posts
+            postSubType: 'seller', // Default to 'seller' (only 'buyer' or 'seller' allowed)
+            content: content.trim(),
+            
+            // Auto-generate productName from first few words of content
+            productName: content.trim().split(' ').slice(0, 3).join(' ') || 'General Post',
+            
+            // Set defaults for product-related fields
+            brand: null,
+            price: null,
+            minBudget: null,
+            maxBudget: null,
+            currency: 'NGN',
+            
+            // Use user's location or default
+            location: user.location || 'Lagos, Nigeria',
+            
+            // Set to general category
+            category: 'general',
+            condition: 'not applicable',
+            
+            // Auto-generate tags from content (simple keyword extraction)
+            tags: generateTagsFromContent(content),
+            
+            // User location data
+            userRegion: user.region || 'Lagos',
+            userCountry: user.country || 'Nigeria',
+            
+            // Engagement counters
+            likesCount: 0,
+            commentsCount: 0,
+            sharesCount: 0,
+            savedCount: 0,
+            
+            // Status
+            status: 'active'
+        };
+
+        // Create post with auto-filled data
+        const post = await Post.create(autoFilledData);
 
         // Add media if provided (optional - pictures are always optional)
         console.log('=== MEDIA PROCESSING DEBUG ===');
@@ -665,7 +665,7 @@ const toggleLike = async (req, res) => {
 const toggleSave = async (req, res) => {
     try {
         const { postId } = req.params;
-        const { collectionName = 'General' } = req.body;
+        const collectionName = req.body?.collectionName || 'General';
         const userId = req.user.id;
 
         // Check if post exists
@@ -768,7 +768,8 @@ const getSavedPosts = async (req, res) => {
 const searchPosts = async (req, res) => {
     try {
         const { 
-            query, 
+            query,
+            q, // Alternative parameter name for compatibility
             page = 1, 
             limit = 10, 
             region, 
@@ -779,7 +780,10 @@ const searchPosts = async (req, res) => {
         const offset = (page - 1) * limit;
         const currentUserId = req.user?.id;
 
-        if (!query) {
+        // Use either 'query' or 'q' parameter
+        const searchQuery = query || q;
+        
+        if (!searchQuery) {
             return res.status(400).json({ message: "Search query is required" });
         }
 
@@ -787,11 +791,11 @@ const searchPosts = async (req, res) => {
         let whereClause = {
             status: 'active',
             [Op.or]: [
-                { content: { [Op.like]: `%${query}%` } },
-                { productName: { [Op.like]: `%${query}%` } },
-                { brand: { [Op.like]: `%${query}%` } },
-                { location: { [Op.like]: `%${query}%` } },
-                { tags: { [Op.like]: `%${query}%` } }
+                { content: { [Op.like]: `%${searchQuery}%` } },
+                { productName: { [Op.like]: `%${searchQuery}%` } },
+                { brand: { [Op.like]: `%${searchQuery}%` } },
+                { location: { [Op.like]: `%${searchQuery}%` } },
+                { tags: { [Op.like]: `%${searchQuery}%` } }
             ]
         };
 
@@ -849,7 +853,7 @@ const searchPosts = async (req, res) => {
             message: "Search completed successfully",
             data: {
                 posts: postsWithEngagement,
-                query,
+                query: searchQuery,
                 pagination: {
                     currentPage: parseInt(page),
                     totalPages: Math.ceil(posts.count / limit),
@@ -967,6 +971,62 @@ const getComments = async (req, res) => {
     }
 };
 
+// Update a comment
+const updateComment = async (req, res) => {
+    try {
+        const { commentId } = req.params;
+        const { content } = req.body;
+        const userId = req.user.id;
+
+        // Validate input
+        if (!content || content.trim().length === 0) {
+            return res.status(400).json({ message: "Comment content is required" });
+        }
+
+        // Find comment
+        const comment = await PostComment.findByPk(commentId);
+        if (!comment) {
+            return res.status(404).json({ message: "Comment not found" });
+        }
+
+        // Check if user owns the comment
+        if (comment.userId !== userId) {
+            return res.status(403).json({ message: "You can only edit your own comments" });
+        }
+
+        // Update comment content
+        comment.content = content.trim();
+        await comment.save();
+
+        // Get user info for the updated comment
+        const user = await UserTable.findByPk(userId, {
+            attributes: ['id', 'fullName', 'email', 'profilePicture']
+        });
+
+        const commentData = {
+            id: comment.id,
+            content: comment.content,
+            createdAt: comment.createdAt,
+            updatedAt: comment.updatedAt,
+            user: {
+                id: user.id,
+                fullName: user.fullName,
+                email: user.email,
+                profilePicture: user.profilePicture
+            }
+        };
+
+        res.status(200).json({
+            message: "Comment updated successfully",
+            data: commentData
+        });
+
+    } catch (error) {
+        console.error('Update comment error:', error);
+        res.status(500).json({ message: "Error updating comment", error: error.message });
+    }
+};
+
 // Delete a comment
 const deleteComment = async (req, res) => {
     try {
@@ -979,8 +1039,8 @@ const deleteComment = async (req, res) => {
             return res.status(404).json({ message: "Comment not found" });
         }
 
-        // Check if user owns the comment or is admin
-        if (comment.userId !== userId && req.user.accountType !== 'admin') {
+        // Check if user owns the comment (ONLY comment owner can delete)
+        if (comment.userId !== userId) {
             return res.status(403).json({ message: "You can only delete your own comments" });
         }
 
@@ -1210,6 +1270,7 @@ module.exports = {
     searchPosts,
     createComment,
     getComments,
+    updateComment,
     deleteComment,
     getUserPosts
 };

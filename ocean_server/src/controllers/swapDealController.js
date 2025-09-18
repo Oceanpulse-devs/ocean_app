@@ -1,5 +1,6 @@
 const db = require('../../models');
 const { Op } = require('sequelize');
+const cloudinaryService = require('../services/cloudinaryService');
 
 class SwapDealController {
   // Create a new swap deal offer
@@ -11,6 +12,9 @@ class SwapDealController {
         responder_id,
         initiator_item_id,
         responder_item_id,
+        // New fields for direct item creation
+        myItem,
+        wantedItem,
         swap_terms,
         meeting_location,
         meeting_date,
@@ -20,89 +24,227 @@ class SwapDealController {
 
       const initiator_id = req.user.id;
 
-      // Validate required fields
-      if (!title || !description || !responder_id || !initiator_item_id || !responder_item_id) {
+      // Parse JSON strings for myItem and wantedItem
+      let parsedMyItem, parsedWantedItem;
+      try {
+        console.log('Raw myItem:', myItem);
+        console.log('Raw wantedItem:', wantedItem);
+        parsedMyItem = typeof myItem === 'string' ? JSON.parse(myItem) : myItem;
+        parsedWantedItem = typeof wantedItem === 'string' ? JSON.parse(wantedItem) : wantedItem;
+        console.log('Parsed myItem:', parsedMyItem);
+        console.log('Parsed wantedItem:', parsedWantedItem);
+      } catch (error) {
+        console.error('JSON parsing error:', error);
         return res.status(400).json({
           success: false,
-          message: 'Missing required fields'
+          message: 'Invalid JSON format for myItem or wantedItem. Please ensure they are valid JSON strings.'
         });
       }
 
-      // Check if initiator is not trying to swap with themselves
-      if (initiator_id === responder_id) {
+      // Only support new format with file uploads - myItem and wantedItem are required
+      if (!title || !description || !parsedMyItem || !parsedWantedItem) {
         return res.status(400).json({
           success: false,
-          message: 'Cannot create swap deal with yourself'
+          message: 'Missing required fields. Title, description, myItem, and wantedItem are required. File uploads are mandatory.'
         });
       }
 
-      // Check if responder exists
-      const responder = await db.UserTable.findByPk(responder_id);
-      if (!responder) {
-        return res.status(400).json({
-          success: false,
-          message: 'Responder user not found'
-        });
-      }
+      let finalInitiatorItemId = initiator_item_id;
+      let finalResponderItemId = responder_item_id;
+      let finalResponderId = responder_id;
 
-      // Check if initiator owns the initiator item
-      const initiatorItem = await db.Product.findOne({
-        where: { id: initiator_item_id, seller_id: initiator_id }
-      });
-      if (!initiatorItem) {
-        return res.status(400).json({
-          success: false,
-          message: 'You do not own the item you are offering'
-        });
-      }
-
-      // Check if responder owns the responder item
-      const responderItem = await db.Product.findOne({
-        where: { id: responder_item_id, seller_id: responder_id }
-      });
-      if (!responderItem) {
-        return res.status(400).json({
-          success: false,
-          message: 'Responder does not own the item you want to swap for'
-        });
-      }
-
-      // Check if items are available for swap
-      if (initiatorItem.status !== 'available' || responderItem.status !== 'available') {
-        return res.status(400).json({
-          success: false,
-          message: 'One or both items are not available for swap'
-        });
-      }
-
-      // Check if there's already a pending swap deal between these users for these items
-      const existingSwap = await db.SwapDeal.findOne({
-        where: {
-          [Op.or]: [
-            {
-              initiator_id,
-              responder_id,
-              initiator_item_id,
-              responder_item_id,
-              status: 'pending'
-            },
-            {
-              initiator_id: responder_id,
-              responder_id: initiator_id,
-              initiator_item_id: responder_item_id,
-              responder_item_id: initiator_item_id,
-              status: 'pending'
-            }
-          ]
+      // Process file uploads and create items directly
+        // Validate myItem
+        if (!parsedMyItem.name || !parsedMyItem.description || !parsedMyItem.category) {
+          return res.status(400).json({
+            success: false,
+            message: 'myItem must have name, description, and category'
+          });
         }
-      });
 
-      if (existingSwap) {
-        return res.status(400).json({
-          success: false,
-          message: 'A swap deal already exists for these items'
+        // Validate wantedItem
+        if (!parsedWantedItem.name || !parsedWantedItem.description || !parsedWantedItem.category) {
+          return res.status(400).json({
+            success: false,
+            message: 'wantedItem must have name, description, and category'
+          });
+        }
+
+        // Check if files were uploaded
+        if (!req.files || req.files.length === 0) {
+          return res.status(400).json({
+            success: false,
+            message: 'File uploads are mandatory. You must upload at least one image/video for each item.'
+          });
+        }
+
+        // Process uploaded files
+        let myItemImages = [];
+        let wantedItemImages = [];
+        
+        if (req.files && req.files.length > 0) {
+          console.log(`Processing ${req.files.length} uploaded files for swap deal`);
+          console.log('File field names:', req.files.map(f => f.fieldname));
+          
+          // Split files between myItem and wantedItem based on field names
+          const myItemFiles = req.files.filter(file => file.fieldname.startsWith('myItem'));
+          const wantedItemFiles = req.files.filter(file => file.fieldname.startsWith('wantedItem'));
+          
+          console.log(`Found ${myItemFiles.length} myItem files and ${wantedItemFiles.length} wantedItem files`);
+          
+          // Upload myItem images
+          for (let i = 0; i < myItemFiles.length; i++) {
+            const file = myItemFiles[i];
+            try {
+              console.log(`Uploading myItem file ${i}: ${file.originalname}`);
+              const uploadResult = await cloudinaryService.uploadProductImage(file.buffer, `swap-myitem-${Date.now()}-${i}`);
+              
+              if (!uploadResult.success) {
+                console.error('Cloudinary upload failed for myItem:', uploadResult.error);
+                throw new Error(`Failed to upload ${file.originalname}: ${uploadResult.error}`);
+              }
+              
+              myItemImages.push(uploadResult.url);
+              console.log(`myItem file ${i} uploaded successfully: ${uploadResult.url}`);
+            } catch (error) {
+              console.error(`Error processing myItem file ${file.originalname}:`, error);
+              throw error;
+            }
+          }
+          
+          // Upload wantedItem images
+          for (let i = 0; i < wantedItemFiles.length; i++) {
+            const file = wantedItemFiles[i];
+            try {
+              console.log(`Uploading wantedItem file ${i}: ${file.originalname}`);
+              const uploadResult = await cloudinaryService.uploadProductImage(file.buffer, `swap-wanted-${Date.now()}-${i}`);
+              
+              if (!uploadResult.success) {
+                console.error('Cloudinary upload failed for wantedItem:', uploadResult.error);
+                throw new Error(`Failed to upload ${file.originalname}: ${uploadResult.error}`);
+              }
+              
+              wantedItemImages.push(uploadResult.url);
+              console.log(`wantedItem file ${i} uploaded successfully: ${uploadResult.url}`);
+            } catch (error) {
+              console.error(`Error processing wantedItem file ${file.originalname}:`, error);
+              throw error;
+            }
+          }
+        }
+
+        // Combine uploaded images with any provided URLs
+        const finalMyItemImages = [...myItemImages, ...(parsedMyItem.images || [])];
+        const finalWantedItemImages = [...wantedItemImages, ...(parsedWantedItem.images || [])];
+
+        // Ensure both items have at least one image/video
+        if (finalMyItemImages.length === 0) {
+          return res.status(400).json({
+            success: false,
+            message: 'You must upload at least one image/video for your item (myItem)'
+          });
+        }
+
+        if (finalWantedItemImages.length === 0) {
+          return res.status(400).json({
+            success: false,
+            message: 'You must upload at least one image/video for the item you want (wantedItem)'
+          });
+        }
+
+        // Map condition values to valid enum values
+        const mapCondition = (condition) => {
+          const conditionMap = {
+            'excellent': 'like_new',
+            'excellent condition': 'like_new',
+            'mint': 'new',
+            'mint condition': 'new',
+            'very good': 'good',
+            'good condition': 'good',
+            'fair condition': 'fair',
+            'poor condition': 'poor',
+            'damaged': 'poor'
+          };
+          return conditionMap[condition?.toLowerCase()] || 'good';
+        };
+
+        // Get or create seller profile for the user
+        let sellerProfile = await db.SellersTable.findOne({
+          where: { userId: initiator_id }
         });
-      }
+
+        if (!sellerProfile) {
+          console.log(`Creating seller profile for user ${initiator_id}`);
+          // Create a basic seller profile for swap deals
+          const user = await db.UserTable.findByPk(initiator_id);
+          if (!user) {
+            return res.status(400).json({
+              success: false,
+              message: 'User not found'
+            });
+          }
+
+          const sellerData = {
+            userId: initiator_id,
+            fullName: user.fullName || 'Swap User',
+            businessName: `${user.fullName || 'User'}'s Swap Items`,
+            email: user.email,
+            phoneNumber: user.phoneNumber || '000-000-0000',
+            businessAddress: user.location || 'Location TBD',
+            country: user.country || 'Nigeria', // Required field
+            businessType: 'Individual',
+            verificationStatus: 'pending',
+            isActive: true
+          };
+          
+          console.log('Creating seller profile with data:', sellerData);
+          sellerProfile = await db.SellersTable.create(sellerData);
+          console.log(`Created seller profile with ID: ${sellerProfile.id}`);
+        } else {
+          console.log(`Using existing seller profile with ID: ${sellerProfile.id}`);
+        }
+
+        // Create initiator's item (myItem)
+        const initiatorItem = await db.Product.create({
+          title: parsedMyItem.name,
+          description: parsedMyItem.description,
+          price: parsedMyItem.estimatedValue || 0,
+          currency: 'USD',
+          category: parsedMyItem.category,
+          condition: mapCondition(parsedMyItem.condition),
+          location: meeting_location || 'Location TBD',
+          images: finalMyItemImages,
+          sellerId: sellerProfile.id, // Use seller profile ID
+          status: 'active' // Use existing status
+        });
+
+        // Create wanted item (this will be a placeholder until someone responds)
+        const wantedItemProduct = await db.Product.create({
+          title: `[WANTED] ${parsedWantedItem.name}`,
+          description: `Looking for: ${parsedWantedItem.description}`,
+          price: parsedWantedItem.estimatedValue || 0,
+          currency: 'USD',
+          category: parsedWantedItem.category,
+          condition: mapCondition(parsedWantedItem.condition),
+          location: meeting_location || 'Location TBD',
+          images: finalWantedItemImages,
+          sellerId: sellerProfile.id, // Use seller profile ID
+          status: 'inactive' // Use inactive status for wanted items
+        });
+
+        finalInitiatorItemId = initiatorItem.id;
+        finalResponderItemId = wantedItemProduct.id;
+        // For open swap deals, use initiator as responder since they're both offering and seeking
+        finalResponderId = initiator_id;
+        
+        console.log('Swap deal details:', {
+          initiator_id,
+          responder_id: finalResponderId,
+          initiator_item_id: finalInitiatorItemId,
+          responder_item_id: finalResponderItemId
+        });
+
+      // No need to check for existing swaps since we're creating new items each time
 
       // Set expiration date (default 7 days from now)
       const expirationDate = expires_at ? new Date(expires_at) : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
@@ -111,15 +253,23 @@ class SwapDealController {
         title,
         description,
         initiator_id,
-        responder_id,
-        initiator_item_id,
-        responder_item_id,
+        responder_id: finalResponderId,
+        initiator_item_id: finalInitiatorItemId,
+        responder_item_id: finalResponderItemId,
         swap_terms,
         meeting_location,
         meeting_date,
         initiator_message,
         expires_at: expirationDate,
-        status: 'pending'
+        status: 'pending' // All swap deals start as pending
+      });
+
+      console.log('Swap deal created successfully:', {
+        id: swapDeal.id,
+        title: swapDeal.title,
+        status: swapDeal.status,
+        initiator_id: swapDeal.initiator_id,
+        responder_id: swapDeal.responder_id
       });
 
       res.status(201).json({
@@ -166,34 +316,42 @@ class SwapDealController {
         ];
       }
 
+      console.log('getAllSwapDeals query params:', { whereClause, limit, offset });
+      
+      // Debug: Check total count without filters
+      const totalCount = await db.SwapDeal.count();
+      console.log(`Total swap deals in database: ${totalCount}`);
+      
       const { count, rows } = await db.SwapDeal.findAndCountAll({
         where: whereClause,
         include: [
           {
             model: db.UserTable,
             as: 'initiator',
-            attributes: ['id', 'username', 'profile_picture']
+            attributes: ['id', 'username', 'profilePicture']
           },
           {
             model: db.UserTable,
             as: 'responder',
-            attributes: ['id', 'username', 'profile_picture']
+            attributes: ['id', 'username', 'profilePicture']
           },
           {
             model: db.Product,
             as: 'initiatorItem',
-            attributes: ['id', 'name', 'price', 'images', 'status']
+            attributes: ['id', 'title', 'price', 'images', 'status']
           },
           {
             model: db.Product,
             as: 'responderItem',
-            attributes: ['id', 'name', 'price', 'images', 'status']
+            attributes: ['id', 'title', 'price', 'images', 'status']
           }
         ],
         order: [['created_at', 'DESC']],
         limit: parseInt(limit),
         offset: parseInt(offset)
       });
+
+      console.log(`Found ${count} swap deals, returning ${rows.length} rows`);
 
       res.json({
         success: true,
@@ -226,22 +384,22 @@ class SwapDealController {
           {
             model: db.UserTable,
             as: 'initiator',
-            attributes: ['id', 'username', 'profile_picture', 'email']
+            attributes: ['id', 'username', 'profilePicture', 'email']
           },
           {
             model: db.UserTable,
             as: 'responder',
-            attributes: ['id', 'username', 'profile_picture', 'email']
+            attributes: ['id', 'username', 'profilePicture', 'email']
           },
           {
             model: db.Product,
             as: 'initiatorItem',
-            attributes: ['id', 'name', 'description', 'price', 'images', 'status', 'condition']
+            attributes: ['id', 'title', 'description', 'price', 'images', 'status', 'condition']
           },
           {
             model: db.Product,
             as: 'responderItem',
-            attributes: ['id', 'name', 'description', 'price', 'images', 'status', 'condition']
+            attributes: ['id', 'title', 'description', 'price', 'images', 'status', 'condition']
           }
         ]
       });
@@ -345,11 +503,20 @@ class SwapDealController {
         });
       }
 
-      // Check if user is the responder
-      if (swapDeal.responder_id !== user_id) {
+      // Check if user is the initiator (initiators cannot accept their own swap deals)
+      if (swapDeal.initiator_id === user_id) {
         return res.status(403).json({
           success: false,
-          message: 'Only the responder can accept this swap deal'
+          message: 'You cannot accept your own swap deal'
+        });
+      }
+
+      // For open swap deals (where responder_id = initiator_id), anyone except the initiator can accept
+      // For direct swap deals (where responder_id != initiator_id), only the specific responder can accept
+      if (swapDeal.responder_id !== swapDeal.initiator_id && swapDeal.responder_id !== user_id) {
+        return res.status(403).json({
+          success: false,
+          message: 'Only the designated responder can accept this swap deal'
         });
       }
 
@@ -407,11 +574,20 @@ class SwapDealController {
         });
       }
 
-      // Check if user is the responder
-      if (swapDeal.responder_id !== user_id) {
+      // Check if user is the initiator (initiators cannot reject their own swap deals)
+      if (swapDeal.initiator_id === user_id) {
         return res.status(403).json({
           success: false,
-          message: 'Only the responder can reject this swap deal'
+          message: 'You cannot reject your own swap deal'
+        });
+      }
+
+      // For open swap deals (where responder_id = initiator_id), anyone except the initiator can reject
+      // For direct swap deals (where responder_id != initiator_id), only the specific responder can reject
+      if (swapDeal.responder_id !== swapDeal.initiator_id && swapDeal.responder_id !== user_id) {
+        return res.status(403).json({
+          success: false,
+          message: 'Only the designated responder can reject this swap deal'
         });
       }
 
@@ -579,22 +755,22 @@ class SwapDealController {
           {
             model: db.UserTable,
             as: 'initiator',
-            attributes: ['id', 'username', 'profile_picture']
+            attributes: ['id', 'username', 'profilePicture']
           },
           {
             model: db.UserTable,
             as: 'responder',
-            attributes: ['id', 'username', 'profile_picture']
+            attributes: ['id', 'username', 'profilePicture']
           },
           {
             model: db.Product,
             as: 'initiatorItem',
-            attributes: ['id', 'name', 'price', 'images', 'status']
+            attributes: ['id', 'title', 'price', 'images', 'status']
           },
           {
             model: db.Product,
             as: 'responderItem',
-            attributes: ['id', 'name', 'price', 'images', 'status']
+            attributes: ['id', 'title', 'price', 'images', 'status']
           }
         ],
         order: [['created_at', 'DESC']]

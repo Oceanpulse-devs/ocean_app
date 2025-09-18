@@ -27,7 +27,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"title\": \"Bulk Electronics Purchase\",\n  \"description\": \"Group buy for electronics at wholesale prices\",\n  \"productName\": \"iPhone 15 Pro\",\n  \"targetPrice\": 899.99,\n  \"originalPrice\": 999.99,\n  \"minParticipants\": 10,\n  \"maxParticipants\": 50,\n  \"category\": \"{{tech_category_id}}\",\n  \"endDate\": \"2024-12-31T23:59:59Z\",\n  \"location\": \"New York, NY\",\n  \"images\": [\"https://example.com/product-image.jpg\"],\n  \"tags\": [\"electronics\", \"bulk-buy\", \"wholesale\"]\n}"
+							"raw": "{\n  \"title\": \"Bulk Electronics Purchase\",\n  \"description\": \"Group buy for electronics at wholesale prices\",\n  \"product_name\": \"iPhone 15 Pro\",\n  \"group_price\": 899.99,\n  \"original_price\": 999.99,\n  \"min_buyers\": 10,\n  \"max_buyers\": 50,\n  \"category_id\": \"{{tech_category_id}}\",\n  \"deadline\": \"2024-12-31T23:59:59Z\",\n  \"location\": \"New York, NY\",\n  \"product_image\": \"https://example.com/product-image.jpg\",\n  \"tags\": [\"electronics\", \"bulk-buy\", \"wholesale\"]\n}"
 						},
 						"url": {
 							"raw": "{{base_url}}/api/group-buy/create",

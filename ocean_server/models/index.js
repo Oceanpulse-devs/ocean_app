@@ -96,7 +96,7 @@ const setupAssociations = () => {
   db.UserTable.hasMany(db.Post, { foreignKey: 'userId', as: 'posts' });
   db.UserTable.hasMany(db.Product, { foreignKey: 'sellerId', as: 'products' });
   db.UserTable.hasMany(db.Auction, { foreignKey: 'sellerId', as: 'auctions' });
-  db.UserTable.hasMany(db.GroupBuy, { foreignKey: 'creatorId', as: 'createdGroupBuys' });
+  db.UserTable.hasMany(db.GroupBuy, { foreignKey: 'creator_id', as: 'createdGroupBuys' });
   db.UserTable.hasOne(db.SellersTable, { foreignKey: 'userId', as: 'seller' });
   
   // User Follow associations
@@ -133,11 +133,12 @@ const setupAssociations = () => {
   db.Product.belongsTo(db.UserTable, { foreignKey: 'sellerId', as: 'seller' });
   
   // ProductCategory associations
-  db.ProductCategory.hasMany(db.GroupBuy, { foreignKey: 'categoryId', as: 'groupBuys' });
+  db.ProductCategory.hasMany(db.GroupBuy, { foreignKey: 'category_id', as: 'groupBuys' });
   
   // SavedProduct associations
   db.SavedProduct.belongsTo(db.Product, { foreignKey: 'productId', as: 'product' });
   db.SavedProduct.belongsTo(db.UserTable, { foreignKey: 'userId', as: 'user' });
+  db.Product.hasMany(db.SavedProduct, { foreignKey: 'productId', as: 'savedProducts' });
   
   // SavedPost associations
   db.SavedPost.belongsTo(db.Post, { foreignKey: 'postId', as: 'post' });
@@ -185,20 +186,20 @@ const setupAssociations = () => {
   db.SellersTable.belongsTo(db.UserTable, { foreignKey: 'userId', as: 'user' });
   
   // GroupBuy associations
-  db.GroupBuy.belongsTo(db.UserTable, { foreignKey: 'creatorId', as: 'creator' });
-  db.GroupBuy.belongsTo(db.UserTable, { foreignKey: 'sellerId', as: 'seller' });
-  db.GroupBuy.belongsTo(db.ProductCategory, { foreignKey: 'categoryId', as: 'groupBuyCategory' });
-  db.GroupBuy.hasMany(db.GroupBuyParticipant, { foreignKey: 'groupBuyId', as: 'participants' });
+  db.GroupBuy.belongsTo(db.UserTable, { foreignKey: 'creator_id', as: 'creator' });
+  db.GroupBuy.belongsTo(db.UserTable, { foreignKey: 'seller_id', as: 'seller' });
+  db.GroupBuy.belongsTo(db.ProductCategory, { foreignKey: 'category_id', as: 'groupBuyCategory' });
+  db.GroupBuy.hasMany(db.GroupBuyParticipant, { foreignKey: 'group_buy_id', as: 'participants' });
   
   // GroupBuyParticipant associations
-  db.GroupBuyParticipant.belongsTo(db.GroupBuy, { foreignKey: 'groupBuyId', as: 'groupBuy' });
-  db.GroupBuyParticipant.belongsTo(db.UserTable, { foreignKey: 'userId', as: 'user' });
+  db.GroupBuyParticipant.belongsTo(db.GroupBuy, { foreignKey: 'group_buy_id', as: 'groupBuy' });
+  db.GroupBuyParticipant.belongsTo(db.UserTable, { foreignKey: 'user_id', as: 'user' });
   
   // SwapDeal associations
-  db.SwapDeal.belongsTo(db.UserTable, { foreignKey: 'initiatorId', as: 'initiator' });
-  db.SwapDeal.belongsTo(db.UserTable, { foreignKey: 'responderId', as: 'responder' });
-  db.SwapDeal.belongsTo(db.Product, { foreignKey: 'initiatorItemId', as: 'initiatorItem' });
-  db.SwapDeal.belongsTo(db.Product, { foreignKey: 'responderItemId', as: 'responderItem' });
+  db.SwapDeal.belongsTo(db.UserTable, { foreignKey: 'initiator_id', as: 'initiator' });
+  db.SwapDeal.belongsTo(db.UserTable, { foreignKey: 'responder_id', as: 'responder' });
+  db.SwapDeal.belongsTo(db.Product, { foreignKey: 'initiator_item_id', as: 'initiatorItem' });
+  db.SwapDeal.belongsTo(db.Product, { foreignKey: 'responder_item_id', as: 'responderItem' });
 
   // Buyer Need associations
   db.BuyerNeed.belongsTo(db.UserTable, { foreignKey: 'buyer_id', as: 'buyer' });
@@ -217,14 +218,14 @@ const setupAssociations = () => {
   db.ProductCategory.hasMany(db.BuyerNeed, { foreignKey: 'category_id', as: 'buyerNeeds' });
 
   // Market Analytics associations
-  db.MarketAnalytics.belongsTo(db.ProductCategory, { foreignKey: 'categoryId', as: 'category' });
-  db.ProductCategory.hasMany(db.MarketAnalytics, { foreignKey: 'categoryId', as: 'marketMetrics' });
+  db.MarketAnalytics.belongsTo(db.ProductCategory, { foreignKey: 'category_id', as: 'category' });
+  db.ProductCategory.hasMany(db.MarketAnalytics, { foreignKey: 'category_id', as: 'marketMetrics' });
   
   // Search Analytics associations
-  db.SearchAnalytics.belongsTo(db.UserTable, { foreignKey: 'userId', as: 'user' });
-  db.SearchAnalytics.belongsTo(db.ProductCategory, { foreignKey: 'categoryId', as: 'category' });
-  db.UserTable.hasMany(db.SearchAnalytics, { foreignKey: 'userId', as: 'searchHistory' });
-  db.ProductCategory.hasMany(db.SearchAnalytics, { foreignKey: 'categoryId', as: 'searchAnalytics' });
+  db.SearchAnalytics.belongsTo(db.UserTable, { foreignKey: 'user_id', as: 'user' });
+  db.SearchAnalytics.belongsTo(db.ProductCategory, { foreignKey: 'category_id', as: 'category' });
+  db.UserTable.hasMany(db.SearchAnalytics, { foreignKey: 'user_id', as: 'searchHistory' });
+  db.ProductCategory.hasMany(db.SearchAnalytics, { foreignKey: 'category_id', as: 'searchAnalytics' });
   
   // User Behavior Analytics associations
   db.UserBehaviorAnalytics.belongsTo(db.UserTable, { foreignKey: 'userId', as: 'user' });

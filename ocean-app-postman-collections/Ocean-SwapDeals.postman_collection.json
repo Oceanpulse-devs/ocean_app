@@ -2,7 +2,7 @@
 	"info": {
 		"_postman_id": "ocean-swap-deals-collection",
 		"name": "Ocean - Swap Deals",
-		"description": "Complete collection for Ocean app swap deals and item trading endpoints. Updated for Universal Category System - supports both UUID and name-based category lookup.",
+		"description": "Complete collection for Ocean app swap deals and item trading endpoints. File uploads are mandatory for all swap deal creation - you must upload images/videos of both items you're offering and items you want. Supports up to 20 files total (10 per item) with 100MB file size limit.",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
 	"item": [
@@ -18,16 +18,77 @@
 								"key": "Authorization",
 								"value": "Bearer {{auth_token}}",
 								"type": "text"
-							},
-							{
-								"key": "Content-Type",
-								"value": "application/json",
-								"type": "text"
 							}
 						],
 						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"title\": \"Guitar for Camera Swap\",\n  \"description\": \"Looking to trade my vintage guitar for a professional camera\",\n  \"myItem\": {\n    \"name\": \"1965 Fender Stratocaster\",\n    \"description\": \"Vintage sunburst Stratocaster in excellent condition\",\n    \"category\": \"{{entertainment_category_id}}\",\n    \"condition\": \"Excellent\",\n    \"estimatedValue\": 2500,\n    \"images\": [\"https://example.com/guitar1.jpg\", \"https://example.com/guitar2.jpg\"],\n    \"tags\": [\"vintage\", \"guitar\", \"fender\", \"stratocaster\"]\n  },\n  \"wantedItem\": {\n    \"name\": \"Professional DSLR Camera\",\n    \"description\": \"Looking for Canon or Nikon DSLR with lenses\",\n    \"category\": \"{{tech_category_id}}\",\n    \"condition\": \"Good\",\n    \"estimatedValue\": 2500,\n    \"specifications\": [\"Full frame sensor\", \"Multiple lenses\", \"Low shutter count\"],\n    \"tags\": [\"camera\", \"dslr\", \"photography\", \"professional\"]\n  },\n  \"location\": {\n    \"city\": \"Los Angeles\",\n    \"state\": \"CA\",\n    \"country\": \"USA\",\n    \"meetingPreference\": \"public_place\"\n  },\n  \"swapType\": \"direct\",\n  \"urgency\": \"medium\",\n  \"expiryDate\": \"2024-03-15T23:59:59Z\",\n  \"additionalCash\": {\n    \"required\": false,\n    \"amount\": 0,\n    \"currency\": \"USD\"\n  },\n  \"contactInfo\": {\n    \"phone\": \"+1234567890\",\n    \"email\": \"trader@example.com\",\n    \"preferredContact\": \"phone\"\n  },\n  \"terms\": \"Both parties must inspect items before finalizing swap\"\n}"
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "title",
+									"value": "Guitar for Camera Swap",
+									"type": "text"
+								},
+								{
+									"key": "description",
+									"value": "Looking to trade my vintage guitar for a professional camera",
+									"type": "text"
+								},
+								{
+									"key": "myItem",
+									"value": "{\"name\": \"1965 Fender Stratocaster\", \"description\": \"Vintage sunburst Stratocaster in excellent condition\", \"category\": \"{{entertainment_category_id}}\", \"condition\": \"like_new\", \"estimatedValue\": 2500}",
+									"type": "text"
+								},
+								{
+									"key": "wantedItem",
+									"value": "{\"name\": \"Professional DSLR Camera\", \"description\": \"Looking for Canon or Nikon DSLR with lenses\", \"category\": \"{{tech_category_id}}\", \"condition\": \"good\", \"estimatedValue\": 2500}",
+									"type": "text"
+								},
+								{
+									"key": "meeting_location",
+									"value": "Los Angeles, CA, USA",
+									"type": "text"
+								},
+								{
+									"key": "meeting_date",
+									"value": "2024-03-15T15:00:00Z",
+									"type": "text"
+								},
+								{
+									"key": "swap_terms",
+									"value": "Both parties must inspect items before finalizing swap",
+									"type": "text"
+								},
+								{
+									"key": "initiator_message",
+									"value": "Hi! I'm interested in swapping our items. Let me know if you're interested!",
+									"type": "text"
+								},
+								{
+									"key": "myItem_image1",
+									"description": "Upload photo of your guitar (front view)",
+									"type": "file"
+								},
+								{
+									"key": "myItem_image2",
+									"description": "Upload photo of your guitar (back view)",
+									"type": "file"
+								},
+								{
+									"key": "myItem_image3",
+									"description": "Upload photo of your guitar (close-up of condition)",
+									"type": "file"
+								},
+								{
+									"key": "wantedItem_image1",
+									"description": "Upload screenshot/photo of camera you want (front view)",
+									"type": "file"
+								},
+								{
+									"key": "wantedItem_image2",
+									"description": "Upload screenshot/photo of camera you want (back view)",
+									"type": "file"
+								}
+							]
 						},
 						"url": {
 							"raw": "{{base_url}}/api/swap-deals/create",
@@ -40,7 +101,7 @@
 								"create"
 							]
 						},
-						"description": "Create a new swap deal"
+						"description": "Create a new swap deal with mandatory file uploads (images/videos). You must upload at least one image/video for each item (myItem and wantedItem). Supports up to 20 files total (10 per item). File size limit: 100MB per file. Accepted formats: Images (JPG, PNG, GIF, etc.) and Videos (MP4, MOV, AVI, etc.)"
 					},
 					"response": []
 				},

@@ -100,10 +100,10 @@ class MarketAnalyticsController {
       const { time_period = 'daily', limit = 30 } = req.query;
 
       // Get current period metrics
-      const currentPeriod = await this.getCurrentPeriod(time_period);
+      const currentPeriod = MarketAnalyticsController.getCurrentPeriod(time_period);
       
       // Get previous period for comparison
-      const previousPeriod = await this.getPreviousPeriod(time_period, currentPeriod.start, currentPeriod.end);
+      const previousPeriod = MarketAnalyticsController.getPreviousPeriod(time_period, currentPeriod.start, currentPeriod.end);
 
       // Aggregate metrics by type
       const metricsByType = await db.MarketAnalytics.findAll({
@@ -123,13 +123,13 @@ class MarketAnalyticsController {
       });
 
       // Get top trending categories
-      const topCategories = await this.getTopTrendingCategories(time_period, currentPeriod.start, currentPeriod.end);
+      const topCategories = await MarketAnalyticsController.getTopTrendingCategories(time_period, currentPeriod.start, currentPeriod.end);
 
       // Get geographic distribution
-      const geographicData = await this.getGeographicDistribution(time_period, currentPeriod.start, currentPeriod.end);
+      const geographicData = await MarketAnalyticsController.getGeographicDistribution(time_period, currentPeriod.start, currentPeriod.end);
 
       // Get market volume trends
-      const volumeTrends = await this.getMarketVolumeTrends(time_period, limit);
+      const volumeTrends = await MarketAnalyticsController.getMarketVolumeTrends(time_period, limit);
 
       res.json({
         success: true,
@@ -143,7 +143,7 @@ class MarketAnalyticsController {
           summary: {
             total_metrics: metricsByType.reduce((sum, m) => sum + parseInt(m.dataValues.count), 0),
             period_duration: Math.ceil((currentPeriod.end - currentPeriod.start) / (1000 * 60 * 60 * 24)),
-            trend_overall: await this.calculateOverallTrend(currentPeriod.start, currentPeriod.end)
+            trend_overall: await MarketAnalyticsController.calculateOverallTrend(currentPeriod.start, currentPeriod.end)
           }
         }
       });
@@ -161,7 +161,8 @@ class MarketAnalyticsController {
   // Get category performance analytics
   async getCategoryAnalytics(req, res) {
     try {
-      const { category_id, time_period = 'monthly', limit = 12 } = req.query;
+      const { category_id } = req.params;
+      const { time_period = 'monthly', limit = 12 } = req.query;
 
       if (!category_id) {
         return res.status(400).json({
@@ -191,13 +192,13 @@ class MarketAnalyticsController {
       });
 
       // Get product performance in this category
-      const productPerformance = await this.getCategoryProductPerformance(category_id);
+      const productPerformance = await MarketAnalyticsController.getCategoryProductPerformance(category_id);
 
       // Get user engagement by category
-      const userEngagement = await this.getCategoryUserEngagement(category_id);
+      const userEngagement = await MarketAnalyticsController.getCategoryUserEngagement(category_id);
 
       // Get price analysis for category
-      const priceAnalysis = await this.getCategoryPriceAnalysis(category_id);
+      const priceAnalysis = await MarketAnalyticsController.getCategoryPriceAnalysis(category_id);
 
       res.json({
         success: true,
@@ -236,7 +237,7 @@ class MarketAnalyticsController {
       const topQueries = await db.SearchAnalytics.findAll({
         where: {
           ...whereClause,
-          created_at: { [Op.gte]: new Date(Date.now() - this.getTimePeriodMs(time_period)) }
+          created_at: { [Op.gte]: new Date(Date.now() - MarketAnalyticsController.getTimePeriodMs(time_period)) }
         },
         attributes: [
           'search_query',
@@ -251,14 +252,14 @@ class MarketAnalyticsController {
       });
 
       // Get search success rates
-      const successRates = await this.getSearchSuccessRates(time_period, whereClause);
+      const successRates = await MarketAnalyticsController.getSearchSuccessRates(time_period, whereClause);
 
       // Get search trends over time
-      const searchTrends = await this.getSearchTrends(time_period, limit, whereClause);
+      const searchTrends = await MarketAnalyticsController.getSearchTrends(time_period, limit, whereClause);
 
       // Get device and location insights
-      const deviceInsights = await this.getSearchDeviceInsights(time_period, whereClause);
-      const locationInsights = await this.getSearchLocationInsights(time_period, whereClause);
+      const deviceInsights = await MarketAnalyticsController.getSearchDeviceInsights(time_period, whereClause);
+      const locationInsights = await MarketAnalyticsController.getSearchLocationInsights(time_period, whereClause);
 
       res.json({
         success: true,
@@ -294,7 +295,7 @@ class MarketAnalyticsController {
       const behaviorPatterns = await db.UserBehaviorAnalytics.findAll({
         where: {
           ...whereClause,
-          created_at: { [Op.gte]: new Date(Date.now() - this.getTimePeriodMs(time_period)) }
+          created_at: { [Op.gte]: new Date(Date.now() - MarketAnalyticsController.getTimePeriodMs(time_period)) }
         },
         attributes: [
           'behavior_type',
@@ -309,13 +310,13 @@ class MarketAnalyticsController {
       });
 
       // Get conversion funnel analysis
-      const conversionFunnel = await this.getConversionFunnelAnalysis(time_period, whereClause);
+      const conversionFunnel = await MarketAnalyticsController.getConversionFunnelAnalysis(time_period, whereClause);
 
       // Get user engagement metrics
-      const engagementMetrics = await this.getUserEngagementMetrics(time_period, whereClause);
+      const engagementMetrics = await MarketAnalyticsController.getUserEngagementMetrics(time_period, whereClause);
 
       // Get geographic behavior patterns
-      const geographicPatterns = await this.getGeographicBehaviorPatterns(time_period, whereClause);
+      const geographicPatterns = await MarketAnalyticsController.getGeographicBehaviorPatterns(time_period, whereClause);
 
       res.json({
         success: true,
@@ -368,10 +369,10 @@ class MarketAnalyticsController {
       });
 
       // Generate new forecasts if needed
-      const newForecasts = await this.generateForecasts(historicalTrends, parseInt(forecast_periods), time_period);
+      const newForecasts = await MarketAnalyticsController.generateForecasts(historicalTrends, parseInt(forecast_periods), time_period);
 
       // Calculate trend indicators
-      const trendIndicators = await this.calculateTrendIndicators(historicalTrends);
+      const trendIndicators = await MarketAnalyticsController.calculateTrendIndicators(historicalTrends);
 
       res.json({
         success: true,
@@ -394,7 +395,7 @@ class MarketAnalyticsController {
   }
 
   // Helper method to get current period dates
-  async getCurrentPeriod(timePeriod) {
+  static getCurrentPeriod(timePeriod) {
     const now = new Date();
     let start, end;
 
@@ -426,7 +427,7 @@ class MarketAnalyticsController {
   }
 
   // Helper method to get previous period dates
-  async getPreviousPeriod(timePeriod, currentStart, currentEnd) {
+  static getPreviousPeriod(timePeriod, currentStart, currentEnd) {
     const duration = currentEnd - currentStart;
     const start = new Date(currentStart.getTime() - duration);
     const end = new Date(currentStart.getTime() - 1);
@@ -435,7 +436,7 @@ class MarketAnalyticsController {
   }
 
   // Helper method to get time period in milliseconds
-  getTimePeriodMs(timePeriod) {
+  static getTimePeriodMs(timePeriod) {
     const periods = {
       'hourly': 60 * 60 * 1000,
       'daily': 24 * 60 * 60 * 1000,
@@ -448,7 +449,7 @@ class MarketAnalyticsController {
   }
 
   // Helper method to get top trending categories
-  async getTopTrendingCategories(timePeriod, start, end) {
+  static async getTopTrendingCategories(timePeriod, start, end) {
     return await db.MarketAnalytics.findAll({
       where: {
         metric_type: 'category_trends',
@@ -467,7 +468,7 @@ class MarketAnalyticsController {
   }
 
   // Helper method to get geographic distribution
-  async getGeographicDistribution(timePeriod, start, end) {
+  static async getGeographicDistribution(timePeriod, start, end) {
     return await db.MarketAnalytics.findAll({
       where: {
         metric_type: 'geographic_distribution',
@@ -487,7 +488,7 @@ class MarketAnalyticsController {
   }
 
   // Helper method to get market volume trends
-  async getMarketVolumeTrends(timePeriod, limit) {
+  static async getMarketVolumeTrends(timePeriod, limit) {
     return await db.MarketAnalytics.findAll({
       where: {
         metric_type: 'market_volume',
@@ -499,7 +500,7 @@ class MarketAnalyticsController {
   }
 
   // Helper method to calculate overall trend
-  async calculateOverallTrend(start, end) {
+  static async calculateOverallTrend(start, end) {
     const metrics = await db.MarketAnalytics.findAll({
       where: {
         period_start: { [Op.gte]: start },
@@ -520,40 +521,56 @@ class MarketAnalyticsController {
   }
 
   // Helper method to get category product performance
-  async getCategoryProductPerformance(categoryId) {
+  static async getCategoryProductPerformance(categoryId) {
+    // First get the category name from the categoryId
+    const category = await db.ProductCategory.findByPk(categoryId);
+    if (!category) {
+      return [];
+    }
+    
+    // Then find products with that category name
     return await db.Product.findAll({
-      where: { category_id: categoryId },
+      where: { category: category.name },
       attributes: [
         'id',
         'title',
         'price',
-        'views_count',
-        [db.sequelize.fn('COUNT', db.sequelize.col('SavedProduct.id')), 'saves_count']
+        'views',
+        'likes',
+        'saves'
       ],
-      include: [{
-        model: db.SavedProduct,
-        as: 'savedProducts',
-        attributes: []
-      }],
-      group: ['Product.id'],
-      order: [['views_count', 'DESC']],
+      order: [['views', 'DESC']],
       limit: 10
     });
   }
 
   // Helper method to get category user engagement
-  async getCategoryUserEngagement(categoryId) {
+  static async getCategoryUserEngagement(categoryId) {
+    // First get the category name from the categoryId
+    const category = await db.ProductCategory.findByPk(categoryId);
+    if (!category) {
+      return [];
+    }
+    
+    // Get product IDs for this category
+    const products = await db.Product.findAll({
+      where: { category: category.name },
+      attributes: ['id']
+    });
+    
+    const productIds = products.map(p => p.id);
+    
+    if (productIds.length === 0) {
+      return [];
+    }
+    
+    // Get user behavior analytics for products in this category
     return await db.UserBehaviorAnalytics.findAll({
       where: {
         target_type: 'product',
-        behavior_type: 'product_interaction'
+        behavior_type: 'product_interaction',
+        target_id: productIds
       },
-      include: [{
-        model: db.Product,
-        as: 'targetProduct',
-        where: { category_id: categoryId },
-        attributes: ['id', 'title']
-      }],
       attributes: [
         'behavior_type',
         'action',
@@ -565,9 +582,15 @@ class MarketAnalyticsController {
   }
 
   // Helper method to get category price analysis
-  async getCategoryPriceAnalysis(categoryId) {
+  static async getCategoryPriceAnalysis(categoryId) {
+    // First get the category name from the categoryId
+    const category = await db.ProductCategory.findByPk(categoryId);
+    if (!category) {
+      return {};
+    }
+    
     const products = await db.Product.findAll({
-      where: { category_id: categoryId },
+      where: { category: category.name },
       attributes: [
         [db.sequelize.fn('MIN', db.sequelize.col('price')), 'min_price'],
         [db.sequelize.fn('MAX', db.sequelize.col('price')), 'max_price'],
@@ -580,18 +603,18 @@ class MarketAnalyticsController {
   }
 
   // Helper method to get search success rates
-  async getSearchSuccessRates(timePeriod, whereClause) {
+  static async getSearchSuccessRates(timePeriod, whereClause) {
     const totalSearches = await db.SearchAnalytics.count({
       where: {
         ...whereClause,
-        created_at: { [Op.gte]: new Date(Date.now() - this.getTimePeriodMs(timePeriod)) }
+        created_at: { [Op.gte]: new Date(Date.now() - MarketAnalyticsController.getTimePeriodMs(timePeriod)) }
       }
     });
 
     const successfulSearches = await db.SearchAnalytics.count({
       where: {
         ...whereClause,
-        created_at: { [Op.gte]: new Date(Date.now() - this.getTimePeriodMs(timePeriod)) },
+        created_at: { [Op.gte]: new Date(Date.now() - MarketAnalyticsController.getTimePeriodMs(timePeriod)) },
         is_successful: true
       }
     });
@@ -604,11 +627,11 @@ class MarketAnalyticsController {
   }
 
   // Helper method to get search trends
-  async getSearchTrends(timePeriod, limit, whereClause) {
+  static async getSearchTrends(timePeriod, limit, whereClause) {
     return await db.SearchAnalytics.findAll({
       where: {
         ...whereClause,
-        created_at: { [Op.gte]: new Date(Date.now() - this.getTimePeriodMs(timePeriod)) }
+        created_at: { [Op.gte]: new Date(Date.now() - MarketAnalyticsController.getTimePeriodMs(timePeriod)) }
       },
       attributes: [
         [db.sequelize.fn('DATE', db.sequelize.col('created_at')), 'date'],
@@ -621,11 +644,11 @@ class MarketAnalyticsController {
   }
 
   // Helper method to get search device insights
-  async getSearchDeviceInsights(timePeriod, whereClause) {
+  static async getSearchDeviceInsights(timePeriod, whereClause) {
     return await db.SearchAnalytics.findAll({
       where: {
         ...whereClause,
-        created_at: { [Op.gte]: new Date(Date.now() - this.getTimePeriodMs(timePeriod)) }
+        created_at: { [Op.gte]: new Date(Date.now() - MarketAnalyticsController.getTimePeriodMs(timePeriod)) }
       },
       attributes: [
         'device_type',
@@ -638,11 +661,11 @@ class MarketAnalyticsController {
   }
 
   // Helper method to get search location insights
-  async getSearchLocationInsights(timePeriod, whereClause) {
+  static async getSearchLocationInsights(timePeriod, whereClause) {
     return await db.SearchAnalytics.findAll({
       where: {
         ...whereClause,
-        created_at: { [Op.gte]: new Date(Date.now() - this.getTimePeriodMs(timePeriod)) },
+        created_at: { [Op.gte]: new Date(Date.now() - MarketAnalyticsController.getTimePeriodMs(timePeriod)) },
         location: { [Op.ne]: null }
       },
       attributes: [
@@ -656,7 +679,7 @@ class MarketAnalyticsController {
   }
 
   // Helper method to get conversion funnel analysis
-  async getConversionFunnelAnalysis(timePeriod, whereClause) {
+  static async getConversionFunnelAnalysis(timePeriod, whereClause) {
     const funnelStages = ['awareness', 'interest', 'consideration', 'intent', 'purchase', 'retention'];
     const funnelData = [];
 
@@ -665,7 +688,7 @@ class MarketAnalyticsController {
         where: {
           ...whereClause,
           funnel_stage: stage,
-          created_at: { [Op.gte]: new Date(Date.now() - this.getTimePeriodMs(timePeriod)) }
+          created_at: { [Op.gte]: new Date(Date.now() - MarketAnalyticsController.getTimePeriodMs(timePeriod)) }
         }
       });
       funnelData.push({ stage, count });
@@ -675,11 +698,11 @@ class MarketAnalyticsController {
   }
 
   // Helper method to get user engagement metrics
-  async getUserEngagementMetrics(timePeriod, whereClause) {
+  static async getUserEngagementMetrics(timePeriod, whereClause) {
     return await db.UserBehaviorAnalytics.findAll({
       where: {
         ...whereClause,
-        created_at: { [Op.gte]: new Date(Date.now() - this.getTimePeriodMs(timePeriod)) }
+        created_at: { [Op.gte]: new Date(Date.now() - MarketAnalyticsController.getTimePeriodMs(timePeriod)) }
       },
       attributes: [
         'behavior_type',
@@ -693,11 +716,11 @@ class MarketAnalyticsController {
   }
 
   // Helper method to get geographic behavior patterns
-  async getGeographicBehaviorPatterns(timePeriod, whereClause) {
+  static async getGeographicBehaviorPatterns(timePeriod, whereClause) {
     return await db.UserBehaviorAnalytics.findAll({
       where: {
         ...whereClause,
-        created_at: { [Op.gte]: new Date(Date.now() - this.getTimePeriodMs(timePeriod)) },
+        created_at: { [Op.gte]: new Date(Date.now() - MarketAnalyticsController.getTimePeriodMs(timePeriod)) },
         location: { [Op.ne]: null }
       },
       attributes: [
@@ -712,7 +735,7 @@ class MarketAnalyticsController {
   }
 
   // Helper method to generate forecasts
-  async generateForecasts(historicalData, forecastPeriods, timePeriod) {
+  static async generateForecasts(historicalData, forecastPeriods, timePeriod) {
     // Simple linear regression forecast
     const forecasts = [];
     if (historicalData.length < 2) return forecasts;
@@ -742,8 +765,8 @@ class MarketAnalyticsController {
         metric_name: lastPeriod.metric_name,
         metric_value: Math.max(0, forecastValue), // Ensure non-negative
         time_period: timePeriod,
-        period_start: new Date(lastPeriod.period_end.getTime() + this.getTimePeriodMs(timePeriod)),
-        period_end: new Date(lastPeriod.period_end.getTime() + 2 * this.getTimePeriodMs(timePeriod)),
+        period_start: new Date(lastPeriod.period_end.getTime() + MarketAnalyticsController.getTimePeriodMs(timePeriod)),
+        period_end: new Date(lastPeriod.period_end.getTime() + 2 * MarketAnalyticsController.getTimePeriodMs(timePeriod)),
         is_forecast: true,
         confidence_level: 0.7 // Default confidence for simple forecast
       });
@@ -753,7 +776,7 @@ class MarketAnalyticsController {
   }
 
   // Helper method to calculate trend indicators
-  async calculateTrendIndicators(historicalData) {
+  static async calculateTrendIndicators(historicalData) {
     if (historicalData.length < 2) return {};
 
     const values = historicalData.map(d => parseFloat(d.metric_value));
@@ -764,7 +787,7 @@ class MarketAnalyticsController {
     const olderAvg = olderValues.reduce((a, b) => a + b, 0) / olderValues.length;
 
     const changePercent = olderAvg > 0 ? ((recentAvg - olderAvg) / olderAvg) * 100 : 0;
-    const volatility = this.calculateVolatility(values);
+    const volatility = MarketAnalyticsController.calculateVolatility(values);
 
     return {
       trend_direction: changePercent > 5 ? 'increasing' : changePercent < -5 ? 'decreasing' : 'stable',
@@ -775,7 +798,7 @@ class MarketAnalyticsController {
   }
 
   // Helper method to calculate volatility
-  calculateVolatility(values) {
+  static calculateVolatility(values) {
     if (values.length < 2) return 0;
     
     const mean = values.reduce((a, b) => a + b, 0) / values.length;

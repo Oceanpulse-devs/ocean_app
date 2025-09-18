@@ -78,7 +78,7 @@ class GroupBuyController {
         location,
         deadline,
         terms_conditions,
-        tags: tags ? JSON.parse(tags) : null,
+        tags: tags ? (typeof tags === 'string' ? JSON.parse(tags) : tags) : null,
         status: 'pending'
       });
 
@@ -140,7 +140,7 @@ class GroupBuyController {
           {
             model: db.UserTable,
             as: 'creator',
-            attributes: ['id', 'username', 'profile_picture']
+            attributes: ['id', 'username', 'profilePicture']
           },
           {
             model: db.ProductCategory,
@@ -184,7 +184,7 @@ class GroupBuyController {
           {
             model: db.UserTable,
             as: 'creator',
-            attributes: ['id', 'username', 'profile_picture', 'email']
+            attributes: ['id', 'username', 'profilePicture', 'email']
           },
           {
             model: db.ProductCategory,
@@ -198,7 +198,7 @@ class GroupBuyController {
               {
                 model: db.UserTable,
                 as: 'user',
-                attributes: ['id', 'username', 'profile_picture']
+                attributes: ['id', 'username', 'profilePicture']
               }
             ]
           }
@@ -368,6 +368,14 @@ class GroupBuyController {
         });
       }
 
+      // Check if user is the creator (creators cannot join their own group buy)
+      if (groupBuy.creator_id === user_id) {
+        return res.status(400).json({
+          success: false,
+          message: 'You cannot join your own group buy'
+        });
+      }
+
       // Check if group buy is still open
       if (groupBuy.status !== 'pending') {
         return res.status(400).json({
@@ -505,7 +513,7 @@ class GroupBuyController {
         whereClause.creator_id = user_id;
       } else if (type === 'participated') {
         includeClause.push({
-          model: GroupBuyParticipant,
+          model: db.GroupBuyParticipant,
           as: 'participants',
           where: { user_id },
           required: true
@@ -517,13 +525,13 @@ class GroupBuyController {
           { '$participants.user_id$': user_id }
         ];
         includeClause.push({
-          model: GroupBuyParticipant,
+          model: db.GroupBuyParticipant,
           as: 'participants',
           include: [
             {
-              model: UserTable,
+              model: db.UserTable,
               as: 'user',
-              attributes: ['id', 'username', 'profile_picture']
+              attributes: ['id', 'username', 'profilePicture']
             }
           ]
         });
@@ -535,7 +543,7 @@ class GroupBuyController {
           {
             model: db.UserTable,
             as: 'creator',
-            attributes: ['id', 'username', 'profile_picture']
+            attributes: ['id', 'username', 'profilePicture']
           },
           {
             model: db.ProductCategory,

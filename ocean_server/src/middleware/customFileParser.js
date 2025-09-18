@@ -6,14 +6,14 @@ const customFileParser = (req, res, next) => {
     const upload = multer({
         storage: multer.memoryStorage(),
         limits: {
-            fileSize: 50 * 1024 * 1024 // 50MB limit
+            fileSize: 100 * 1024 * 1024 // 100MB limit (for videos)
         }
     });
     
     upload.array('media', 10)(req, res, (err) => {
         if (err instanceof multer.MulterError) {
             if (err.code === 'LIMIT_FILE_SIZE') {
-                return res.status(400).json({ message: 'File too large. Maximum size is 50MB.' });
+                return res.status(400).json({ message: 'File too large. Maximum size is 100MB.' });
             }
             if (err.code === 'LIMIT_FILE_COUNT') {
                 return res.status(400).json({ message: 'Too many files. Maximum is 10 files.' });
@@ -46,15 +46,23 @@ const customFileParser = (req, res, next) => {
                 console.log('Media type:', mediaType);
                 
                 // Convert base64 to buffer
-                const base64Data = mediaData.split(',')[1]; // Remove data:image/jpeg;base64,
+                const base64Data = mediaData.split(',')[1]; // Remove data:image/jpeg;base64, or data:video/mp4;base64,
                 const buffer = Buffer.from(base64Data, 'base64');
                 
                 console.log('Base64 data length:', base64Data.length);
                 console.log('Buffer length:', buffer.length);
                 
+                // Determine default filename based on media type
+                let defaultFilename = 'media';
+                if (mediaType && mediaType.startsWith('image/')) {
+                    defaultFilename = 'image.jpg';
+                } else if (mediaType && mediaType.startsWith('video/')) {
+                    defaultFilename = 'video.mp4';
+                }
+                
                 req.files = [{
                     fieldname: 'media',
-                    originalname: mediaName || 'image.jpg',
+                    originalname: mediaName || defaultFilename,
                     encoding: '7bit',
                     mimetype: mediaType || 'image/jpeg',
                     buffer: buffer,

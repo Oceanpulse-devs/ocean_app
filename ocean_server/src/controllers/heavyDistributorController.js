@@ -24,14 +24,102 @@ class HeavyDistributorController {
         annualRevenue
       } = req.body;
 
-      const supplierId = req.user.id;
+      const userId = req.user.id;
 
-      // Validate required fields
-      if (!businessName || !businessType || !productCategories || !coverageAreas || !contactInfo || !businessAddress) {
+      // Debug: Log the received data
+      console.log('Received distributor data:', {
+        businessName,
+        businessType,
+        productCategories,
+        coverageAreas,
+        contactInfo,
+        businessAddress,
+        userId
+      });
+
+      // Check if user has an approved seller profile
+      const sellerProfile = await db.SellersTable.findOne({
+        where: { userId: userId }
+      });
+
+      if (!sellerProfile) {
         return res.status(400).json({
           success: false,
-          message: 'Business name, type, product categories, coverage areas, contact info, and address are required'
+          message: 'You must first apply and be approved as a seller before becoming a heavy distributor'
         });
+      }
+
+      if (sellerProfile.verificationStatus !== 'verified') {
+        return res.status(400).json({
+          success: false,
+          message: 'Your seller account must be verified before you can become a heavy distributor'
+        });
+      }
+
+      const supplierId = sellerProfile.id;
+
+      // Validate required fields with specific error messages
+      if (!businessName) {
+        return res.status(400).json({
+          success: false,
+          message: 'Business name is required'
+        });
+      }
+
+      if (!businessType) {
+        return res.status(400).json({
+          success: false,
+          message: 'Business type is required'
+        });
+      }
+
+      if (!productCategories) {
+        return res.status(400).json({
+          success: false,
+          message: 'Product categories are required'
+        });
+      }
+
+      if (!coverageAreas) {
+        return res.status(400).json({
+          success: false,
+          message: 'Coverage areas are required'
+        });
+      }
+
+      // Validate that arrays are not empty
+      if (Array.isArray(productCategories) && productCategories.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'At least one product category is required'
+        });
+      }
+
+      if (Array.isArray(coverageAreas) && coverageAreas.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'At least one coverage area is required'
+        });
+      }
+
+      // Validate contact info structure if provided
+      if (contactInfo && typeof contactInfo === 'object') {
+        if (!contactInfo.phone && !contactInfo.email) {
+          return res.status(400).json({
+            success: false,
+            message: 'Contact info must include at least phone or email'
+          });
+        }
+      }
+
+      // Validate business address structure if provided
+      if (businessAddress && typeof businessAddress === 'object') {
+        if (!businessAddress.street && !businessAddress.city) {
+          return res.status(400).json({
+            success: false,
+            message: 'Business address must include at least street or city'
+          });
+        }
       }
 
       // Check if supplier already has a distributor listing
@@ -561,12 +649,7 @@ class HeavyDistributorController {
         maxDistance = 100
       } = req.query;
 
-      if (!location) {
-        return res.status(400).json({
-          success: false,
-          message: 'Location is required for search'
-        });
-      }
+      // Location is optional for search - if not provided, search all locations
 
       // Build search conditions
       const whereClause = {
@@ -581,10 +664,12 @@ class HeavyDistributorController {
         whereClause.businessType = businessType;
       }
 
-      // Location-based search
-      whereClause.coverageAreas = {
-        [Op.like]: `%${location}%`
-      };
+      // Location-based search (only if location is provided)
+      if (location) {
+        whereClause.coverageAreas = {
+          [Op.like]: `%${location}%`
+        };
+      }
 
       // Product-based search
       if (productCategory || productBrand) {

@@ -2,7 +2,7 @@
 	"info": {
 		"_postman_id": "ocean-feed-posts-collection",
 		"name": "Ocean - Feed & Posts",
-		"description": "Complete collection for Ocean app feed and posts endpoints. Updated for Universal Category System - supports both UUID and name-based category lookup. Includes separate routes for text-only posts (/api/posts/text) and posts with images (/api/posts).",
+		"description": "Complete collection for Ocean app feed and posts endpoints. Simplified to social media style - just content + optional images/videos. All database fields auto-filled. Separate routes for text-only posts (/api/posts/text) and posts with media (/api/posts).",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
 	"item": [
@@ -195,7 +195,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"postType\": \"product\",\n  \"postSubType\": \"seller\",\n  \"content\": \"This is my new post content!\",\n  \"productName\": \"Test Product\",\n  \"price\": \"100\",\n  \"category\": \"{{tech_category_id}}\",\n  \"location\": \"Lagos, Nigeria\",\n  \"condition\": \"excellent\"\n}"
+							"raw": "{\n  \"content\": \"Just sharing my thoughts! This is a simple social media style post. 🚀\"\n}"
 						},
 						"url": {
 							"raw": "{{base_url}}/api/posts/text",
@@ -227,43 +227,8 @@
 							"mode": "formdata",
 							"formdata": [
 								{
-									"key": "postType",
-									"value": "product",
-									"type": "text"
-								},
-								{
-									"key": "postSubType",
-									"value": "seller",
-									"type": "text"
-								},
-								{
 									"key": "content",
-									"value": "This is my new post with images!",
-									"type": "text"
-								},
-								{
-									"key": "productName",
-									"value": "Test Product",
-									"type": "text"
-								},
-								{
-									"key": "price",
-									"value": "100",
-									"type": "text"
-								},
-								{
-									"key": "category",
-									"value": "{{tech_category_id}}",
-									"type": "text"
-								},
-								{
-									"key": "location",
-									"value": "Lagos, Nigeria",
-									"type": "text"
-								},
-								{
-									"key": "condition",
-									"value": "excellent",
+									"value": "Check out this amazing sunset! 🌅 Simple post with images/videos.",
 									"type": "text"
 								},
 								{
@@ -283,7 +248,7 @@
 								"posts"
 							]
 						},
-						"description": "Create a new post with images (uploads to Cloudinary)"
+						"description": "Create a new post with images/videos (uploads to Cloudinary)"
 					},
 					"response": []
 				},
@@ -395,8 +360,17 @@
 								"key": "Authorization",
 								"value": "Bearer {{auth_token}}",
 								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
 							}
 						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"collectionName\": \"Favorites\"\n}"
+						},
 						"url": {
 							"raw": "{{base_url}}/api/posts/{{postId}}/save",
 							"host": [
@@ -409,7 +383,7 @@
 								"save"
 							]
 						},
-						"description": "Save or unsave a post"
+						"description": "Save or unsave a post (collectionName is optional, defaults to 'General')"
 					},
 					"response": []
 				},
@@ -481,6 +455,41 @@
 					"response": []
 				},
 				{
+					"name": "Update Comment",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"content\": \"Updated comment content! This is my edited comment.\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/comments/{{commentId}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"comments",
+								"{{commentId}}"
+							]
+						},
+						"description": "Update/edit a comment (only comment owner can edit)"
+					},
+					"response": []
+				},
+				{
 					"name": "Delete Comment",
 					"request": {
 						"method": "DELETE",
@@ -502,7 +511,7 @@
 								"{{commentId}}"
 							]
 						},
-						"description": "Delete a comment"
+						"description": "Delete a comment (only comment owner can delete)"
 					},
 					"response": []
 				}
