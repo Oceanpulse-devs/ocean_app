@@ -1,0 +1,564 @@
+const db = require('../../models');
+const { Op } = require('sequelize');
+
+class SellerManagementController {
+  // Get all sellers with filtering and pagination
+  async getAllSellers(req, res) {
+    try {
+      const {
+        page = 1,
+        limit = 20,
+        status,
+        category,
+        country,
+        search,
+        sortBy = 'createdAt',
+        sortOrder = 'DESC'
+      } = req.query;
+
+      const offset = (page - 1) * limit;
+      const whereClause = {};
+
+      // Apply filters
+      if (status) {
+        whereClause.verificationStatus = status;
+      }
+      if (category) {
+        whereClause.category = category;
+      }
+      if (country) {
+        whereClause.country = country;
+      }
+      if (search) {
+        whereClause[Op.or] = [
+          { businessName: { [Op.like]: `%${search}%` } },
+          { fullName: { [Op.like]: `%${search}%` } },
+          { email: { [Op.like]: `%${search}%` } }
+        ];
+      }
+
+      const sellers = await db.SellersTable.findAndCountAll({
+        where: whereClause,
+        include: [
+          {
+            model: db.UserTable,
+            as: 'user',
+            attributes: ['id', 'username', 'email', 'accountStatus', 'lastActive']
+          }
+        ],
+        order: [[sortBy, sortOrder]],
+        limit: parseInt(limit),
+        offset: parseInt(offset)
+      });
+
+      res.json({
+        success: true,
+        data: {
+          sellers: sellers.rows,
+          pagination: {
+            currentPage: parseInt(page),
+            totalPages: Math.ceil(sellers.count / limit),
+            totalItems: sellers.count,
+            itemsPerPage: parseInt(limit)
+          }
+        }
+      });
+
+    } catch (error) {
+      console.error('Error getting all sellers:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error',
+        error: error.message
+      });
+    }
+  }
+
+  // Get pending sellers
+  async getPendingSellers(req, res) {
+    try {
+      const { page = 1, limit = 20 } = req.query;
+      const offset = (page - 1) * limit;
+
+      const sellers = await db.SellersTable.findAndCountAll({
+        where: { verificationStatus: 'pending' },
+        include: [
+          {
+            model: db.UserTable,
+            as: 'user',
+            attributes: ['id', 'username', 'email', 'accountStatus', 'lastActive']
+          },
+          {
+            model: db.SellerDocument,
+            as: 'documents',
+            attributes: ['id', 'documentType', 'status', 'submittedAt']
+          }
+        ],
+        order: [['createdAt', 'DESC']],
+        limit: parseInt(limit),
+        offset: parseInt(offset)
+      });
+
+      res.json({
+        success: true,
+        data: {
+          sellers: sellers.rows,
+          pagination: {
+            currentPage: parseInt(page),
+            totalPages: Math.ceil(sellers.count / limit),
+            totalItems: sellers.count,
+            itemsPerPage: parseInt(limit)
+          }
+        }
+      });
+
+    } catch (error) {
+      console.error('Error getting pending sellers:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error',
+        error: error.message
+      });
+    }
+  }
+
+  // Get seller by ID
+  async getSellerById(req, res) {
+    try {
+      const { id } = req.params;
+
+      const seller = await db.SellersTable.findByPk(id, {
+        include: [
+          {
+            model: db.UserTable,
+            as: 'user',
+            attributes: ['id', 'username', 'email', 'accountStatus', 'lastActive', 'createdAt']
+          },
+          {
+            model: db.SellerDocument,
+            as: 'documents',
+            attributes: ['id', 'documentType', 'status', 'submittedAt', 'documentImage']
+          }
+        ]
+      });
+
+      if (!seller) {
+        return res.status(404).json({
+          success: false,
+          message: 'Seller not found'
+        });
+      }
+
+      res.json({
+        success: true,
+        data: seller
+      });
+
+    } catch (error) {
+      console.error('Error getting seller by ID:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error',
+        error: error.message
+      });
+    }
+  }
+
+  // Approve seller
+  async approveSeller(req, res) {
+    try {
+      const { id } = req.params;
+      const { verificationLevel = 'basic', verificationNotes } = req.body;
+
+      const seller = await db.SellersTable.findByPk(id, {
+        include: [
+          {
+            model: db.UserTable,
+            as: 'user',
+            attributes: ['id', 'username', 'email']
+          }
+        ]
+      });
+
+      if (!seller) {
+        return res.status(404).json({
+          success: false,
+          message: 'Seller not found'
+        });
+      }
+
+      if (seller.verificationStatus === 'approved') {
+        return res.status(400).json({
+          success: false,
+          message: 'Seller is already approved'
+        });
+      }
+
+      // Update seller status
+      await seller.update({
+        verificationStatus: 'approved',
+        verificationLevel,
+        verificationNotes,
+        verifiedAt: new Date(),
+        verificationExpiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year
+        verificationScore: 85 // Default score for approved sellers
+      });
+
+      // Update user account type
+      await db.UserTable.update(
+        { accountType: 'seller' },
+        { where: { id: seller.userId } }
+      );
+
+      res.json({
+        success: true,
+        message: 'Seller approved successfully',
+        data: seller
+      });
+
+    } catch (error) {
+      console.error('Error approving seller:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error',
+        error: error.message
+      });
+    }
+  }
+
+  // Reject seller
+  async rejectSeller(req, res) {
+    try {
+      const { id } = req.params;
+      const { rejectionReason, verificationNotes } = req.body;
+
+      if (!rejectionReason) {
+        return res.status(400).json({
+          success: false,
+          message: 'Rejection reason is required'
+        });
+      }
+
+      const seller = await db.SellersTable.findByPk(id, {
+        include: [
+          {
+            model: db.UserTable,
+            as: 'user',
+            attributes: ['id', 'username', 'email']
+          }
+        ]
+      });
+
+      if (!seller) {
+        return res.status(404).json({
+          success: false,
+          message: 'Seller not found'
+        });
+      }
+
+      if (seller.verificationStatus === 'rejected') {
+        return res.status(400).json({
+          success: false,
+          message: 'Seller is already rejected'
+        });
+      }
+
+      // Update seller status
+      await seller.update({
+        verificationStatus: 'rejected',
+        rejectionReason,
+        verificationNotes,
+        verificationScore: 0
+      });
+
+      res.json({
+        success: true,
+        message: 'Seller rejected successfully',
+        data: seller
+      });
+
+    } catch (error) {
+      console.error('Error rejecting seller:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error',
+        error: error.message
+      });
+    }
+  }
+
+  // Suspend seller
+  async suspendSeller(req, res) {
+    try {
+      const { id } = req.params;
+      const { suspensionReason, suspensionDuration } = req.body;
+
+      if (!suspensionReason) {
+        return res.status(400).json({
+          success: false,
+          message: 'Suspension reason is required'
+        });
+      }
+
+      const seller = await db.SellersTable.findByPk(id, {
+        include: [
+          {
+            model: db.UserTable,
+            as: 'user',
+            attributes: ['id', 'username', 'email']
+          }
+        ]
+      });
+
+      if (!seller) {
+        return res.status(404).json({
+          success: false,
+          message: 'Seller not found'
+        });
+      }
+
+      // Calculate suspension end date
+      const suspensionEndDate = suspensionDuration 
+        ? new Date(Date.now() + suspensionDuration * 24 * 60 * 60 * 1000)
+        : null;
+
+      // Update seller status
+      await seller.update({
+        verificationStatus: 'suspended',
+        suspensionReason,
+        suspensionStartDate: new Date(),
+        suspensionEndDate,
+        verificationNotes: `Suspended: ${suspensionReason}`
+      });
+
+      // Update user account status
+      await db.UserTable.update(
+        { accountStatus: 'suspended' },
+        { where: { id: seller.userId } }
+      );
+
+      res.json({
+        success: true,
+        message: 'Seller suspended successfully',
+        data: seller
+      });
+
+    } catch (error) {
+      console.error('Error suspending seller:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error',
+        error: error.message
+      });
+    }
+  }
+
+  // Activate seller
+  async activateSeller(req, res) {
+    try {
+      const { id } = req.params;
+      const { activationNotes } = req.body;
+
+      const seller = await db.SellersTable.findByPk(id, {
+        include: [
+          {
+            model: db.UserTable,
+            as: 'user',
+            attributes: ['id', 'username', 'email']
+          }
+        ]
+      });
+
+      if (!seller) {
+        return res.status(404).json({
+          success: false,
+          message: 'Seller not found'
+        });
+      }
+
+      // Update seller status
+      await seller.update({
+        verificationStatus: 'active',
+        suspensionReason: null,
+        suspensionStartDate: null,
+        suspensionEndDate: null,
+        verificationNotes: activationNotes || 'Seller activated by admin'
+      });
+
+      // Update user account status
+      await db.UserTable.update(
+        { accountStatus: 'active' },
+        { where: { id: seller.userId } }
+      );
+
+      res.json({
+        success: true,
+        message: 'Seller activated successfully',
+        data: seller
+      });
+
+    } catch (error) {
+      console.error('Error activating seller:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error',
+        error: error.message
+      });
+    }
+  }
+
+  // Delete seller
+  async deleteSeller(req, res) {
+    try {
+      const { id } = req.params;
+
+      const seller = await db.SellersTable.findByPk(id);
+      if (!seller) {
+        return res.status(404).json({
+          success: false,
+          message: 'Seller not found'
+        });
+      }
+
+      // Check if seller has products
+      const productCount = await db.Product.count({
+        where: { sellerId: seller.userId }
+      });
+
+      if (productCount > 0) {
+        return res.status(400).json({
+          success: false,
+          message: `Cannot delete seller with ${productCount} products. Please remove products first.`
+        });
+      }
+
+      // Delete seller
+      await seller.destroy();
+
+      res.json({
+        success: true,
+        message: 'Seller deleted successfully'
+      });
+
+    } catch (error) {
+      console.error('Error deleting seller:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error',
+        error: error.message
+      });
+    }
+  }
+
+  // Search sellers
+  async searchSellers(req, res) {
+    try {
+      const { query, page = 1, limit = 20 } = req.query;
+      const offset = (page - 1) * limit;
+
+      if (!query || query.trim().length < 2) {
+        return res.status(400).json({
+          success: false,
+          message: 'Search query must be at least 2 characters long'
+        });
+      }
+
+      const sellers = await db.SellersTable.findAndCountAll({
+        where: {
+          [Op.or]: [
+            { businessName: { [Op.like]: `%${query}%` } },
+            { fullName: { [Op.like]: `%${query}%` } },
+            { email: { [Op.like]: `%${query}%` } },
+            { country: { [Op.like]: `%${query}%` } },
+            { state: { [Op.like]: `%${query}%` } }
+          ]
+        },
+        include: [
+          {
+            model: db.UserTable,
+            as: 'user',
+            attributes: ['id', 'username', 'email', 'accountStatus']
+          },
+        ],
+        order: [['createdAt', 'DESC']],
+        limit: parseInt(limit),
+        offset: parseInt(offset)
+      });
+
+      res.json({
+        success: true,
+        data: {
+          sellers: sellers.rows,
+          pagination: {
+            currentPage: parseInt(page),
+            totalPages: Math.ceil(sellers.count / limit),
+            totalItems: sellers.count,
+            itemsPerPage: parseInt(limit)
+          },
+          searchQuery: query
+        }
+      });
+
+    } catch (error) {
+      console.error('Error searching sellers:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error',
+        error: error.message
+      });
+    }
+  }
+
+  // Get seller statistics
+  async getSellerStats(req, res) {
+    try {
+      const stats = await db.SellersTable.findAll({
+        attributes: [
+          'verificationStatus',
+          [db.sequelize.fn('COUNT', db.sequelize.col('id')), 'count']
+        ],
+        group: ['verificationStatus']
+      });
+
+      const totalSellers = await db.SellersTable.count();
+      const pendingDocuments = await db.SellerDocument.count({
+        where: { status: 'pending' }
+      });
+
+      const recentSellers = await db.SellersTable.count({
+        where: {
+          createdAt: {
+            [Op.gte]: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) // Last 30 days
+          }
+        }
+      });
+
+      res.json({
+        success: true,
+        data: {
+          totalSellers,
+          pendingDocuments,
+          recentSellers,
+          statusBreakdown: stats,
+          summary: {
+            pending: stats.find(s => s.verificationStatus === 'pending')?.count || 0,
+            approved: stats.find(s => s.verificationStatus === 'approved')?.count || 0,
+            rejected: stats.find(s => s.verificationStatus === 'rejected')?.count || 0,
+            suspended: stats.find(s => s.verificationStatus === 'suspended')?.count || 0,
+            active: stats.find(s => s.verificationStatus === 'active')?.count || 0
+          }
+        }
+      });
+
+    } catch (error) {
+      console.error('Error getting seller stats:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error',
+        error: error.message
+      });
+    }
+  }
+}
+
+module.exports = new SellerManagementController();

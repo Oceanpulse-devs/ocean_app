@@ -377,6 +377,7 @@ app.use('/api/swap-deals', swapDealRoutes);
 app.use('/api/buyer-needs', buyerNeedRoutes);
 app.use('/api/market-analytics', marketAnalyticsRoutes);
 app.use('/api/advanced-notifications', advancedNotificationRoutes);
+app.use('/api/admin', adminRoutes);
 app.use('/api/distress-sales', distressSaleRoutes);
 app.use('/api/heavy-distributors', heavyDistributorRoutes);
 app.use('/api/seller-verification', sellerVerificationRoutes);
@@ -401,6 +402,38 @@ db.sequelize.sync({
 }).catch((error) => {
     console.error('❌ Database sync error:', error);
 });
+// Initialize notification scheduler
+const notificationScheduler = require('./src/services/notificationScheduler');
+
+// Run scheduled checks every hour
+setInterval(async () => {
+  try {
+    await notificationScheduler.runScheduledChecks();
+  } catch (error) {
+    console.error('Error in scheduled notification checks:', error);
+  }
+}, 60 * 60 * 1000); // 1 hour
+
+// Run initial check after 5 minutes
+setTimeout(async () => {
+  try {
+    console.log('🕐 Running initial notification check...');
+    await notificationScheduler.runScheduledChecks();
+  } catch (error) {
+    console.error('Error in initial notification check:', error);
+  }
+}, 5 * 60 * 1000); // 5 minutes
+
+// Run performance analytics daily at 2 AM
+setInterval(async () => {
+  try {
+    console.log('📊 Running daily performance analytics...');
+    await notificationScheduler.runPerformanceAnalytics();
+  } catch (error) {
+    console.error('Error in daily performance analytics:', error);
+  }
+}, 24 * 60 * 60 * 1000); // 24 hours
+
 app.listen(port , ()=>{
     console.log(`● Server running on port ${port} ✅`)
 })

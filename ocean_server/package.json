@@ -5,7 +5,14 @@
   "scripts": {
     "dev": "nodemon server.js",
     "pro": "node server.js",
-    "start": "node server.js"
+    "start": "node server.js",
+    "test": "jest",
+    "test:admin": "node scripts/testAdmin.js",
+    "test:admin:performance": "node scripts/testAdmin.js --performance",
+    "test:admin:security": "node scripts/testAdmin.js --security",
+    "test:admin:all": "node scripts/testAdmin.js --all",
+    "test:coverage": "jest --coverage",
+    "test:watch": "jest --watch"
   },
   "author": "",
   "license": "ISC",
@@ -33,5 +40,11 @@
     "sequelize": "^6.37.7",
     "sequelize-cli": "^6.6.3",
     "uuid": "^11.1.0"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "supertest": "^6.3.3",
+    "@jest/globals": "^29.7.0",
+    "jest-environment-node": "^29.7.0"
   }
 }

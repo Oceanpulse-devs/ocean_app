@@ -1,6 +1,24 @@
-const { Product, ProductCategory, SavedProduct, SavedPost, Post, UserTable, SellersTable, UserFollows } = require('../../models');
+const { Product, ProductCategory, SavedProduct, SavedPost, Post, UserTable, SellersTable, UserFollows, Notification } = require('../../models');
 const { Op, Sequelize } = require('sequelize');
 const cloudinaryService = require('../services/cloudinaryService');
+
+// Helper function to create notifications
+const createNotification = async (userId, title, message, type = 'info', category = 'system', metadata = null) => {
+    try {
+        const notification = await Notification.create({
+            userId,
+            title,
+            message,
+            type,
+            category,
+            metadata
+        });
+        console.log(`📧 Product notification created for user ${userId}: ${title}`);
+        return notification;
+    } catch (error) {
+        console.error('Error creating product notification:', error);
+    }
+};
 
 // Get all products with search and filters
 const getProducts = async (req, res) => {
@@ -152,6 +170,31 @@ const getProduct = async (req, res) => {
 
         // Increment view count
         await product.increment('views');
+
+        // Send notification to seller that their product was viewed (if not viewing own product)
+        if (currentUserId && currentUserId !== product.sellerId) {
+            const viewer = await UserTable.findByPk(currentUserId, {
+                attributes: ['id', 'fullName', 'username', 'profilePicture']
+            });
+
+            await createNotification(
+                product.sellerId,
+                'Product Viewed',
+                `${viewer.fullName || viewer.username} viewed your product "${product.title}"`,
+                'info',
+                'product_view',
+                { 
+                    productId: product.id,
+                    title: product.title,
+                    viewerId: currentUserId,
+                    viewerName: viewer.fullName || viewer.username,
+                    viewerUsername: viewer.username,
+                    productPrice: product.price,
+                    productCategory: product.category,
+                    viewsCount: product.views + 1
+                }
+            );
+        }
 
         const productData = product.toJSON();
 
@@ -429,6 +472,32 @@ const toggleSaveProduct = async (req, res) => {
             // Save
             await SavedProduct.create({ productId, userId, collectionName });
             await product.increment('saves');
+            
+            // Send notification to seller that their product was saved (if not saving own product)
+            if (userId !== product.sellerId) {
+                const saver = await UserTable.findByPk(userId, {
+                    attributes: ['id', 'fullName', 'username', 'profilePicture']
+                });
+
+                await createNotification(
+                    product.sellerId,
+                    'Product Saved',
+                    `${saver.fullName || saver.username} saved your product "${product.title}"`,
+                    'info',
+                    'product_save',
+                    { 
+                        productId: product.id,
+                        title: product.title,
+                        saverId: userId,
+                        saverName: saver.fullName || saver.username,
+                        saverUsername: saver.username,
+                        collectionName: collectionName,
+                        productPrice: product.price,
+                        productCategory: product.category,
+                        savesCount: product.saves + 1
+                    }
+                );
+            }
             
             res.status(200).json({
                 message: "Product saved successfully",

@@ -2,6 +2,24 @@ const db = require('../../models');
 const { Op } = require('sequelize');
 const cloudinaryService = require('../services/cloudinaryService');
 
+// Helper function to create notifications
+const createNotification = async (userId, title, message, type = 'info', category = 'system', metadata = null) => {
+  try {
+    const notification = await db.Notification.create({
+      userId,
+      title,
+      message,
+      type,
+      category,
+      metadata
+    });
+    console.log(`📧 Swap deal notification created for user ${userId}: ${title}`);
+    return notification;
+  } catch (error) {
+    console.error('Error creating swap deal notification:', error);
+  }
+};
+
 class SwapDealController {
   // Create a new swap deal offer
   async createSwapDeal(req, res) {
@@ -204,7 +222,7 @@ class SwapDealController {
           console.log(`Using existing seller profile with ID: ${sellerProfile.id}`);
         }
 
-        // Create initiator's item (myItem)
+        // Create initiator's item (myItem) - exclude distress sale fields for compatibility
         const initiatorItem = await db.Product.create({
           title: parsedMyItem.name,
           description: parsedMyItem.description,
@@ -215,7 +233,8 @@ class SwapDealController {
           location: meeting_location || 'Location TBD',
           images: finalMyItemImages,
           sellerId: sellerProfile.id, // Use seller profile ID
-          status: 'active' // Use existing status
+          status: 'active', // Use existing status
+          // Exclude distress sale fields: isDistressSale, urgencyLevel, etc.
         });
 
         // Create wanted item (this will be a placeholder until someone responds)
@@ -229,7 +248,8 @@ class SwapDealController {
           location: meeting_location || 'Location TBD',
           images: finalWantedItemImages,
           sellerId: sellerProfile.id, // Use seller profile ID
-          status: 'inactive' // Use inactive status for wanted items
+          status: 'inactive', // Use inactive status for wanted items
+          // Exclude distress sale fields: isDistressSale, urgencyLevel, etc.
         });
 
         finalInitiatorItemId = initiatorItem.id;
@@ -271,6 +291,23 @@ class SwapDealController {
         initiator_id: swapDeal.initiator_id,
         responder_id: swapDeal.responder_id
       });
+
+      // Send notification to initiator that their swap deal is now live
+      await createNotification(
+        initiator_id,
+        'Swap Deal Created Successfully!',
+        `Your swap deal "${title}" has been created and is now visible to other users.`,
+        'success',
+        'swap_deal',
+        { 
+          swapDealId: swapDeal.id,
+          title: swapDeal.title,
+          status: swapDeal.status,
+          expiresAt: swapDeal.expires_at,
+          initiatorItemId: finalInitiatorItemId,
+          wantedItemId: finalResponderItemId
+        }
+      );
 
       res.status(201).json({
         success: true,
@@ -783,6 +820,172 @@ class SwapDealController {
 
     } catch (error) {
       console.error('Error fetching user swap deals:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error',
+        error: error.message
+      });
+    }
+  }
+
+  // Accept a swap deal
+  async acceptSwapDeal(req, res) {
+    try {
+      const { id } = req.params;
+      const user_id = req.user.id;
+
+      const swapDeal = await db.SwapDeal.findByPk(id);
+      if (!swapDeal) {
+        return res.status(404).json({
+          success: false,
+          message: 'Swap deal not found'
+        });
+      }
+
+      // Check if user is the initiator (cannot accept own swap deal)
+      if (swapDeal.initiator_id === user_id) {
+        return res.status(403).json({
+          success: false,
+          message: 'You cannot accept your own swap deal'
+        });
+      }
+
+      // Check if user is the designated responder or if it's an open swap deal
+      if (swapDeal.responder_id !== swapDeal.initiator_id && swapDeal.responder_id !== user_id) {
+        return res.status(403).json({
+          success: false,
+          message: 'Only the designated responder can accept this swap deal'
+        });
+      }
+
+      // Check if swap deal is still pending
+      if (swapDeal.status !== 'pending') {
+        return res.status(400).json({
+          success: false,
+          message: 'Swap deal is not available for acceptance'
+        });
+      }
+
+      // Update swap deal status
+      await swapDeal.update({ 
+        status: 'accepted',
+        responder_id: user_id // Update responder if it was an open deal
+      });
+
+      // Get responder info for notifications
+      const responder = await db.UserTable.findByPk(user_id, {
+        attributes: ['id', 'fullName', 'username', 'profilePicture']
+      });
+
+      // Send notification to initiator that their swap deal was accepted
+      await createNotification(
+        swapDeal.initiator_id,
+        'Swap Deal Accepted!',
+        `${responder.fullName || responder.username} accepted your swap deal "${swapDeal.title}"`,
+        'success',
+        'swap_deal',
+        { 
+          swapDealId: swapDeal.id,
+          title: swapDeal.title,
+          responderId: user_id,
+          responderName: responder.fullName || responder.username,
+          responderUsername: responder.username,
+          status: 'accepted',
+          acceptedAt: new Date()
+        }
+      );
+
+      res.json({
+        success: true,
+        message: 'Swap deal accepted successfully',
+        data: swapDeal
+      });
+
+    } catch (error) {
+      console.error('Error accepting swap deal:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error',
+        error: error.message
+      });
+    }
+  }
+
+  // Reject a swap deal
+  async rejectSwapDeal(req, res) {
+    try {
+      const { id } = req.params;
+      const user_id = req.user.id;
+
+      const swapDeal = await db.SwapDeal.findByPk(id);
+      if (!swapDeal) {
+        return res.status(404).json({
+          success: false,
+          message: 'Swap deal not found'
+        });
+      }
+
+      // Check if user is the initiator (cannot reject own swap deal)
+      if (swapDeal.initiator_id === user_id) {
+        return res.status(403).json({
+          success: false,
+          message: 'You cannot reject your own swap deal'
+        });
+      }
+
+      // Check if user is the designated responder or if it's an open swap deal
+      if (swapDeal.responder_id !== swapDeal.initiator_id && swapDeal.responder_id !== user_id) {
+        return res.status(403).json({
+          success: false,
+          message: 'Only the designated responder can reject this swap deal'
+        });
+      }
+
+      // Check if swap deal is still pending
+      if (swapDeal.status !== 'pending') {
+        return res.status(400).json({
+          success: false,
+          message: 'Swap deal is not available for rejection'
+        });
+      }
+
+      // Update swap deal status
+      await swapDeal.update({ 
+        status: 'rejected',
+        responder_id: user_id // Update responder if it was an open deal
+      });
+
+      // Get responder info for notifications
+      const responder = await db.UserTable.findByPk(user_id, {
+        attributes: ['id', 'fullName', 'username', 'profilePicture']
+      });
+
+      // Send notification to initiator that their swap deal was rejected
+      await createNotification(
+        swapDeal.initiator_id,
+        'Swap Deal Rejected',
+        `${responder.fullName || responder.username} rejected your swap deal "${swapDeal.title}"`,
+        'warning',
+        'swap_deal',
+        { 
+          swapDealId: swapDeal.id,
+          title: swapDeal.title,
+          responderId: user_id,
+          responderName: responder.fullName || responder.username,
+          responderUsername: responder.username,
+          status: 'rejected',
+          rejectedAt: new Date()
+        }
+      );
+
+      res.json({
+        success: true,
+        message: 'Swap deal rejected successfully',
+        data: swapDeal
+      });
+
+    } catch (error) {
+      console.error('Error rejecting swap deal:', error);
       res.status(500).json({
         success: false,
         message: 'Internal server error',

@@ -1,4 +1,22 @@
-const { UserTable, UserFollows, SellersTable, ProductCategory } = require('../../models');
+const { UserTable, UserFollows, SellersTable, ProductCategory, Notification } = require('../../models');
+
+// Helper function to create notifications
+const createNotification = async (userId, title, message, type = 'info', category = 'system', metadata = null) => {
+    try {
+        const notification = await Notification.create({
+            userId,
+            title,
+            message,
+            type,
+            category,
+            metadata
+        });
+        console.log(`📧 Follow notification created for user ${userId}: ${title}`);
+        return notification;
+    } catch (error) {
+        console.error('Error creating follow notification:', error);
+    }
+};
 
 // Follow a user
 const followUser = async (req, res) => {
@@ -39,6 +57,27 @@ const followUser = async (req, res) => {
             userId: followerId,
             followsUserId: targetUserId
         });
+
+        // Get follower info for notification
+        const follower = await UserTable.findByPk(followerId, {
+            attributes: ['id', 'fullName', 'username', 'profilePicture']
+        });
+
+        // Send notification to the user being followed
+        await createNotification(
+            targetUserId,
+            'New Follower!',
+            `${follower.fullName || follower.username} started following you`,
+            'info',
+            'follow',
+            { 
+                followerId: followerId,
+                followerName: follower.fullName || follower.username,
+                followerUsername: follower.username,
+                followerProfilePicture: follower.profilePicture,
+                followedAt: new Date()
+            }
+        );
 
         res.status(201).json({ 
             message: "Successfully followed user",

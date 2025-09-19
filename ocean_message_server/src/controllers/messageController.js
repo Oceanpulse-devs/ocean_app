@@ -1,5 +1,23 @@
-const { Message, Conversation, ConversationParticipant, UserReference, MessageReaction } = require('../../models');
+const { Message, Conversation, ConversationParticipant, UserReference, MessageReaction, Notification } = require('../../models');
 const { Op } = require('sequelize');
+
+// Helper function to create notifications
+const createNotification = async (userId, title, message, type = 'info', category = 'system', metadata = null) => {
+  try {
+    const notification = await Notification.create({
+      userId,
+      title,
+      message,
+      type,
+      category,
+      metadata
+    });
+    console.log(`📧 Message notification created for user ${userId}: ${title}`);
+    return notification;
+  } catch (error) {
+    console.error('Error creating message notification:', error);
+  }
+};
 
 // Get messages for a conversation
 const getMessages = async (req, res) => {
@@ -136,6 +154,46 @@ const sendMessage = async (req, res) => {
       },
       { where: { id: conversationId } }
     );
+
+    // Send notifications to other participants (not the sender)
+    const otherParticipants = await ConversationParticipant.findAll({
+      where: { 
+        conversationId, 
+        userId: { [Op.ne]: userId }, 
+        isActive: true 
+      },
+      include: [
+        {
+          model: UserReference,
+          as: 'user',
+          attributes: ['id', 'fullName', 'profilePicture']
+        }
+      ]
+    });
+
+    // Get sender info for notifications
+    const sender = await UserReference.findByPk(userId, {
+      attributes: ['id', 'fullName', 'profilePicture']
+    });
+
+    // Send notification to each participant
+    for (const participant of otherParticipants) {
+      await createNotification(
+        participant.userId,
+        'New Message Received',
+        `${sender.fullName}: ${content ? content.substring(0, 50) + (content.length > 50 ? '...' : '') : 'Sent a media message'}`,
+        'info',
+        'message',
+        { 
+          conversationId: conversationId,
+          messageId: message.id,
+          senderId: userId,
+          senderName: sender.fullName,
+          messagePreview: content ? content.substring(0, 100) : 'Media message',
+          messageType: type
+        }
+      );
+    }
 
     // Load message with sender info
     const messageWithSender = await Message.findByPk(message.id, {

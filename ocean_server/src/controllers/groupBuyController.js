@@ -1,6 +1,24 @@
 const db = require('../../models');
 const { Op } = require('sequelize');
 
+// Helper function to create notifications
+const createNotification = async (userId, title, message, type = 'info', category = 'system', metadata = null) => {
+  try {
+    const notification = await db.Notification.create({
+      userId,
+      title,
+      message,
+      type,
+      category,
+      metadata
+    });
+    console.log(`📧 Group buy notification created for user ${userId}: ${title}`);
+    return notification;
+  } catch (error) {
+    console.error('Error creating group buy notification:', error);
+  }
+};
+
 class GroupBuyController {
   // Create a new group buy
   async createGroupBuy(req, res) {
@@ -81,6 +99,58 @@ class GroupBuyController {
         tags: tags ? (typeof tags === 'string' ? JSON.parse(tags) : tags) : null,
         status: 'pending'
       });
+
+      // Get creator info for notifications
+      const creator = await db.UserTable.findByPk(creator_id, {
+        attributes: ['id', 'fullName', 'username', 'profilePicture']
+      });
+
+      // Find users who might be interested in this category
+      // This could be users who have saved products in this category or have shown interest
+      const interestedUsers = await db.SavedProduct.findAll({
+        include: [
+          {
+            model: db.Product,
+            as: 'product',
+            attributes: ['category'],
+            where: { category: category.name }
+          },
+          {
+            model: db.UserTable,
+            as: 'user',
+            attributes: ['id', 'fullName', 'username', 'email']
+          }
+        ],
+        limit: 50 // Limit to avoid spam
+      });
+
+      // Send notifications to interested users (excluding the creator)
+      for (const savedProduct of interestedUsers) {
+        if (savedProduct.user.id !== creator_id) {
+          await createNotification(
+            savedProduct.user.id,
+            'New Group Buy Created!',
+            `${creator.fullName || creator.username} created a new group buy "${title}" in ${category.name}`,
+            'info',
+            'group_buy',
+            { 
+              groupBuyId: groupBuy.id,
+              title: groupBuy.title,
+              creatorId: creator_id,
+              creatorName: creator.fullName || creator.username,
+              creatorUsername: creator.username,
+              category: category.name,
+              productName: product_name,
+              originalPrice: original_price,
+              groupPrice: group_price,
+              minBuyers: min_buyers,
+              maxBuyers: max_buyers,
+              deadline: deadline,
+              location: location
+            }
+          );
+        }
+      }
 
       res.status(201).json({
         success: true,
@@ -428,9 +498,78 @@ class GroupBuyController {
       // Update current buyers count
       await groupBuy.increment('current_buyers');
 
+      // Get joiner info for notifications
+      const joiner = await db.UserTable.findByPk(user_id, {
+        attributes: ['id', 'fullName', 'username', 'profilePicture']
+      });
+
+      // Send notification to group buy creator that someone joined
+      await createNotification(
+        groupBuy.creator_id,
+        'Someone Joined Your Group Buy!',
+        `${joiner.fullName || joiner.username} joined your group buy "${groupBuy.title}"`,
+        'info',
+        'group_buy',
+        { 
+          groupBuyId: groupBuy.id,
+          title: groupBuy.title,
+          joinerId: user_id,
+          joinerName: joiner.fullName || joiner.username,
+          joinerUsername: joiner.username,
+          currentBuyers: groupBuy.current_buyers + 1,
+          maxBuyers: groupBuy.max_buyers,
+          groupPrice: groupBuy.group_price
+        }
+      );
+
       // Check if minimum threshold is met
       if (groupBuy.current_buyers + 1 >= groupBuy.min_buyers) {
         await groupBuy.update({ status: 'active' });
+        
+        // Send notification to creator that threshold is met
+        await createNotification(
+          groupBuy.creator_id,
+          'Group Buy Threshold Met!',
+          `Your group buy "${groupBuy.title}" has reached the minimum threshold and is now active!`,
+          'success',
+          'group_buy',
+          { 
+            groupBuyId: groupBuy.id,
+            title: groupBuy.title,
+            currentBuyers: groupBuy.current_buyers + 1,
+            minBuyers: groupBuy.min_buyers,
+            groupPrice: groupBuy.group_price
+          }
+        );
+
+        // Send notification to all participants that group buy is now active
+        const participants = await db.GroupBuyParticipant.findAll({
+          where: { group_buy_id: id },
+          include: [
+            {
+              model: db.UserTable,
+              as: 'user',
+              attributes: ['id', 'fullName', 'email']
+            }
+          ]
+        });
+
+        for (const participant of participants) {
+          await createNotification(
+            participant.user_id,
+            'Group Buy is Now Active!',
+            `The group buy "${groupBuy.title}" has reached the minimum threshold and is now active!`,
+            'success',
+            'group_buy',
+            { 
+              groupBuyId: groupBuy.id,
+              title: groupBuy.title,
+              currentBuyers: groupBuy.current_buyers + 1,
+              minBuyers: groupBuy.min_buyers,
+              groupPrice: groupBuy.group_price
+            }
+          );
+        }
       }
 
       res.status(201).json({

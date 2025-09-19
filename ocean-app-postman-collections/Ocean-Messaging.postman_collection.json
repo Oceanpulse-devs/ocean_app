@@ -1,0 +1,731 @@
+{
+	"info": {
+		"_postman_id": "ocean-messaging-collection",
+		"name": "Ocean - Messaging & Chat",
+		"description": "Complete collection for Ocean app messaging, chat, and real-time communication endpoints. Matches the actual messaging server implementation with proper routes, parameters, and data structures.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Message Management",
+			"item": [
+				{
+					"name": "Send Message",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"conversationId\": \"{{conversation_id}}\",\n  \"content\": \"Hey! I'm interested in your swap deal. Can we discuss the details?\",\n  \"type\": \"text\",\n  \"replyToId\": null,\n  \"mediaUrl\": null,\n  \"mediaType\": null\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/messages",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"messages"
+							]
+						},
+						"description": "Send a new message to a conversation. Supports text, images, and file attachments."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Messages",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/messages/{{conversation_id}}?page=1&limit=50&beforeId={{before_message_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"messages",
+								"{{conversation_id}}"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1",
+									"description": "Page number for pagination"
+								},
+								{
+									"key": "limit",
+									"value": "50",
+									"description": "Number of messages per page"
+								},
+								{
+									"key": "beforeId",
+									"value": "{{before_message_id}}",
+									"description": "Get messages before this message ID (for pagination)"
+								}
+							]
+						},
+						"description": "Get messages from a specific conversation with pagination support."
+					},
+					"response": []
+				},
+				{
+					"name": "Edit Message",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"content\": \"Hey! I'm interested in your swap deal. Can we discuss the details? (edited)\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/messages/{{message_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"messages",
+								"{{message_id}}"
+							]
+						},
+						"description": "Edit a message (only the sender can edit their own messages within 15 minutes)."
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Message",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/messages/{{message_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"messages",
+								"{{message_id}}"
+							]
+						},
+						"description": "Delete a message (only the sender can delete their own messages)."
+					},
+					"response": []
+				},
+				{
+					"name": "Add Reaction to Message",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"reaction\": \"👍\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/messages/{{message_id}}/reactions",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"messages",
+								"{{message_id}}",
+								"reactions"
+							]
+						},
+						"description": "Add a reaction (emoji) to a message."
+					},
+					"response": []
+				},
+				{
+					"name": "Remove Reaction from Message",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/messages/{{message_id}}/reactions/👍",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"messages",
+								"{{message_id}}",
+								"reactions",
+								"👍"
+							]
+						},
+						"description": "Remove a reaction from a message."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Conversation Management",
+			"item": [
+				{
+					"name": "Create Conversation",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"type\": \"direct\",\n  \"participants\": [\"{{recipient_user_id}}\"]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/conversations",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"conversations"
+							]
+						},
+						"description": "Create a new direct or group conversation."
+					},
+					"response": []
+				},
+				{
+					"name": "Create Group Conversation",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"type\": \"group\",\n  \"name\": \"Swap Deal Discussion\",\n  \"description\": \"Discussion about the guitar for camera swap deal\",\n  \"participants\": [\"{{recipient_user_id}}\", \"{{another_user_id}}\"]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/conversations",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"conversations"
+							]
+						},
+						"description": "Create a new group conversation with multiple participants."
+					},
+					"response": []
+				},
+				{
+					"name": "Get User Conversations",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/conversations?page=1&limit=20",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"conversations"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1",
+									"description": "Page number for pagination"
+								},
+								{
+									"key": "limit",
+									"value": "20",
+									"description": "Number of conversations per page"
+								}
+							]
+						},
+						"description": "Get all conversations that the current user is a participant in."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Conversation Details",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/conversations/{{conversation_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"conversations",
+								"{{conversation_id}}"
+							]
+						},
+						"description": "Get detailed information about a specific conversation."
+					},
+					"response": []
+				},
+				{
+					"name": "Add Participant to Conversation",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"userId\": \"{{new_participant_id}}\",\n  \"role\": \"member\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/conversations/{{conversation_id}}/participants",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"conversations",
+								"{{conversation_id}}",
+								"participants"
+							]
+						},
+						"description": "Add a new participant to a conversation (admin only)."
+					},
+					"response": []
+				},
+				{
+					"name": "Remove Participant from Conversation",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/conversations/{{conversation_id}}/participants/{{participant_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"conversations",
+								"{{conversation_id}}",
+								"participants",
+								"{{participant_id}}"
+							]
+						},
+						"description": "Remove a participant from a conversation."
+					},
+					"response": []
+				},
+				{
+					"name": "Update Conversation",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Updated Swap Deal Discussion\",\n  \"description\": \"Updated description for the guitar swap deal\",\n  \"avatar\": \"https://example.com/avatar.jpg\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/conversations/{{conversation_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"conversations",
+								"{{conversation_id}}"
+							]
+						},
+						"description": "Update conversation settings (group conversations only, admin only)."
+					},
+					"response": []
+				},
+				{
+					"name": "Mark Conversation as Read",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/conversations/{{conversation_id}}/read",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"conversations",
+								"{{conversation_id}}",
+								"read"
+							]
+						},
+						"description": "Mark a conversation as read (updates last read timestamp)."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "User Management",
+			"item": [
+				{
+					"name": "Get Online Users",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/users/online?page=1&limit=20",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"users",
+								"online"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1",
+									"description": "Page number for pagination"
+								},
+								{
+									"key": "limit",
+									"value": "20",
+									"description": "Number of users per page"
+								}
+							]
+						},
+						"description": "Get a list of active users (excludes current user)."
+					},
+					"response": []
+				},
+				{
+					"name": "Search Users",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/users/search?q=john&page=1&limit=20",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"users",
+								"search"
+							],
+							"query": [
+								{
+									"key": "q",
+									"value": "john",
+									"description": "Search query (minimum 2 characters)"
+								},
+								{
+									"key": "page",
+									"value": "1",
+									"description": "Page number for pagination"
+								},
+								{
+									"key": "limit",
+									"value": "20",
+									"description": "Number of users per page"
+								}
+							]
+						},
+						"description": "Search for users by name or email."
+					},
+					"response": []
+				},
+				{
+					"name": "Get User Profile",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/users/{{user_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"users",
+								"{{user_id}}"
+							]
+						},
+						"description": "Get user profile and check for existing direct conversation."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Recent Contacts",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/users/recent/contacts?limit=10",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"users",
+								"recent",
+								"contacts"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "10",
+									"description": "Maximum number of recent contacts to return"
+								}
+							]
+						},
+						"description": "Get users from recent direct conversations."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Conversation Stats",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/users/stats/conversations",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"users",
+								"stats",
+								"conversations"
+							]
+						},
+						"description": "Get conversation statistics for the current user."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Health Check",
+			"item": [
+				{
+					"name": "Server Health Check",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/health",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"health"
+							]
+						},
+						"description": "Check if the messaging server is running and healthy."
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:5001",
+			"type": "string",
+			"description": "Ocean Messaging Server base URL (default port 5001)"
+		},
+		{
+			"key": "auth_token",
+			"value": "your_jwt_token_here",
+			"type": "string",
+			"description": "JWT token from main Ocean server authentication"
+		},
+		{
+			"key": "conversation_id",
+			"value": "conversation_uuid_here",
+			"type": "string",
+			"description": "Conversation UUID for message operations"
+		},
+		{
+			"key": "message_id",
+			"value": "message_uuid_here",
+			"type": "string",
+			"description": "Message UUID for edit/delete/reaction operations"
+		},
+		{
+			"key": "recipient_user_id",
+			"value": "recipient_user_uuid_here",
+			"type": "string",
+			"description": "User ID to create direct conversation with"
+		},
+		{
+			"key": "user_id",
+			"value": "user_uuid_here",
+			"type": "string",
+			"description": "User ID for profile and conversation operations"
+		},
+		{
+			"key": "participant_id",
+			"value": "participant_user_uuid_here",
+			"type": "string",
+			"description": "Participant user ID for conversation management"
+		},
+		{
+			"key": "before_message_id",
+			"value": "message_uuid_for_pagination",
+			"type": "string",
+			"description": "Message ID for pagination (get messages before this ID)"
+		},
+		{
+			"key": "another_user_id",
+			"value": "another_user_uuid_here",
+			"type": "string",
+			"description": "Additional user ID for group conversation creation"
+		}
+	]
+}

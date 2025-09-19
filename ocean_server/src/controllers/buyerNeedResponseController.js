@@ -1,6 +1,24 @@
 const db = require('../../models');
 const { Op } = require('sequelize');
 
+// Helper function to create notifications
+const createNotification = async (userId, title, message, type = 'info', category = 'system', metadata = null) => {
+  try {
+    const notification = await db.Notification.create({
+      userId,
+      title,
+      message,
+      type,
+      category,
+      metadata
+    });
+    console.log(`📧 Buyer need notification created for user ${userId}: ${title}`);
+    return notification;
+  } catch (error) {
+    console.error('Error creating buyer need notification:', error);
+  }
+};
+
 class BuyerNeedResponseController {
   // Create a response to a buyer need
   async createResponse(req, res) {
@@ -108,6 +126,32 @@ class BuyerNeedResponseController {
       if (buyerNeed.status === 'active') {
         await buyerNeed.update({ status: 'in_progress' });
       }
+
+      // Get seller info for notifications
+      const seller = await db.UserTable.findByPk(seller_id, {
+        attributes: ['id', 'fullName', 'username', 'profilePicture']
+      });
+
+      // Send notification to buyer that their need was matched
+      await createNotification(
+        buyerNeed.buyer_id,
+        'Buyer Need Matched!',
+        `${seller.fullName || seller.username} responded to your buyer need "${buyerNeed.title}"`,
+        'success',
+        'buyer_need',
+        { 
+          buyerNeedId: buyerNeed.id,
+          title: buyerNeed.title,
+          responseId: response.id,
+          sellerId: seller_id,
+          sellerName: seller.fullName || seller.username,
+          sellerUsername: seller.username,
+          offerPrice: offer_price,
+          currency: currency || 'USD',
+          messagePreview: message.substring(0, 100),
+          responseType: response_type || 'offer'
+        }
+      );
 
       res.status(201).json({
         success: true,

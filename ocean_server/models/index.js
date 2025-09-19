@@ -181,9 +181,11 @@ const setupAssociations = () => {
   
   // SellerDocument associations
   db.SellerDocument.belongsTo(db.UserTable, { foreignKey: 'userId', as: 'user' });
+  db.SellerDocument.belongsTo(db.SellersTable, { foreignKey: 'sellerId', as: 'seller' });
   
   // SellersTable associations
   db.SellersTable.belongsTo(db.UserTable, { foreignKey: 'userId', as: 'user' });
+  db.SellersTable.hasMany(db.SellerDocument, { foreignKey: 'sellerId', as: 'documents' });
   
   // GroupBuy associations
   db.GroupBuy.belongsTo(db.UserTable, { foreignKey: 'creator_id', as: 'creator' });

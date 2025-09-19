@@ -21,14 +21,15 @@
 							}
 						],
 						"url": {
-							"raw": "{{base_url}}/api/admin/pending-sellers?page=1&limit=20",
+							"raw": "{{base_url}}/api/admin/sellers/pending?page=1&limit=20",
 							"host": [
 								"{{base_url}}"
 							],
 							"path": [
 								"api",
 								"admin",
-								"pending-sellers"
+								"sellers",
+								"pending"
 							],
 							"query": [
 								{
@@ -120,7 +121,7 @@
 				{
 					"name": "Approve Seller",
 					"request": {
-						"method": "POST",
+						"method": "PUT",
 						"header": [
 							{
 								"key": "Authorization",
@@ -135,17 +136,19 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"sellerId\": \"{{sellerId}}\",\n  \"adminNotes\": \"All documents verified successfully. Business license and tax documents are valid.\",\n  \"approvedBy\": \"{{adminUserId}}\",\n  \"approvalDate\": \"2024-01-15T10:30:00Z\"\n}"
+							"raw": "{\n  \"verificationLevel\": \"basic\",\n  \"verificationNotes\": \"All documents verified successfully. Business license and tax documents are valid.\"\n}"
 						},
 						"url": {
-							"raw": "{{base_url}}/api/admin/approve-seller",
+							"raw": "{{base_url}}/api/admin/sellers/{{sellerId}}/approve",
 							"host": [
 								"{{base_url}}"
 							],
 							"path": [
 								"api",
 								"admin",
-								"approve-seller"
+								"sellers",
+								"{{sellerId}}",
+								"approve"
 							]
 						},
 						"description": "Approve a seller application"
@@ -155,7 +158,7 @@
 				{
 					"name": "Reject Seller",
 					"request": {
-						"method": "POST",
+						"method": "PUT",
 						"header": [
 							{
 								"key": "Authorization",
@@ -170,17 +173,19 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"sellerId\": \"{{sellerId}}\",\n  \"rejectionReason\": \"Incomplete documentation. Please provide valid business license.\",\n  \"rejectedBy\": \"{{adminUserId}}\",\n  \"rejectionDate\": \"2024-01-15T10:30:00Z\",\n  \"canReapply\": true,\n  \"reapplyAfter\": \"2024-02-15T00:00:00Z\"\n}"
+							"raw": "{\n  \"rejectionReason\": \"Incomplete documentation. Please provide valid business license.\",\n  \"verificationNotes\": \"Additional documents required for verification\"\n}"
 						},
 						"url": {
-							"raw": "{{base_url}}/api/admin/reject-seller",
+							"raw": "{{base_url}}/api/admin/sellers/{{sellerId}}/reject",
 							"host": [
 								"{{base_url}}"
 							],
 							"path": [
 								"api",
 								"admin",
-								"reject-seller"
+								"sellers",
+								"{{sellerId}}",
+								"reject"
 							]
 						},
 						"description": "Reject a seller application"
@@ -219,6 +224,187 @@
 							]
 						},
 						"description": "Toggle seller status (active/suspended/banned)"
+					},
+					"response": []
+				},
+				{
+					"name": "Suspend Seller",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"suspensionReason\": \"Violation of platform policies\",\n  \"suspensionDuration\": 30\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/admin/sellers/{{sellerId}}/suspend",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"sellers",
+								"{{sellerId}}",
+								"suspend"
+							]
+						},
+						"description": "Suspend a seller account"
+					},
+					"response": []
+				},
+				{
+					"name": "Activate Seller",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"activationNotes\": \"Seller account reactivated after policy compliance review\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/admin/sellers/{{sellerId}}/activate",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"sellers",
+								"{{sellerId}}",
+								"activate"
+							]
+						},
+						"description": "Activate a suspended seller account"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Seller",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"deleteReason\": \"Seller requested account deletion\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/admin/sellers/{{sellerId}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"sellers",
+								"{{sellerId}}"
+							]
+						},
+						"description": "Delete a seller account (soft delete)"
+					},
+					"response": []
+				},
+				{
+					"name": "Search Sellers",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/admin/sellers/search?query=electronics&page=1&limit=20",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"sellers",
+								"search"
+							],
+							"query": [
+								{
+									"key": "query",
+									"value": "electronics",
+									"description": "Search query"
+								},
+								{
+									"key": "page",
+									"value": "1",
+									"description": "Page number"
+								},
+								{
+									"key": "limit",
+									"value": "20",
+									"description": "Items per page"
+								}
+							]
+						},
+						"description": "Search sellers by name, email, or business"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Seller Stats",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/admin/sellers/stats",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"sellers",
+								"stats"
+							]
+						},
+						"description": "Get seller statistics and breakdown"
 					},
 					"response": []
 				}
@@ -337,12 +523,307 @@
 						"description": "Toggle user status (active/suspended/banned)"
 					},
 					"response": []
+				},
+				{
+					"name": "Suspend User",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"suspensionReason\": \"Violation of community guidelines\",\n  \"suspensionDuration\": 7\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/admin/users/{{userId}}/suspend",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"users",
+								"{{userId}}",
+								"suspend"
+							]
+						},
+						"description": "Suspend a user account"
+					},
+					"response": []
+				},
+				{
+					"name": "Activate User",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"activationNotes\": \"User account reactivated after review\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/admin/users/{{userId}}/activate",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"users",
+								"{{userId}}",
+								"activate"
+							]
+						},
+						"description": "Activate a suspended user account"
+					},
+					"response": []
+				},
+				{
+					"name": "Ban User",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"banReason\": \"Severe violation of platform policies\",\n  \"banDuration\": 30\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/admin/users/{{userId}}/ban",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"users",
+								"{{userId}}",
+								"ban"
+							]
+						},
+						"description": "Ban a user account"
+					},
+					"response": []
+				},
+				{
+					"name": "Unban User",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"unbanNotes\": \"User ban lifted after appeal review\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/admin/users/{{userId}}/unban",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"users",
+								"{{userId}}",
+								"unban"
+							]
+						},
+						"description": "Unban a user account"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete User",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"deleteReason\": \"User requested account deletion\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/admin/users/{{userId}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"users",
+								"{{userId}}"
+							]
+						},
+						"description": "Delete a user account (soft delete)"
+					},
+					"response": []
+				},
+				{
+					"name": "Search Users",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/admin/users/search?query=john&page=1&limit=20",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"users",
+								"search"
+							],
+							"query": [
+								{
+									"key": "query",
+									"value": "john",
+									"description": "Search query"
+								},
+								{
+									"key": "page",
+									"value": "1",
+									"description": "Page number"
+								},
+								{
+									"key": "limit",
+									"value": "20",
+									"description": "Items per page"
+								}
+							]
+						},
+						"description": "Search users by name, username, or email"
+					},
+					"response": []
+				},
+				{
+					"name": "Get User Activity",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/admin/users/{{userId}}/activity?page=1&limit=50",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"users",
+								"{{userId}}",
+								"activity"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1",
+									"description": "Page number"
+								},
+								{
+									"key": "limit",
+									"value": "50",
+									"description": "Items per page"
+								}
+							]
+						},
+						"description": "Get user activity logs and recent actions"
+					},
+					"response": []
+				},
+				{
+					"name": "Get User Stats",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/admin/users/stats",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"users",
+								"stats"
+							]
+						},
+						"description": "Get user statistics and breakdown"
+					},
+					"response": []
 				}
 			],
 			"description": "User management and moderation"
 		},
 		{
-			"name": "Admin Statistics",
+			"name": "Analytics & Reporting",
 			"item": [
 				{
 					"name": "Get Admin Stats",
@@ -381,9 +862,1799 @@
 						"description": "Get comprehensive admin statistics and platform overview"
 					},
 					"response": []
+				},
+				{
+					"name": "Get Admin Dashboard",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/admin/dashboard?period=30d",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"dashboard"
+							],
+							"query": [
+								{
+									"key": "period",
+									"value": "30d",
+									"description": "Time period (7d, 30d, 90d, 1y)"
+								}
+							]
+						},
+						"description": "Get comprehensive admin dashboard data with charts and metrics"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Platform Analytics",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/admin/analytics?period=30d&metric=all&category=electronics&country=US",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"analytics"
+							],
+							"query": [
+								{
+									"key": "period",
+									"value": "30d",
+									"description": "Time period (7d, 30d, 90d, 1y)"
+								},
+								{
+									"key": "metric",
+									"value": "all",
+									"description": "Metric type (all, users, sellers, products, transactions, engagement)"
+								},
+								{
+									"key": "category",
+									"value": "electronics",
+									"description": "Filter by category"
+								},
+								{
+									"key": "country",
+									"value": "US",
+									"description": "Filter by country"
+								}
+							]
+						},
+						"description": "Get detailed platform analytics with filtering options"
+					},
+					"response": []
+				},
+				{
+					"name": "Generate Reports",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"reportType\": \"comprehensive\",\n  \"period\": \"30d\",\n  \"format\": \"json\",\n  \"includeCharts\": true\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/admin/reports",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"reports"
+							]
+						},
+						"description": "Generate comprehensive reports (comprehensive, users, sellers, products, transactions, revenue)"
+					},
+					"response": []
+				},
+				{
+					"name": "Get System Activity",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/admin/activity?page=1&limit=50&type=all&severity=all",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"activity"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1",
+									"description": "Page number"
+								},
+								{
+									"key": "limit",
+									"value": "50",
+									"description": "Items per page"
+								},
+								{
+									"key": "type",
+									"value": "all",
+									"description": "Activity type (all, user, seller, admin, system)"
+								},
+								{
+									"key": "severity",
+									"value": "all",
+									"description": "Severity level (all, low, medium, high, critical)"
+								},
+								{
+									"key": "startDate",
+									"value": "2024-01-01",
+									"description": "Start date (YYYY-MM-DD)"
+								},
+								{
+									"key": "endDate",
+									"value": "2024-01-31",
+									"description": "End date (YYYY-MM-DD)"
+								}
+							]
+						},
+						"description": "Get system activity logs with filtering and pagination"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Performance Metrics",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/admin/performance?period=24h",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"performance"
+							],
+							"query": [
+								{
+									"key": "period",
+									"value": "24h",
+									"description": "Time period (1h, 24h, 7d, 30d)"
+								}
+							]
+						},
+						"description": "Get system performance metrics (server, database, API, user performance)"
+					},
+					"response": []
 				}
 			],
-			"description": "Admin statistics and platform analytics"
+			"description": "Analytics, reporting, and performance monitoring"
+		},
+		{
+			"name": "System Administration",
+			"item": [
+				{
+					"name": "Get System Configuration",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/admin/config",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"config"
+							]
+						},
+						"description": "Get current system configuration settings"
+					},
+					"response": []
+				},
+				{
+					"name": "Update System Configuration",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"config\": {\n    \"database\": {\n      \"pool\": {\n        \"max\": 10,\n        \"min\": 2\n      }\n    },\n    \"security\": {\n      \"bcryptRounds\": 12,\n      \"rateLimitMax\": 150\n    },\n    \"upload\": {\n      \"maxFileSize\": 20971520\n    }\n  }\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/admin/config",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"config"
+							]
+						},
+						"description": "Update system configuration settings"
+					},
+					"response": []
+				},
+				{
+					"name": "Get System Logs",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/admin/logs?page=1&limit=100&level=all&source=all",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"logs"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1",
+									"description": "Page number"
+								},
+								{
+									"key": "limit",
+									"value": "100",
+									"description": "Items per page"
+								},
+								{
+									"key": "level",
+									"value": "all",
+									"description": "Log level (all, error, warn, info, debug)"
+								},
+								{
+									"key": "source",
+									"value": "all",
+									"description": "Log source (all, api, auth, database, email, upload)"
+								},
+								{
+									"key": "startDate",
+									"value": "2024-01-01",
+									"description": "Start date (YYYY-MM-DD)"
+								},
+								{
+									"key": "endDate",
+									"value": "2024-01-31",
+									"description": "End date (YYYY-MM-DD)"
+								}
+							]
+						},
+						"description": "Get system logs with filtering and pagination"
+					},
+					"response": []
+				},
+				{
+					"name": "Get System Health",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/admin/health",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"health"
+							]
+						},
+						"description": "Get system health status and metrics"
+					},
+					"response": []
+				},
+				{
+					"name": "Clear System Cache",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"cacheType\": \"all\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/admin/cache/clear",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"cache",
+								"clear"
+							]
+						},
+						"description": "Clear system cache (all, redis, memory, file)"
+					},
+					"response": []
+				},
+				{
+					"name": "Restart System Services",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"services\": [\"database\", \"redis\"]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/admin/services/restart",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"services",
+								"restart"
+							]
+						},
+						"description": "Restart system services (all, database, redis, email, upload)"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Backup Management",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/admin/backups",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"backups"
+							]
+						},
+						"description": "Get backup management information and settings"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Backup",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"type\": \"full\",\n  \"description\": \"Manual backup before system update\",\n  \"compression\": true\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/admin/backups/create",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"backups",
+								"create"
+							]
+						},
+						"description": "Create system backup (full, incremental, database_only, files_only)"
+					},
+					"response": []
+				},
+				{
+					"name": "Restore Backup",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"confirm\": true\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/admin/backups/{{backupId}}/restore",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"backups",
+								"{{backupId}}",
+								"restore"
+							]
+						},
+						"description": "Restore system from backup"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Backup",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/admin/backups/{{backupId}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"backups",
+								"{{backupId}}"
+							]
+						},
+						"description": "Delete backup file"
+					},
+					"response": []
+				}
+			],
+			"description": "System configuration, logs, health monitoring, and backup management"
+		},
+		{
+			"name": "Security & Moderation",
+			"item": [
+				{
+					"name": "Get Security Alerts",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/admin/security/alerts?page=1&limit=50&severity=all&status=all",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"security",
+								"alerts"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1",
+									"description": "Page number"
+								},
+								{
+									"key": "limit",
+									"value": "50",
+									"description": "Items per page"
+								},
+								{
+									"key": "severity",
+									"value": "all",
+									"description": "Severity level (all, low, medium, high, critical)"
+								},
+								{
+									"key": "status",
+									"value": "all",
+									"description": "Status (all, active, resolved, dismissed)"
+								},
+								{
+									"key": "startDate",
+									"value": "2024-01-01",
+									"description": "Start date (YYYY-MM-DD)"
+								},
+								{
+									"key": "endDate",
+									"value": "2024-01-31",
+									"description": "End date (YYYY-MM-DD)"
+								}
+							]
+						},
+						"description": "Get security alerts with filtering and pagination"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Suspicious Activities",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/admin/security/activities?page=1&limit=50&activityType=all&severity=all",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"security",
+								"activities"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1",
+									"description": "Page number"
+								},
+								{
+									"key": "limit",
+									"value": "50",
+									"description": "Items per page"
+								},
+								{
+									"key": "activityType",
+									"value": "all",
+									"description": "Activity type (all, login_attempts, spam_posts, fake_accounts, suspicious_transactions)"
+								},
+								{
+									"key": "severity",
+									"value": "all",
+									"description": "Severity level (all, low, medium, high, critical)"
+								},
+								{
+									"key": "startDate",
+									"value": "2024-01-01",
+									"description": "Start date (YYYY-MM-DD)"
+								},
+								{
+									"key": "endDate",
+									"value": "2024-01-31",
+									"description": "End date (YYYY-MM-DD)"
+								}
+							]
+						},
+						"description": "Get suspicious activities with filtering and pagination"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Security Statistics",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/admin/security/stats?period=30d",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"security",
+								"stats"
+							],
+							"query": [
+								{
+									"key": "period",
+									"value": "30d",
+									"description": "Time period (7d, 30d, 90d)"
+								}
+							]
+						},
+						"description": "Get security statistics and breakdowns"
+					},
+					"response": []
+				},
+				{
+					"name": "Block Suspicious User",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"reason\": \"Suspicious activity detected\",\n  \"duration\": 30,\n  \"blockType\": \"account\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/admin/security/users/{{userId}}/block",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"security",
+								"users",
+								"{{userId}}",
+								"block"
+							]
+						},
+						"description": "Block suspicious user (account, ip, email)"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Moderation Queue",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/admin/moderation/queue?page=1&limit=20&type=all&priority=all&status=pending",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"moderation",
+								"queue"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1",
+									"description": "Page number"
+								},
+								{
+									"key": "limit",
+									"value": "20",
+									"description": "Items per page"
+								},
+								{
+									"key": "type",
+									"value": "all",
+									"description": "Content type (all, posts, products, comments, images)"
+								},
+								{
+									"key": "priority",
+									"value": "all",
+									"description": "Priority level (all, low, medium, high, urgent)"
+								},
+								{
+									"key": "status",
+									"value": "pending",
+									"description": "Status (pending, in_review, approved, rejected)"
+								}
+							]
+						},
+						"description": "Get content moderation queue with filtering"
+					},
+					"response": []
+				},
+				{
+					"name": "Approve Content",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"type\": \"post\",\n  \"approvalNotes\": \"Content reviewed and approved\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/admin/moderation/{{contentId}}/approve",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"moderation",
+								"{{contentId}}",
+								"approve"
+							]
+						},
+						"description": "Approve flagged content"
+					},
+					"response": []
+				},
+				{
+					"name": "Reject Content",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"type\": \"post\",\n  \"rejectionReason\": \"Inappropriate content\",\n  \"rejectionNotes\": \"Content violates community guidelines\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/admin/moderation/{{contentId}}/reject",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"moderation",
+								"{{contentId}}",
+								"reject"
+							]
+						},
+						"description": "Reject flagged content"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Flagged Content",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/admin/moderation/flagged?page=1&limit=20&contentType=all&flagType=all&status=all",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"moderation",
+								"flagged"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1",
+									"description": "Page number"
+								},
+								{
+									"key": "limit",
+									"value": "20",
+									"description": "Items per page"
+								},
+								{
+									"key": "contentType",
+									"value": "all",
+									"description": "Content type (all, posts, products, comments, users)"
+								},
+								{
+									"key": "flagType",
+									"value": "all",
+									"description": "Flag type (all, spam, inappropriate, copyright, fake)"
+								},
+								{
+									"key": "status",
+									"value": "all",
+									"description": "Status (all, active, resolved, dismissed)"
+								}
+							]
+						},
+						"description": "Get flagged content with filtering"
+					},
+					"response": []
+				},
+				{
+					"name": "Resolve Flag",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"resolution\": \"dismissed\",\n  \"resolutionNotes\": \"Flag reviewed and dismissed\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/admin/moderation/flags/{{flagId}}/resolve",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"moderation",
+								"flags",
+								"{{flagId}}",
+								"resolve"
+							]
+						},
+						"description": "Resolve flagged content (dismissed, content_removed, user_warned, user_banned)"
+					},
+					"response": []
+				}
+			],
+			"description": "Security monitoring, content moderation, and suspicious activity management"
+		},
+		{
+			"name": "Content Management",
+			"item": [
+				{
+					"name": "Get All Posts",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/admin/content/posts?page=1&limit=20&status=all&contentType=all&sortBy=createdAt&sortOrder=DESC",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"content",
+								"posts"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1",
+									"description": "Page number"
+								},
+								{
+									"key": "limit",
+									"value": "20",
+									"description": "Items per page"
+								},
+								{
+									"key": "status",
+									"value": "all",
+									"description": "Post status (all, published, draft, archived, deleted)"
+								},
+								{
+									"key": "contentType",
+									"value": "all",
+									"description": "Content type (all, text, image, video, mixed)"
+								},
+								{
+									"key": "sortBy",
+									"value": "createdAt",
+									"description": "Sort field (createdAt, updatedAt, likesCount, commentsCount)"
+								},
+								{
+									"key": "sortOrder",
+									"value": "DESC",
+									"description": "Sort order (ASC, DESC)"
+								},
+								{
+									"key": "search",
+									"value": "",
+									"description": "Search in content and title"
+								},
+								{
+									"key": "startDate",
+									"value": "2024-01-01",
+									"description": "Start date (YYYY-MM-DD)"
+								},
+								{
+									"key": "endDate",
+									"value": "2024-01-31",
+									"description": "End date (YYYY-MM-DD)"
+								}
+							]
+						},
+						"description": "Get all posts with admin details and filtering"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Post by ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/admin/content/posts/{{postId}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"content",
+								"posts",
+								"{{postId}}"
+							]
+						},
+						"description": "Get detailed post information with comments"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Post Status",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"status\": \"published\",\n  \"adminNotes\": \"Post approved and published by admin\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/admin/content/posts/{{postId}}/status",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"content",
+								"posts",
+								"{{postId}}",
+								"status"
+							]
+						},
+						"description": "Update post status (published, draft, archived, deleted)"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Post",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"reason\": \"Post violates community guidelines\",\n  \"permanent\": false\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/admin/content/posts/{{postId}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"content",
+								"posts",
+								"{{postId}}"
+							]
+						},
+						"description": "Delete post (soft or permanent delete)"
+					},
+					"response": []
+				},
+				{
+					"name": "Bulk Update Posts",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"postIds\": [\"post-1\", \"post-2\", \"post-3\"],\n  \"action\": \"status\",\n  \"value\": \"archived\",\n  \"adminNotes\": \"Bulk archive of old posts\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/admin/content/posts/bulk-update",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"content",
+								"posts",
+								"bulk-update"
+							]
+						},
+						"description": "Bulk update posts (status, category, archive, delete)"
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Products",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/admin/content/products?page=1&limit=20&status=all&category=all&sortBy=createdAt&sortOrder=DESC",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"content",
+								"products"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1",
+									"description": "Page number"
+								},
+								{
+									"key": "limit",
+									"value": "20",
+									"description": "Items per page"
+								},
+								{
+									"key": "status",
+									"value": "all",
+									"description": "Product status (all, active, inactive, pending, rejected)"
+								},
+								{
+									"key": "category",
+									"value": "all",
+									"description": "Category ID"
+								},
+								{
+									"key": "sortBy",
+									"value": "createdAt",
+									"description": "Sort field (createdAt, updatedAt, price, viewsCount)"
+								},
+								{
+									"key": "sortOrder",
+									"value": "DESC",
+									"description": "Sort order (ASC, DESC)"
+								},
+								{
+									"key": "search",
+									"value": "",
+									"description": "Search in title and description"
+								},
+								{
+									"key": "minPrice",
+									"value": "0",
+									"description": "Minimum price"
+								},
+								{
+									"key": "maxPrice",
+									"value": "1000",
+									"description": "Maximum price"
+								},
+								{
+									"key": "startDate",
+									"value": "2024-01-01",
+									"description": "Start date (YYYY-MM-DD)"
+								},
+								{
+									"key": "endDate",
+									"value": "2024-01-31",
+									"description": "End date (YYYY-MM-DD)"
+								}
+							]
+						},
+						"description": "Get all products with admin details and filtering"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Product by ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/admin/content/products/{{productId}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"content",
+								"products",
+								"{{productId}}"
+							]
+						},
+						"description": "Get detailed product information with images"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Product Status",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"status\": \"active\",\n  \"adminNotes\": \"Product approved and activated by admin\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/admin/content/products/{{productId}}/status",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"content",
+								"products",
+								"{{productId}}",
+								"status"
+							]
+						},
+						"description": "Update product status (active, inactive, pending, rejected)"
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Categories",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/admin/content/categories?page=1&limit=50&status=all&search=&sortBy=name&sortOrder=ASC",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"content",
+								"categories"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1",
+									"description": "Page number"
+								},
+								{
+									"key": "limit",
+									"value": "50",
+									"description": "Items per page"
+								},
+								{
+									"key": "status",
+									"value": "all",
+									"description": "Category status (all, active, inactive)"
+								},
+								{
+									"key": "search",
+									"value": "",
+									"description": "Search in name and description"
+								},
+								{
+									"key": "sortBy",
+									"value": "name",
+									"description": "Sort field (name, createdAt, productCount)"
+								},
+								{
+									"key": "sortOrder",
+									"value": "ASC",
+									"description": "Sort order (ASC, DESC)"
+								}
+							]
+						},
+						"description": "Get all categories with product counts"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Category",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Electronics\",\n  \"description\": \"Electronic devices and accessories\",\n  \"icon\": \"electronics-icon\",\n  \"color\": \"#007bff\",\n  \"parentId\": null,\n  \"isActive\": true\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/admin/content/categories",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"content",
+								"categories"
+							]
+						},
+						"description": "Create new category"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Category",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Electronics & Gadgets\",\n  \"description\": \"Updated description for electronics category\",\n  \"icon\": \"electronics-gadgets-icon\",\n  \"color\": \"#28a745\",\n  \"isActive\": true\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/admin/content/categories/{{categoryId}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"content",
+								"categories",
+								"{{categoryId}}"
+							]
+						},
+						"description": "Update category information"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Category",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"reason\": \"Category no longer needed\",\n  \"force\": false\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/admin/content/categories/{{categoryId}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"content",
+								"categories",
+								"{{categoryId}}"
+							]
+						},
+						"description": "Delete category (with product count check)"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Content Statistics",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/admin/content/stats?period=30d",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"content",
+								"stats"
+							],
+							"query": [
+								{
+									"key": "period",
+									"value": "30d",
+									"description": "Time period (7d, 30d, 90d)"
+								}
+							]
+						},
+						"description": "Get comprehensive content statistics"
+					},
+					"response": []
+				}
+			],
+			"description": "Content management for posts, products, categories, and content statistics"
+		},
+		{
+			"name": "System Notifications",
+			"item": [
+				{
+					"name": "Send Maintenance Notification",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"Scheduled System Maintenance\",\n  \"message\": \"We will be performing scheduled maintenance on our servers from 2:00 AM to 4:00 AM UTC. Some features may be temporarily unavailable.\",\n  \"scheduledTime\": \"2024-01-25T02:00:00Z\",\n  \"estimatedDuration\": \"2 hours\",\n  \"affectedServices\": [\"messaging\", \"file_uploads\"],\n  \"maintenanceType\": \"scheduled\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/admin/maintenance/schedule",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"maintenance",
+								"schedule"
+							]
+						},
+						"description": "Send scheduled maintenance notification to all active users"
+					},
+					"response": []
+				},
+				{
+					"name": "Send Maintenance Completion",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"message\": \"System maintenance has been completed successfully. All services are now fully operational.\",\n  \"actualDuration\": \"1.5 hours\",\n  \"affectedServices\": [\"messaging\", \"file_uploads\"],\n  \"maintenanceType\": \"scheduled\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/admin/maintenance/complete",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"maintenance",
+								"complete"
+							]
+						},
+						"description": "Send maintenance completion notification"
+					},
+					"response": []
+				},
+				{
+					"name": "Send Emergency Maintenance",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"Emergency System Maintenance\",\n  \"message\": \"We are experiencing technical issues and need to perform emergency maintenance. The app may be temporarily unavailable.\",\n  \"affectedServices\": [\"all\"],\n  \"estimatedDuration\": \"30 minutes\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/admin/maintenance/emergency",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"maintenance",
+								"emergency"
+							]
+						},
+						"description": "Send emergency maintenance notification to online users"
+					},
+					"response": []
+				},
+				{
+					"name": "Send Feature Update",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"New Feature: Enhanced Group Buying\",\n  \"message\": \"We've added new features to group buying including automatic price updates and better participant management!\",\n  \"featureName\": \"Enhanced Group Buying\",\n  \"featureDescription\": \"Automatic price updates, better participant management, and improved notifications\",\n  \"updateType\": \"feature\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/admin/feature-update",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"feature-update"
+							]
+						},
+						"description": "Send feature update notification to all active users"
+					},
+					"response": []
+				},
+				{
+					"name": "Send App Update",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"App Update Available\",\n  \"message\": \"A new version of the Ocean app is available with improved performance and new features!\",\n  \"version\": \"2.1.0\",\n  \"updateType\": \"update\",\n  \"downloadUrl\": \"https://play.google.com/store/apps/details?id=com.ocean.app\",\n  \"releaseNotes\": \"• Improved performance\\n• New notification system\\n• Enhanced group buying features\\n• Bug fixes and stability improvements\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/admin/app-update",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"app-update"
+							]
+						},
+						"description": "Send app update notification to all active users"
+					},
+					"response": []
+				},
+				{
+					"name": "Send Security Alert",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"Security Alert: Suspicious Activity Detected\",\n  \"message\": \"We've detected suspicious activity on some accounts. Please ensure your password is strong and enable two-factor authentication if available.\",\n  \"alertType\": \"security\",\n  \"severity\": \"medium\",\n  \"affectedUsers\": \"all\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/admin/security-alert",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"security-alert"
+							]
+						},
+						"description": "Send security alert notification"
+					},
+					"response": []
+				},
+				{
+					"name": "Get System Health",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/admin/system-health",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"system-health"
+							]
+						},
+						"description": "Get current system health status"
+					},
+					"response": []
+				}
+			],
+			"description": "System notification management for admins"
 		}
 	],
 	"variable": [

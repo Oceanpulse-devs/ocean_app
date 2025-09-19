@@ -1,6 +1,24 @@
-const { Post, PostMedia, PostLike, PostComment, PostShare, SavedPost, UserTable, UserFollows, ProductCategory } = require('../../models');
+const { Post, PostMedia, PostLike, PostComment, PostShare, SavedPost, UserTable, UserFollows, ProductCategory, Notification } = require('../../models');
 const { Op, Sequelize } = require('sequelize');
 const cloudinaryService = require('../services/cloudinaryService');
+
+// Helper function to create notifications
+const createNotification = async (userId, title, message, type = 'info', category = 'system', metadata = null) => {
+    try {
+        const notification = await Notification.create({
+            userId,
+            title,
+            message,
+            type,
+            category,
+            metadata
+        });
+        console.log(`📧 Notification created for user ${userId}: ${title}`);
+        return notification;
+    } catch (error) {
+        console.error('Error creating notification:', error);
+    }
+};
 
 // Get home feed with stories and mixed posts
 const getHomeFeed = async (req, res) => {
@@ -649,6 +667,27 @@ const toggleLike = async (req, res) => {
             await PostLike.create({ postId, userId });
             await post.increment('likesCount');
             
+            // Send notification to post owner (if not liking own post)
+            if (post.userId !== userId) {
+                const user = await UserTable.findByPk(userId, {
+                    attributes: ['id', 'fullName', 'email', 'profilePicture']
+                });
+                
+                await createNotification(
+                    post.userId,
+                    'Your Post Was Liked',
+                    `${user.fullName} liked your post`,
+                    'info',
+                    'like',
+                    { 
+                        postId: post.id, 
+                        likerId: userId,
+                        likerName: user.fullName,
+                        postPreview: post.content ? post.content.substring(0, 100) : 'Your post'
+                    }
+                );
+            }
+            
             res.status(200).json({
                 message: "Post liked successfully",
                 data: { isLiked: true }
@@ -902,6 +941,24 @@ const createComment = async (req, res) => {
         const user = await UserTable.findByPk(userId, {
             attributes: ['id', 'fullName', 'email', 'profilePicture']
         });
+
+        // Send notification to post owner (if not commenting on own post)
+        if (post.userId !== userId) {
+            await createNotification(
+                post.userId,
+                'New Comment on Your Post',
+                `${user.fullName} commented on your post: "${content.trim().substring(0, 50)}${content.trim().length > 50 ? '...' : ''}"`,
+                'info',
+                'comment',
+                { 
+                    postId: post.id, 
+                    commentId: comment.id, 
+                    commenterId: userId,
+                    commenterName: user.fullName,
+                    commentPreview: content.trim().substring(0, 100)
+                }
+            );
+        }
 
         const commentData = {
             id: comment.id,
