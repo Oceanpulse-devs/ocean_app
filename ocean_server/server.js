@@ -366,7 +366,6 @@ const heavyDistributorRoutes = require('./src/routes/heavyDistributorRoutes');
 const sellerVerificationRoutes = require('./src/routes/sellerVerificationRoutes');
 
 app.use('/', authRoutes);
-app.use('/', adminRoutes);
 app.use('/', notificationRoutes);
 app.use('/', followRoutes);
 app.use('/', feedRoutes);
