@@ -61,7 +61,67 @@
 					"response": []
 				},
 				{
-					"name": "Update Profile",
+					"name": "Update Profile (Form Data)",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "fullName",
+									"value": "John Doe Updated",
+									"type": "text"
+								},
+								{
+									"key": "bio",
+									"value": "Updated bio information with real profile picture",
+									"type": "text"
+								},
+								{
+									"key": "location",
+									"value": "San Francisco, CA",
+									"type": "text"
+								},
+								{
+									"key": "website",
+									"value": "https://johndoe.com",
+									"type": "text"
+								},
+								{
+									"key": "profilePicture",
+									"type": "file",
+									"src": []
+								},
+								{
+									"key": "coverPicture",
+									"type": "file",
+									"src": []
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/profile",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"profile"
+							]
+						},
+						"description": "Update current user's profile with real image uploads using form-data"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Profile (JSON)",
 					"request": {
 						"method": "PUT",
 						"header": [
@@ -78,7 +138,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"fullName\": \"John Doe Updated\",\n  \"username\": \"johndoe_updated\",\n  \"bio\": \"Updated bio information\",\n  \"location\": \"San Francisco, CA\",\n  \"website\": \"https://johndoe.com\",\n  \"profilePicture\": \"https://example.com/new-profile-pic.jpg\",\n  \"coverPicture\": \"https://example.com/new-cover-pic.jpg\"\n}"
+							"raw": "{\n  \"fullName\": \"John Doe Updated\",\n  \"bio\": \"Updated bio information\",\n  \"location\": \"San Francisco, CA\",\n  \"website\": \"https://johndoe.com\"\n}"
 						},
 						"url": {
 							"raw": "{{base_url}}/api/profile",
@@ -90,7 +150,7 @@
 								"profile"
 							]
 						},
-						"description": "Update current user's profile information"
+						"description": "Update current user's profile information using JSON (without image uploads)"
 					},
 					"response": []
 				}

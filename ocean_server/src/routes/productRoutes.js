@@ -1,7 +1,21 @@
 const express = require('express');
 const router = express.Router();
+const multer = require('multer');
 const authMiddleware = require('../middleware/authMiddleware');
 const productController = require('../controllers/productController');
+
+// Configure multer for file uploads
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+  fileFilter: function (req, file, cb) {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files are allowed for product images'), false);
+    }
+  }
+});
 
 // Public routes (no authentication required)
 router.get('/api/products', productController.getProducts);
@@ -17,7 +31,7 @@ router.get('/api/categories/system', (req, res) => {
 });
 
 // Protected routes (authentication required)
-router.post('/api/products', authMiddleware, productController.createProduct);
+router.post('/api/products', authMiddleware, upload.array('images', 10), productController.createProduct);
 router.put('/api/products/:productId', authMiddleware, productController.updateProduct);
 router.delete('/api/products/:productId', authMiddleware, productController.deleteProduct);
 router.post('/api/products/:productId/save', authMiddleware, productController.toggleSaveProduct);

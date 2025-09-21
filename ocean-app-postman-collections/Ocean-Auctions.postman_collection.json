@@ -83,16 +83,107 @@
 								"key": "Authorization",
 								"value": "Bearer {{auth_token}}",
 								"type": "text"
-							},
-							{
-								"key": "Content-Type",
-								"value": "application/json",
-								"type": "text"
 							}
 						],
 						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"title\": \"Vintage Guitar Auction\",\n  \"description\": \"Rare 1960s Fender Stratocaster in excellent condition\",\n  \"startingPrice\": 500.00,\n  \"reservePrice\": 1000.00,\n  \"buyNowPrice\": 2500.00,\n  \"category\": \"{{tech_category_id}}\",\n  \"condition\": \"Excellent\",\n  \"location\": \"Los Angeles, CA\",\n  \"startDate\": \"2024-01-15T10:00:00Z\",\n  \"endDate\": \"2024-01-22T18:00:00Z\",\n  \"images\": [\"https://example.com/guitar1.jpg\", \"https://example.com/guitar2.jpg\"],\n  \"tags\": [\"vintage\", \"guitar\", \"fender\", \"stratocaster\"],\n  \"shippingOptions\": {\n    \"freeShipping\": false,\n    \"shippingCost\": 50.00,\n    \"pickupAvailable\": true\n  }\n}"
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "title",
+									"value": "Vintage Guitar Auction",
+									"type": "text"
+								},
+								{
+									"key": "description",
+									"value": "Rare 1960s Fender Stratocaster in excellent condition. This beautiful guitar has been well-maintained and is ready to play.",
+									"type": "text"
+								},
+								{
+									"key": "startingPrice",
+									"value": "500.00",
+									"type": "text"
+								},
+								{
+									"key": "reservePrice",
+									"value": "1000.00",
+									"type": "text"
+								},
+								{
+									"key": "minimumBidIncrement",
+									"value": "25.00",
+									"type": "text"
+								},
+								{
+									"key": "startTime",
+									"value": "2024-01-15T10:00:00Z",
+									"type": "text"
+								},
+								{
+									"key": "endTime",
+									"value": "2024-01-22T18:00:00Z",
+									"type": "text"
+								},
+								{
+									"key": "category",
+									"value": "{{tech_category_id}}",
+									"type": "text"
+								},
+								{
+									"key": "subcategory",
+									"value": "Musical Instruments",
+									"type": "text"
+								},
+								{
+									"key": "condition",
+									"value": "like_new",
+									"type": "text"
+								},
+								{
+									"key": "location",
+									"value": "Lagos, Nigeria",
+									"type": "text"
+								},
+								{
+									"key": "tags",
+									"value": "[\"vintage\", \"guitar\", \"fender\", \"stratocaster\", \"music\"]",
+									"type": "text"
+								},
+								{
+									"key": "shippingInfo",
+									"value": "{\"freeShipping\": false, \"shippingCost\": 50.00, \"pickupAvailable\": true}",
+									"type": "text"
+								},
+								{
+									"key": "returnPolicy",
+									"value": "7-day return policy. Item must be in original condition.",
+									"type": "text"
+								},
+								{
+									"key": "autoExtend",
+									"value": "true",
+									"type": "text"
+								},
+								{
+									"key": "autoExtendMinutes",
+									"value": "5",
+									"type": "text"
+								},
+								{
+									"key": "images",
+									"type": "file",
+									"src": []
+								},
+								{
+									"key": "images",
+									"type": "file",
+									"src": []
+								},
+								{
+									"key": "images",
+									"type": "file",
+									"src": []
+								}
+							]
 						},
 						"url": {
 							"raw": "{{base_url}}/api/auctions",
@@ -104,7 +195,7 @@
 								"auctions"
 							]
 						},
-						"description": "Create a new auction"
+						"description": "Create a new auction with image uploads. Note: Use valid category names from the product categories list. You can get available categories by calling the Get Product Categories endpoint first."
 					},
 					"response": []
 				},
@@ -172,7 +263,7 @@
 					"response": []
 				},
 				{
-					"name": "Update Auction",
+					"name": "Update Auction (JSON)",
 					"request": {
 						"method": "PUT",
 						"header": [
@@ -189,7 +280,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"title\": \"Updated Auction Title\",\n  \"description\": \"Updated auction description\",\n  \"buyNowPrice\": 3000.00\n}"
+							"raw": "{\n  \"title\": \"Updated Auction Title\",\n  \"description\": \"Updated auction description with more details\",\n  \"startingPrice\": \"600.00\",\n  \"reservePrice\": \"1200.00\",\n  \"buyNowPrice\": \"3000.00\",\n  \"minimumBidIncrement\": \"50.00\",\n  \"condition\": \"excellent\",\n  \"location\": \"Abuja, Nigeria\",\n  \"tags\": [\"vintage\", \"collectible\", \"rare\"],\n  \"shippingInfo\": {\n    \"freeShipping\": true,\n    \"shippingCost\": 0,\n    \"estimatedDays\": \"3-5 business days\"\n  },\n  \"returnPolicy\": \"30-day return policy\"\n}"
 						},
 						"url": {
 							"raw": "{{base_url}}/api/auction/{{auctionId}}",
@@ -203,6 +294,87 @@
 							]
 						},
 						"description": "Update auction details"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Auction (Form Data)",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "title",
+									"value": "Updated Auction Title with Images",
+									"type": "text"
+								},
+								{
+									"key": "description",
+									"value": "Updated auction description with new images",
+									"type": "text"
+								},
+								{
+									"key": "startingPrice",
+									"value": "700.00",
+									"type": "text"
+								},
+								{
+									"key": "reservePrice",
+									"value": "1400.00",
+									"type": "text"
+								},
+								{
+									"key": "buyNowPrice",
+									"value": "3500.00",
+									"type": "text"
+								},
+								{
+									"key": "minimumBidIncrement",
+									"value": "75.00",
+									"type": "text"
+								},
+								{
+									"key": "condition",
+									"value": "excellent",
+									"type": "text"
+								},
+								{
+									"key": "location",
+									"value": "Port Harcourt, Nigeria",
+									"type": "text"
+								},
+								{
+									"key": "images",
+									"type": "file",
+									"src": []
+								},
+								{
+									"key": "images",
+									"type": "file",
+									"src": []
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auction/{{auctionId}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"auction",
+								"{{auctionId}}"
+							]
+						},
+						"description": "Update auction with new images using form-data"
 					},
 					"response": []
 				},

@@ -1,5 +1,6 @@
 const express = require('express')
 const router = express.Router()
+const multer = require('multer')
 const {signup,login,forgotPassword,verifyResetCode,resetPassword,sellerRegistration,verifyEmail,resendVerificationEmail} = require('../controllers/authcontroller')
 const authMiddleware = require('../middleware/authMiddleware')
 const updateRoleBasedOnVerification = require('../middleware/sellerVerficationstatusWare')
@@ -11,6 +12,19 @@ const passport = require('passport')
 const jwt = require('jsonwebtoken')
 const JWT_SECRET = process.env.JWT_SECRET
 const redisClient = require('../config/redisdb')
+
+// Configure multer for profile picture uploads
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+  fileFilter: function (req, file, cb) {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files are allowed for profile pictures'), false);
+    }
+  }
+});
 
 
 //auth routes
@@ -128,7 +142,10 @@ router.post('/api/seller-registration', authMiddleware,sellerRegistration)
 //profile routes 
 router.get('/api/profile', authMiddleware, currentUserprofile)
 router.get('/api/users/:userId', authMiddleware, getUserProfileById)
-router.put('/api/profile', authMiddleware, updateProfile)
+router.put('/api/profile', authMiddleware, upload.fields([
+  { name: 'profilePicture', maxCount: 1 },
+  { name: 'coverPicture', maxCount: 1 }
+]), updateProfile)
 
 
 

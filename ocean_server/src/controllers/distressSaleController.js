@@ -26,7 +26,7 @@ class DistressSaleController {
 
       // Check if user is a verified seller
       const seller = await db.SellersTable.findOne({ where: { userId: sellerId } });
-      if (!seller || seller.status !== 'verified') {
+      if (!seller || seller.verificationStatus !== 'approved') {
         return res.status(403).json({
           success: false,
           message: 'Only verified sellers can create distress sales'
@@ -40,6 +40,39 @@ class DistressSaleController {
           message: 'Original price and discount percentage are required for distress sales'
         });
       }
+
+      // Process uploaded images
+      let imageUrls = [];
+      if (req.files && req.files.length > 0) {
+        const cloudinaryService = require('../services/cloudinaryService');
+        console.log(`Processing ${req.files.length} uploaded images for distress sale`);
+        
+        for (let i = 0; i < req.files.length; i++) {
+          const file = req.files[i];
+          try {
+            const uploadResult = await cloudinaryService.uploadFile(
+              file.buffer,
+              `ocean-app/distress-sales/${seller.id}/${Date.now()}-${i}`,
+              {
+                resource_type: 'image',
+                quality: 'auto'
+              }
+            );
+            imageUrls.push(uploadResult.url);
+            console.log(`Uploaded distress sale image ${i + 1}: ${uploadResult.url}`);
+          } catch (error) {
+            console.error(`Error uploading distress sale image ${i + 1}:`, error);
+            return res.status(500).json({
+              success: false,
+              message: `Failed to upload image ${i + 1}`,
+              error: error.message
+            });
+          }
+        }
+      }
+
+      // Use uploaded images or fallback to provided images
+      const finalImages = imageUrls.length > 0 ? imageUrls : (images || []);
 
       // Calculate the distress price if not provided
       const calculatedPrice = price || (originalPrice * (1 - discountPercentage / 100));
@@ -88,7 +121,7 @@ class DistressSaleController {
 
       // Create the distress sale product
       const distressProduct = await db.Product.create({
-        sellerId,
+        sellerId: seller.id,
         title,
         description,
         price: calculatedPrice,
@@ -102,7 +135,7 @@ class DistressSaleController {
         brand,
         condition: condition || 'good',
         location: finalLocation,
-        images: images || [],
+        images: finalImages,
         isDistressSale: true,
         status: 'active'
       });
@@ -141,7 +174,7 @@ class DistressSaleController {
 
       // Build filter conditions
       const whereClause = {
-        // isDistressSale: true, // Temporarily commented out until database columns are added
+        isDistressSale: true,
         status: 'active',
         isAvailable: true
       };
@@ -181,9 +214,16 @@ class DistressSaleController {
         where: whereClause,
         include: [
           {
-            model: db.UserTable,
+            model: db.SellersTable,
             as: 'seller',
-            attributes: ['id', 'fullName', 'location', 'email', 'accountType', 'profilePicture']
+            attributes: ['id', 'userId', 'businessName', 'businessAddress', 'country', 'state', 'category', 'verificationStatus'],
+            include: [
+              {
+                model: db.UserTable,
+                as: 'user',
+                attributes: ['id', 'fullName', 'email', 'profilePicture', 'accountType']
+              }
+            ]
           }
         ],
         order: [[sortBy, sortOrder]],
@@ -230,13 +270,20 @@ class DistressSaleController {
       const distressSale = await db.Product.findOne({
         where: {
           id,
-          // isDistressSale: true // Temporarily commented out until database columns are added
+          isDistressSale: true
         },
         include: [
           {
-            model: db.UserTable,
+            model: db.SellersTable,
             as: 'seller',
-            attributes: ['id', 'fullName', 'location', 'email', 'accountType', 'profilePicture']
+            attributes: ['id', 'userId', 'businessName', 'businessAddress', 'country', 'state', 'category', 'verificationStatus'],
+            include: [
+              {
+                model: db.UserTable,
+                as: 'user',
+                attributes: ['id', 'fullName', 'email', 'profilePicture', 'accountType']
+              }
+            ]
           }
         ]
       });
@@ -270,17 +317,33 @@ class DistressSaleController {
     try {
       const { id } = req.params;
       const updateData = req.body;
-      const sellerId = req.user.id;
+      const userId = req.user.id;
+
+      // Find the seller record
+      console.log('Looking for seller with userId:', userId);
+      const seller = await db.SellersTable.findOne({
+        where: { userId: userId }
+      });
+
+      console.log('Found seller:', seller ? `Yes (ID: ${seller.id})` : 'No');
+      if (!seller) {
+        return res.status(403).json({
+          success: false,
+          message: 'Only verified sellers can update distress sales'
+        });
+      }
 
       // Find the distress sale product
+      console.log('Looking for distress sale with:', { id, sellerId: seller.id });
       const distressSale = await db.Product.findOne({
         where: {
           id,
-          sellerId,
+          sellerId: seller.id,
           isDistressSale: true
         }
       });
 
+      console.log('Found distress sale:', distressSale ? 'Yes' : 'No');
       if (!distressSale) {
         return res.status(404).json({
           success: false,
@@ -307,6 +370,65 @@ class DistressSaleController {
         }
       }
 
+      // Process uploaded images if any
+      if (req.files && req.files.length > 0) {
+        const cloudinaryService = require('../services/cloudinaryService');
+        console.log(`Processing ${req.files.length} uploaded images for update`);
+        
+        const imageUrls = [];
+        for (let i = 0; i < req.files.length; i++) {
+          const file = req.files[i];
+          try {
+            const uploadResult = await cloudinaryService.uploadFile(
+              file.buffer,
+              `ocean-app/distress-sales/${seller.id}/${Date.now()}-${i}`,
+              {
+                resource_type: 'image',
+                quality: 'auto'
+              }
+            );
+            imageUrls.push(uploadResult.url);
+            console.log(`Uploaded image ${i + 1}: ${uploadResult.url}`);
+          } catch (error) {
+            console.error(`Error uploading image ${i + 1}:`, error);
+            return res.status(500).json({
+              message: `Failed to upload image ${i + 1}`,
+              error: error.message
+            });
+          }
+        }
+        
+        // Update images if new ones were uploaded
+        if (imageUrls.length > 0) {
+          updateData.images = imageUrls;
+        }
+      }
+
+      // Recalculate discounted price if originalPrice or discountPercentage is being updated
+      if (updateData.originalPrice || updateData.discountPercentage) {
+        try {
+          console.log('distressSale exists:', !!distressSale);
+          console.log('distressSale.originalPrice:', distressSale ? distressSale.originalPrice : 'N/A');
+          console.log('distressSale.discountPercentage:', distressSale ? distressSale.discountPercentage : 'N/A');
+          
+          // Convert string values to numbers for form-data
+          const originalPrice = updateData.originalPrice ? parseFloat(updateData.originalPrice) : (distressSale ? distressSale.originalPrice : null);
+          const discountPercentage = updateData.discountPercentage ? parseFloat(updateData.discountPercentage) : (distressSale ? distressSale.discountPercentage : null);
+          
+          console.log('Calculated originalPrice:', originalPrice);
+          console.log('Calculated discountPercentage:', discountPercentage);
+          
+          if (originalPrice && discountPercentage) {
+            const calculatedPrice = originalPrice * (1 - discountPercentage / 100);
+            updateData.price = calculatedPrice.toFixed(2);
+            console.log('Calculated price:', updateData.price);
+          }
+        } catch (error) {
+          console.error('Error in price calculation:', error);
+          throw error;
+        }
+      }
+
       // Update the product
       await distressSale.update(updateData);
 
@@ -329,12 +451,24 @@ class DistressSaleController {
   async deleteDistressSale(req, res) {
     try {
       const { id } = req.params;
-      const sellerId = req.user.id;
+      const userId = req.user.id;
+
+      // Find the seller record
+      const seller = await db.SellersTable.findOne({
+        where: { userId: userId }
+      });
+
+      if (!seller) {
+        return res.status(403).json({
+          success: false,
+          message: 'Only verified sellers can delete distress sales'
+        });
+      }
 
       const distressSale = await db.Product.findOne({
         where: {
           id,
-          sellerId,
+          sellerId: seller.id,
           isDistressSale: true
         }
       });
@@ -434,18 +568,47 @@ class DistressSaleController {
         distressExpiryDate
       } = req.body;
 
-      const sellerId = req.user.id;
+      const userId = req.user.id;
+
+      // Find the seller record
+      console.log('Looking for seller with userId:', userId);
+      const seller = await db.SellersTable.findOne({
+        where: { userId: userId }
+      });
+
+      console.log('Found seller:', seller ? `Yes (ID: ${seller.id})` : 'No');
+      if (!seller) {
+        return res.status(403).json({
+          success: false,
+          message: 'Only verified sellers can convert products to distress sales'
+        });
+      }
 
       // Find the product
+      console.log('Looking for product with:', { id, sellerId: seller.id, isDistressSale: false });
       const product = await db.Product.findOne({
         where: {
           id,
-          sellerId,
+          sellerId: seller.id,
           isDistressSale: false
         }
       });
 
+      console.log('Found product:', product ? 'Yes' : 'No');
+
       if (!product) {
+        // Let's check if the product exists at all (without seller restriction)
+        const anyProduct = await db.Product.findOne({
+          where: { id }
+        });
+        
+        console.log('Product exists in database:', anyProduct ? 'Yes' : 'No');
+        if (anyProduct) {
+          console.log('Product sellerId:', anyProduct.sellerId);
+          console.log('Product isDistressSale:', anyProduct.isDistressSale);
+          console.log('Expected sellerId:', seller.id);
+        }
+        
         return res.status(404).json({
           success: false,
           message: 'Product not found or you are not authorized to modify it'
@@ -467,11 +630,16 @@ class DistressSaleController {
         });
       }
 
+      // Calculate the discounted price
+      const discountedPrice = originalPrice * (1 - discountPercentage / 100);
+      console.log(`Converting product: Original price: ${originalPrice}, Discount: ${discountPercentage}%, New price: ${discountedPrice.toFixed(2)}`);
+
       // Convert to distress sale
       await product.update({
         isDistressSale: true,
         originalPrice,
         discountPercentage,
+        price: discountedPrice.toFixed(2), // Set the discounted price
         urgencyLevel: urgencyLevel || 'medium',
         distressReason,
         distressExpiryDate

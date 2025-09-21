@@ -26,7 +26,7 @@ const createAuction = async (req, res) => {
     
     // Check if user is a seller
     const seller = await SellersTable.findOne({
-      where: { userId: userId, verificationStatus: 'active' }
+      where: { userId: userId, verificationStatus: 'approved' }
     });
 
     if (!seller) {
@@ -62,6 +62,38 @@ const createAuction = async (req, res) => {
       });
     }
 
+    // Process uploaded images
+    let imageUrls = [];
+    if (req.files && req.files.length > 0) {
+      const cloudinaryService = require('../services/cloudinaryService');
+      console.log(`Processing ${req.files.length} uploaded images`);
+      
+      for (let i = 0; i < req.files.length; i++) {
+        const file = req.files[i];
+        try {
+          const uploadResult = await cloudinaryService.uploadFile(
+            file.buffer,
+            `ocean-app/auctions/${seller.id}/${Date.now()}-${i}`,
+            {
+              resource_type: 'image',
+              quality: 'auto'
+            }
+          );
+          imageUrls.push(uploadResult.url);
+          console.log(`Uploaded image ${i + 1}: ${uploadResult.url}`);
+        } catch (error) {
+          console.error(`Error uploading image ${i + 1}:`, error);
+          return res.status(500).json({
+            message: `Failed to upload image ${i + 1}`,
+            error: error.message
+          });
+        }
+      }
+    }
+
+    // Use uploaded images or fallback to provided images
+    const finalImages = imageUrls.length > 0 ? imageUrls : (images || []);
+
     // Validate category
     let categoryRecord;
     // Try to find by UUID first
@@ -81,13 +113,13 @@ const createAuction = async (req, res) => {
     // Update category usage count
     await categoryRecord.update({ usageCount: categoryRecord.usageCount + 1 });
 
-    if (startingPrice <= 0) {
+    if (parseFloat(startingPrice) <= 0) {
       return res.status(400).json({
         message: 'Starting price must be greater than 0'
       });
     }
 
-    if (reservePrice && reservePrice <= startingPrice) {
+    if (reservePrice && parseFloat(reservePrice) <= parseFloat(startingPrice)) {
       return res.status(400).json({
         message: 'Reserve price must be greater than starting price'
       });
@@ -119,7 +151,7 @@ const createAuction = async (req, res) => {
       subcategory,
       condition,
       location,
-      images: images || [],
+      images: finalImages,
       autoExtend: autoExtend || false,
       autoExtendMinutes: autoExtendMinutes || 5,
       tags: tags || [],
@@ -246,11 +278,6 @@ const getAuction = async (req, res) => {
     const auction = await Auction.findByPk(auctionId, {
       include: [
         {
-          model: UserTable,
-          as: 'seller',
-          attributes: ['id', 'fullName', 'email', 'profilePicture', 'location']
-        },
-        {
           model: AuctionBid,
           as: 'bids',
           include: [
@@ -262,11 +289,6 @@ const getAuction = async (req, res) => {
           ],
           order: [['bidAmount', 'DESC']],
           limit: 10
-        },
-        {
-          model: UserTable,
-          as: 'winner',
-          attributes: ['id', 'fullName', 'email']
         }
       ]
     });
@@ -622,12 +644,12 @@ const updateAuction = async (req, res) => {
     const updateData = req.body;
 
     const seller = await SellersTable.findOne({
-      where: { userId: userId }
+      where: { userId: userId, verificationStatus: 'approved' }
     });
 
     if (!seller) {
       return res.status(403).json({
-        message: 'Only sellers can update auctions'
+        message: 'Only verified sellers can update auctions'
       });
     }
 
@@ -645,6 +667,75 @@ const updateAuction = async (req, res) => {
     if (auction.totalBids > 0) {
       return res.status(400).json({
         message: 'Cannot update auction that has bids'
+      });
+    }
+
+    // Process uploaded images if any
+    if (req.files && req.files.length > 0) {
+      const cloudinaryService = require('../services/cloudinaryService');
+      console.log(`Processing ${req.files.length} uploaded images for update`);
+      
+      const imageUrls = [];
+      for (let i = 0; i < req.files.length; i++) {
+        const file = req.files[i];
+        try {
+          const uploadResult = await cloudinaryService.uploadFile(
+            file.buffer,
+            `ocean-app/auctions/${seller.id}/${Date.now()}-${i}`,
+            {
+              resource_type: 'image',
+              quality: 'auto'
+            }
+          );
+          imageUrls.push(uploadResult.url);
+          console.log(`Uploaded image ${i + 1}: ${uploadResult.url}`);
+        } catch (error) {
+          console.error(`Error uploading image ${i + 1}:`, error);
+          return res.status(500).json({
+            message: `Failed to upload image ${i + 1}`,
+            error: error.message
+          });
+        }
+      }
+      
+      // Update images if new ones were uploaded
+      if (imageUrls.length > 0) {
+        updateData.images = imageUrls;
+      }
+    }
+
+    // Validate price fields if provided
+    if (updateData.startingPrice && parseFloat(updateData.startingPrice) <= 0) {
+      return res.status(400).json({
+        message: 'Starting price must be greater than 0'
+      });
+    }
+
+    if (updateData.reservePrice && updateData.startingPrice && 
+        parseFloat(updateData.reservePrice) <= parseFloat(updateData.startingPrice)) {
+      return res.status(400).json({
+        message: 'Reserve price must be greater than starting price'
+      });
+    }
+
+    // Validate buyNowPrice if provided
+    if (updateData.buyNowPrice && parseFloat(updateData.buyNowPrice) <= 0) {
+      return res.status(400).json({
+        message: 'Buy now price must be greater than 0'
+      });
+    }
+
+    // Validate time fields if provided
+    if (updateData.startTime && new Date(updateData.startTime) <= new Date()) {
+      return res.status(400).json({
+        message: 'Start time must be in the future'
+      });
+    }
+
+    if (updateData.endTime && updateData.startTime && 
+        new Date(updateData.endTime) <= new Date(updateData.startTime)) {
+      return res.status(400).json({
+        message: 'End time must be after start time'
       });
     }
 

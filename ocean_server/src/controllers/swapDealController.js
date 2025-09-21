@@ -186,41 +186,22 @@ class SwapDealController {
           return conditionMap[condition?.toLowerCase()] || 'good';
         };
 
-        // Get or create seller profile for the user
-        let sellerProfile = await db.SellersTable.findOne({
-          where: { userId: initiator_id }
+        // Check if user is a verified seller (required for swap deals)
+        const sellerProfile = await db.SellersTable.findOne({
+          where: { 
+            userId: initiator_id,
+            verificationStatus: 'approved'
+          }
         });
 
         if (!sellerProfile) {
-          console.log(`Creating seller profile for user ${initiator_id}`);
-          // Create a basic seller profile for swap deals
-          const user = await db.UserTable.findByPk(initiator_id);
-          if (!user) {
-            return res.status(400).json({
-              success: false,
-              message: 'User not found'
-            });
-          }
-
-          const sellerData = {
-            userId: initiator_id,
-            fullName: user.fullName || 'Swap User',
-            businessName: `${user.fullName || 'User'}'s Swap Items`,
-            email: user.email,
-            phoneNumber: user.phoneNumber || '000-000-0000',
-            businessAddress: user.location || 'Location TBD',
-            country: user.country || 'Nigeria', // Required field
-            businessType: 'Individual',
-            verificationStatus: 'pending',
-            isActive: true
-          };
-          
-          console.log('Creating seller profile with data:', sellerData);
-          sellerProfile = await db.SellersTable.create(sellerData);
-          console.log(`Created seller profile with ID: ${sellerProfile.id}`);
-        } else {
-          console.log(`Using existing seller profile with ID: ${sellerProfile.id}`);
+          return res.status(403).json({
+            success: false,
+            message: 'Only verified sellers can create swap deals. Please complete seller verification first.'
+          });
         }
+
+        console.log(`Using verified seller profile with ID: ${sellerProfile.id}`);
 
         // Create initiator's item (myItem) - exclude distress sale fields for compatibility
         const initiatorItem = await db.Product.create({
@@ -232,7 +213,7 @@ class SwapDealController {
           condition: mapCondition(parsedMyItem.condition),
           location: meeting_location || 'Location TBD',
           images: finalMyItemImages,
-          sellerId: sellerProfile.id, // Use seller profile ID
+          sellerId: sellerProfile.id, // Use verified seller profile ID
           status: 'active', // Use existing status
           // Exclude distress sale fields: isDistressSale, urgencyLevel, etc.
         });
@@ -247,7 +228,7 @@ class SwapDealController {
           condition: mapCondition(parsedWantedItem.condition),
           location: meeting_location || 'Location TBD',
           images: finalWantedItemImages,
-          sellerId: sellerProfile.id, // Use seller profile ID
+          sellerId: sellerProfile.id, // Use verified seller profile ID
           status: 'inactive', // Use inactive status for wanted items
           // Exclude distress sale fields: isDistressSale, urgencyLevel, etc.
         });

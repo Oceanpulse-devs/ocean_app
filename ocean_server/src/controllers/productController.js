@@ -90,9 +90,16 @@ const getProducts = async (req, res) => {
             where: whereClause,
             include: [
                 {
-                    model: UserTable,
+                    model: SellersTable,
                     as: 'seller',
-                    attributes: ['id', 'fullName', 'email', 'profilePicture', 'accountType', 'accountStatus']
+                    attributes: ['id', 'userId', 'businessName', 'businessAddress', 'country', 'state', 'category', 'verificationStatus'],
+                    include: [
+                        {
+                            model: UserTable,
+                            as: 'user',
+                            attributes: ['id', 'fullName', 'email', 'profilePicture', 'accountType', 'accountStatus']
+                        }
+                    ]
                 }
             ],
             order: orderClause,
@@ -157,9 +164,16 @@ const getProduct = async (req, res) => {
             where: { id: productId, status: 'active' },
             include: [
                 {
-                    model: UserTable,
+                    model: SellersTable,
                     as: 'seller',
-                    attributes: ['id', 'fullName', 'email', 'profilePicture', 'accountType', 'accountStatus']
+                    attributes: ['id', 'userId', 'businessName', 'businessAddress', 'country', 'state', 'category', 'verificationStatus'],
+                    include: [
+                        {
+                            model: UserTable,
+                            as: 'user',
+                            attributes: ['id', 'fullName', 'email', 'profilePicture', 'accountType', 'accountStatus']
+                        }
+                    ]
                 }
             ]
         });
@@ -245,7 +259,7 @@ const createProduct = async (req, res) => {
 
         // Check if user is a seller
         const seller = await SellersTable.findOne({
-            where: { userId, verificationStatus: 'active' }
+            where: { userId, verificationStatus: 'approved' }
         });
 
         if (!seller) {
@@ -328,9 +342,16 @@ const createProduct = async (req, res) => {
         const createdProduct = await Product.findByPk(product.id, {
             include: [
                 {
-                    model: UserTable,
+                    model: SellersTable,
                     as: 'seller',
-                    attributes: ['id', 'fullName', 'email', 'profilePicture', 'accountType', 'accountStatus']
+                    attributes: ['id', 'userId', 'businessName', 'businessAddress', 'country', 'state', 'category', 'verificationStatus'],
+                    include: [
+                        {
+                            model: UserTable,
+                            as: 'user',
+                            attributes: ['id', 'fullName', 'email', 'profilePicture', 'accountType', 'accountStatus']
+                        }
+                    ]
                 }
             ]
         });
@@ -355,7 +376,7 @@ const updateProduct = async (req, res) => {
 
         // Check if user is a seller
         const seller = await SellersTable.findOne({
-            where: { userId, verificationStatus: 'active' }
+            where: { userId, verificationStatus: 'approved' }
         });
 
         if (!seller) {
@@ -382,9 +403,16 @@ const updateProduct = async (req, res) => {
         const updatedProduct = await Product.findByPk(productId, {
             include: [
                 {
-                    model: UserTable,
+                    model: SellersTable,
                     as: 'seller',
-                    attributes: ['id', 'fullName', 'email', 'profilePicture', 'accountType', 'accountStatus']
+                    attributes: ['id', 'userId', 'businessName', 'businessAddress', 'country', 'state', 'category', 'verificationStatus'],
+                    include: [
+                        {
+                            model: UserTable,
+                            as: 'user',
+                            attributes: ['id', 'fullName', 'email', 'profilePicture', 'accountType', 'accountStatus']
+                        }
+                    ]
                 }
             ]
         });
@@ -408,7 +436,7 @@ const deleteProduct = async (req, res) => {
 
         // Check if user is a seller
         const seller = await SellersTable.findOne({
-            where: { userId, verificationStatus: 'active' }
+            where: { userId, verificationStatus: 'approved' }
         });
 
         if (!seller) {
@@ -445,8 +473,18 @@ const deleteProduct = async (req, res) => {
 const toggleSaveProduct = async (req, res) => {
     try {
         const { productId } = req.params;
-        const { collectionName = 'Favorites' } = req.body;
         const userId = req.user.id;
+        
+        // Handle collectionName with proper defaults
+        let collectionName = 'Favorites'; // Default collection name
+        console.log('Request body:', req.body);
+        console.log('Collection name from body:', req.body?.collectionName);
+        
+        if (req.body && req.body.collectionName) {
+            collectionName = req.body.collectionName;
+        }
+        
+        console.log('Final collection name:', collectionName);
 
         // Check if product exists
         const product = await Product.findByPk(productId);
@@ -532,9 +570,16 @@ const getSavedProducts = async (req, res) => {
                     where: { status: 'active', isAvailable: true },
                     include: [
                         {
-                            model: UserTable,
+                            model: SellersTable,
                             as: 'seller',
-                            attributes: ['id', 'fullName', 'email', 'profilePicture', 'accountType', 'accountStatus']
+                            attributes: ['id', 'userId', 'businessName', 'businessAddress', 'country', 'state', 'category', 'verificationStatus'],
+                            include: [
+                                {
+                                    model: UserTable,
+                                    as: 'user',
+                                    attributes: ['id', 'fullName', 'email', 'profilePicture', 'accountType', 'accountStatus']
+                                }
+                            ]
                         }
                     ]
                 }
@@ -1171,9 +1216,16 @@ const getSellerProducts = async (req, res) => {
             },
             include: [
                 {
-                    model: UserTable,
+                    model: SellersTable,
                     as: 'seller',
-                    attributes: ['id', 'fullName', 'email', 'profilePicture', 'accountType', 'accountStatus']
+                    attributes: ['id', 'userId', 'businessName', 'businessAddress', 'country', 'state', 'category', 'verificationStatus'],
+                    include: [
+                        {
+                            model: UserTable,
+                            as: 'user',
+                            attributes: ['id', 'fullName', 'email', 'profilePicture', 'accountType', 'accountStatus']
+                        }
+                    ]
                 }
             ],
             order: [[Sequelize.fn('RAND')]],
@@ -1233,15 +1285,33 @@ const getMyProducts = async (req, res) => {
         const { page = 1, limit = 20 } = req.query;
         const offset = (page - 1) * limit;
 
+        // Find the seller record for this user
+        const seller = await SellersTable.findOne({
+            where: { userId: currentUserId }
+        });
+
+        if (!seller) {
+            return res.status(404).json({
+                message: "Seller profile not found. Please complete seller verification first."
+            });
+        }
+
         const products = await Product.findAndCountAll({
             where: { 
-                sellerId: currentUserId
+                sellerId: seller.id
             },
             include: [
                 {
-                    model: UserTable,
+                    model: SellersTable,
                     as: 'seller',
-                    attributes: ['id', 'fullName', 'email', 'profilePicture', 'accountType', 'accountStatus']
+                    attributes: ['id', 'userId', 'businessName', 'businessAddress', 'country', 'state', 'category', 'verificationStatus'],
+                    include: [
+                        {
+                            model: UserTable,
+                            as: 'user',
+                            attributes: ['id', 'fullName', 'email', 'profilePicture', 'accountType', 'accountStatus']
+                        }
+                    ]
                 }
             ],
             order: [['createdAt', 'DESC']],
@@ -1316,9 +1386,16 @@ const getAllSavedItems = async (req, res) => {
                     where: { status: 'active', isAvailable: true },
                     include: [
                         {
-                            model: UserTable,
+                            model: SellersTable,
                             as: 'seller',
-                            attributes: ['id', 'fullName', 'email', 'profilePicture', 'accountType', 'accountStatus']
+                            attributes: ['id', 'userId', 'businessName', 'businessAddress', 'country', 'state', 'category', 'verificationStatus'],
+                            include: [
+                                {
+                                    model: UserTable,
+                                    as: 'user',
+                                    attributes: ['id', 'fullName', 'email', 'profilePicture', 'accountType', 'accountStatus']
+                                }
+                            ]
                         }
                     ]
                 }

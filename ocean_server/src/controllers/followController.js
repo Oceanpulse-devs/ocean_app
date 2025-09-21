@@ -413,10 +413,10 @@ const getMutualFollowers = async (req, res) => {
         // Get mutual followers using raw SQL for better performance
         const mutualFollowers = await UserTable.sequelize.query(`
             SELECT DISTINCT u.id, u.fullName, u.email, u.profilePicture, u.accountType, u.accountStatus
-            FROM UserTable u
-            INNER JOIN UserFollows uf1 ON u.id = uf1.user_id
-            INNER JOIN UserFollows uf2 ON u.id = uf2.follows_user_id
-            WHERE uf1.follows_user_id = :userId AND uf2.user_id = :userId
+            FROM users u
+            INNER JOIN user_follows uf1 ON u.id = uf1.userId
+            INNER JOIN user_follows uf2 ON u.id = uf2.followsUserId
+            WHERE uf1.followsUserId = :userId AND uf2.userId = :userId
             ORDER BY u.fullName
             LIMIT :limit OFFSET :offset
         `, {
@@ -427,10 +427,10 @@ const getMutualFollowers = async (req, res) => {
         // Get total count
         const totalCount = await UserTable.sequelize.query(`
             SELECT COUNT(DISTINCT u.id) as count
-            FROM UserTable u
-            INNER JOIN UserFollows uf1 ON u.id = uf1.user_id
-            INNER JOIN UserFollows uf2 ON u.id = uf2.follows_user_id
-            WHERE uf1.follows_user_id = :userId AND uf2.user_id = :userId
+            FROM users u
+            INNER JOIN user_follows uf1 ON u.id = uf1.userId
+            INNER JOIN user_follows uf2 ON u.id = uf2.followsUserId
+            WHERE uf1.followsUserId = :userId AND uf2.userId = :userId
         `, {
             replacements: { userId },
             type: UserTable.sequelize.QueryTypes.SELECT

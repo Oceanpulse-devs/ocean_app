@@ -94,7 +94,6 @@ db.ShareStats = ShareStats(sequelize, Sequelize.DataTypes);
 const setupAssociations = () => {
   // User associations
   db.UserTable.hasMany(db.Post, { foreignKey: 'userId', as: 'posts' });
-  db.UserTable.hasMany(db.Product, { foreignKey: 'sellerId', as: 'products' });
   db.UserTable.hasMany(db.Auction, { foreignKey: 'sellerId', as: 'auctions' });
   db.UserTable.hasMany(db.GroupBuy, { foreignKey: 'creator_id', as: 'createdGroupBuys' });
   db.UserTable.hasOne(db.SellersTable, { foreignKey: 'userId', as: 'seller' });
@@ -130,10 +129,18 @@ const setupAssociations = () => {
   db.PostShare.belongsTo(db.UserTable, { foreignKey: 'userId', as: 'user' });
   
   // Product associations
-  db.Product.belongsTo(db.UserTable, { foreignKey: 'sellerId', as: 'seller' });
+  db.Product.belongsTo(db.SellersTable, { foreignKey: 'sellerId', as: 'seller' });
+  db.SellersTable.hasMany(db.Product, { foreignKey: 'sellerId', as: 'products' });
   
   // ProductCategory associations
   db.ProductCategory.hasMany(db.GroupBuy, { foreignKey: 'category_id', as: 'groupBuys' });
+  
+  // ProductCategory self-referencing associations for parent-child categories
+  db.ProductCategory.hasMany(db.ProductCategory, { foreignKey: 'parentId', as: 'subcategories' });
+  db.ProductCategory.belongsTo(db.ProductCategory, { foreignKey: 'parentId', as: 'parent' });
+  
+  // ProductCategory association with UserTable for custom categories
+  db.ProductCategory.belongsTo(db.UserTable, { foreignKey: 'createdBy', as: 'creator' });
   
   // SavedProduct associations
   db.SavedProduct.belongsTo(db.Product, { foreignKey: 'productId', as: 'product' });

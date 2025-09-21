@@ -73,9 +73,28 @@ const signup = async(req, res) => {
     const emailVerificationToken = crypto.randomBytes(32).toString('hex')
     const emailVerificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours
     
+    // Generate unique username
+    const generateUsername = async (fullName) => {
+        const baseName = fullName.toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 8);
+        const randomSuffix = crypto.randomBytes(4).toString('hex');
+        let username = `@${baseName}_${randomSuffix}`;
+        
+        // Ensure username is unique
+        let counter = 1;
+        while (await UserTable.findOne({ where: { username } })) {
+            username = `@${baseName}_${randomSuffix}${counter}`;
+            counter++;
+        }
+        
+        return username;
+    };
+
+    const username = await generateUsername(fullName);
+
     const newUser = await UserTable.create({
         fullName: fullName.trim(),
         email: email.toLowerCase().trim(),
+        username: username,
         password: hashedPassword,
         agreeTerms,
         accountType: 'buyer', // Default to buyer

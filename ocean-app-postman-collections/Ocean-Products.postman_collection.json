@@ -330,16 +330,72 @@
 								"key": "Authorization",
 								"value": "Bearer {{auth_token}}",
 								"type": "text"
-							},
-							{
-								"key": "Content-Type",
-								"value": "application/json",
-								"type": "text"
 							}
 						],
 						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"name\": \"Sample Product\",\n  \"description\": \"This is a sample product description\",\n  \"price\": 99.99,\n  \"category\": \"Electronics\",\n  \"quantity\": 10,\n  \"images\": [\"https://example.com/image1.jpg\"],\n  \"tags\": [\"electronics\", \"gadgets\"],\n  \"condition\": \"new\",\n  \"location\": \"New York, NY\"\n}"
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "title",
+									"value": "Vintage Gaming Console",
+									"type": "text"
+								},
+								{
+									"key": "description",
+									"value": "A rare vintage gaming console in excellent condition. Perfect for collectors and gaming enthusiasts.",
+									"type": "text"
+								},
+								{
+									"key": "price",
+									"value": "299.99",
+									"type": "text"
+								},
+								{
+									"key": "currency",
+									"value": "USD",
+									"type": "text"
+								},
+								{
+									"key": "brand",
+									"value": "Nintendo",
+									"type": "text"
+								},
+								{
+									"key": "category",
+									"value": "{{tech_category_id}}",
+									"type": "text"
+								},
+								{
+									"key": "subcategory",
+									"value": "Gaming",
+									"type": "text"
+								},
+								{
+									"key": "condition",
+									"value": "excellent",
+									"type": "text"
+								},
+								{
+									"key": "location",
+									"value": "Lagos, Nigeria",
+									"type": "text"
+								},
+								{
+									"key": "images",
+									"type": "file",
+									"src": []
+								},
+								{
+									"key": "images",
+									"type": "file",
+									"src": []
+								},
+								{
+									"key": "images",
+									"type": "file",
+									"src": []
+								}
+							]
 						},
 						"url": {
 							"raw": "{{base_url}}/api/products",
@@ -351,7 +407,7 @@
 								"products"
 							]
 						},
-						"description": "Create a new product (requires authentication)"
+						"description": "Create a new product with mandatory image uploads using form-data. All products must have at least one image. Note: Use valid category ID from the categories list. You can get available categories by calling the Get All Categories endpoint first."
 					},
 					"response": []
 				},

@@ -170,6 +170,31 @@ class CloudinaryService {
     }
 
     /**
+     * Upload seller verification documents
+     * @param {Buffer|string} file - File to upload
+     * @param {string} sellerId - Seller ID for organization
+     * @param {string} documentType - Type of document (NIN, ElectricBill, IDCard, etc.)
+     * @returns {Promise<Object>} Upload result
+     */
+    async uploadSellerDocument(file, sellerId, documentType) {
+        const folder = `ocean-app/seller-verification/${sellerId}/${documentType}`;
+        
+        const options = {
+            transformation: [
+                { quality: 'auto:best', fetch_format: 'auto' },
+                { width: 1200, height: 1200, crop: 'limit' } // Keep aspect ratio
+            ],
+            eager: [
+                { width: 800, height: 600, crop: 'fill', quality: 'auto:good' },
+                { width: 400, height: 300, crop: 'fill', quality: 'auto:good' }
+            ],
+            eager_async: true
+        };
+
+        return await this.uploadFile(file, folder, options);
+    }
+
+    /**
      * Generate thumbnail URL for videos
      * @param {string} originalUrl - Original Cloudinary URL
      * @param {string} resourceType - Resource type (image/video)

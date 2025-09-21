@@ -36,7 +36,7 @@
 			"name": "Protected Routes",
 			"item": [
 				{
-					"name": "Submit Verification",
+					"name": "Submit Verification (Nigerian) - Form Data",
 					"request": {
 						"method": "POST",
 						"header": [
@@ -44,16 +44,118 @@
 								"key": "Authorization",
 								"value": "Bearer {{auth_token}}",
 								"type": "text"
-							},
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "businessName",
+									"value": "My Nigerian Business",
+									"type": "text"
+								},
+								{
+									"key": "businessAddress",
+									"value": "123 Lagos Street, Victoria Island, Lagos",
+									"type": "text"
+								},
+								{
+									"key": "country",
+									"value": "Nigeria",
+									"type": "text"
+								},
+								{
+									"key": "category",
+									"value": "Tech",
+									"type": "text"
+								},
+								{
+									"key": "state",
+									"value": "Lagos",
+									"type": "text"
+								},
+								{
+									"key": "documents",
+									"value": "[{\"documentType\":\"NIN\",\"documentNumber\":\"12345678901\"},{\"documentType\":\"ElectricBill\"}]",
+									"type": "text"
+								},
+								{
+									"key": "documents",
+									"type": "file",
+									"src": []
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/seller-verification/submit",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"seller-verification",
+								"submit"
+							]
+						},
+						"description": "Submit seller verification application for Nigerian users (NIN + Electric Bill)"
+					},
+					"response": []
+				},
+				{
+					"name": "Submit Verification (Non-Nigerian) - Form Data",
+					"request": {
+						"method": "POST",
+						"header": [
 							{
-								"key": "Content-Type",
-								"value": "application/json",
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
 								"type": "text"
 							}
 						],
 						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"businessName\": \"My Business Name\",\n  \"businessType\": \"Individual\",\n  \"businessAddress\": {\n    \"street\": \"123 Main St\",\n    \"city\": \"New York\",\n    \"state\": \"NY\",\n    \"zipCode\": \"10001\",\n    \"country\": \"USA\"\n  },\n  \"taxId\": \"12-3456789\",\n  \"businessLicense\": \"BL123456\",\n  \"phoneNumber\": \"+1234567890\",\n  \"website\": \"https://mybusiness.com\",\n  \"documents\": {\n    \"businessLicense\": \"https://example.com/business-license.pdf\",\n    \"taxDocument\": \"https://example.com/tax-document.pdf\",\n    \"identityDocument\": \"https://example.com/id-document.pdf\"\n  },\n  \"additionalInfo\": \"Additional business information\"\n}"
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "businessName",
+									"value": "My International Business",
+									"type": "text"
+								},
+								{
+									"key": "businessAddress",
+									"value": "123 Main St, New York, NY 10001",
+									"type": "text"
+								},
+								{
+									"key": "country",
+									"value": "USA",
+									"type": "text"
+								},
+								{
+									"key": "category",
+									"value": "Tech",
+									"type": "text"
+								},
+								{
+									"key": "state",
+									"value": "NY",
+									"type": "text"
+								},
+								{
+									"key": "documents",
+									"value": "[{\"documentType\":\"IDCard\",\"documentNumber\":\"A123456789\"},{\"documentType\":\"ElectricBill\"}]",
+									"type": "text"
+								},
+								{
+									"key": "documents",
+									"type": "file",
+									"src": []
+								},
+								{
+									"key": "documents",
+									"type": "file",
+									"src": []
+								}
+							]
 						},
 						"url": {
 							"raw": "{{base_url}}/api/seller-verification/submit",

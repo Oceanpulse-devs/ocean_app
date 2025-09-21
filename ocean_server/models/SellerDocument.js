@@ -12,7 +12,7 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: false,
     },
     documentType: {
-      type: DataTypes.ENUM('NIN', 'DriversLicense', 'Passport', 'BusinessCertificate', 'BusinessLicense', 'TaxCertificate', 'BankStatement', 'UtilityBill', 'InsuranceCertificate', 'Other'),
+      type: DataTypes.ENUM('NIN', 'ElectricBill', 'IDCard', 'DriversLicense', 'Passport', 'BusinessCertificate', 'BusinessLicense', 'TaxCertificate', 'BankStatement', 'UtilityBill', 'InsuranceCertificate', 'Other'),
       allowNull: false,
     },
     documentNumber: {
@@ -21,8 +21,8 @@ module.exports = (sequelize, DataTypes) => {
     },
     documentImage: {
       type: DataTypes.TEXT,
-      allowNull: false,
-      comment: 'URL or path to document image'
+      allowNull: true,
+      comment: 'URL or path to document image (optional for NIN documents)'
     },
     documentBackImage: {
       type: DataTypes.TEXT,
@@ -59,25 +59,26 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.TEXT,
       comment: 'Admin notes about document verification'
     },
-    rejectionReason: {
-      type: DataTypes.TEXT,
-      comment: 'Reason for rejection if document was rejected'
-    },
-    documentScore: {
-      type: DataTypes.INTEGER,
-      defaultValue: 0,
-      comment: 'Verification score for this document (0-100)'
-    },
-    isExpired: {
-      type: DataTypes.BOOLEAN,
-      defaultValue: false,
-      comment: 'Whether the document has expired'
-    },
-    requiresRenewal: {
-      type: DataTypes.BOOLEAN,
-      defaultValue: false,
-      comment: 'Whether document needs renewal'
-    }
+    // rejectionReason: {
+    //   type: DataTypes.TEXT,
+    //   comment: 'Reason for rejection if document was rejected'
+    // },
+    // Temporarily commented out until database schema is updated
+    // documentScore: {
+    //   type: DataTypes.INTEGER,
+    //   defaultValue: 0,
+    //   comment: 'Verification score for this document (0-100)'
+    // },
+    // isExpired: {
+    //   type: DataTypes.BOOLEAN,
+    //   defaultValue: false,
+    //   comment: 'Whether the document has expired'
+    // },
+    // requiresRenewal: {
+    //   type: DataTypes.BOOLEAN,
+    //   defaultValue: false,
+    //   comment: 'Whether document needs renewal'
+    // }
   }, {
     tableName: 'seller_documents',
     timestamps: true,

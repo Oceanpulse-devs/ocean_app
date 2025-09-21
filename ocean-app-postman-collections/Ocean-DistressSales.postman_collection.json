@@ -113,16 +113,92 @@
 								"key": "Authorization",
 								"value": "Bearer {{auth_token}}",
 								"type": "text"
-							},
-							{
-								"key": "Content-Type",
-								"value": "application/json",
-								"type": "text"
 							}
 						],
 						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"title\": \"URGENT: Electronics Liquidation Sale\",\n  \"description\": \"Need to liquidate electronics inventory immediately due to business closure\",\n  \"category\": \"{{tech_category_id}}\",\n  \"urgency\": \"critical\",\n  \"reason\": \"business_closure\",\n  \"originalPrice\": 5000.00,\n  \"distressPrice\": 2500.00,\n  \"discountPercentage\": 50,\n  \"quantity\": 25,\n  \"condition\": \"good\",\n  \"location\": {\n    \"address\": \"123 Business St\",\n    \"city\": \"Los Angeles\",\n    \"state\": \"CA\",\n    \"zipCode\": \"90210\",\n    \"country\": \"USA\"\n  },\n  \"contactInfo\": {\n    \"phone\": \"+1234567890\",\n    \"email\": \"seller@example.com\",\n    \"preferredContact\": \"phone\"\n  },\n  \"images\": [\"https://example.com/inventory1.jpg\", \"https://example.com/inventory2.jpg\"],\n  \"tags\": [\"electronics\", \"liquidation\", \"urgent\", \"bulk\"],\n  \"expiryDate\": \"2024-01-20T23:59:59Z\",\n  \"pickupRequired\": true,\n  \"shippingAvailable\": false,\n  \"minimumOrder\": 5,\n  \"bulkDiscount\": {\n    \"enabled\": true,\n    \"threshold\": 10,\n    \"additionalDiscount\": 10\n  }\n}"
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "title",
+									"value": "URGENT: Electronics Liquidation Sale",
+									"type": "text"
+								},
+								{
+									"key": "description",
+									"value": "Need to liquidate electronics inventory immediately due to business closure. All items in good working condition.",
+									"type": "text"
+								},
+								{
+									"key": "category",
+									"value": "{{tech_category_id}}",
+									"type": "text"
+								},
+								{
+									"key": "urgency",
+									"value": "critical",
+									"type": "text"
+								},
+								{
+									"key": "distressReason",
+									"value": "business_closure",
+									"type": "text"
+								},
+								{
+									"key": "originalPrice",
+									"value": "5000.00",
+									"type": "text"
+								},
+								{
+									"key": "price",
+									"value": "2500.00",
+									"type": "text"
+								},
+								{
+									"key": "discountPercentage",
+									"value": "50",
+									"type": "text"
+								},
+								{
+									"key": "quantity",
+									"value": "25",
+									"type": "text"
+								},
+								{
+									"key": "condition",
+									"value": "good",
+									"type": "text"
+								},
+								{
+									"key": "location",
+									"value": "Lagos, Nigeria",
+									"type": "text"
+								},
+								{
+									"key": "tags",
+									"value": "[\"electronics\", \"liquidation\", \"urgent\", \"bulk\"]",
+									"type": "text"
+								},
+								{
+									"key": "distressExpiryDate",
+									"value": "2024-01-20T23:59:59Z",
+									"type": "text"
+								},
+								{
+									"key": "images",
+									"type": "file",
+									"src": []
+								},
+								{
+									"key": "images",
+									"type": "file",
+									"src": []
+								},
+								{
+									"key": "images",
+									"type": "file",
+									"src": []
+								}
+							]
 						},
 						"url": {
 							"raw": "{{base_url}}/api/distress-sales/create",
@@ -157,7 +233,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"title\": \"Updated: Electronics Liquidation Sale\",\n  \"description\": \"Updated description with more details\",\n  \"distressPrice\": 2000.00,\n  \"discountPercentage\": 60,\n  \"urgency\": \"high\",\n  \"expiryDate\": \"2024-01-25T23:59:59Z\"\n}"
+							"raw": "{\n  \"title\": \"Updated: Electronics Liquidation Sale\",\n  \"description\": \"Updated description with more details\",\n  \"originalPrice\": \"5000.00\",\n  \"discountPercentage\": \"60\",\n  \"urgencyLevel\": \"high\",\n  \"distressReason\": \"business_closure\",\n  \"distressExpiryDate\": \"2024-01-25T23:59:59Z\",\n  \"condition\": \"good\",\n  \"location\": \"Lagos, Nigeria\"\n}"
 						},
 						"url": {
 							"raw": "{{base_url}}/api/distress-sales/{{distressSaleId}}",
@@ -171,6 +247,92 @@
 							]
 						},
 						"description": "Update distress sale details"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Distress Sale (Form Data)",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "title",
+									"value": "Updated: Electronics Liquidation Sale with Images",
+									"type": "text"
+								},
+								{
+									"key": "description",
+									"value": "Updated description with new images and better details",
+									"type": "text"
+								},
+								{
+									"key": "originalPrice",
+									"value": "6000.00",
+									"type": "text"
+								},
+								{
+									"key": "discountPercentage",
+									"value": "65",
+									"type": "text"
+								},
+								{
+									"key": "urgencyLevel",
+									"value": "urgent",
+									"type": "text"
+								},
+								{
+									"key": "distressReason",
+									"value": "business_closure",
+									"type": "text"
+								},
+								{
+									"key": "distressExpiryDate",
+									"value": "2024-01-30T23:59:59Z",
+									"type": "text"
+								},
+								{
+									"key": "condition",
+									"value": "excellent",
+									"type": "text"
+								},
+								{
+									"key": "location",
+									"value": "Abuja, Nigeria",
+									"type": "text"
+								},
+								{
+									"key": "images",
+									"type": "file",
+									"src": []
+								},
+								{
+									"key": "images",
+									"type": "file",
+									"src": []
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/distress-sales/{{distressSaleId}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"distress-sales",
+								"{{distressSaleId}}"
+							]
+						},
+						"description": "Update distress sale with new images using form-data. Note: The price will be automatically calculated based on originalPrice and discountPercentage."
 					},
 					"response": []
 				},
@@ -218,21 +380,21 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"originalListingId\": \"{{originalListingId}}\",\n  \"originalListingType\": \"product\",\n  \"urgency\": \"medium\",\n  \"reason\": \"need_quick_sale\",\n  \"distressPrice\": 150.00,\n  \"discountPercentage\": 25,\n  \"expiryDate\": \"2024-01-30T23:59:59Z\",\n  \"notes\": \"Converting regular product listing to distress sale for quick liquidation\"\n}"
+							"raw": "{\n  \"originalPrice\": \"500.00\",\n  \"discountPercentage\": \"25\",\n  \"urgencyLevel\": \"medium\",\n  \"distressReason\": \"need_quick_sale\",\n  \"distressExpiryDate\": \"2024-01-30T23:59:59Z\"\n}"
 						},
 						"url": {
-							"raw": "{{base_url}}/api/distress-sales/{{distressSaleId}}/convert",
+							"raw": "{{base_url}}/api/distress-sales/{{productId}}/convert",
 							"host": [
 								"{{base_url}}"
 							],
 							"path": [
 								"api",
 								"distress-sales",
-								"{{distressSaleId}}",
+								"{{productId}}",
 								"convert"
 							]
 						},
-						"description": "Convert existing listing to distress sale"
+						"description": "Convert existing regular product to distress sale. Use the product ID (not distress sale ID) in the URL."
 					},
 					"response": []
 				}
