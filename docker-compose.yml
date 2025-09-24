@@ -1,0 +1,26 @@
+version: '3.8'
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: jules-mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: ocean_app_db   # 👈 same name as your local DB
+    ports:
+      - "3307:3306"   # avoids clash with your local MySQL
+    networks:
+      - app-network
+
+  redis:
+    image: redis:latest
+    container_name: jules-redis
+    restart: always
+    ports:
+      - "6380:6379"   # avoids clash with your local Redis
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
