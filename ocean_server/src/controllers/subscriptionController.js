@@ -2,6 +2,7 @@ const subscriptionService = require('../services/subscriptionService');
 const SubscriptionStatusChecker = require('../utils/subscriptionStatusChecker');
 const { PaymentProvider } = require('../providers/PaymentProvider');
 const { SellersTable } = require('../../models');
+const { sendEmail, emailTemplates } = require('../services/emailService');
 
 /**
  * Subscription Controller
@@ -333,9 +334,29 @@ class SubscriptionController {
       const userId = req.user.id;
       const { reason } = req.body;
 
+      // Get current subscription details before cancellation
+      const currentSubscriptionStatus = await SubscriptionStatusChecker.getUserSubscriptionStatus(userId);
+      const user = await subscriptionService.getUserById(userId);
+
       const success = await subscriptionService.cancelSubscription(userId, reason);
       
       if (success) {
+        // Send cancellation email
+        if (user && currentSubscriptionStatus.hasActiveSubscription && currentSubscriptionStatus.plan) {
+          try {
+            const emailTemplate = emailTemplates.subscriptionCancelled(
+              user.fullName,
+              currentSubscriptionStatus.plan.displayName,
+              reason || 'No reason provided',
+              currentSubscriptionStatus.expiresAt
+            );
+            await sendEmail(user.email, emailTemplate.subject, emailTemplate.html, 'subscription');
+            console.log('✅ Subscription cancellation email sent to:', user.email);
+          } catch (emailError) {
+            console.error('❌ Failed to send cancellation email:', emailError);
+          }
+        }
+
         res.json({
           success: true,
           message: 'Subscription cancelled successfully'
@@ -788,6 +809,48 @@ class SubscriptionController {
           paymentResult.expiresAt
         );
         
+        // Send subscription confirmation email
+        try {
+          const user = await subscriptionService.getUserById(paymentResult.userId);
+          const plan = await subscriptionService.getPlanById(paymentResult.planId);
+          
+          if (user && plan) {
+            // Check if this is a plan change or new subscription
+            const currentSubscriptionStatus = await SubscriptionStatusChecker.getUserSubscriptionStatus(paymentResult.userId);
+            const isPlanChange = currentSubscriptionStatus.hasActiveSubscription && currentSubscriptionStatus.plan && currentSubscriptionStatus.plan.id !== paymentResult.planId;
+            
+            let emailTemplate;
+            
+            if (isPlanChange && currentSubscriptionStatus.hasActiveSubscription) {
+              // Plan change email
+              emailTemplate = emailTemplates.subscriptionChanged(
+                user.fullName,
+                currentSubscriptionStatus.plan.displayName,
+                plan.displayName,
+                plan.price,
+                plan.currency,
+                paymentResult.expiresAt
+              );
+              console.log('📈 Sending plan change email');
+            } else {
+              // New subscription email
+              emailTemplate = emailTemplates.subscriptionCreated(
+                user.fullName,
+                plan.displayName,
+                plan.price,
+                plan.currency,
+                paymentResult.expiresAt
+              );
+              console.log('🎉 Sending new subscription email');
+            }
+            
+            await sendEmail(user.email, emailTemplate.subject, emailTemplate.html, 'subscription');
+            console.log('✅ Subscription email sent to:', user.email);
+          }
+        } catch (emailError) {
+          console.error('❌ Failed to send subscription confirmation email:', emailError);
+        }
+        
         // Return success response for mobile app
         res.json({
           success: true,
@@ -804,6 +867,25 @@ class SubscriptionController {
         });
       } else {
         console.log('Payment verification failed:', paymentResult.message);
+        
+        // Send payment failure email
+        try {
+          const user = await subscriptionService.getUserById(paymentResult.userId);
+          const plan = await subscriptionService.getPlanById(paymentResult.planId);
+          
+          if (user && plan) {
+            const emailTemplate = emailTemplates.paymentFailed(
+              user.fullName,
+              plan.displayName,
+              paymentResult.message || 'Payment could not be processed'
+            );
+            await sendEmail(user.email, emailTemplate.subject, emailTemplate.html, 'subscription');
+            console.log('❌ Payment failure email sent to:', user.email);
+          }
+        } catch (emailError) {
+          console.error('❌ Failed to send payment failure email:', emailError);
+        }
+        
         res.status(400).json({
           success: false,
           message: paymentResult.message || 'Payment verification failed',

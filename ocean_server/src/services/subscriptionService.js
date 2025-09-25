@@ -401,6 +401,25 @@ class SubscriptionService {
   }
 
   /**
+   * Get subscription plan by ID
+   * @param {number} planId - Plan ID
+   * @returns {Object} Plan details
+   */
+  async getPlanById(planId) {
+    try {
+      return await SubscriptionPlan.findOne({
+        where: { 
+          id: planId,
+          isActive: true 
+        }
+      });
+    } catch (error) {
+      console.error('Error getting plan by ID:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Check if user can upgrade to a specific plan
    * @param {string} userId - User ID
    * @param {string} planName - Target plan name
