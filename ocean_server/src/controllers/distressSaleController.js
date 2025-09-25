@@ -1,5 +1,6 @@
 const db = require('../../models');
 const { Op } = require('sequelize');
+const { checkSubscriptionLimit, incrementUsage, checkFeatureAccess } = require('../middleware/subscriptionMiddleware');
 
 class DistressSaleController {
   // Create a distress sale product
@@ -30,6 +31,30 @@ class DistressSaleController {
         return res.status(403).json({
           success: false,
           message: 'Only verified sellers can create distress sales'
+        });
+      }
+
+      // Check subscription limits for distress sale creation
+      const subscriptionCheck = await checkSubscriptionLimit(req.user.id, 'distress_sales');
+      
+      if (!subscriptionCheck.allowed) {
+        return res.status(403).json({
+          message: subscriptionCheck.reason,
+          upgradeRequired: true,
+          currentPlan: subscriptionCheck.plan,
+          suggestedPlan: subscriptionCheck.plan ? 'surge' : 'wave'
+        });
+      }
+
+      // Check if user's plan allows creating distress sales
+      const featureCheck = await checkFeatureAccess(req.user.id, 'canCreateDistressSales');
+      
+      if (!featureCheck.allowed) {
+        return res.status(403).json({
+          message: featureCheck.reason,
+          upgradeRequired: true,
+          currentPlan: featureCheck.plan,
+          suggestedPlan: 'wave'
         });
       }
 
@@ -139,6 +164,9 @@ class DistressSaleController {
         isDistressSale: true,
         status: 'active'
       });
+
+      // Track subscription usage for distress sale creation
+      await incrementUsage(sellerId, 'distress_sales');
 
       res.status(201).json({
         success: true,

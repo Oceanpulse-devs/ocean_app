@@ -13,18 +13,77 @@
 					"name": "Get All Auctions",
 					"request": {
 						"method": "GET",
-						"header": [],
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text",
+								"description": "Optional: For subscription-aware search"
+							}
+						],
 						"url": {
-							"raw": "{{base_url}}/api/auctions",
+							"raw": "{{base_url}}/api/auctions?page=1&limit=20&status=active&sortBy=endTime",
 							"host": [
 								"{{base_url}}"
 							],
 							"path": [
 								"api",
 								"auctions"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1",
+									"description": "Page number"
+								},
+								{
+									"key": "limit",
+									"value": "20",
+									"description": "Items per page"
+								},
+								{
+									"key": "status",
+									"value": "active",
+									"description": "Filter by status: active, draft, ended"
+								},
+								{
+									"key": "sortBy",
+									"value": "endTime",
+									"description": "Sort by: endTime, price, views, newest"
+								},
+								{
+									"key": "search",
+									"value": "",
+									"description": "Search query"
+								},
+								{
+									"key": "category",
+									"value": "",
+									"description": "Filter by category"
+								},
+								{
+									"key": "minPrice",
+									"value": "",
+									"description": "Minimum price filter"
+								},
+								{
+									"key": "maxPrice",
+									"value": "",
+									"description": "Maximum price filter"
+								},
+								{
+									"key": "condition",
+									"value": "",
+									"description": "Filter by condition"
+								},
+								{
+									"key": "location",
+									"value": "",
+									"description": "Filter by location"
+								}
 							]
 						},
-						"description": "Get all auctions (public access)"
+						"description": "Get all auctions with subscription-aware search (boosted auctions appear first, verified sellers get priority)"
 					},
 					"response": []
 				},

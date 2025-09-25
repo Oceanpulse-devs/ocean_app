@@ -13,18 +13,116 @@
 					"name": "Get All Products",
 					"request": {
 						"method": "GET",
-						"header": [],
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text",
+								"description": "Optional: For subscription-aware search"
+							}
+						],
 						"url": {
-							"raw": "{{base_url}}/api/products",
+							"raw": "{{base_url}}/api/products?page=1&limit=20&sortBy=relevance",
 							"host": [
 								"{{base_url}}"
 							],
 							"path": [
 								"api",
 								"products"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1",
+									"description": "Page number"
+								},
+								{
+									"key": "limit",
+									"value": "20",
+									"description": "Items per page"
+								},
+								{
+									"key": "sortBy",
+									"value": "relevance",
+									"description": "Sort by: relevance, price_low, price_high, newest, popular"
+								},
+								{
+									"key": "search",
+									"value": "",
+									"description": "Search query"
+								},
+								{
+									"key": "category",
+									"value": "",
+									"description": "Filter by category"
+								},
+								{
+									"key": "minPrice",
+									"value": "",
+									"description": "Minimum price filter"
+								},
+								{
+									"key": "maxPrice",
+									"value": "",
+									"description": "Maximum price filter"
+								},
+								{
+									"key": "condition",
+									"value": "",
+									"description": "Filter by condition"
+								},
+								{
+									"key": "location",
+									"value": "",
+									"description": "Filter by location"
+								}
 							]
 						},
-						"description": "Get all products (public access)"
+						"description": "Get all products with subscription-aware search (boosted items appear first, verified sellers get priority)"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Trending Products",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text",
+								"description": "Optional: For subscription-aware trending"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/products/trending?limit=10&days=7",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"products",
+								"trending"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "10",
+									"description": "Number of trending products"
+								},
+								{
+									"key": "days",
+									"value": "7",
+									"description": "Trending period in days"
+								},
+								{
+									"key": "category",
+									"value": "",
+									"description": "Filter by category"
+								}
+							]
+						},
+						"description": "Get trending products with subscription-aware prioritization"
 					},
 					"response": []
 				},

@@ -1,0 +1,492 @@
+{
+	"info": {
+		"_postman_id": "promotional-boosts-collection",
+		"name": "Ocean-Promotional-Boosts",
+		"description": "Complete promotional boost management API endpoints for Ocean platform",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Boost Management",
+			"item": [
+				{
+					"name": "Create Promotional Boost",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"boost_type\": \"product\",\n  \"target_id\": \"123\",\n  \"boost_duration_hours\": 24,\n  \"boost_reason\": \"Promote new product\",\n  \"payment_reference\": \"pay_boost_123456789\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/promotional-boosts",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"promotional-boosts"
+							]
+						},
+						"description": "Create a new promotional boost for any item type"
+					},
+					"response": []
+				},
+				{
+					"name": "Get User Boosts",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/promotional-boosts",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"promotional-boosts"
+							]
+						},
+						"description": "Get all boosts created by the user"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Boost by ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/promotional-boosts/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"promotional-boosts",
+								"1"
+							]
+						},
+						"description": "Get specific boost details"
+					},
+					"response": []
+				},
+				{
+					"name": "Cancel Boost",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"cancellation_reason\": \"No longer needed\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/promotional-boosts/1/cancel",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"promotional-boosts",
+								"1",
+								"cancel"
+							]
+						},
+						"description": "Cancel an active boost"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Boost Discovery",
+			"item": [
+				{
+					"name": "Get Boosted Items",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/promotional-boosts/boosted?type=product&limit=10",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"promotional-boosts",
+								"boosted"
+							],
+							"query": [
+								{
+									"key": "type",
+									"value": "product"
+								},
+								{
+									"key": "limit",
+									"value": "10"
+								}
+							]
+						},
+						"description": "Get all currently boosted items"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Boosted Products",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/promotional-boosts/boosted?type=product",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"promotional-boosts",
+								"boosted"
+							],
+							"query": [
+								{
+									"key": "type",
+									"value": "product"
+								}
+							]
+						},
+						"description": "Get all boosted products"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Boosted Auctions",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/promotional-boosts/boosted?type=auction",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"promotional-boosts",
+								"boosted"
+							],
+							"query": [
+								{
+									"key": "type",
+									"value": "auction"
+								}
+							]
+						},
+						"description": "Get all boosted auctions"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Boosted Group Buys",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/promotional-boosts/boosted?type=group_buy",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"promotional-boosts",
+								"boosted"
+							],
+							"query": [
+								{
+									"key": "type",
+									"value": "group_buy"
+								}
+							]
+						},
+						"description": "Get all boosted group buys"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Boosted Swap Deals",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/promotional-boosts/boosted?type=swap_deal",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"promotional-boosts",
+								"boosted"
+							],
+							"query": [
+								{
+									"key": "type",
+									"value": "swap_deal"
+								}
+							]
+						},
+						"description": "Get all boosted swap deals"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Boost Analytics",
+			"item": [
+				{
+					"name": "Get Boost Analytics",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/promotional-boosts/analytics",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"promotional-boosts",
+								"analytics"
+							]
+						},
+						"description": "Get boost performance analytics for user"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Boost Statistics",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/promotional-boosts/stats?days=30",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"promotional-boosts",
+								"stats"
+							],
+							"query": [
+								{
+									"key": "days",
+									"value": "30"
+								}
+							]
+						},
+						"description": "Get boost statistics for specified period"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Boost Performance",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/promotional-boosts/performance",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"promotional-boosts",
+								"performance"
+							]
+						},
+						"description": "Get detailed boost performance metrics"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Boost Status",
+			"item": [
+				{
+					"name": "Check Item Boost Status",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/promotional-boosts/status/product/123",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"promotional-boosts",
+								"status",
+								"product",
+								"123"
+							]
+						},
+						"description": "Check if a specific item is currently boosted"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Active Boosts",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/promotional-boosts/active",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"promotional-boosts",
+								"active"
+							]
+						},
+						"description": "Get all active boosts for user"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Expired Boosts",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/promotional-boosts/expired",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"promotional-boosts",
+								"expired"
+							]
+						},
+						"description": "Get all expired boosts for user"
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:3000",
+			"type": "string"
+		},
+		{
+			"key": "auth_token",
+			"value": "",
+			"type": "string"
+		}
+	]
+}
+

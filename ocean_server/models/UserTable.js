@@ -181,7 +181,25 @@ module.exports = (sequelize, DataTypes) =>{
             }
         },
         
-       
+        // Subscription fields
+        subscriptionStatus: {
+            type: DataTypes.ENUM('free', 'active', 'expired', 'cancelled'),
+            defaultValue: 'free',
+            field: 'subscription_status',
+            comment: 'Current subscription status'
+        },
+        currentPlanId: {
+            type: DataTypes.INTEGER,
+            allowNull: true,
+            field: 'current_plan_id',
+            comment: 'Current active subscription plan'
+        },
+        subscriptionExpiresAt: {
+            type: DataTypes.DATE,
+            allowNull: true,
+            field: 'subscription_expires_at',
+            comment: 'When current subscription expires'
+        }
     },{
         tableName:'users',
         timestamps: true, // Enable automatic timestamp management

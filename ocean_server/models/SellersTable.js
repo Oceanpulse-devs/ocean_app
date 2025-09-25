@@ -110,6 +110,18 @@ module.exports = (sequelize) => {
       type: DataTypes.INTEGER,
       defaultValue: 0,
       comment: 'Trust score based on verification, sales, and reviews (0-100)'
+    },
+    subscriptionPlanId: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      field: 'subscription_plan_id',
+      comment: 'Current subscription plan for seller'
+    },
+    subscriptionFeatures: {
+      type: DataTypes.JSON,
+      allowNull: true,
+      field: 'subscription_features',
+      comment: 'Active subscription features'
     }
   }, {
     tableName: 'sellers',

@@ -106,6 +106,21 @@ module.exports = (sequelize, DataTypes) => {
     defaultValue: 0,
     comment: 'Number of views on this group buy'
   },
+  is_boosted: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+    comment: 'Whether group buy is currently boosted'
+  },
+  boost_expires_at: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    comment: 'When boost expires'
+  },
+  boost_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: 'Reference to promotional boost'
+  },
   created_at: {
     type: DataTypes.DATE,
     defaultValue: DataTypes.NOW

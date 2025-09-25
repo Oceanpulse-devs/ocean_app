@@ -90,6 +90,21 @@ module.exports = (sequelize, DataTypes) => {
     allowNull: true,
     comment: 'When the swap offer expires'
   },
+  is_boosted: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+    comment: 'Whether swap deal is currently boosted'
+  },
+  boost_expires_at: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    comment: 'When boost expires'
+  },
+  boost_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: 'Reference to promotional boost'
+  },
   created_at: {
     type: DataTypes.DATE,
     defaultValue: DataTypes.NOW

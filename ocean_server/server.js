@@ -364,6 +364,7 @@ const advancedNotificationRoutes = require('./src/routes/advancedNotificationRou
 const distressSaleRoutes = require('./src/routes/distressSaleRoutes');
 const heavyDistributorRoutes = require('./src/routes/heavyDistributorRoutes');
 const sellerVerificationRoutes = require('./src/routes/sellerVerificationRoutes');
+const subscriptionRoutes = require('./src/routes/subscriptionRoutes');
 
 app.use('/', authRoutes);
 app.use('/', notificationRoutes);
@@ -380,6 +381,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/distress-sales', distressSaleRoutes);
 app.use('/api/heavy-distributors', heavyDistributorRoutes);
 app.use('/api/seller-verification', sellerVerificationRoutes);
+app.use('/api/subscriptions', subscriptionRoutes);
 
 
 

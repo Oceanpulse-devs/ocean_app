@@ -1,6 +1,9 @@
 const db = require('../../models');
 const { Op } = require('sequelize');
 const cloudinaryService = require('../services/cloudinaryService');
+const { checkSubscriptionLimit, incrementUsage, checkFeatureAccess } = require('../middleware/subscriptionMiddleware');
+const { swapDealCreationMiddleware } = require('../middleware/featureMiddleware');
+const SubscriptionAwareSearchService = require('../services/subscriptionAwareSearchService');
 
 // Helper function to create notifications
 const createNotification = async (userId, title, message, type = 'info', category = 'system', metadata = null) => {
@@ -41,6 +44,30 @@ class SwapDealController {
       } = req.body;
 
       const initiator_id = req.user.id;
+
+      // Check subscription limits for swap deal creation
+      const subscriptionCheck = await checkSubscriptionLimit(req.user.id, 'swap_deals');
+      
+      if (!subscriptionCheck.allowed) {
+        return res.status(403).json({
+          message: subscriptionCheck.reason,
+          upgradeRequired: true,
+          currentPlan: subscriptionCheck.plan,
+          suggestedPlan: subscriptionCheck.plan ? 'surge' : 'wave'
+        });
+      }
+
+      // Check if user's plan allows creating swap deals
+      const featureCheck = await checkFeatureAccess(req.user.id, 'canCreateSwapDeals');
+      
+      if (!featureCheck.allowed) {
+        return res.status(403).json({
+          message: featureCheck.reason,
+          upgradeRequired: true,
+          currentPlan: featureCheck.plan,
+          suggestedPlan: 'wave'
+        });
+      }
 
       // Parse JSON strings for myItem and wantedItem
       let parsedMyItem, parsedWantedItem;
@@ -265,6 +292,9 @@ class SwapDealController {
         status: 'pending' // All swap deals start as pending
       });
 
+      // Track subscription usage for swap deal creation
+      await incrementUsage(initiator_id, 'swap_deals');
+
       console.log('Swap deal created successfully:', {
         id: swapDeal.id,
         title: swapDeal.title,
@@ -312,74 +342,30 @@ class SwapDealController {
       const {
         page = 1,
         limit = 10,
-        status,
+        status = 'active',
         initiator_id,
         responder_id,
         featured,
         search
       } = req.query;
 
-      const offset = (page - 1) * limit;
-      const whereClause = {};
+      const currentUserId = req.user?.id;
 
-      // Apply filters
-      if (status) whereClause.status = status;
-      if (initiator_id) whereClause.initiator_id = initiator_id;
-      if (responder_id) whereClause.responder_id = responder_id;
-      if (featured === 'true') whereClause.is_featured = true;
-      if (search) {
-        whereClause[Op.or] = [
-          { title: { [Op.like]: `%${search}%` } },
-          { description: { [Op.like]: `%${search}%` } }
-        ];
-      }
+      // Use subscription-aware search service
+      const searchResults = await SubscriptionAwareSearchService.searchSwapDeals({
+        query: search,
+        status,
+        initiatorId: initiator_id,
+        responderId: responder_id,
+        featured: featured === 'true',
+        page: parseInt(page),
+        limit: parseInt(limit)
+      }, currentUserId);
 
-      console.log('getAllSwapDeals query params:', { whereClause, limit, offset });
-      
-      // Debug: Check total count without filters
-      const totalCount = await db.SwapDeal.count();
-      console.log(`Total swap deals in database: ${totalCount}`);
-      
-      const { count, rows } = await db.SwapDeal.findAndCountAll({
-        where: whereClause,
-        include: [
-          {
-            model: db.UserTable,
-            as: 'initiator',
-            attributes: ['id', 'username', 'profilePicture']
-          },
-          {
-            model: db.UserTable,
-            as: 'responder',
-            attributes: ['id', 'username', 'profilePicture']
-          },
-          {
-            model: db.Product,
-            as: 'initiatorItem',
-            attributes: ['id', 'title', 'price', 'images', 'status']
-          },
-          {
-            model: db.Product,
-            as: 'responderItem',
-            attributes: ['id', 'title', 'price', 'images', 'status']
-          }
-        ],
-        order: [['created_at', 'DESC']],
-        limit: parseInt(limit),
-        offset: parseInt(offset)
-      });
-
-      console.log(`Found ${count} swap deals, returning ${rows.length} rows`);
-
-      res.json({
+      res.status(200).json({
         success: true,
-        data: rows,
-        pagination: {
-          current_page: parseInt(page),
-          total_pages: Math.ceil(count / limit),
-          total_items: count,
-          items_per_page: parseInt(limit)
-        }
+        data: searchResults.swapDeals,
+        pagination: searchResults.pagination
       });
 
     } catch (error) {

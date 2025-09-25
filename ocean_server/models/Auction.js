@@ -127,6 +127,24 @@ module.exports = (sequelize) => {
     returnPolicy: {
       type: DataTypes.TEXT,
       allowNull: true
+    },
+    isBoosted: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+      field: 'is_boosted',
+      comment: 'Whether auction is currently boosted'
+    },
+    boostExpiresAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      field: 'boost_expires_at',
+      comment: 'When boost expires'
+    },
+    boostId: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      field: 'boost_id',
+      comment: 'Reference to promotional boost'
     }
   }, {
     tableName: 'auctions',

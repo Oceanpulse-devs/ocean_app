@@ -112,6 +112,24 @@ module.exports = (sequelize) => {
       type: DataTypes.DATE,
       allowNull: true,
       comment: 'When the distress sale expires'
+    },
+    isBoosted: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+      field: 'is_boosted',
+      comment: 'Whether product is currently boosted'
+    },
+    boostExpiresAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      field: 'boost_expires_at',
+      comment: 'When boost expires'
+    },
+    boostId: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      field: 'boost_id',
+      comment: 'Reference to promotional boost'
     }
   }, {
     tableName: 'products',

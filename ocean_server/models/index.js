@@ -51,6 +51,10 @@ const NotificationTemplate = require('./NotificationTemplate');
 const HeavyDistributor = require('./HeavyDistributor');
 const DistributorReview = require('./DistributorReview');
 const DistributorInquiry = require('./DistributorInquiry');
+const SubscriptionPlan = require('./SubscriptionPlan');
+const UserSubscription = require('./UserSubscription');
+const SubscriptionUsage = require('./SubscriptionUsage');
+const PromotionalBoost = require('./PromotionalBoost');
 
 // Initialize all models
 db.UserTable = UserTable(sequelize, Sequelize.DataTypes);
@@ -89,6 +93,10 @@ db.ShareStats = ShareStats(sequelize, Sequelize.DataTypes);
   db.HeavyDistributor = HeavyDistributor(sequelize, Sequelize.DataTypes);
   db.DistributorReview = DistributorReview(sequelize, Sequelize.DataTypes);
   db.DistributorInquiry = DistributorInquiry(sequelize, Sequelize.DataTypes);
+  db.SubscriptionPlan = SubscriptionPlan(sequelize, Sequelize.DataTypes);
+  db.UserSubscription = UserSubscription(sequelize, Sequelize.DataTypes);
+  db.SubscriptionUsage = SubscriptionUsage(sequelize, Sequelize.DataTypes);
+  db.PromotionalBoost = PromotionalBoost(sequelize, Sequelize.DataTypes);
 
 // Set up associations
 const setupAssociations = () => {
@@ -263,6 +271,29 @@ const setupAssociations = () => {
   db.DistributorInquiry.belongsTo(db.UserTable, { foreignKey: 'inquirerId', as: 'inquirer' });
   db.HeavyDistributor.hasMany(db.DistributorInquiry, { foreignKey: 'distributorId', as: 'inquiries' });
   db.UserTable.hasMany(db.DistributorInquiry, { foreignKey: 'inquirerId', as: 'distributorInquiries' });
+
+  // Subscription System associations
+  // SubscriptionPlan associations
+  db.SubscriptionPlan.hasMany(db.UserSubscription, { foreignKey: 'plan_id', as: 'subscriptions' });
+  
+  // UserSubscription associations
+  db.UserSubscription.belongsTo(db.SubscriptionPlan, { foreignKey: 'plan_id', as: 'plan' });
+  db.UserSubscription.belongsTo(db.UserTable, { foreignKey: 'user_id', as: 'user' });
+  db.UserSubscription.hasMany(db.SubscriptionUsage, { foreignKey: 'subscription_id', as: 'usage' });
+  db.UserSubscription.hasMany(db.PromotionalBoost, { foreignKey: 'subscription_id', as: 'boosts' });
+  
+  // SubscriptionUsage associations
+  db.SubscriptionUsage.belongsTo(db.UserSubscription, { foreignKey: 'subscription_id', as: 'subscription' });
+  db.SubscriptionUsage.belongsTo(db.UserTable, { foreignKey: 'user_id', as: 'user' });
+  
+  // PromotionalBoost associations
+  db.PromotionalBoost.belongsTo(db.UserSubscription, { foreignKey: 'subscription_id', as: 'subscription' });
+  db.PromotionalBoost.belongsTo(db.UserTable, { foreignKey: 'user_id', as: 'user' });
+  
+  // UserTable subscription associations
+  db.UserTable.hasMany(db.UserSubscription, { foreignKey: 'user_id', as: 'subscriptions' });
+  db.UserTable.hasMany(db.SubscriptionUsage, { foreignKey: 'user_id', as: 'usageHistory' });
+  db.UserTable.hasMany(db.PromotionalBoost, { foreignKey: 'user_id', as: 'boosts' });
 };
 
 // Setup associations

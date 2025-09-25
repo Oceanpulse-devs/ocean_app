@@ -1,5 +1,8 @@
 const { Auction, AuctionBid, AuctionWatcher, SellersTable, UserTable, Notification, ProductCategory } = require('../../models');
 const { Op, Sequelize } = require('sequelize');
+const { checkSubscriptionLimit, incrementUsage, checkFeatureAccess } = require('../middleware/subscriptionMiddleware');
+const { auctionCreationMiddleware } = require('../middleware/featureMiddleware');
+const SubscriptionAwareSearchService = require('../services/subscriptionAwareSearchService');
 
 // Simple notification function to avoid circular dependency
 const createAuctionNotification = async (userId, title, message, type = 'auction', category = 'system') => {
@@ -32,6 +35,30 @@ const createAuction = async (req, res) => {
     if (!seller) {
       return res.status(403).json({
         message: 'Only verified sellers can create auctions'
+      });
+    }
+
+    // Check subscription limits for auction creation
+    const subscriptionCheck = await checkSubscriptionLimit(req.user.id, 'auctions');
+    
+    if (!subscriptionCheck.allowed) {
+      return res.status(403).json({
+        message: subscriptionCheck.reason,
+        upgradeRequired: true,
+        currentPlan: subscriptionCheck.plan,
+        suggestedPlan: subscriptionCheck.plan ? 'surge' : 'wave'
+      });
+    }
+
+    // Check if user's plan allows creating auctions
+    const featureCheck = await checkFeatureAccess(req.user.id, 'canCreateAuctions');
+    
+    if (!featureCheck.allowed) {
+      return res.status(403).json({
+        message: featureCheck.reason,
+        upgradeRequired: true,
+        currentPlan: featureCheck.plan,
+        suggestedPlan: 'wave'
       });
     }
 
@@ -159,6 +186,9 @@ const createAuction = async (req, res) => {
       returnPolicy
     });
 
+    // Track subscription usage for auction creation
+    await incrementUsage(userId, 'auctions');
+
     res.status(201).json({
       message: 'Auction created successfully',
       auction
@@ -179,7 +209,7 @@ const getAuctions = async (req, res) => {
     const {
       page = 1,
       limit = 20,
-      status,
+      status = 'active',
       category,
       minPrice,
       maxPrice,
@@ -190,82 +220,31 @@ const getAuctions = async (req, res) => {
       sortOrder = 'ASC'
     } = req.query;
 
-    const offset = (page - 1) * limit;
-    const whereClause = {};
+    const currentUserId = req.user?.id;
 
-    // Status filter
-    if (status) {
-      whereClause.status = status;
-    } else {
-      // Default: show active and upcoming auctions
-      whereClause.status = ['active', 'draft'];
-    }
-
-    // Category filter
-    if (category) {
-      whereClause.category = category;
-    }
-
-    // Price range filter
-    if (minPrice || maxPrice) {
-      whereClause.currentPrice = {};
-      if (minPrice) whereClause.currentPrice[Op.gte] = parseFloat(minPrice);
-      if (maxPrice) whereClause.currentPrice[Op.lte] = parseFloat(maxPrice);
-    }
-
-    // Condition filter
-    if (condition) {
-      whereClause.condition = condition;
-    }
-
-    // Location filter
-    if (location) {
-      whereClause.location = { [Op.like]: `%${location}%` };
-    }
-
-    // Search filter
-    if (search) {
-      whereClause[Op.or] = [
-        { title: { [Op.like]: `%${search}%` } },
-        { description: { [Op.like]: `%${search}%` } },
-        { tags: { [Op.like]: `%${search}%` } }
-      ];
-    }
-
-    const auctions = await Auction.findAndCountAll({
-      where: whereClause,
-      include: [
-        {
-          model: UserTable,
-          as: 'seller',
-          attributes: ['id', 'fullName', 'email', 'profilePicture', 'location']
-        },
-        {
-          model: AuctionBid,
-          as: 'bids',
-          attributes: ['id', 'bidAmount', 'createdAt'],
-          order: [['bidAmount', 'DESC']],
-          limit: 1
-        }
-      ],
-      order: [[sortBy, sortOrder]],
+    // Use subscription-aware search service
+    const searchResults = await SubscriptionAwareSearchService.searchAuctions({
+      query: search,
+      category,
+      minPrice: minPrice ? parseFloat(minPrice) : undefined,
+      maxPrice: maxPrice ? parseFloat(maxPrice) : undefined,
+      condition,
+      location,
+      status,
+      page: parseInt(page),
       limit: parseInt(limit),
-      offset: parseInt(offset)
-    });
+      sortBy
+    }, currentUserId);
 
-    res.json({
-      auctions: auctions.rows,
-      total: auctions.count,
-      currentPage: parseInt(page),
-      totalPages: Math.ceil(auctions.count / limit)
+    res.status(200).json({
+      success: true,
+      data: searchResults.auctions,
+      pagination: searchResults.pagination
     });
 
   } catch (error) {
-    console.error('Error retrieving auctions:', error);
-    res.status(500).json({
-      message: 'Error retrieving auctions',
-      error: error.message
-    });
+    console.error('Get auctions error:', error);
+    res.status(500).json({ message: "Error retrieving auctions", error: error.message });
   }
 };
 

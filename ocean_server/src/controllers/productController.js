@@ -1,6 +1,9 @@
 const { Product, ProductCategory, SavedProduct, SavedPost, Post, UserTable, SellersTable, UserFollows, Notification } = require('../../models');
 const { Op, Sequelize } = require('sequelize');
 const cloudinaryService = require('../services/cloudinaryService');
+const { checkSubscriptionLimit, incrementUsage } = require('../middleware/subscriptionMiddleware');
+const { productListingMiddleware } = require('../middleware/featureMiddleware');
+const SubscriptionAwareSearchService = require('../services/subscriptionAwareSearchService');
 
 // Helper function to create notifications
 const createNotification = async (userId, title, message, type = 'info', category = 'system', metadata = null) => {
@@ -39,113 +42,28 @@ const getProducts = async (req, res) => {
             sellerId
         } = req.query;
 
-        const offset = (page - 1) * limit;
         const currentUserId = req.user?.id;
 
-        // Build where clause
-        let whereClause = {
-            status: 'active',
-            isAvailable: true
-        };
-
-        // Search functionality
-        if (search) {
-            whereClause[Op.or] = [
-                { title: { [Op.like]: `%${search}%` } },
-                { description: { [Op.like]: `%${search}%` } },
-                { brand: { [Op.like]: `%${search}%` } }
-            ];
-        }
-
-        // Filters
-        if (category) whereClause.category = category;
-        if (subcategory) whereClause.subcategory = subcategory;
-        if (brand) whereClause.brand = brand;
-        if (condition) whereClause.condition = condition;
-        if (location) whereClause.location = { [Op.like]: `%${location}%` };
-        if (sellerId) whereClause.sellerId = sellerId;
-
-        // Price range filter
-        if (minPrice || maxPrice) {
-            whereClause.price = {};
-            if (minPrice) whereClause.price[Op.gte] = parseFloat(minPrice);
-            if (maxPrice) whereClause.price[Op.lte] = parseFloat(maxPrice);
-        }
-
-        // Sort options
-        let orderClause = [[sortBy, sortOrder]];
-        if (sortBy === 'price') {
-            orderClause = [['price', sortOrder]];
-        } else if (sortBy === 'views') {
-            orderClause = [['views', sortOrder]];
-        } else if (sortBy === 'saves') {
-            orderClause = [['saves', sortOrder]];
-        } else if (sortBy === 'random') {
-            orderClause = [[Sequelize.fn('RAND')]];
-        } else {
-            orderClause = [['createdAt', sortOrder]];
-        }
-
-        const products = await Product.findAndCountAll({
-            where: whereClause,
-            include: [
-                {
-                    model: SellersTable,
-                    as: 'seller',
-                    attributes: ['id', 'userId', 'businessName', 'businessAddress', 'country', 'state', 'category', 'verificationStatus'],
-                    include: [
-                        {
-                            model: UserTable,
-                            as: 'user',
-                            attributes: ['id', 'fullName', 'email', 'profilePicture', 'accountType', 'accountStatus']
-                        }
-                    ]
-                }
-            ],
-            order: orderClause,
+        // Use subscription-aware search service
+        const searchResults = await SubscriptionAwareSearchService.searchProducts({
+            query: search,
+            category,
+            subcategory,
+            brand,
+            minPrice: minPrice ? parseFloat(minPrice) : undefined,
+            maxPrice: maxPrice ? parseFloat(maxPrice) : undefined,
+            condition,
+            location,
+            page: parseInt(page),
             limit: parseInt(limit),
-            offset: parseInt(offset),
-            distinct: true
-        });
-
-        // Add engagement status for current user
-        const productsWithEngagement = await Promise.all(
-            products.rows.map(async (product) => {
-                const productData = product.toJSON();
-                
-                if (currentUserId) {
-                    // Check if user saved the product
-                    const userSaved = await SavedProduct.findOne({
-                        where: { productId: product.id, userId: currentUserId }
-                    });
-                    productData.isSaved = !!userSaved;
-
-                    // Check if user is following the seller
-                    const userFollow = await UserFollows.findOne({
-                        where: { 
-                            userId: currentUserId, 
-                            followsUserId: product.sellerId 
-                        }
-                    });
-                    productData.isFollowing = !!userFollow;
-                }
-
-                return productData;
-            })
-        );
+            sortBy
+        }, currentUserId);
 
         res.status(200).json({
-            message: "Products retrieved successfully",
-            data: {
-                products: productsWithEngagement,
-                pagination: {
-                    currentPage: parseInt(page),
-                    totalPages: Math.ceil(products.count / limit),
-                    totalProducts: products.count,
-                    hasNextPage: offset + limit < products.count,
-                    hasPrevPage: page > 1
-                }
-            }
+            success: true,
+            data: searchResults.products,
+            pagination: searchResults.pagination,
+            searchInfo: searchResults.searchInfo
         });
 
     } catch (error) {
@@ -268,6 +186,20 @@ const createProduct = async (req, res) => {
             });
         }
 
+        // Check subscription limits for product creation
+        console.log('Checking subscription limits for user:', req.user.id);
+        const subscriptionCheck = await checkSubscriptionLimit(req.user.id, 'listings');
+        console.log('Subscription check result:', subscriptionCheck);
+        
+        if (!subscriptionCheck.allowed) {
+            return res.status(403).json({
+                message: subscriptionCheck.reason,
+                upgradeRequired: true,
+                currentPlan: subscriptionCheck.plan,
+                suggestedPlan: subscriptionCheck.plan ? 'surge' : 'wave'
+            });
+        }
+
         // Validate required fields
         if (!title || !description || !price || !category || !location) {
             return res.status(400).json({
@@ -315,6 +247,11 @@ const createProduct = async (req, res) => {
             location: location.trim(),
             images: [] // Will be populated with Cloudinary URLs
         });
+
+        // Track subscription usage for product creation
+        console.log('Incrementing usage for user:', userId, 'action: listings');
+        const usageResult = await incrementUsage(userId, 'listings');
+        console.log('Usage increment result:', usageResult);
 
         // Upload images to Cloudinary
         const imageUrls = [];

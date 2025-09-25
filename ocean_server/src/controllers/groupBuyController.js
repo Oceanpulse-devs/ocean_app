@@ -1,5 +1,8 @@
 const db = require('../../models');
 const { Op } = require('sequelize');
+const { checkSubscriptionLimit, incrementUsage, checkFeatureAccess } = require('../middleware/subscriptionMiddleware');
+const { groupBuyCreationMiddleware } = require('../middleware/featureMiddleware');
+const SubscriptionAwareSearchService = require('../services/subscriptionAwareSearchService');
 
 // Helper function to create notifications
 const createNotification = async (userId, title, message, type = 'info', category = 'system', metadata = null) => {
@@ -40,6 +43,30 @@ class GroupBuyController {
       } = req.body;
 
       const creator_id = req.user.id;
+
+      // Check subscription limits for group buy creation
+      const subscriptionCheck = await checkSubscriptionLimit(req.user.id, 'group_buys');
+      
+      if (!subscriptionCheck.allowed) {
+        return res.status(403).json({
+          message: subscriptionCheck.reason,
+          upgradeRequired: true,
+          currentPlan: subscriptionCheck.plan,
+          suggestedPlan: subscriptionCheck.plan ? 'surge' : 'wave'
+        });
+      }
+
+      // Check if user's plan allows creating group buys
+      const featureCheck = await checkFeatureAccess(req.user.id, 'canCreateGroupBuy');
+      
+      if (!featureCheck.allowed) {
+        return res.status(403).json({
+          message: featureCheck.reason,
+          upgradeRequired: true,
+          currentPlan: featureCheck.plan,
+          suggestedPlan: 'wave'
+        });
+      }
 
       // Validate required fields
       if (!title || !description || !category_id || !product_name || !original_price || !group_price || !min_buyers || !deadline) {
@@ -99,6 +126,9 @@ class GroupBuyController {
         tags: tags ? (typeof tags === 'string' ? JSON.parse(tags) : tags) : null,
         status: 'pending'
       });
+
+      // Track subscription usage for group buy creation
+      await incrementUsage(creator_id, 'group_buys');
 
       // Get creator info for notifications
       const creator = await db.UserTable.findByPk(creator_id, {
@@ -174,7 +204,7 @@ class GroupBuyController {
       const {
         page = 1,
         limit = 10,
-        status,
+        status = 'active',
         category_id,
         location,
         min_price,
@@ -183,55 +213,23 @@ class GroupBuyController {
         search
       } = req.query;
 
-      const offset = (page - 1) * limit;
-      const whereClause = {};
+      const currentUserId = req.user?.id;
 
-      // Apply filters
-      if (status) whereClause.status = status;
-      if (category_id) whereClause.category_id = category_id;
-      if (location) whereClause.location = { [Op.like]: `%${location}%` };
-      if (featured === 'true') whereClause.is_featured = true;
-      if (min_price) whereClause.group_price = { [Op.gte]: parseFloat(min_price) };
-      if (max_price) {
-        whereClause.group_price = whereClause.group_price || {};
-        whereClause.group_price[Op.lte] = parseFloat(max_price);
-      }
-      if (search) {
-        whereClause[Op.or] = [
-          { title: { [Op.like]: `%${search}%` } },
-          { product_name: { [Op.like]: `%${search}%` } },
-          { description: { [Op.like]: `%${search}%` } }
-        ];
-      }
+      // Use subscription-aware search service
+      const searchResults = await SubscriptionAwareSearchService.searchGroupBuys({
+        query: search,
+        category: category_id,
+        location,
+        minPrice: min_price ? parseFloat(min_price) : undefined,
+        maxPrice: max_price ? parseFloat(max_price) : undefined,
+        page: parseInt(page),
+        limit: parseInt(limit)
+      }, currentUserId);
 
-      const { count, rows } = await db.GroupBuy.findAndCountAll({
-        where: whereClause,
-        include: [
-          {
-            model: db.UserTable,
-            as: 'creator',
-            attributes: ['id', 'username', 'profilePicture']
-          },
-          {
-            model: db.ProductCategory,
-            as: 'groupBuyCategory',
-            attributes: ['id', 'name']
-          }
-        ],
-        order: [['created_at', 'DESC']],
-        limit: parseInt(limit),
-        offset: parseInt(offset)
-      });
-
-      res.json({
+      res.status(200).json({
         success: true,
-        data: rows,
-        pagination: {
-          current_page: parseInt(page),
-          total_pages: Math.ceil(count / limit),
-          total_items: count,
-          items_per_page: parseInt(limit)
-        }
+        data: searchResults.groupBuys,
+        pagination: searchResults.pagination
       });
 
     } catch (error) {

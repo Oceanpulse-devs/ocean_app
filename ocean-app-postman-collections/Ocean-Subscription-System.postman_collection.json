@@ -1,0 +1,472 @@
+{
+	"info": {
+		"_postman_id": "subscription-system-collection",
+		"name": "Ocean-Subscription-System",
+		"description": "Complete subscription management API endpoints for Ocean platform",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Subscription Plans",
+			"item": [
+				{
+					"name": "Get All Subscription Plans",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/subscriptions/plans",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"subscriptions",
+								"plans"
+							]
+						},
+						"description": "Get all available subscription plans (public endpoint)"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Current Subscription",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/subscriptions/current",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"subscriptions",
+								"current"
+							]
+						},
+						"description": "Get user's current subscription status"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "User Subscriptions",
+			"item": [
+				{
+					"name": "Subscribe to Plan",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"planId\": \"wave\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/subscriptions/subscribe",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"subscriptions",
+								"subscribe"
+							]
+						},
+						"description": "Subscribe to a plan - returns Paystack payment URL"
+					},
+					"response": []
+				},
+				{
+					"name": "Change Subscription Plan",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"newPlanId\": \"tide\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/subscriptions/change-plan",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"subscriptions",
+								"change-plan"
+							]
+						},
+						"description": "Change user's subscription plan"
+					},
+					"response": []
+				},
+				{
+					"name": "Cancel Subscription",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"cancellation_reason\": \"No longer needed\",\n  \"immediate\": false\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/subscriptions/cancel",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"subscriptions",
+								"cancel"
+							]
+						},
+						"description": "Cancel user's subscription"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Usage Tracking",
+			"item": [
+				{
+					"name": "Get Current Usage",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/subscriptions/usage",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"subscriptions",
+								"usage"
+							]
+						},
+						"description": "Get user's current usage statistics"
+					},
+					"response": []
+				},
+				{
+					"name": "Check Action Eligibility",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/subscriptions/check/product_listing",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"subscriptions",
+								"check",
+								"product_listing"
+							]
+						},
+						"description": "Check if user can perform specific action (product_listing, group_buy, auction, etc.)"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Analytics",
+			"item": [
+				{
+					"name": "Get Subscription Analytics",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/subscriptions/analytics",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"subscriptions",
+								"analytics"
+							]
+						},
+						"description": "Get subscription analytics for user"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Promotional Boosts",
+			"item": [
+				{
+					"name": "Create Promotional Boost",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"boostType\": \"product\",\n  \"targetId\": \"123\",\n  \"durationHours\": 24,\n  \"reason\": \"Promote new product\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/subscriptions/boosts",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"subscriptions",
+								"boosts"
+							]
+						},
+						"description": "Create a promotional boost"
+					},
+					"response": []
+				},
+				{
+					"name": "Get User Boosts",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/subscriptions/boosts",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"subscriptions",
+								"boosts"
+							]
+						},
+						"description": "Get user's promotional boosts"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Payment Processing",
+			"item": [
+				{
+					"name": "Confirm Payment",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"paymentReference\": \"pay_123456789\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/subscriptions/confirm-payment",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"subscriptions",
+								"confirm-payment"
+							]
+						},
+						"description": "Manually confirm payment (for development/admin use)"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Payment Webhooks",
+			"item": [
+				{
+					"name": "Paystack Webhook Test",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "x-paystack-signature",
+								"value": "test_signature",
+								"type": "text",
+								"description": "HMAC SHA512 signature"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"event\": \"charge.success\",\n  \"data\": {\n    \"reference\": \"pay_123456789\",\n    \"amount\": 5000,\n    \"currency\": \"NGN\",\n    \"customer\": {\n      \"id\": \"user_123\",\n      \"email\": \"user@example.com\"\n    },\n    \"metadata\": {\n      \"userId\": \"user_123\",\n      \"planId\": \"2\"\n    }\n  }\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/subscriptions/webhooks/paystack",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"subscriptions",
+								"webhooks",
+								"paystack"
+							]
+						},
+						"description": "Test Paystack webhook endpoint"
+					},
+					"response": []
+				},
+				{
+					"name": "Paystack Webhook Test (GET)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/subscriptions/webhooks/paystack",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"subscriptions",
+								"webhooks",
+								"paystack"
+							]
+						},
+						"description": "Test webhook endpoint accessibility"
+					},
+					"response": []
+				},
+				{
+					"name": "Paystack Callback Test",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/subscriptions/callback/paystack?reference=pay_123456789&status=success",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"subscriptions",
+								"callback",
+								"paystack"
+							],
+							"query": [
+								{
+									"key": "reference",
+									"value": "pay_123456789"
+								},
+								{
+									"key": "status",
+									"value": "success"
+								}
+							]
+						},
+						"description": "Test Paystack callback endpoint"
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:3000",
+			"type": "string"
+		},
+		{
+			"key": "auth_token",
+			"value": "",
+			"type": "string"
+		}
+	]
+}

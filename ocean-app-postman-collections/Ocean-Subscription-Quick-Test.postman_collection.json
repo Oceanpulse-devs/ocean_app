@@ -1,0 +1,246 @@
+{
+	"info": {
+		"_postman_id": "ocean-subscription-quick-test",
+		"name": "Ocean-Subscription-Quick-Test",
+		"description": "Quick test collection for Ocean subscription system - essential endpoints only",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "🔍 Test Server Health",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/health",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"health"
+					]
+				},
+				"description": "Test if server is running"
+			},
+			"response": []
+		},
+		{
+			"name": "📋 Get Subscription Plans",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/api/subscriptions/plans",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"subscriptions",
+						"plans"
+					]
+				},
+				"description": "Get all available subscription plans (public endpoint)"
+			},
+			"response": []
+		},
+		{
+			"name": "🔗 Test Webhook Endpoint",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/api/subscriptions/webhooks/paystack",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"subscriptions",
+						"webhooks",
+						"paystack"
+					]
+				},
+				"description": "Test if webhook endpoint is accessible"
+			},
+			"response": []
+		},
+		{
+			"name": "🧪 Test Paystack Integration",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/api/subscriptions/test-paystack",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"subscriptions",
+						"test-paystack"
+					]
+				},
+				"description": "Test Paystack API integration with real API calls"
+			},
+			"response": []
+		},
+		{
+			"name": "🔗 Test Callback Endpoint",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/api/subscriptions/callback/paystack?reference=test_123&status=success",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"subscriptions",
+						"callback",
+						"paystack"
+					],
+					"query": [
+						{
+							"key": "reference",
+							"value": "test_123"
+						},
+						{
+							"key": "status",
+							"value": "success"
+						}
+					]
+				},
+				"description": "Test Paystack callback endpoint with real API"
+			},
+			"response": []
+		},
+		{
+			"name": "💳 Subscribe to Plan (Auth Required)",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{auth_token}}",
+						"type": "text"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"planId\": \"wave\"\n}"
+				},
+				"url": {
+					"raw": "{{base_url}}/api/subscriptions/subscribe",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"subscriptions",
+						"subscribe"
+					]
+				},
+				"description": "Subscribe to Wave plan - returns Paystack payment URL (requires authentication)"
+			},
+			"response": []
+		},
+		{
+			"name": "👤 Get Current Subscription (Auth Required)",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{auth_token}}",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{base_url}}/api/subscriptions/current",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"subscriptions",
+						"current"
+					]
+				},
+				"description": "Get user's current subscription status (requires authentication)"
+			},
+			"response": []
+		},
+		{
+			"name": "📊 Get Usage Stats (Auth Required)",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{auth_token}}",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{base_url}}/api/subscriptions/usage",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"subscriptions",
+						"usage"
+					]
+				},
+				"description": "Get user's usage statistics (requires authentication)"
+			},
+			"response": []
+		},
+		{
+			"name": "✅ Check Action Eligibility (Auth Required)",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{auth_token}}",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{base_url}}/api/subscriptions/check/product_listing",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"subscriptions",
+						"check",
+						"product_listing"
+					]
+				},
+				"description": "Check if user can perform product listing (requires authentication)"
+			},
+			"response": []
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:3000",
+			"type": "string"
+		},
+		{
+			"key": "auth_token",
+			"value": "",
+			"type": "string"
+		}
+	]
+}
