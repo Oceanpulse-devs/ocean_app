@@ -1,6 +1,7 @@
 const subscriptionService = require('../services/subscriptionService');
 const SubscriptionStatusChecker = require('../utils/subscriptionStatusChecker');
 const { PaymentProvider } = require('../providers/PaymentProvider');
+const { SellersTable } = require('../../models');
 
 /**
  * Subscription Controller
@@ -106,6 +107,19 @@ class SubscriptionController {
         return res.status(400).json({
           success: false,
           message: 'Plan ID is required'
+        });
+      }
+
+      // Check if user is a verified seller (subscriptions are seller-only)
+      const seller = await SellersTable.findOne({
+        where: { userId, verificationStatus: 'approved' }
+      });
+
+      if (!seller) {
+        return res.status(403).json({
+          success: false,
+          message: 'Only verified sellers can subscribe to plans. Please complete seller verification first.',
+          requiresSellerVerification: true
         });
       }
 
@@ -221,6 +235,19 @@ class SubscriptionController {
           success: false,
           message: 'Plan ID is required',
           received: { planId, body: req.body }
+        });
+      }
+
+      // Check if user is a verified seller (subscriptions are seller-only)
+      const seller = await SellersTable.findOne({
+        where: { userId, verificationStatus: 'approved' }
+      });
+
+      if (!seller) {
+        return res.status(403).json({
+          success: false,
+          message: 'Only verified sellers can change subscription plans. Please complete seller verification first.',
+          requiresSellerVerification: true
         });
       }
 
