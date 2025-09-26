@@ -80,11 +80,22 @@ export default function CreateAccountScreen() {
         email: email.trim().toLowerCase(),
         password,
         confirmPassword,
+        country: country.trim(),
+        city: city.trim(),
         agreeTerms: true, // Assuming user agrees by proceeding
       });
       
-      // Navigate to OTP verification or main app
-      router.replace('/(tabs)');
+      // Show success message and navigate to login
+      Alert.alert(
+        'Account Created',
+        'Your account has been created successfully! Please check your email for a verification link to activate your account.',
+        [
+          {
+            text: 'OK',
+            onPress: () => router.replace('/auth/login')
+          }
+        ]
+      );
     } catch (error: any) {
       Alert.alert(
         'Signup Failed',

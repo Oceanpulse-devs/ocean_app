@@ -11,10 +11,11 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { useAuth } from '../../contexts/AuthContext';
 import { getUserDisplayRole, getRoleColor, canAccessSellerFeatures, canCreateAuctions } from '../../utils/permissions';
 import apiService, { User } from '../../services/api';
+import ImageZoomModal from '../../components/ImageZoomModal';
 
 const { width, height } = Dimensions.get('window');
 
@@ -23,26 +24,52 @@ export default function ProfileScreen() {
   const [isFollowing, setIsFollowing] = useState(false);
   const [profileData, setProfileData] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [imageModalVisible, setImageModalVisible] = useState(false);
+  const [selectedImageUri, setSelectedImageUri] = useState<string>('');
 
   // Fetch profile data
-  useEffect(() => {
-    const fetchProfileData = async () => {
-      try {
-        setIsLoading(true);
-        const response = await apiService.getProfile();
-        setProfileData(response.user);
-      } catch (error) {
-        console.error('Error fetching profile data:', error);
-        Alert.alert('Error', 'Failed to load profile data');
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  const fetchProfileData = async () => {
+    try {
+      setIsLoading(true);
+      const response = await apiService.getProfile();
+      console.log('Profile API response:', response);
+      console.log('Profile data:', response.user);
+      console.log('Profile picture URL:', response.user?.profilePicture);
+      setProfileData(response.user);
+    } catch (error) {
+      console.error('Error fetching profile data:', error);
+      Alert.alert('Error', 'Failed to load profile data');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
+  useEffect(() => {
     if (user) {
       fetchProfileData();
     }
   }, [user]);
+
+  // Refresh profile data when component comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      if (user) {
+        fetchProfileData();
+      }
+    }, [user])
+  );
+
+  // Handle image tap
+  const handleImagePress = (imageUri: string) => {
+    setSelectedImageUri(imageUri);
+    setImageModalVisible(true);
+  };
+
+  // Close image modal
+  const closeImageModal = () => {
+    setImageModalVisible(false);
+    setSelectedImageUri('');
+  };
 
 
   // Format numbers for display
@@ -107,9 +134,31 @@ export default function ProfileScreen() {
         <View style={styles.profileHeader}>
           <View style={styles.avatarSection}>
             <View style={styles.avatarContainer}>
-              <View style={styles.avatar}>
-                <Text style={styles.avatarPlaceholder}>👩‍💼</Text>
-              </View>
+              <TouchableOpacity 
+                style={styles.avatar}
+                onPress={() => {
+                  if (displayData?.profilePicture && typeof displayData.profilePicture === 'string' && (displayData.profilePicture.startsWith('http') || displayData.profilePicture.startsWith('https'))) {
+                    handleImagePress(displayData.profilePicture);
+                  }
+                }}
+                activeOpacity={0.8}
+              >
+                {displayData?.profilePicture && typeof displayData.profilePicture === 'string' && (displayData.profilePicture.startsWith('http') || displayData.profilePicture.startsWith('https')) ? (
+                  <Image
+                    source={{ uri: displayData.profilePicture }}
+                    style={styles.avatarImage}
+                    resizeMode="cover"
+                    onError={(error) => {
+                      console.log('Image load error:', error);
+                    }}
+                    onLoad={() => {
+                      console.log('Image loaded successfully:', displayData.profilePicture);
+                    }}
+                  />
+                ) : (
+                  <Text style={styles.avatarPlaceholder}>👩‍💼</Text>
+                )}
+              </TouchableOpacity>
               <View style={styles.verifiedBadge}>
                 <Ionicons name="checkmark" size={12} color="#FFFFFF" />
               </View>
@@ -180,7 +229,15 @@ export default function ProfileScreen() {
               {sellerData.products.length > 0 ? (
                 sellerData.products.map((product, index) => (
                   <View key={product.id} style={styles.productCard}>
-                    <View style={styles.productImage}>
+                    <TouchableOpacity 
+                      style={styles.productImage}
+                      onPress={() => {
+                        if (product.images && product.images.length > 0) {
+                          handleImagePress(product.images[0]);
+                        }
+                      }}
+                      activeOpacity={0.8}
+                    >
                       {product.images && product.images.length > 0 ? (
                         <Image 
                           source={{ uri: product.images[0] }} 
@@ -190,7 +247,7 @@ export default function ProfileScreen() {
                       ) : (
                         <Text style={styles.productEmoji}>📦</Text>
                       )}
-                    </View>
+                    </TouchableOpacity>
                     <View style={styles.productInfo}>
                       <Text style={styles.productName}>{product.title}</Text>
                       <Text style={styles.productBrand}>{product.brand || 'No Brand'}</Text>
@@ -285,6 +342,13 @@ export default function ProfileScreen() {
           </View>
         </View>
       </ScrollView>
+
+      {/* Image Zoom Modal */}
+      <ImageZoomModal
+        visible={imageModalVisible}
+        imageUri={selectedImageUri}
+        onClose={closeImageModal}
+      />
     </View>
   );
 }
@@ -357,6 +421,11 @@ const styles = StyleSheet.create({
   },
   avatarPlaceholder: {
     fontSize: 32,
+  },
+  avatarImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
   },
   verifiedBadge: {
     position: 'absolute',

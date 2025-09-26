@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,15 +6,44 @@ import {
   TextInput,
   TouchableOpacity,
   Dimensions,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import apiService from '../../services/api';
 
 const { width } = Dimensions.get('window');
 
 export default function OTPVerificationScreen() {
-  const [otp, setOtp] = useState(['0', '0', '0', '0']);
+  const [otp, setOtp] = useState(['', '', '', '']);
+  const [email, setEmail] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
   const inputRefs = useRef<TextInput[]>([]);
+  const params = useLocalSearchParams();
+
+  // Get email from params or AsyncStorage
+  useEffect(() => {
+    const getEmail = async () => {
+      const storedEmail = await AsyncStorage.getItem('pendingVerificationEmail');
+      if (storedEmail) {
+        setEmail(storedEmail);
+      } else if (params.email) {
+        setEmail(params.email as string);
+      }
+    };
+    getEmail();
+  }, [params.email]);
+
+  // Resend cooldown timer
+  useEffect(() => {
+    if (resendCooldown > 0) {
+      const timer = setTimeout(() => setResendCooldown(resendCooldown - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [resendCooldown]);
 
   const handleOtpChange = (text: string, index: number) => {
     const newOtp = [...otp];
@@ -33,17 +62,76 @@ export default function OTPVerificationScreen() {
     }
   };
 
-  const handleVerify = () => {
+  const handleVerify = async () => {
     const otpString = otp.join('');
-    if (otpString.length === 4) {
-      // Navigate to main app after verification
-      router.replace('/(tabs)');
+    if (otpString.length !== 4) {
+      Alert.alert('Error', 'Please enter the complete 4-digit code');
+      return;
+    }
+
+    if (!email) {
+      Alert.alert('Error', 'Email not found. Please try signing up again.');
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      
+      // Call backend verification endpoint
+      const response = await apiService.post('/api/verify-email', {
+        email,
+        token: otpString
+      });
+
+      if (response.success) {
+        // Clear pending email
+        await AsyncStorage.removeItem('pendingVerificationEmail');
+        
+        Alert.alert(
+          'Success',
+          'Email verified successfully! You can now log in.',
+          [
+            {
+              text: 'OK',
+              onPress: () => router.replace('/auth/login')
+            }
+          ]
+        );
+      }
+    } catch (error: any) {
+      Alert.alert(
+        'Verification Failed',
+        error.message || 'Invalid verification code. Please try again.'
+      );
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleResend = () => {
-    // Handle resend OTP logic
-    console.log('Resend OTP');
+  const handleResend = async () => {
+    if (resendCooldown > 0) return;
+
+    if (!email) {
+      Alert.alert('Error', 'Email not found. Please try signing up again.');
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      
+      // Call backend resend verification endpoint
+      await apiService.post('/api/resend-verification', { email });
+      
+      setResendCooldown(60); // 60 second cooldown
+      Alert.alert('Success', 'Verification code sent to your email');
+    } catch (error: any) {
+      Alert.alert(
+        'Error',
+        error.message || 'Failed to resend verification code. Please try again.'
+      );
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -61,7 +149,8 @@ export default function OTPVerificationScreen() {
 
       {/* Instruction */}
       <Text style={styles.instruction}>
-        We sent a code to flor*******@gmail.com
+        We sent a verification code to{'\n'}
+        {email ? email.replace(/(.{2}).*(@.*)/, '$1****$2') : 'your email'}
       </Text>
 
       {/* OTP Input Fields */}
@@ -86,13 +175,27 @@ export default function OTPVerificationScreen() {
       </View>
 
       {/* Verify Button */}
-      <TouchableOpacity style={styles.verifyButton} onPress={handleVerify}>
-        <Text style={styles.verifyButtonText}>Verify</Text>
+      <TouchableOpacity 
+        style={[styles.verifyButton, isLoading && styles.disabledButton]} 
+        onPress={handleVerify}
+        disabled={isLoading}
+      >
+        {isLoading ? (
+          <ActivityIndicator color="#FFFFFF" size="small" />
+        ) : (
+          <Text style={styles.verifyButtonText}>Verify</Text>
+        )}
       </TouchableOpacity>
 
       {/* Resend Button */}
-      <TouchableOpacity style={styles.resendButton} onPress={handleResend}>
-        <Text style={styles.resendButtonText}>Resend</Text>
+      <TouchableOpacity 
+        style={[styles.resendButton, (resendCooldown > 0 || isLoading) && styles.disabledButton]} 
+        onPress={handleResend}
+        disabled={resendCooldown > 0 || isLoading}
+      >
+        <Text style={styles.resendButtonText}>
+          {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend Code'}
+        </Text>
       </TouchableOpacity>
     </View>
   );
@@ -198,6 +301,9 @@ const styles = StyleSheet.create({
     color: '#6B46C1',
     fontSize: 18,
     fontWeight: '600',
+  },
+  disabledButton: {
+    opacity: 0.6,
   },
 });
 

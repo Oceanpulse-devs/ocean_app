@@ -60,7 +60,7 @@ export default function SettingsScreen() {
           subtitle: 'Update your personal information',
           icon: 'person-outline',
           type: 'navigate',
-          onPress: () => console.log('Edit Profile'),
+          onPress: () => router.push('/edit-profile'),
         },
         {
           id: 'verification',

@@ -12,109 +12,31 @@ import {
   StatusBar,
   ActivityIndicator,
   RefreshControl,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import SideNavigation from '../../components/SideNavigation';
 import { useAuth } from '../../contexts/AuthContext';
 import apiService from '../../services/api';
+import ImageZoomModal from '../../components/ImageZoomModal';
+import { Video } from 'expo-av';
 
 const { width, height } = Dimensions.get('window');
 
-// Mock data for user stories (24-hour temporary content)
-const mockStories = [
-  {
-    id: '1',
-    user: {
-      name: 'Sarah Johnson',
-      avatar: '👩‍💼',
-      verified: true,
-      isFollowing: true,
-    },
-    hasStory: true,
-    storyCount: 3,
-    lastStoryTime: '2 hours ago',
-    isViewed: false,
-  },
-  {
-    id: '2',
-    user: {
-      name: 'TechStore NG',
-      avatar: '🏪',
-      verified: true,
-      isFollowing: true,
-    },
-    hasStory: true,
-    storyCount: 1,
-    lastStoryTime: '5 hours ago',
-    isViewed: true,
-  },
-  {
-    id: '3',
-    user: {
-      name: 'Mike Johnson',
-      avatar: '👨‍💼',
-      verified: false,
-      isFollowing: true,
-    },
-    hasStory: true,
-    storyCount: 2,
-    lastStoryTime: '1 hour ago',
-    isViewed: false,
-  },
-  {
-    id: '4',
-    user: {
-      name: 'Emma Davis',
-      avatar: '👩‍🎨',
-      verified: false,
-      isFollowing: true,
-    },
-    hasStory: false,
-    storyCount: 0,
-    lastStoryTime: null,
-    isViewed: false,
-  },
-  {
-    id: '5',
-    user: {
-      name: 'Alex Chen',
-      avatar: '👨‍💻',
-      verified: true,
-      isFollowing: true,
-    },
-    hasStory: true,
-    storyCount: 4,
-    lastStoryTime: '30 min ago',
-    isViewed: false,
-  },
-  {
-    id: '6',
-    user: {
-      name: 'Fashion Hub',
-      avatar: '👗',
-      verified: true,
-      isFollowing: true,
-    },
-    hasStory: true,
-    storyCount: 1,
-    lastStoryTime: '8 hours ago',
-    isViewed: true,
-  },
-  {
-    id: '7',
-    user: {
-      name: 'Add Story',
-      avatar: '+',
-      verified: false,
-      isFollowing: false,
-  },
-    hasStory: false,
-    storyCount: 0,
-    lastStoryTime: null,
-    isViewed: false,
-  },
-];
+// Helper function to format time ago
+const getTimeAgo = (dateString: string) => {
+  const now = new Date();
+  const date = new Date(dateString);
+  const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+  
+  if (diffInSeconds < 60) return 'Just now';
+  if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
+  if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
+  if (diffInSeconds < 2592000) return `${Math.floor(diffInSeconds / 86400)}d ago`;
+  return `${Math.floor(diffInSeconds / 2592000)}mo ago`;
+};
+
 
 // Mock data for feed posts (mixed seller and buyer posts)
 const mockPosts = [
@@ -408,26 +330,92 @@ export default function FeedScreen() {
   const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [posts, setPosts] = useState(mockPosts);
-  const [stories, setStories] = useState(mockStories);
+  
+  // Debug posts state
+  useEffect(() => {
+    console.log('Posts state updated:', posts.length, 'posts');
+  }, [posts]);
+
+  // Handle image tap
+  const handleImagePress = (imageUri: string) => {
+    setSelectedImageUri(imageUri);
+    setImageModalVisible(true);
+  };
+
+  // Close image modal
+  const closeImageModal = () => {
+    setImageModalVisible(false);
+    setSelectedImageUri('');
+  };
   const [isSideNavVisible, setIsSideNavVisible] = useState(false);
   const [commentInputs, setCommentInputs] = useState<{[key: string]: string}>({});
+  const [loadingComments, setLoadingComments] = useState<{[key: string]: boolean}>({});
+  const [editingComment, setEditingComment] = useState<{commentId: string, postId: string} | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [imageModalVisible, setImageModalVisible] = useState(false);
+  const [selectedImageUri, setSelectedImageUri] = useState<string>('');
+
 
   // Fetch home feed data
   const fetchHomeFeed = async () => {
     try {
       setIsLoading(true);
-      const response = await apiService.get('/api/home-feed');
+      const response = await apiService.get('/api/feed');
       
-      if (response.data) {
-        setStories(response.data.stories || mockStories);
-        setPosts(response.data.posts || mockPosts);
+      console.log('Feed API response:', response);
+      console.log('Response data:', response.data);
+      console.log('Posts array:', response.data?.posts);
+      
+      if (response.message === 'Feed retrieved successfully' && response.data && response.data.posts) {
+        // Handle the actual API response structure
+        const apiPosts = response.data.posts.map((post: any) => ({
+          id: post.id,
+          user: {
+            name: post.user.fullName,
+            avatar: post.user.profilePicture || null,
+            verified: post.user.accountStatus === 'active',
+            location: post.location || ''
+          },
+          product: {
+            name: post.productName || '',
+            price: post.price ? `₦${parseInt(post.price).toLocaleString()}` : '',
+            originalPrice: null,
+            images: post.media?.map((m: any) => m.mediaUrl) || [],
+            condition: '',
+            category: ''
+          },
+          // Add direct images field for social media posts
+          images: post.media?.map((m: any) => m.mediaUrl) || [],
+          description: post.content,
+          likes: post.likesCount || 0,
+          comments: post.commentsCount || 0,
+          shares: post.sharesCount || 0,
+          timeAgo: getTimeAgo(post.createdAt),
+          isLiked: post.isLiked || false,
+          isSaved: post.isSaved || false,
+          showComments: false,
+          commentList: [] // Comments will be loaded on-demand when user opens comments section
+        }));
+        
+        console.log('Formatted posts:', apiPosts);
+        console.log('Setting posts count:', apiPosts.length);
+        
+        // Debug: Check images in first post
+        if (apiPosts.length > 0) {
+          console.log('First post images:', apiPosts[0].images);
+          console.log('First post product images:', apiPosts[0].product.images);
+        }
+        
+        setPosts(apiPosts);
+      } else {
+        console.log('Using fallback mock data');
+        // Fallback to mock data
+        setPosts(mockPosts);
       }
     } catch (error) {
       console.error('Error fetching home feed:', error);
       // Keep mock data if API fails
-      setStories(mockStories);
       setPosts(mockPosts);
     } finally {
       setIsLoading(false);
@@ -446,58 +434,247 @@ export default function FeedScreen() {
     fetchHomeFeed();
   }, []);
 
-  const toggleLike = (postId: string) => {
+  const toggleLike = async (postId: string) => {
+    try {
+      const response = await apiService.toggleLike(postId);
+      console.log('Like toggle response:', response);
+      
+      // Update local state
     setPosts(posts.map(post => 
       post.id === postId 
-        ? { ...post, isLiked: !post.isLiked, likes: post.isLiked ? post.likes - 1 : post.likes + 1 }
+          ? { 
+              ...post, 
+              isLiked: response.data.isLiked, 
+              likes: response.data.isLiked ? post.likes + 1 : post.likes - 1 
+            }
         : post
+    ));
+    } catch (error) {
+      console.error('Error toggling like:', error);
+      Alert.alert('Error', 'Failed to update like. Please try again.');
+    }
+  };
+
+  const toggleSave = async (postId: string) => {
+    try {
+      const response = await apiService.toggleSave(postId);
+      console.log('Save toggle response:', response);
+      
+      // Update local state
+    setPosts(posts.map(post => 
+      post.id === postId 
+          ? { ...post, isSaved: response.data.isSaved }
+        : post
+    ));
+    } catch (error) {
+      console.error('Error toggling save:', error);
+      Alert.alert('Error', 'Failed to update save. Please try again.');
+    }
+  };
+
+  const toggleComments = async (postId: string) => {
+    const post = posts.find(p => p.id === postId);
+    if (!post) return;
+
+    const newShowComments = !post.showComments;
+    
+    // If opening comments and we don't have comments loaded, fetch them
+    if (newShowComments && post.commentList.length === 0) {
+      try {
+        console.log('Loading comments for post:', postId);
+        setLoadingComments(prev => ({ ...prev, [postId]: true }));
+        
+        const response = await apiService.getComments(postId);
+        console.log('Comments response:', response);
+        
+        const comments = response.data.comments.map((comment: any) => ({
+          id: comment.id,
+          user: {
+            name: comment.user.fullName,
+            avatar: comment.user.profilePicture || '👤',
+            verified: comment.user.accountStatus === 'verified',
+          },
+          text: comment.content,
+          timeAgo: getTimeAgo(comment.createdAt),
+          likes: 0,
+        }));
+
+        // Update the post with loaded comments
+        setPosts(posts.map(p => 
+          p.id === postId 
+            ? { 
+                ...p, 
+                showComments: newShowComments,
+                commentList: comments
+              }
+            : p
+        ));
+        
+        setLoadingComments(prev => ({ ...prev, [postId]: false }));
+        return;
+      } catch (error) {
+        console.error('Error loading comments:', error);
+        setLoadingComments(prev => ({ ...prev, [postId]: false }));
+        Alert.alert('Error', 'Failed to load comments. Please try again.');
+        return;
+      }
+    }
+
+    // Just toggle the visibility
+    setPosts(posts.map(p => 
+      p.id === postId 
+        ? { ...p, showComments: newShowComments }
+        : p
     ));
   };
 
-  const toggleSave = (postId: string) => {
-    setPosts(posts.map(post => 
-      post.id === postId 
-        ? { ...post, isSaved: !post.isSaved }
-        : post
-    ));
-  };
-
-  const toggleComments = (postId: string) => {
-    setPosts(posts.map(post => 
-      post.id === postId 
-        ? { ...post, showComments: !post.showComments }
-        : post
-    ));
-  };
-
-  const addComment = (postId: string) => {
+  const addComment = async (postId: string) => {
     const commentText = commentInputs[postId];
     if (!commentText || commentText.trim() === '') return;
 
-    const newComment = {
-      id: Date.now().toString(),
-      user: {
-        name: 'You',
-        avatar: '👤',
-        verified: false,
-      },
-      text: commentText.trim(),
-      timeAgo: 'Just now',
-      likes: 0,
-    };
+    try {
+      // Check if we're editing an existing comment
+      if (editingComment && editingComment.postId === postId) {
+        // Update existing comment
+        const response = await apiService.updateComment(editingComment.commentId, commentText.trim());
+        console.log('Comment update response:', response);
+        
+        // Update local state
+        setPosts(posts.map(post => 
+          post.id === postId 
+            ? {
+                ...post,
+                commentList: post.commentList.map(comment =>
+                  comment.id === editingComment.commentId
+                    ? { ...comment, text: commentText.trim() }
+                    : comment
+                )
+              }
+            : post
+        ));
+        
+        // Clear editing state
+        setEditingComment(null);
+      } else {
+        // Create new comment
+        const response = await apiService.createComment(postId, commentText.trim());
+        console.log('Comment creation response:', response);
+        
+        // Create new comment object from API response
+        const newComment = {
+          id: response.data.id,
+          user: {
+            name: response.data.user.fullName,
+            avatar: response.data.user.profilePicture || '👤',
+            verified: response.data.user.accountStatus === 'verified',
+          },
+          text: response.data.content,
+          timeAgo: 'Just now',
+          likes: 0,
+        };
 
-    setPosts(posts.map(post => 
-      post.id === postId 
-        ? { 
-            ...post, 
-            commentList: [newComment, ...post.commentList],
-            comments: post.comments + 1
-          }
-        : post
-    ));
+        // Update local state
+        setPosts(posts.map(post => 
+          post.id === postId 
+            ? { 
+                ...post, 
+                commentList: [newComment, ...post.commentList],
+                comments: post.comments + 1
+              }
+            : post
+        ));
+      }
 
-    // Clear the input
-    setCommentInputs(prev => ({ ...prev, [postId]: '' }));
+      // Clear the input
+      setCommentInputs(prev => ({ ...prev, [postId]: '' }));
+    } catch (error) {
+      console.error('Error with comment:', error);
+      Alert.alert('Error', 'Failed to save comment. Please try again.');
+    }
+  };
+
+  const handleCommentLongPress = (comment: any, postId: string) => {
+    // Check if this is the current user's comment
+    if (comment.user.name === user?.fullName) {
+      Alert.alert(
+        'Comment Options',
+        'What would you like to do with this comment?',
+        [
+          {
+            text: 'Edit',
+            onPress: () => editComment(comment.id, comment.text, postId),
+          },
+          {
+            text: 'Delete',
+            style: 'destructive',
+            onPress: () => deleteComment(comment.id, postId),
+          },
+          {
+            text: 'Cancel',
+            style: 'cancel',
+          },
+        ]
+      );
+    }
+  };
+
+  const editComment = (commentId: string, currentText: string, postId: string) => {
+    // Set the comment text in the input field for editing
+    setCommentInputs(prev => ({ ...prev, [postId]: currentText }));
+    
+    // Store the comment ID being edited
+    setEditingComment({ commentId, postId });
+    
+    // Focus on the input (if possible)
+    // Note: We can't directly focus TextInput here, but the text will be pre-filled
+  };
+
+  const deleteComment = async (commentId: string, postId: string) => {
+    Alert.alert(
+      'Delete Comment',
+      'Are you sure you want to delete this comment?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await apiService.deleteComment(commentId);
+              console.log('Comment deleted successfully');
+              
+              // Update local state
+              setPosts(posts.map(post => 
+                post.id === postId 
+                  ? {
+                      ...post,
+                      commentList: post.commentList.filter(comment => comment.id !== commentId),
+                      comments: post.comments - 1
+                    }
+                  : post
+              ));
+            } catch (error) {
+              console.error('Error deleting comment:', error);
+              Alert.alert('Error', 'Failed to delete comment. Please try again.');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleShare = async (postId: string) => {
+    try {
+      const response = await apiService.sharePost(postId);
+      console.log('Share response:', response);
+      Alert.alert('Share', 'Share functionality coming soon!');
+    } catch (error) {
+      console.error('Error sharing post:', error);
+      Alert.alert('Error', 'Failed to share post. Please try again.');
+    }
   };
 
   const renderPost = ({ item }: { item: any }) => (
@@ -505,7 +682,27 @@ export default function FeedScreen() {
       {/* Post Header */}
       <View style={styles.postHeader}>
         <View style={styles.userInfo}>
-          <Text style={styles.avatar}>{item.user.avatar}</Text>
+          <TouchableOpacity
+            onPress={() => {
+              if (typeof item.user.avatar === 'string' && item.user.avatar.startsWith('http')) {
+                handleImagePress(item.user.avatar);
+              }
+            }}
+            activeOpacity={0.8}
+          >
+            {item.user.avatar && typeof item.user.avatar === 'string' && item.user.avatar.startsWith('http') ? (
+              <Image 
+                source={{ uri: item.user.avatar }} 
+                style={styles.avatarImage}
+              />
+            ) : (
+              <View style={styles.avatarPlaceholder}>
+                <Text style={styles.avatarPlaceholderText}>
+                  {item.user.name ? item.user.name.charAt(0).toUpperCase() : '👤'}
+                </Text>
+              </View>
+            )}
+          </TouchableOpacity>
           <View style={styles.userDetails}>
             <View style={styles.nameRow}>
               <Text style={styles.userName}>{item.user.name}</Text>
@@ -513,7 +710,6 @@ export default function FeedScreen() {
                 <Ionicons name="checkmark-circle" size={16} color="#3B82F6" />
               )}
             </View>
-            <Text style={styles.userLocation}>{item.user.location}</Text>
             <Text style={styles.timeAgo}>{item.timeAgo}</Text>
           </View>
         </View>
@@ -530,34 +726,7 @@ export default function FeedScreen() {
         </View>
       )}
 
-      {/* Images Section */}
-      {item.type === 'buyer' ? (
-        // Buyer post images (optional)
-        item.wantToBuy.images.length > 0 && (
-          <View style={styles.imageContainer}>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              {item.wantToBuy.images.map((image, index) => (
-                <View key={index} style={styles.productImage}>
-                  <Text style={styles.imagePlaceholder}>{image}</Text>
-                </View>
-              ))}
-            </ScrollView>
-          </View>
-        )
-      ) : (
-        // Seller post images
-        <View style={styles.imageContainer}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            {item.product.images.map((image, index) => (
-              <View key={index} style={styles.productImage}>
-                <Text style={styles.imagePlaceholder}>{image}</Text>
-              </View>
-            ))}
-          </ScrollView>
-        </View>
-      )}
-
-      {/* Content Section */}
+      {/* Content Section - Above Images (Facebook Style) */}
       {item.type === 'buyer' ? (
         // Buyer post content
         <View style={styles.buyerContent}>
@@ -576,27 +745,118 @@ export default function FeedScreen() {
               </View>
             )}
           </View>
-          <Text style={styles.description}>{item.wantToBuy.description}</Text>
+          {item.wantToBuy.description && <Text style={styles.description}>{item.wantToBuy.description}</Text>}
         </View>
       ) : (
-        // Seller post content
-        <View style={styles.productInfo}>
-          <View style={styles.productHeader}>
-            <Text style={styles.productName}>{item.product.name}</Text>
-            <View style={styles.categoryBadge}>
-              <Text style={styles.categoryText}>{item.product.category}</Text>
+        // Seller post content - just description
+        <View style={styles.postContent}>
+          {item.description && <Text style={styles.description}>{item.description}</Text>}
             </View>
+      )}
+
+      {/* Images Section */}
+      {item.images && item.images.length > 0 && (
+        <View style={styles.imageContainer}>
+          {item.images.length === 1 ? (
+            // Single image - center it
+            <View style={styles.singleImageContainer}>
+              {item.images.map((media, index) => {
+                console.log(`Rendering single media ${index}:`, media);
+                const isVideo = typeof media === 'string' && (media.includes('.mp4') || media.includes('.mov') || media.includes('.mkv') || media.includes('video/upload'));
+                const isImage = typeof media === 'string' && media.startsWith('http') && !isVideo;
+                
+                return (
+                  <TouchableOpacity 
+                    key={index} 
+                    style={styles.singleImage}
+                    onPress={() => {
+                      if (typeof media === 'string' && media.startsWith('http')) {
+                        handleImagePress(media);
+                      }
+                    }}
+                    activeOpacity={0.8}
+                  >
+                    {isImage ? (
+                      <Image 
+                        source={{ uri: media }} 
+                        style={styles.singleImageContent}
+                        resizeMode="cover"
+                        onLoad={() => console.log(`Single image ${index} loaded successfully`)}
+                        onError={(error) => console.log(`Single image ${index} failed to load:`, error)}
+                      />
+                    ) : isVideo ? (
+                      <View style={styles.videoContainer}>
+                        <Video
+                          source={{ uri: media }}
+                          style={styles.singleImageContent}
+                          resizeMode="cover"
+                          shouldPlay={false}
+                          isLooping={false}
+                          useNativeControls={false}
+                        />
+                        <View style={styles.playButton}>
+                          <Ionicons name="play" size={32} color="#FFFFFF" />
           </View>
-          <View style={styles.priceRow}>
-            <Text style={styles.currentPrice}>{item.product.price}</Text>
-            <Text style={styles.originalPrice}>{item.product.originalPrice}</Text>
-            <View style={styles.conditionBadge}>
-              <Text style={styles.conditionText}>{item.product.condition}</Text>
             </View>
+                    ) : (
+                      <Text style={styles.imagePlaceholder}>{media}</Text>
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
           </View>
-          <Text style={styles.description}>{item.description}</Text>
+          ) : (
+            // Multiple images - horizontal scroll
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              {item.images.map((media, index) => {
+                console.log(`Rendering media ${index}:`, media);
+                const isVideo = typeof media === 'string' && (media.includes('.mp4') || media.includes('.mov') || media.includes('.mkv') || media.includes('video/upload'));
+                const isImage = typeof media === 'string' && media.startsWith('http') && !isVideo;
+                
+                return (
+                  <TouchableOpacity 
+                    key={index} 
+                    style={styles.productImage}
+                    onPress={() => {
+                      if (typeof media === 'string' && media.startsWith('http')) {
+                        handleImagePress(media);
+                      }
+                    }}
+                    activeOpacity={0.8}
+                  >
+                    {isImage ? (
+                      <Image 
+                        source={{ uri: media }} 
+                        style={styles.productImageContent}
+                        resizeMode="cover"
+                        onLoad={() => console.log(`Image ${index} loaded successfully`)}
+                        onError={(error) => console.log(`Image ${index} failed to load:`, error)}
+                      />
+                    ) : isVideo ? (
+                      <View style={styles.videoContainer}>
+                        <Video
+                          source={{ uri: media }}
+                          style={styles.productImageContent}
+                          resizeMode="cover"
+                          shouldPlay={false}
+                          isLooping={false}
+                          useNativeControls={false}
+                        />
+                        <View style={styles.playButton}>
+                          <Ionicons name="play" size={32} color="#FFFFFF" />
+                        </View>
+                      </View>
+                    ) : (
+                      <Text style={styles.imagePlaceholder}>{media}</Text>
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          )}
         </View>
       )}
+
 
       {/* Action Buttons */}
       <View style={styles.actionButtons}>
@@ -628,7 +888,10 @@ export default function FeedScreen() {
           </Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.actionButton}>
+        <TouchableOpacity 
+          style={styles.actionButton}
+          onPress={() => handleShare(item.id)}
+        >
           <Ionicons name="share-outline" size={20} color="#6B7280" />
           <Text style={styles.actionText}>{item.shares}</Text>
         </TouchableOpacity>
@@ -690,26 +953,55 @@ export default function FeedScreen() {
             <Text style={styles.commentInputAvatar}>👤</Text>
             <TextInput
               style={styles.commentInput}
-              placeholder="Add a comment..."
+              placeholder={editingComment && editingComment.postId === item.id ? "Edit your comment..." : "Add a comment..."}
               placeholderTextColor="#9CA3AF"
               value={commentInputs[item.id] || ''}
               onChangeText={(text) => setCommentInputs(prev => ({ ...prev, [item.id]: text }))}
               multiline
             />
+            {editingComment && editingComment.postId === item.id && (
+              <TouchableOpacity 
+                style={styles.cancelButton}
+                onPress={() => {
+                  setEditingComment(null);
+                  setCommentInputs(prev => ({ ...prev, [item.id]: '' }));
+                }}
+              >
+                <Ionicons name="close" size={16} color="#6B7280" />
+              </TouchableOpacity>
+            )}
             <TouchableOpacity 
               style={[styles.sendButton, (!commentInputs[item.id] || commentInputs[item.id].trim() === '') && styles.sendButtonDisabled]}
               onPress={() => addComment(item.id)}
               disabled={!commentInputs[item.id] || commentInputs[item.id].trim() === ''}
             >
-              <Ionicons name="send" size={16} color="#FFFFFF" />
+              <Ionicons name={editingComment && editingComment.postId === item.id ? "checkmark" : "send"} size={16} color="#FFFFFF" />
             </TouchableOpacity>
           </View>
 
           {/* Comments List */}
           <View style={styles.commentsList}>
-            {item.commentList.map((comment) => (
-              <View key={comment.id} style={styles.commentItem}>
+            {loadingComments[item.id] ? (
+              <View style={styles.commentsLoading}>
+                <ActivityIndicator size="small" color="#6B46C1" />
+                <Text style={styles.commentsLoadingText}>Loading comments...</Text>
+              </View>
+            ) : (
+              item.commentList.map((comment) => (
+              <TouchableOpacity 
+                key={comment.id} 
+                style={styles.commentItem}
+                onLongPress={() => handleCommentLongPress(comment, item.id)}
+                activeOpacity={0.7}
+              >
+                {typeof comment.user.avatar === 'string' && comment.user.avatar.startsWith('http') ? (
+                  <Image 
+                    source={{ uri: comment.user.avatar }} 
+                    style={styles.commentAvatarImage}
+                  />
+                ) : (
                 <Text style={styles.commentAvatar}>{comment.user.avatar}</Text>
+                )}
                 <View style={styles.commentContent}>
                   <View style={styles.commentHeader}>
                     <View style={styles.commentNameRow}>
@@ -732,8 +1024,9 @@ export default function FeedScreen() {
                     </TouchableOpacity>
                   </View>
                 </View>
-              </View>
-            ))}
+              </TouchableOpacity>
+            ))
+            )}
           </View>
         </View>
       )}
@@ -817,70 +1110,6 @@ export default function FeedScreen() {
             </View>
           )
         }
-        ListHeaderComponent={
-          <View style={styles.storiesContainer}>
-            <View style={styles.storiesHeader}>
-              <Text style={styles.storiesTitle}>Stories</Text>
-              <TouchableOpacity style={styles.viewAllButton}>
-                <Text style={styles.viewAllText}>View All</Text>
-                <Ionicons name="chevron-forward" size={16} color="#6B46C1" />
-              </TouchableOpacity>
-            </View>
-            <ScrollView 
-              horizontal 
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.storiesScrollContainer}
-            >
-              {stories.map((story, index) => (
-                <TouchableOpacity 
-                  key={story.id} 
-                  style={styles.storyItem}
-                  onPress={() => {
-                    if (story.id === '7') {
-                      // Add story functionality
-                      router.push('/(tabs)/upload?type=story');
-                    } else if (story.hasStory) {
-                      router.push(`/story/${story.id}`);
-                    }
-                  }}
-                >
-                  <View style={[
-                    styles.storyRing, 
-                    story.hasStory && !story.isViewed 
-                      ? styles.storyRingUnviewed 
-                      : story.hasStory && story.isViewed 
-                        ? styles.storyRingViewed 
-                        : styles.storyRingNoStory
-                  ]}>
-                    <View style={styles.storyAvatar}>
-                      <Text style={styles.storyEmoji}>{story.user.avatar}</Text>
-                      {story.user.verified && (
-                        <View style={styles.verifiedBadge}>
-                          <Ionicons name="checkmark" size={8} color="#FFFFFF" />
-                        </View>
-                      )}
-                      {story.hasStory && story.storyCount > 1 && (
-                        <View style={styles.storyCountBadge}>
-                          <Text style={styles.storyCountText}>{story.storyCount}</Text>
-                        </View>
-                      )}
-                    </View>
-                  </View>
-                  <View style={styles.storyInfo}>
-                    <Text style={styles.storyName} numberOfLines={1}>
-                      {story.id === '7' ? 'Add Story' : story.user.name}
-                    </Text>
-                    {story.hasStory && story.lastStoryTime && (
-                      <Text style={styles.storyTime} numberOfLines={1}>
-                        {story.lastStoryTime}
-                      </Text>
-                    )}
-                  </View>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        }
       />
       
       {/* Side Navigation */}
@@ -914,6 +1143,13 @@ export default function FeedScreen() {
             router.push('/auctions');
           }
         }}
+      />
+
+      {/* Image Zoom Modal */}
+      <ImageZoomModal
+        visible={imageModalVisible}
+        imageUri={selectedImageUri}
+        onClose={closeImageModal}
       />
     </View>
   );
@@ -975,121 +1211,6 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   
-  // Stories Section
-  storiesContainer: {
-    backgroundColor: '#FFFFFF',
-    paddingVertical: 20,
-    paddingHorizontal: 20,
-    marginBottom: 10,
-  },
-  storiesHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  storiesTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#1F2937',
-  },
-  viewAllButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  viewAllText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#6B46C1',
-  },
-  storiesScrollContainer: {
-    paddingRight: 20,
-  },
-  storyItem: {
-    alignItems: 'center',
-    marginRight: 16,
-    width: 80,
-  },
-  storyRing: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
-    borderWidth: 3,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  storyRingUnviewed: {
-    borderColor: '#E91E63',
-    borderWidth: 3,
-  },
-  storyRingViewed: {
-    borderColor: '#9CA3AF',
-    borderWidth: 2,
-  },
-  storyRingNoStory: {
-    borderColor: '#E5E7EB',
-    borderWidth: 2,
-  },
-  storyAvatar: {
-    width: 58,
-    height: 58,
-    borderRadius: 29,
-    backgroundColor: '#F3F4F6',
-    justifyContent: 'center',
-    alignItems: 'center',
-    position: 'relative',
-  },
-  storyEmoji: {
-    fontSize: 28,
-  },
-  verifiedBadge: {
-    position: 'absolute',
-    bottom: -2,
-    right: -2,
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: '#3B82F6',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#FFFFFF',
-  },
-  storyCountBadge: {
-    position: 'absolute',
-    top: -4,
-    right: -4,
-    backgroundColor: '#EF4444',
-    borderRadius: 10,
-    minWidth: 20,
-    height: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 4,
-  },
-  storyCountText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  storyInfo: {
-    alignItems: 'center',
-    width: '100%',
-  },
-  storyName: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#1F2937',
-    textAlign: 'center',
-    marginBottom: 2,
-  },
-  storyTime: {
-    fontSize: 10,
-    color: '#9CA3AF',
-    textAlign: 'center',
-  },
   
   // Feed Container
   feedContainer: {
@@ -1101,16 +1222,22 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     marginHorizontal: 20,
     marginBottom: 20,
-    borderRadius: 16,
     padding: 20,
+    borderRadius: 12,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: 2,
+      height: 4,
     },
     shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowRadius: 0,
+    elevation: 0,
+  },
+  postSeparator: {
+    height: 1,
+    backgroundColor: '#E5E7EB',
+    marginHorizontal: 20,
+    marginBottom: 20,
   },
   
   // Post Header
@@ -1128,6 +1255,26 @@ const styles = StyleSheet.create({
     fontSize: 40,
     marginRight: 12,
   },
+  avatarImage: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginRight: 12,
+  },
+  avatarPlaceholder: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#6B46C1',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  avatarPlaceholderText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
   userDetails: {
     flex: 1,
   },
@@ -1142,11 +1289,6 @@ const styles = StyleSheet.create({
     color: '#1F2937',
     marginRight: 6,
   },
-  userLocation: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginBottom: 2,
-  },
   timeAgo: {
     fontSize: 12,
     color: '#9CA3AF',
@@ -1159,6 +1301,26 @@ const styles = StyleSheet.create({
   imageContainer: {
     marginBottom: 16,
   },
+  // Single image container - centers the image
+  singleImageContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  // Single image - larger and centered
+  singleImage: {
+    width: width * 0.85,
+    height: 250,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'hidden',
+  },
+  singleImageContent: {
+    width: '100%',
+    height: '100%',
+  },
+  // Multiple images - horizontal scroll
   productImage: {
     width: width * 0.7,
     height: 200,
@@ -1167,31 +1329,36 @@ const styles = StyleSheet.create({
     marginRight: 12,
     justifyContent: 'center',
     alignItems: 'center',
+    overflow: 'hidden',
+  },
+  productImageContent: {
+    width: '100%',
+    height: '100%',
+  },
+  videoContainer: {
+    position: 'relative',
+    width: '100%',
+    height: '100%',
+  },
+  playButton: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    transform: [{ translateX: -16 }, { translateY: -16 }],
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    borderRadius: 20,
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   imagePlaceholder: {
     fontSize: 48,
   },
   
-  // Product Info
-  productInfo: {
-    marginBottom: 16,
-  },
-  productHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  productName: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1F2937',
-    flex: 1,
-  },
-  categoryBadge: {
-    backgroundColor: '#E0E7FF',
-    paddingHorizontal: 12,
-    paddingVertical: 4,
+  // Post Content
+  postContent: {
+    marginBottom: 12,
   },
   
   // Buyer Post Styles
@@ -1212,7 +1379,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   buyerContent: {
-    marginBottom: 16,
+    marginBottom: 12,
   },
   buyerHeader: {
     flexDirection: 'row',
@@ -1248,43 +1415,12 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '600',
   },
-  categoryText: {
-    fontSize: 12,
-    color: '#3730A3',
-    fontWeight: '500',
-  },
-  priceRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  currentPrice: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#059669',
-  },
-  originalPrice: {
-    fontSize: 16,
-    color: '#9CA3AF',
-    textDecorationLine: 'line-through',
-  },
-  conditionBadge: {
-    backgroundColor: '#FEF3C7',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  conditionText: {
-    fontSize: 11,
-    color: '#92400E',
-    fontWeight: '500',
-  },
   
-  // Description
+  // Description - Larger text for better readability
   description: {
-    fontSize: 14,
-    color: '#374151',
-    lineHeight: 20,
+    fontSize: 16,
+    color: '#1F2937',
+    lineHeight: 24,
     marginBottom: 16,
   },
   
@@ -1383,8 +1519,28 @@ const styles = StyleSheet.create({
   sendButtonDisabled: {
     backgroundColor: '#D1D5DB',
   },
+  cancelButton: {
+    backgroundColor: '#F3F4F6',
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
+  },
   commentsList: {
     gap: 16,
+  },
+  commentsLoading: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 20,
+    gap: 8,
+  },
+  commentsLoadingText: {
+    fontSize: 14,
+    color: '#6B7280',
   },
   commentItem: {
     flexDirection: 'row',
@@ -1392,6 +1548,11 @@ const styles = StyleSheet.create({
   },
   commentAvatar: {
     fontSize: 24,
+  },
+  commentAvatarImage: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
   },
   commentContent: {
     flex: 1,

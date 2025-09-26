@@ -23,20 +23,12 @@ export default function UploadScreen() {
   const params = useLocalSearchParams();
   const [selectedUploadType, setSelectedUploadType] = useState<string | null>(null);
   const [showUploadModal, setShowUploadModal] = useState(false);
-  const [showFeedSubSelection, setShowFeedSubSelection] = useState(false);
   const [userType, setUserType] = useState<'buyer' | 'seller'>('seller');
   const [categories, setCategories] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
   const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    price: '',
-    minBudget: '',
-    maxBudget: '',
-    category: '',
-    condition: 'Good',
-    location: '',
+    content: '',
     images: []
   });
 
@@ -82,12 +74,16 @@ export default function UploadScreen() {
       });
 
       if (!result.canceled && result.assets) {
-        const newImages = result.assets.map(asset => ({
-          uri: asset.uri,
-          type: 'image',
-          name: asset.fileName || `image_${Date.now()}.jpg`
-        }));
+        const newImages = result.assets.map(asset => {
+          console.log('Picked asset:', asset);
+          return {
+            uri: asset.uri,
+            type: 'image',
+            name: asset.fileName || `image_${Date.now()}.jpg`
+          };
+        });
         
+        console.log('New images to add:', newImages);
         setFormData(prev => ({
           ...prev,
           images: [...prev.images, ...newImages]
@@ -167,9 +163,9 @@ export default function UploadScreen() {
   const uploadOptions = [
     {
       id: 'feed-post',
-      title: 'Post to Feed',
-      description: 'Share what you\'re looking for or selling',
-      icon: 'chatbubble-outline',
+      title: 'Create Post',
+      description: 'Share your thoughts with the community',
+      icon: 'add-circle-outline',
       color: '#3B82F6',
       availableFor: ['buyer', 'seller'],
       category: 'Social',
@@ -179,11 +175,10 @@ export default function UploadScreen() {
       title: 'List Product',
       description: 'Add a new product to the marketplace',
       icon: 'cube-outline',
-      color: '#10B981',
+      color: '#8B5CF6',
       availableFor: ['seller'],
       category: 'Selling',
     },
-
     {
       id: 'distress',
       title: 'Distress Sale',
@@ -198,7 +193,7 @@ export default function UploadScreen() {
       title: 'Swap Deal',
       description: 'Exchange your product for something else',
       icon: 'swap-horizontal-outline',
-      color: '#8B5CF6',
+      color: '#F59E0B',
       availableFor: ['buyer', 'seller'],
       category: 'Trading',
     },
@@ -207,7 +202,7 @@ export default function UploadScreen() {
       title: 'Bulk Purchase',
       description: 'Join group buying for better prices',
       icon: 'people-outline',
-      color: '#F59E0B',
+      color: '#06B6D4',
       availableFor: ['buyer', 'seller'],
       category: 'Trading',
     },
@@ -235,12 +230,6 @@ export default function UploadScreen() {
       return;
     }
 
-    // Special handling for feed posts - show sub-selection
-    if (option.id === 'feed-post') {
-      setShowFeedSubSelection(true);
-      return;
-    }
-
     // Special handling for swap deals - navigate to swap deal upload
     if (option.id === 'swap-deal') {
       router.push('/swap-deal-upload');
@@ -263,171 +252,95 @@ export default function UploadScreen() {
     setShowUploadModal(true);
   };
 
-  const handleFeedSubSelection = (feedType: 'buyer' | 'seller') => {
-    setShowFeedSubSelection(false);
-    setSelectedUploadType(`feed-post-${feedType}`);
-    setShowUploadModal(true);
-  };
 
   const handleUpload = async () => {
     try {
       setIsLoading(true);
 
       // Validate form data
-      if (!formData.title.trim()) {
-        Alert.alert('Error', 'Title is required');
-        setIsLoading(false);
-        return;
-      }
-      if (!formData.description.trim()) {
-        Alert.alert('Error', 'Description is required');
+      if (!formData.content.trim()) {
+        Alert.alert('Error', 'Content is required');
         setIsLoading(false);
         return;
       }
 
       let response;
       
-      if (selectedUploadType?.startsWith('feed-post')) {
-        const feedType = selectedUploadType.split('-')[2];
-        
-        // Additional validation for feed posts
-        if (feedType === 'seller' && !formData.price.trim()) {
-          Alert.alert('Error', 'Price is required for seller posts');
-          setIsLoading(false);
-          return;
-        }
-        
-        // Create FormData for file upload
-        const formDataToSend = new FormData();
-        formDataToSend.append('postType', 'product');
-        formDataToSend.append('postSubType', feedType);
-        formDataToSend.append('content', formData.description);
-        formDataToSend.append('productName', formData.title);
-        formDataToSend.append('currency', 'NGN');
-        formDataToSend.append('location', formData.location || '');
-        formDataToSend.append('category', formData.category || '');
-        formDataToSend.append('condition', formData.condition);
-        
-        if (feedType === 'seller') {
-          formDataToSend.append('price', formData.price);
-        } else {
-          formDataToSend.append('minBudget', formData.minBudget || '');
-          formDataToSend.append('maxBudget', formData.maxBudget || '');
-        }
-        
-        // Add images as base64 data
-        console.log('Converting images to base64...');
-        console.log('Number of images:', formData.images.length);
-        
-        for (let i = 0; i < formData.images.length; i++) {
-          const image = formData.images[i];
-          console.log(`Processing image ${i}:`, {
-            uri: image.uri,
-            name: image.name,
-            type: image.type
-          });
+      if (selectedUploadType === 'feed-post') {
+        // Unified feed post logic - choose route based on whether images are present
+        if (formData.images.length > 0) {
+          // Use FormData route for posts with images
+          console.log('Using FormData route for post with images');
+          console.log('Images to upload:', formData.images);
           
-          try {
-            // Convert image to base64
-            console.log(`Fetching image ${i} from URI...`);
-            const response = await fetch(image.uri);
-            console.log(`Response status for image ${i}:`, response.status);
-            
-            const blob = await response.blob();
-            console.log(`Blob size for image ${i}:`, blob.size);
-            
-            const base64 = await new Promise((resolve) => {
-              const reader = new FileReader();
-              reader.onloadend = () => {
-                console.log(`Base64 conversion complete for image ${i}, length:`, reader.result.length);
-                resolve(reader.result);
-              };
-              reader.readAsDataURL(blob);
+          const formDataToSend = new FormData();
+          formDataToSend.append('content', formData.content);
+          
+          // Add images
+          formData.images.forEach((image, index) => {
+            console.log(`Adding image ${index}:`, {
+              uri: image.uri,
+              name: image.name,
+              type: 'image/jpeg'
             });
             
-            // Send as base64 string
-            if (base64 && base64.length > 0) {
-              formDataToSend.append('media', base64);
-              formDataToSend.append('media_name', image.name || `image_${i}.jpg`);
-              formDataToSend.append('media_type', 'image/jpeg');
-              
-              console.log(`Image ${i} added to FormData`);
-            } else {
-              console.error(`Base64 conversion failed for image ${i} - empty result`);
-            }
+            // React Native FormData format
+            const fileObject = {
+              uri: image.uri,
+              type: 'image/jpeg',
+              name: image.name || `image_${index}.jpg`
+            };
+            
+            console.log('File object to append:', fileObject);
+            console.log('File URI:', image.uri);
+            console.log('File URI type:', typeof image.uri);
+            console.log('File URI starts with file://', image.uri.startsWith('file://'));
+            
+            formDataToSend.append('media', fileObject);
+          });
+
+          console.log('FormData prepared, sending to /api/posts');
+          
+          // Try with explicit headers for React Native
+          try {
+            response = await apiService.post('/api/posts', formDataToSend, {
+              headers: {
+                'Accept': 'application/json',
+              }
+            });
           } catch (error) {
-            console.error(`Error converting image ${i} to base64:`, error);
+            console.error('FormData upload failed, trying alternative approach:', error);
+            
+            // Fallback: Try without explicit headers
+            response = await apiService.post('/api/posts', formDataToSend);
           }
+        } else {
+          // Use JSON route for text-only posts
+          console.log('Using JSON route for text-only post');
+          
+          response = await apiService.post('/api/posts/text', {
+            content: formData.content
+          });
         }
-
-        response = await apiService.post('/api/posts', formDataToSend);
       } else if (selectedUploadType === 'product') {
-        // Additional validation for products
-        if (!formData.price.trim()) {
-          Alert.alert('Error', 'Price is required for products');
-          setIsLoading(false);
-          return;
-        }
-        
-        // Create FormData for file upload
-        const formDataToSend = new FormData();
-        formDataToSend.append('title', formData.title);
-        formDataToSend.append('description', formData.description);
-        formDataToSend.append('price', formData.price);
-        formDataToSend.append('currency', 'NGN');
-        formDataToSend.append('category', formData.category || '');
-        formDataToSend.append('condition', formData.condition);
-        formDataToSend.append('location', formData.location || '');
-        
-        // Add images
-        formData.images.forEach((image, index) => {
-          formDataToSend.append('media', {
-            uri: image.uri,
-            type: 'image/jpeg',
-            name: image.name
-          } as any);
-        });
-
-        response = await apiService.post('/api/products', formDataToSend);
+        Alert.alert('Error', 'Product upload not implemented yet');
+        setIsLoading(false);
+        return;
       } else if (selectedUploadType === 'distress') {
-        // Additional validation for distress sales
-        if (!formData.price.trim()) {
-          Alert.alert('Error', 'Price is required for distress sales');
-          setIsLoading(false);
-          return;
-        }
-        
-        const distressData = {
-          title: formData.title,
-          description: formData.description,
-          price: formData.price,
-          originalPrice: parseFloat(formData.price) * 1.2, // Mock original price
-          discountPercentage: 20,
-          urgencyLevel: 'high',
-          distressReason: 'Moving sale',
-          category: formData.category || '',
-          condition: formData.condition,
-          location: formData.location || ''
-        };
-
-        response = await apiService.post('/api/distress-sales/create', distressData);
+        Alert.alert('Error', 'Distress sale upload not implemented yet');
+        setIsLoading(false);
+        return;
       } else {
         Alert.alert('Error', 'Upload type not supported yet');
+        setIsLoading(false);
         return;
       }
 
-      Alert.alert('Success', `${selectedUploadType} uploaded successfully!`);
+      Alert.alert('Success', 'Post uploaded successfully!');
       setShowUploadModal(false);
       setSelectedUploadType(null);
       setFormData({
-        title: '',
-        description: '',
-        price: '',
-        minBudget: '',
-        maxBudget: '',
-        category: '',
-        condition: 'Good',
-        location: '',
+        content: '',
         images: []
       });
 
@@ -503,100 +416,11 @@ export default function UploadScreen() {
     );
   };
 
-  const renderFeedSubSelection = () => {
-    if (!showFeedSubSelection) return null;
-
-    return (
-      <Modal
-        visible={showFeedSubSelection}
-        animationType="slide"
-        presentationStyle="pageSheet"
-      >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <TouchableOpacity
-              style={styles.closeButton}
-              onPress={() => setShowFeedSubSelection(false)}
-            >
-              <Ionicons name="close" size={24} color="#1F2937" />
-            </TouchableOpacity>
-            <Text style={styles.modalTitle}>Post to Feed</Text>
-            <View style={styles.placeholder} />
-          </View>
-
-          <View style={styles.subSelectionContent}>
-            <Text style={styles.subSelectionTitle}>What type of post?</Text>
-            <Text style={styles.subSelectionDescription}>
-              Choose the type of content you want to share with the community.
-            </Text>
-
-            <View style={styles.subSelectionOptions}>
-              <TouchableOpacity
-                style={styles.subSelectionOption}
-                onPress={() => handleFeedSubSelection('buyer')}
-              >
-                <View style={[styles.subSelectionIcon, { backgroundColor: '#3B82F620' }]}>
-                  <Ionicons name="search-outline" size={32} color="#3B82F6" />
-                </View>
-                <View style={styles.subSelectionContent}>
-                  <Text style={styles.subSelectionOptionTitle}>Looking for...</Text>
-                  <Text style={styles.subSelectionOptionDescription}>
-                    Post a request for something you need or want to buy
-                  </Text>
-                  <View style={styles.subSelectionFeatures}>
-                    <Text style={styles.subSelectionFeature}>• Text-based request</Text>
-                    <Text style={styles.subSelectionFeature}>• Optional images</Text>
-                    <Text style={styles.subSelectionFeature}>• Contact buyer actions</Text>
-                  </View>
-                </View>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.subSelectionOption}
-                onPress={() => handleFeedSubSelection('seller')}
-              >
-                <View style={[styles.subSelectionIcon, { backgroundColor: '#10B98120' }]}>
-                  <Ionicons name="storefront-outline" size={32} color="#10B981" />
-                </View>
-                <View style={styles.subSelectionContent}>
-                  <Text style={styles.subSelectionOptionTitle}>Selling...</Text>
-                  <Text style={styles.subSelectionOptionDescription}>
-                    Post a product or service you want to sell
-                  </Text>
-                  <View style={styles.subSelectionFeatures}>
-                    <Text style={styles.subSelectionFeature}>• Product images</Text>
-                    <Text style={styles.subSelectionFeature}>• Price information</Text>
-                    <Text style={styles.subSelectionFeature}>• Message seller actions</Text>
-                  </View>
-                </View>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
-    );
-  };
 
   const renderUploadModal = () => {
     if (!selectedUploadType) return null;
 
-    // Handle feed post sub-types
-    let option;
-    if (selectedUploadType.startsWith('feed-post-')) {
-      const feedType = selectedUploadType.split('-')[2];
-      option = {
-        id: selectedUploadType,
-        title: feedType === 'buyer' ? 'Looking for...' : 'Selling...',
-        description: feedType === 'buyer' 
-          ? 'Post a request for something you need or want to buy'
-          : 'Post a product or service you want to sell',
-        icon: feedType === 'buyer' ? 'search-outline' : 'storefront-outline',
-        color: feedType === 'buyer' ? '#3B82F6' : '#10B981',
-      };
-    } else {
-      option = uploadOptions.find(opt => opt.id === selectedUploadType);
-    }
-    
+    const option = uploadOptions.find(opt => opt.id === selectedUploadType);
     if (!option) return null;
 
     return (
@@ -622,7 +446,7 @@ export default function UploadScreen() {
               <View style={[styles.previewIcon, { backgroundColor: option.color + '20' }]}>
                 <Ionicons name={option.icon as any} size={48} color={option.color} />
               </View>
-              <Text style={styles.previewTitle}>Ready to {option.title.toLowerCase()}?</Text>
+              <Text style={styles.previewTitle}>Ready to create your post?</Text>
               <Text style={styles.previewDescription}>
                 {option.description}
               </Text>
@@ -630,157 +454,45 @@ export default function UploadScreen() {
 
             {/* Upload Form Fields */}
             <View style={styles.formSection}>
-              <Text style={styles.sectionTitle}>Upload Details</Text>
+              <Text style={styles.sectionTitle}>Create Post</Text>
               
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Title *</Text>
-                <TextInput
-                  style={styles.textInput}
-                  placeholder={`Enter ${option.title.toLowerCase()} title`}
-                  placeholderTextColor="#9CA3AF"
-                  value={formData.title}
-                  onChangeText={(text) => setFormData(prev => ({ ...prev, title: text }))}
-                />
-              </View>
-
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Description *</Text>
+                <Text style={styles.inputLabel}>What's on your mind? *</Text>
                 <TextInput
                   style={[styles.textInput, styles.textArea]}
-                  placeholder="Describe your item or request..."
+                  placeholder="Share your thoughts with the community..."
                   placeholderTextColor="#9CA3AF"
                   multiline
-                  numberOfLines={4}
-                  value={formData.description}
-                  onChangeText={(text) => setFormData(prev => ({ ...prev, description: text }))}
+                  numberOfLines={6}
+                  value={formData.content}
+                  onChangeText={(text) => setFormData(prev => ({ ...prev, content: text }))}
                 />
               </View>
 
-               <View style={styles.inputGroup}>
-                 <Text style={styles.inputLabel}>Add Photos</Text>
-                 <TouchableOpacity style={styles.photoUpload} onPress={showImagePicker}>
-                   <Ionicons name="camera-outline" size={32} color="#6B7280" />
-                   <Text style={styles.photoUploadText}>Tap to add photos</Text>
-                   <Text style={styles.photoUploadSubtext}>Up to 10 images</Text>
-                 </TouchableOpacity>
-                 
-                 {formData.images.length > 0 && (
-                   <View style={styles.imagePreviewContainer}>
-                     {formData.images.map((image, index) => (
-                       <View key={index} style={styles.imagePreview}>
-                         <Image source={{ uri: image.uri }} style={styles.previewImage} />
-                         <TouchableOpacity 
-                           style={styles.removeImageButton}
-                           onPress={() => removeImage(index)}
-                         >
-                           <Ionicons name="close-circle" size={20} color="#EF4444" />
-                         </TouchableOpacity>
-                       </View>
-                     ))}
-                   </View>
-                 )}
-               </View>
-
-              {selectedUploadType.startsWith('feed-post-seller') && (
-                <>
-                  <View style={styles.inputGroup}>
-                    <Text style={styles.inputLabel}>Price *</Text>
-                    <TextInput
-                      style={styles.textInput}
-                      placeholder="₦0.00"
-                      placeholderTextColor="#9CA3AF"
-                      keyboardType="numeric"
-                      value={formData.price}
-                      onChangeText={(text) => setFormData(prev => ({ ...prev, price: text }))}
-                    />
-                  </View>
-
-                  <View style={styles.inputGroup}>
-                    <Text style={styles.inputLabel}>Category</Text>
-                    <TouchableOpacity 
-                      style={styles.categorySelector}
-                      onPress={() => setShowCategoryPicker(true)}
-                    >
-                      <Text style={styles.categorySelectorText}>
-                        {formData.category || 'Select Category'}
-                      </Text>
-                      <Ionicons name="chevron-down" size={20} color="#6B7280" />
-                    </TouchableOpacity>
-                  </View>
-                </>
-              )}
-
-              {selectedUploadType.startsWith('feed-post-buyer') && (
+              {selectedUploadType === 'feed-post' && (
                 <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>Budget Range (Optional)</Text>
-                  <View style={styles.budgetRow}>
-                    <TextInput
-                      style={[styles.textInput, styles.budgetInput]}
-                      placeholder="Min ₦0"
-                      placeholderTextColor="#9CA3AF"
-                      keyboardType="numeric"
-                      value={formData.minBudget}
-                      onChangeText={(text) => setFormData(prev => ({ ...prev, minBudget: text }))}
-                    />
-                    <Text style={styles.budgetSeparator}>to</Text>
-                    <TextInput
-                      style={[styles.textInput, styles.budgetInput]}
-                      placeholder="Max ₦0"
-                      placeholderTextColor="#9CA3AF"
-                      keyboardType="numeric"
-                      value={formData.maxBudget}
-                      onChangeText={(text) => setFormData(prev => ({ ...prev, maxBudget: text }))}
-                    />
-                  </View>
-                </View>
-              )}
-
-              {!selectedUploadType.startsWith('feed-post') && (
-                <>
-                   <View style={styles.inputGroup}>
-                     <Text style={styles.inputLabel}>Price *</Text>
-                     <TextInput
-                       style={styles.textInput}
-                       placeholder="₦0.00"
-                       placeholderTextColor="#9CA3AF"
-                       keyboardType="numeric"
-                       value={formData.price}
-                       onChangeText={(text) => setFormData(prev => ({ ...prev, price: text }))}
-                     />
-                   </View>
-
-                  <View style={styles.inputGroup}>
-                    <Text style={styles.inputLabel}>Category</Text>
-                    <TouchableOpacity 
-                      style={styles.categorySelector}
-                      onPress={() => setShowCategoryPicker(true)}
-                    >
-                      <Text style={styles.categorySelectorText}>
-                        {formData.category || 'Select Category'}
-                      </Text>
-                      <Ionicons name="chevron-down" size={20} color="#6B7280" />
-                    </TouchableOpacity>
-                  </View>
-                </>
-              )}
-
-
-              {selectedUploadType === 'auction' && (
-                <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>Auction Duration</Text>
-                  <TouchableOpacity style={styles.categorySelector}>
-                    <Text style={styles.categorySelectorText}>7 days</Text>
-                    <Ionicons name="chevron-down" size={20} color="#6B7280" />
+                  <Text style={styles.inputLabel}>Add Photos (Optional)</Text>
+                  <TouchableOpacity style={styles.photoUpload} onPress={showImagePicker}>
+                    <Ionicons name="camera-outline" size={32} color="#6B7280" />
+                    <Text style={styles.photoUploadText}>Tap to add photos</Text>
+                    <Text style={styles.photoUploadSubtext}>Up to 10 images</Text>
                   </TouchableOpacity>
-                </View>
-              )}
-
-              {selectedUploadType === 'distress' && (
-                <View style={styles.distressWarning}>
-                  <Ionicons name="warning" size={20} color="#EF4444" />
-                  <Text style={styles.distressWarningText}>
-                    Distress sales are for urgent items only. These listings will be highlighted and prioritized in search results.
-                  </Text>
+                  
+                  {formData.images.length > 0 && (
+                    <View style={styles.imagePreviewContainer}>
+                      {formData.images.map((image, index) => (
+                        <View key={index} style={styles.imagePreview}>
+                          <Image source={{ uri: image.uri }} style={styles.previewImage} />
+                          <TouchableOpacity 
+                            style={styles.removeImageButton}
+                            onPress={() => removeImage(index)}
+                          >
+                            <Ionicons name="close-circle" size={20} color="#EF4444" />
+                          </TouchableOpacity>
+                        </View>
+                      ))}
+                    </View>
+                  )}
                 </View>
               )}
             </View>
@@ -802,7 +514,7 @@ export default function UploadScreen() {
                 <Ionicons name="cloud-upload-outline" size={20} color="#FFFFFF" />
               )}
               <Text style={styles.uploadButtonText}>
-                {isLoading ? 'Uploading...' : `Upload ${option.title}`}
+                {isLoading ? 'Uploading...' : 'Create Post'}
               </Text>
             </TouchableOpacity>
           </View>
@@ -919,7 +631,6 @@ export default function UploadScreen() {
         </View>
       </ScrollView>
 
-      {renderFeedSubSelection()}
       {renderUploadModal()}
       {renderCategoryPicker()}
     </View>

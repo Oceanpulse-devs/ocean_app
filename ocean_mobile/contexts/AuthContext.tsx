@@ -12,6 +12,8 @@ interface AuthContextType {
     email: string;
     password: string;
     confirmPassword: string;
+    country: string;
+    city: string;
     agreeTerms: boolean;
   }) => Promise<void>;
   logout: () => Promise<void>;
@@ -71,7 +73,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setIsLoading(true);
       const response: AuthResponse = await apiService.login({ email, password });
       
-      // Store token (the backend sets it in cookies, but we'll also store it locally)
+      // Store authentication status (backend uses httpOnly cookies for token)
       await AsyncStorage.setItem('authToken', 'authenticated');
       
       setUser(response.user);
@@ -88,6 +90,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     email: string;
     password: string;
     confirmPassword: string;
+    country: string;
+    city: string;
     agreeTerms: boolean;
   }) => {
     try {
@@ -95,10 +99,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
       const response: AuthResponse = await apiService.signup(userData);
       
-      // Store token for the new user
-      await AsyncStorage.setItem('authToken', 'authenticated');
+      // Clear any pending verification email since we're using link-based verification
+      await AsyncStorage.removeItem('pendingVerificationEmail');
       
-      setUser(response.user);
+      // Don't set user as authenticated until email is verified via link
+      // setUser(response.user);
     } catch (error) {
       console.error('Signup failed:', error);
       throw error;

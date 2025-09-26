@@ -1,4 +1,4 @@
-const { Product, ProductCategory, SavedProduct, SavedPost, Post, UserTable, SellersTable, UserFollows, Notification } = require('../../models');
+const { Product, ProductCategory, SavedProduct, SavedPost, Post, PostMedia, UserTable, SellersTable, UserFollows, Notification } = require('../../models');
 const { Op, Sequelize } = require('sequelize');
 const cloudinaryService = require('../services/cloudinaryService');
 const { checkSubscriptionLimit, incrementUsage } = require('../middleware/subscriptionMiddleware');
@@ -1355,6 +1355,11 @@ const getAllSavedItems = async (req, res) => {
                             model: UserTable,
                             as: 'user',
                             attributes: ['id', 'fullName', 'email', 'profilePicture', 'accountType', 'accountStatus']
+                        },
+                        {
+                            model: PostMedia,
+                            as: 'media',
+                            attributes: ['id', 'mediaUrl', 'mediaType']
                         }
                     ]
                 }
@@ -1395,9 +1400,26 @@ const getAllSavedItems = async (req, res) => {
         });
 
         // Format saved posts for frontend
-        const formattedPosts = savedPosts.rows.map((savedItem) => {
+        const formattedPosts = await Promise.all(savedPosts.rows.map(async (savedItem) => {
             const post = savedItem.post;
             const user = post.user;
+            const media = post.media || [];
+            
+            // Debug logging
+            console.log(`Post ${post.id} has ${media.length} media items from association:`, media.map(m => m.mediaUrl));
+            
+            // If no media from association, try direct query
+            let mediaUrls = media.map(m => m.mediaUrl).filter(url => url);
+            if (mediaUrls.length === 0) {
+                console.log(`No media from association, querying PostMedia directly for post ${post.id}`);
+                const directMedia = await PostMedia.findAll({
+                    where: { postId: post.id },
+                    attributes: ['mediaUrl', 'mediaType'],
+                    order: [['mediaOrder', 'ASC']]
+                });
+                mediaUrls = directMedia.map(m => m.mediaUrl).filter(url => url);
+                console.log(`Direct query found ${mediaUrls.length} media URLs:`, mediaUrls);
+            }
             
             // Determine if it's a buyer or seller post based on content
             const isBuyerPost = post.content.toLowerCase().includes('looking for') || 
@@ -1408,7 +1430,7 @@ const getAllSavedItems = async (req, res) => {
                 id: savedItem.id,
                 type: 'feed-post',
                 postType: isBuyerPost ? 'buyer' : 'seller',
-                name: post.title,
+                name: post.title || 'Post',
                 price: isBuyerPost ? null : extractPriceFromContent(post.content),
                 budget: isBuyerPost ? extractBudgetFromContent(post.content) : null,
                 originalPrice: null,
@@ -1427,7 +1449,7 @@ const getAllSavedItems = async (req, res) => {
                     verified: user.accountStatus === 'verified',
                     rating: 4.5
                 } : null,
-                images: ['📱'], // TODO: Get actual post images
+                images: mediaUrls.length > 0 ? mediaUrls : ['📱'], // Use actual post images or fallback
                 description: post.content,
                 likes: post.likesCount || 0,
                 timeAgo: getTimeAgo(savedItem.createdAt),
@@ -1435,7 +1457,7 @@ const getAllSavedItems = async (req, res) => {
                 isSaved: true,
                 savedDate: savedItem.createdAt.toISOString().split('T')[0]
             };
-        });
+        }));
 
         // Combine and sort by saved date
         const allSavedItems = [...formattedProducts, ...formattedPosts]

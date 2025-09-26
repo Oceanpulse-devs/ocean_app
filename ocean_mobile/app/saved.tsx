@@ -36,8 +36,13 @@ export default function SavedScreen() {
     try {
       setIsLoading(true);
       const response = await apiService.get('/api/saved-items', {
-        params: { category: selectedCategory }
+        params: { 
+          page: 1, 
+          limit: 20, 
+          category: selectedCategory === 'All' ? undefined : selectedCategory 
+        }
       });
+      console.log('Saved items response:', response);
       setSavedItems(response.data.savedItems || []);
     } catch (error) {
       console.error('Error fetching saved items:', error);
@@ -74,7 +79,7 @@ export default function SavedScreen() {
       if (itemType === 'product') {
         await apiService.post(`/api/products/${itemId}/save`);
       } else if (itemType === 'feed-post') {
-        await apiService.post(`/api/posts/${itemId}/save`);
+        await apiService.toggleSave(itemId);
       }
       
       // Remove from local state
@@ -101,14 +106,22 @@ export default function SavedScreen() {
     >
       {/* Product Image */}
       <View style={styles.productImage}>
-        {item.images && item.images[0] && item.images[0] !== '📦' && item.images[0] !== '📱' && item.images[0] !== '💻' && item.images[0] !== '👜' && item.images[0] !== '🚗' ? (
+        {item.images && item.images[0] && 
+         !item.images[0].startsWith('📦') && 
+         !item.images[0].startsWith('📱') && 
+         !item.images[0].startsWith('💻') && 
+         !item.images[0].startsWith('👜') && 
+         !item.images[0].startsWith('🚗') &&
+         (item.images[0].startsWith('http') || item.images[0].startsWith('https')) ? (
           <Image 
             source={{ uri: item.images[0] }} 
             style={styles.productImage}
             resizeMode="cover"
           />
         ) : (
-          <Text style={styles.imagePlaceholder}>{item.images?.[0] || '📦'}</Text>
+          <Text style={styles.imagePlaceholder}>
+            {item.type === 'feed-post' ? '📱' : '📦'}
+          </Text>
         )}
         <View style={styles.imageOverlay}>
           <TouchableOpacity
@@ -151,7 +164,9 @@ export default function SavedScreen() {
         
         <View style={styles.sellerRow}>
           {item.type === 'feed-post' && item.postType === 'buyer' ? (
-            item.buyer?.avatar && item.buyer.avatar !== '👤' ? (
+            item.buyer?.avatar && 
+            item.buyer.avatar !== '👤' && 
+            (item.buyer.avatar.startsWith('http') || item.buyer.avatar.startsWith('https')) ? (
               <Image 
                 source={{ uri: item.buyer.avatar }} 
                 style={styles.sellerAvatarImage}
@@ -161,7 +176,9 @@ export default function SavedScreen() {
               <Text style={styles.sellerAvatar}>{item.buyer?.avatar || '👤'}</Text>
             )
           ) : (
-            item.seller?.avatar && item.seller.avatar !== '👤' ? (
+            item.seller?.avatar && 
+            item.seller.avatar !== '👤' && 
+            (item.seller.avatar.startsWith('http') || item.seller.avatar.startsWith('https')) ? (
               <Image 
                 source={{ uri: item.seller.avatar }} 
                 style={styles.sellerAvatarImage}
@@ -216,7 +233,23 @@ export default function SavedScreen() {
       onPress={() => handleItemPress(item)}
     >
       <View style={styles.listImage}>
-        <Text style={styles.listImagePlaceholder}>{item.images[0]}</Text>
+        {item.images && item.images[0] && 
+         !item.images[0].startsWith('📦') && 
+         !item.images[0].startsWith('📱') && 
+         !item.images[0].startsWith('💻') && 
+         !item.images[0].startsWith('👜') && 
+         !item.images[0].startsWith('🚗') &&
+         (item.images[0].startsWith('http') || item.images[0].startsWith('https')) ? (
+          <Image 
+            source={{ uri: item.images[0] }} 
+            style={styles.listImage}
+            resizeMode="cover"
+          />
+        ) : (
+          <Text style={styles.listImagePlaceholder}>
+            {item.type === 'feed-post' ? '📱' : '📦'}
+          </Text>
+        )}
         {item.type === 'feed-post' && (
           <View style={styles.listFeedBadge}>
             <Text style={styles.listFeedText}>

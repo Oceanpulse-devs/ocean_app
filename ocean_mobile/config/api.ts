@@ -15,9 +15,11 @@ const getDevServerUrl = () => {
 // API Configuration
 export const API_CONFIG = {
   // Base URL for the backend API
-  BASE_URL: __DEV__ 
-    ? getDevServerUrl()  // Automatically detects your computer's IP
-    : 'https://your-production-api.com', // Production URL
+  BASE_URL: 'https://mainserver-production-7ad9.up.railway.app', // Railway Production URL
+  // For local development, uncomment the line below and comment the line above
+  // BASE_URL: __DEV__ 
+  //   ? getDevServerUrl()  // Automatically detects your computer's IP
+  //   : 'https://mainserver-production-7ad9.up.railway.app', // Railway Production URL
   
   // API Endpoints
   ENDPOINTS: {

@@ -21,10 +21,12 @@ class ApiService {
     
     const config: RequestInit = {
       headers: {
-        'Content-Type': 'application/json',
-        ...(token && { Authorization: `Bearer ${token}` }),
+        // Only set Content-Type if not already set (for FormData compatibility)
+        ...(options.headers?.['Content-Type'] === undefined && { 'Content-Type': 'application/json' }),
+        ...(token && token !== 'authenticated' && { Authorization: `Bearer ${token}` }),
         ...options.headers,
       },
+      credentials: 'include', // Include cookies for authentication
       ...options,
     };
 
@@ -68,19 +70,47 @@ class ApiService {
 
   // POST request
   async post<T>(endpoint: string, data?: any, options?: RequestInit): Promise<T> {
+    // Check if data is FormData
+    const isFormData = data instanceof FormData;
+    
+    if (isFormData) {
+      console.log('API Service: Sending FormData to', endpoint);
+      console.log('FormData entries:', Array.from(data.entries()));
+      console.log('FormData type:', typeof data);
+      console.log('FormData constructor:', data.constructor.name);
+      
+      // Check if any entries contain file objects
+      const entries = Array.from(data.entries());
+      entries.forEach(([key, value], index) => {
+        console.log(`Entry ${index}:`, { key, value, valueType: typeof value });
+        if (typeof value === 'object' && value !== null) {
+          console.log(`Object entry ${index} keys:`, Object.keys(value));
+        }
+      });
+    } else {
+      console.log('API Service: Sending JSON to', endpoint, data);
+    }
+    
     return this.request<T>(endpoint, {
       ...options,
       method: 'POST',
-      body: data ? JSON.stringify(data) : undefined,
+      body: data ? (isFormData ? data : JSON.stringify(data)) : undefined,
+      // Don't set Content-Type for FormData - let the browser set it with boundary
+      ...(isFormData ? {} : { headers: { 'Content-Type': 'application/json' } })
     });
   }
 
   // PUT request
   async put<T>(endpoint: string, data?: any, options?: RequestInit): Promise<T> {
+    // Check if data is FormData
+    const isFormData = data instanceof FormData;
+    
     return this.request<T>(endpoint, {
       ...options,
       method: 'PUT',
-      body: data ? JSON.stringify(data) : undefined,
+      body: data ? (isFormData ? data : JSON.stringify(data)) : undefined,
+      // Don't set Content-Type for FormData - let the browser set it with boundary
+      ...(isFormData ? {} : { headers: { 'Content-Type': 'application/json' } })
     });
   }
 
@@ -95,6 +125,8 @@ class ApiService {
     email: string;
     password: string;
     confirmPassword: string;
+    country: string;
+    city: string;
     agreeTerms: boolean;
   }) {
     return this.post(API_CONFIG.ENDPOINTS.AUTH.SIGNUP, userData);
@@ -144,6 +176,52 @@ class ApiService {
     return this.put(API_CONFIG.ENDPOINTS.PROFILE.UPDATE_PROFILE, profileData);
   }
 
+  async updateProfileWithFormData(formData: FormData) {
+    const url = `${this.baseURL}${API_CONFIG.ENDPOINTS.PROFILE.UPDATE_PROFILE}`;
+    
+    // Get token from AsyncStorage if available
+    const token = await AsyncStorage.getItem('authToken');
+    
+    const config: RequestInit = {
+      method: 'PUT',
+      headers: {
+        ...(token && token !== 'authenticated' && { Authorization: `Bearer ${token}` }),
+        // Don't set Content-Type for FormData - let the browser set it with boundary
+      },
+      credentials: 'include',
+      body: formData,
+    };
+
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), API_CONFIG.TIMEOUT);
+      
+      const response = await fetch(url, {
+        ...config,
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('API error:', errorData.message || `HTTP ${response.status}`);
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+      }
+
+      const contentType = response.headers.get('content-type');
+      
+      if (contentType && contentType.includes('application/json')) {
+        return await response.json();
+      }
+      
+      return {};
+    } catch (error) {
+      console.error('API request failed:', error);
+      throw error;
+    }
+  }
+
   async sellerRegistration(sellerData: {
     businessName: string;
     businessAddress: string;
@@ -161,6 +239,49 @@ class ApiService {
 
   async getActiveSessions() {
     return this.get(API_CONFIG.ENDPOINTS.MESSAGING.ACTIVE_SESSIONS);
+  }
+
+  // Post interaction methods
+  async toggleLike(postId: string) {
+    return this.post(`/api/posts/${postId}/like`);
+  }
+
+  async toggleSave(postId: string, collectionName: string = 'General') {
+    return this.post(`/api/posts/${postId}/save`, { collectionName });
+  }
+
+  async createComment(postId: string, content: string) {
+    return this.post(`/api/posts/${postId}/comments`, { content });
+  }
+
+  async getComments(postId: string, page: number = 1, limit: number = 10) {
+    return this.get(`/api/posts/${postId}/comments?page=${page}&limit=${limit}`);
+  }
+
+  async updateComment(commentId: string, content: string) {
+    return this.put(`/api/comments/${commentId}`, { content });
+  }
+
+  async deleteComment(commentId: string) {
+    return this.delete(`/api/comments/${commentId}`);
+  }
+
+  async getSavedPosts(page: number = 1, limit: number = 10, collectionName?: string) {
+    const params = new URLSearchParams({
+      page: page.toString(),
+      limit: limit.toString(),
+    });
+    if (collectionName) {
+      params.append('collectionName', collectionName);
+    }
+    return this.get(`/api/saved-posts?${params.toString()}`);
+  }
+
+  // Share functionality (placeholder - backend not implemented yet)
+  async sharePost(postId: string) {
+    // TODO: Implement when backend share endpoint is available
+    console.log('Share functionality not yet implemented in backend');
+    return Promise.resolve({ message: 'Share functionality coming soon' });
   }
 }
 

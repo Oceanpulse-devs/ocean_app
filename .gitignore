@@ -1,7 +1,7 @@
 # Ocean App Project - Git Ignore File
 
 # Ignore Flutter mobile app (it has its own Git repository)
-ocean_mobile_flutter/
+ocean_flutter/
 
 
 
