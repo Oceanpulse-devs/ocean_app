@@ -8,16 +8,25 @@ import {
   Dimensions,
   StatusBar,
   Animated,
+  ActivityIndicator,
+  Alert,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
+import { useAuth } from '../contexts/AuthContext';
+import apiService from '../services/api';
 
 const { width, height } = Dimensions.get('window');
 
 export default function ProductDetailScreen() {
+  const params = useLocalSearchParams();
+  const { user } = useAuth();
   const [isLiked, setIsLiked] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [product, setProduct] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
   
   // Pulsing animation for the message button
   const pulseAnim = new Animated.Value(1);
@@ -40,42 +49,47 @@ export default function ProductDetailScreen() {
     pulse();
   }, [pulseAnim]);
 
-  // Mock product data
-  const productData = {
+  // Fetch product data
+  useEffect(() => {
+    if (params.id) {
+      fetchProduct();
+    }
+  }, [params.id]);
+
+  const fetchProduct = async () => {
+    try {
+      setIsLoading(true);
+      const response = await apiService.getProduct(params.id as string);
+      console.log('Product detail response:', response);
+      setProduct(response.data);
+    } catch (error) {
+      console.error('Error fetching product:', error);
+      Alert.alert('Error', 'Failed to load product details');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Use real product data or fallback to mock data
+  const productData = product || {
     id: '1',
-    name: 'iPhone 14 Pro Max',
-    price: '₦850,000',
-    originalPrice: '₦950,000',
-    condition: 'Like New',
+    title: 'iPhone 14 Pro Max',
+    price: '850000',
+    originalPrice: '950000',
+    condition: 'like_new',
     category: 'Electronics',
     brand: 'Apple',
     location: 'Lagos, Nigeria',
     description: 'Selling my iPhone 14 Pro Max in excellent condition. Only used for 6 months, comes with original box and accessories. No scratches or dents, battery health at 95%. Perfect for anyone looking for a premium smartphone at a great price.',
     images: ['📱', '📱', '📱', '📱'], // Placeholder emojis
     seller: {
-      name: 'Sarah Johnson',
-      username: '@sarahj',
-      avatar: '👩‍💼',
-      verified: true,
-      rating: 4.8,
-      totalSales: 156,
-      location: 'Lagos, Nigeria',
-      joinedDate: 'March 2023',
+      user: {
+        fullName: 'Sarah Johnson',
+        profilePicture: '👩‍💼',
+      },
+      businessName: 'Tech Store',
+      verificationStatus: 'verified',
     },
-    specifications: [
-      { label: 'Storage', value: '256GB' },
-      { label: 'Color', value: 'Deep Purple' },
-      { label: 'Network', value: 'Unlocked' },
-      { label: 'Warranty', value: 'Apple Warranty' },
-    ],
-    features: [
-      'A16 Bionic chip',
-      '48MP Main camera',
-      'Dynamic Island',
-      'Always-On display',
-      'Emergency SOS',
-      '5G capable',
-    ],
   };
 
   const renderImage = (image: string, index: number) => (
@@ -87,9 +101,32 @@ export default function ProductDetailScreen() {
       ]}
       onPress={() => setSelectedImageIndex(index)}
     >
-      <Text style={styles.imagePlaceholder}>{image}</Text>
+      {image && 
+       !image.startsWith('📦') && 
+       !image.startsWith('📱') && 
+       !image.startsWith('💻') && 
+       !image.startsWith('👜') && 
+       !image.startsWith('🚗') &&
+       (image.startsWith('http') || image.startsWith('https')) ? (
+        <Image 
+          source={{ uri: image }} 
+          style={styles.imageThumbnail}
+          resizeMode="cover"
+        />
+      ) : (
+        <Text style={styles.imagePlaceholder}>{image || '📦'}</Text>
+      )}
     </TouchableOpacity>
   );
+
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#6B46C1" />
+        <Text style={styles.loadingText}>Loading product details...</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -113,7 +150,15 @@ export default function ProductDetailScreen() {
           </TouchableOpacity>
           <TouchableOpacity 
             style={styles.headerButton}
-            onPress={() => setIsSaved(!isSaved)}
+            onPress={async () => {
+              try {
+                await apiService.toggleSaveProduct(productData.id);
+                setIsSaved(!isSaved);
+              } catch (error) {
+                console.error('Error saving product:', error);
+                Alert.alert('Error', 'Failed to save product');
+              }
+            }}
           >
             <Ionicons 
               name={isSaved ? "bookmark" : "bookmark-outline"} 
@@ -131,26 +176,48 @@ export default function ProductDetailScreen() {
         {/* Main Product Image */}
         <View style={styles.mainImageContainer}>
           <View style={styles.mainImage}>
-            <Text style={styles.mainImagePlaceholder}>{productData.images[selectedImageIndex]}</Text>
+            {productData.images && productData.images[selectedImageIndex] && 
+             !productData.images[selectedImageIndex].startsWith('📦') && 
+             !productData.images[selectedImageIndex].startsWith('📱') && 
+             !productData.images[selectedImageIndex].startsWith('💻') && 
+             !productData.images[selectedImageIndex].startsWith('👜') && 
+             !productData.images[selectedImageIndex].startsWith('🚗') &&
+             (productData.images[selectedImageIndex].startsWith('http') || productData.images[selectedImageIndex].startsWith('https')) ? (
+              <Image 
+                source={{ uri: productData.images[selectedImageIndex] }} 
+                style={styles.mainImage}
+                resizeMode="cover"
+              />
+            ) : (
+              <Text style={styles.mainImagePlaceholder}>{productData.images?.[selectedImageIndex] || '📦'}</Text>
+            )}
           </View>
           
           {/* Image Thumbnails */}
+          {productData.images && productData.images.length > 1 && (
           <View style={styles.imageThumbnails}>
             {productData.images.map((image, index) => renderImage(image, index))}
           </View>
+          )}
         </View>
 
         {/* Product Info */}
         <View style={styles.productInfo}>
           <View style={styles.priceRow}>
-            <Text style={styles.currentPrice}>{productData.price}</Text>
-            <Text style={styles.originalPrice}>{productData.originalPrice}</Text>
+            <Text style={styles.currentPrice}>
+              {productData.currency || '₦'} {parseFloat(productData.price).toLocaleString()}
+            </Text>
+            {productData.originalPrice && productData.originalPrice !== productData.price && (
+              <Text style={styles.originalPrice}>
+                {productData.currency || '₦'} {parseFloat(productData.originalPrice).toLocaleString()}
+              </Text>
+            )}
             <View style={styles.conditionBadge}>
-              <Text style={styles.conditionText}>{productData.condition}</Text>
+              <Text style={styles.conditionText}>{productData.condition || 'Good'}</Text>
             </View>
           </View>
           
-          <Text style={styles.productName}>{productData.name}</Text>
+          <Text style={styles.productName}>{productData.title || productData.name}</Text>
           <Text style={styles.productDescription}>{productData.description}</Text>
           
           {/* Quick Info */}
@@ -163,10 +230,12 @@ export default function ProductDetailScreen() {
               <Ionicons name="grid-outline" size={16} color="#6B7280" />
               <Text style={styles.infoText}>{productData.category}</Text>
             </View>
+            {productData.brand && (
             <View style={styles.infoItem}>
               <Ionicons name="business-outline" size={16} color="#6B7280" />
               <Text style={styles.infoText}>{productData.brand}</Text>
             </View>
+            )}
           </View>
         </View>
 
@@ -176,19 +245,31 @@ export default function ProductDetailScreen() {
           <TouchableOpacity style={styles.sellerCard}>
             <View style={styles.sellerLeft}>
               <View style={styles.sellerAvatar}>
-                <Text style={styles.sellerAvatarPlaceholder}>{productData.seller.avatar}</Text>
+                {productData.seller?.user?.profilePicture && 
+                 productData.seller.user.profilePicture !== '👤' && 
+                 (productData.seller.user.profilePicture.startsWith('http') || productData.seller.user.profilePicture.startsWith('https')) ? (
+                  <Image 
+                    source={{ uri: productData.seller.user.profilePicture }} 
+                    style={styles.sellerAvatarImage}
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <Text style={styles.sellerAvatarPlaceholder}>{productData.seller?.user?.profilePicture || '👤'}</Text>
+                )}
               </View>
               <View style={styles.sellerDetails}>
                 <View style={styles.sellerNameRow}>
-                  <Text style={styles.sellerName}>{productData.seller.name}</Text>
-                  {productData.seller.verified && (
+                  <Text style={styles.sellerName}>
+                    {productData.seller?.user?.fullName || productData.seller?.businessName || 'Unknown Seller'}
+                  </Text>
+                  {productData.seller?.verificationStatus === 'verified' && (
                     <Ionicons name="checkmark-circle" size={16} color="#3B82F6" />
                   )}
                 </View>
-                <Text style={styles.sellerUsername}>{productData.seller.username}</Text>
+                <Text style={styles.sellerUsername}>@{productData.seller?.businessName || 'seller'}</Text>
                 <View style={styles.sellerStats}>
-                  <Text style={styles.sellerRating}>⭐ {productData.seller.rating}</Text>
-                  <Text style={styles.sellerSales}>{productData.seller.totalSales} sales</Text>
+                  <Text style={styles.sellerRating}>⭐ 4.5</Text>
+                  <Text style={styles.sellerSales}>156 sales</Text>
                 </View>
               </View>
             </View>
@@ -199,6 +280,7 @@ export default function ProductDetailScreen() {
         </View>
 
         {/* Specifications */}
+        {productData.specifications && productData.specifications.length > 0 && (
         <View style={styles.specificationsSection}>
           <Text style={styles.sectionTitle}>Specifications</Text>
           <View style={styles.specificationsGrid}>
@@ -210,8 +292,10 @@ export default function ProductDetailScreen() {
             ))}
           </View>
         </View>
+        )}
 
         {/* Features */}
+        {productData.features && productData.features.length > 0 && (
         <View style={styles.featuresSection}>
           <Text style={styles.sectionTitle}>Key Features</Text>
           <View style={styles.featuresList}>
@@ -223,36 +307,20 @@ export default function ProductDetailScreen() {
             ))}
           </View>
         </View>
+        )}
 
-        {/* Similar Products */}
-        <View style={styles.similarSection}>
-          <Text style={styles.sectionTitle}>Similar Products</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            {[1, 2, 3].map((item) => (
-              <TouchableOpacity key={item} style={styles.similarProduct}>
-                <View style={styles.similarImage}>
-                  <Text style={styles.similarImagePlaceholder}>📱</Text>
-                </View>
-                <Text style={styles.similarName}>iPhone 13 Pro</Text>
-                <Text style={styles.similarPrice}>₦750,000</Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
+        {/* Coming Soon Section */}
+        <View style={styles.comingSoonSection}>
+          <View style={styles.comingSoonCard}>
+            <Ionicons name="construct-outline" size={48} color="#6B7280" />
+            <Text style={styles.comingSoonTitle}>Coming Soon</Text>
+            <Text style={styles.comingSoonText}>
+              Similar products and recommendations will be available soon
+            </Text>
+          </View>
         </View>
       </ScrollView>
 
-      {/* Bottom Action Bar */}
-      <View style={styles.bottomBar}>
-        <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
-          <TouchableOpacity 
-            style={styles.messageSellerButton}
-            onPress={() => router.push('/chat/1')}
-          >
-            <Ionicons name="chatbubble-ellipses" size={22} color="#FFFFFF" />
-            <Text style={styles.messageSellerButtonText}>Message Buyer</Text>
-          </TouchableOpacity>
-        </Animated.View>
-      </View>
     </View>
   );
 }
@@ -424,6 +492,11 @@ const styles = StyleSheet.create({
   sellerAvatarPlaceholder: {
     fontSize: 24,
   },
+  sellerAvatarImage: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+  },
   sellerDetails: {
     flex: 1,
   },
@@ -514,81 +587,44 @@ const styles = StyleSheet.create({
     color: '#374151',
   },
   
-  // Similar Products
-  similarSection: {
+  // Coming Soon Section
+  comingSoonSection: {
     padding: 20,
-    paddingBottom: 100, // Space for bottom bar
+    paddingBottom: 20,
   },
-  similarProduct: {
-    width: 120,
-    marginRight: 16,
-  },
-  similarImage: {
-    width: 120,
-    height: 120,
-    backgroundColor: '#F3F4F6',
-    borderRadius: 8,
-    justifyContent: 'center',
+  comingSoonCard: {
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    padding: 32,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  comingSoonTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1F2937',
+    marginTop: 16,
     marginBottom: 8,
   },
-  similarImagePlaceholder: {
-    fontSize: 32,
-  },
-  similarName: {
+  comingSoonText: {
     fontSize: 14,
-    fontWeight: '500',
-    color: '#1F2937',
-    marginBottom: 4,
-  },
-  similarPrice: {
-    fontSize: 14,
-    color: '#059669',
-    fontWeight: '600',
+    color: '#6B7280',
+    textAlign: 'center',
+    lineHeight: 20,
   },
   
-  // Bottom Bar
-  bottomBar: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
-  },
-  messageSellerButton: {
-    backgroundColor: '#6B46C1',
-    paddingVertical: 18,
-    borderRadius: 16,
-    alignItems: 'center',
-    flexDirection: 'row',
+  
+  // Loading styles
+  loadingContainer: {
+    flex: 1,
     justifyContent: 'center',
-    gap: 10,
-    // Multiple shadow layers for glowing effect
-    shadowColor: '#6B46C1',
-    shadowOffset: {
-      width: 0,
-      height: 0,
-    },
-    shadowOpacity: 0.6,
-    shadowRadius: 12,
-    elevation: 12,
-    // Additional glow effect
-    borderWidth: 1,
-    borderColor: 'rgba(107, 70, 193, 0.3)',
-    // Gradient-like effect with multiple backgrounds
-    backgroundColor: '#7C3AED',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
   },
-  messageSellerButtonText: {
-    color: '#FFFFFF',
-    fontSize: 17,
-    fontWeight: '700',
-    textShadowColor: 'rgba(0, 0, 0, 0.2)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
-    letterSpacing: 0.5,
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#6B7280',
   },
 });

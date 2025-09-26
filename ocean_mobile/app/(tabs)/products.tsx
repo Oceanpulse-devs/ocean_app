@@ -9,16 +9,32 @@ import {
   ScrollView,
   StatusBar,
   Dimensions,
+  ActivityIndicator,
+  Alert,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
+import { useAuth } from '../../contexts/AuthContext';
+import apiService from '../../services/api';
 
 const { width } = Dimensions.get('window');
 
 export default function ProductsScreen() {
   const params = useLocalSearchParams();
+  const { user } = useAuth();
   
-  // Mock product data
+  // State management
+  const [products, setProducts] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('All');
+  const [selectedFilter, setSelectedFilter] = useState('Latest');
+  const [showDistressOnly, setShowDistressOnly] = useState(false);
+  
+  // Mock product data for fallback
   const mockProducts = [
     {
       id: '1',
@@ -215,11 +231,11 @@ export default function ProductsScreen() {
      },
    ];
 
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('All');
-  const [selectedFilter, setSelectedFilter] = useState('Latest');
-  const [showDistressOnly, setShowDistressOnly] = useState(false);
-  const [products, setProducts] = useState(mockProducts);
+  // Fetch products and categories
+  useEffect(() => {
+    fetchProducts();
+    fetchCategories();
+  }, [selectedCategory, searchQuery, showDistressOnly]);
 
   // Handle distress parameter from navigation
   useEffect(() => {
@@ -228,17 +244,69 @@ export default function ProductsScreen() {
     }
   }, [params.distress]);
 
-  const categories = [
-    'All',
-    'Electronics',
-    'Fashion',
-    'Automotive',
-    'Home & Garden',
-    'Sports',
-    'Books',
-    'Health',
-    'Beauty',
-  ];
+  const fetchProducts = async () => {
+    try {
+      setIsLoading(true);
+      const params: any = {
+        page: 1,
+        limit: 20,
+        sortBy: selectedFilter === 'Latest' ? 'createdAt' : 'random'
+      };
+
+      if (searchQuery) {
+        params.search = searchQuery;
+      }
+
+      if (selectedCategory !== 'All') {
+        params.category = selectedCategory;
+      }
+
+      if (showDistressOnly) {
+        // Note: Backend might need to support distress filter
+        // For now, we'll filter on frontend
+      }
+
+      const response = await apiService.getProducts(params);
+      console.log('Products response:', response);
+      
+      let productsData = response.data || [];
+      
+      // Filter distress sales on frontend if needed
+      if (showDistressOnly) {
+        productsData = productsData.filter((product: any) => product.isDistressSale);
+      }
+
+      setProducts(productsData);
+    } catch (error) {
+      console.error('Error fetching products:', error);
+      Alert.alert('Error', 'Failed to load products');
+      // Fallback to mock data
+      setProducts(mockProducts);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchCategories = async () => {
+    try {
+      const response = await apiService.getCategories();
+      console.log('Categories response:', response);
+      setCategories(response.data || []);
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+    }
+  };
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await fetchProducts();
+    setRefreshing(false);
+  };
+
+  // Use dynamic categories from API or fallback to static list
+  const categoryList = categories.length > 0 
+    ? ['All', ...categories.map((cat: any) => cat.name || cat)]
+    : ['All', 'Electronics', 'Fashion', 'Automotive', 'Home & Garden', 'Sports', 'Books', 'Health', 'Beauty'];
 
   const filters = [
     'Latest',
@@ -249,10 +317,31 @@ export default function ProductsScreen() {
   ];
 
   const handleProductPress = (product: any) => {
-    router.push('/product-detail');
+    router.push(`/product-detail?id=${product.id}`);
   };
 
-  const handleLike = (productId: string) => {
+  const handleMessageSeller = async (product: any) => {
+    try {
+      if (!user?.id || !product.seller?.userId) {
+        Alert.alert('Error', 'Unable to start conversation');
+        return;
+      }
+
+      // Create conversation with the seller
+      const response = await apiService.createConversation([user.id, product.seller.userId]);
+      const conversationId = response.data.id;
+      
+      // Navigate to chat
+      router.push(`/chat/${conversationId}` as any);
+    } catch (error) {
+      console.error('Error creating conversation:', error);
+      Alert.alert('Error', 'Failed to start conversation');
+    }
+  };
+
+  const handleLike = async (productId: string) => {
+    try {
+      // TODO: Implement like functionality when backend supports it
     setProducts(prev =>
       prev.map(product =>
         product.id === productId
@@ -260,9 +349,14 @@ export default function ProductsScreen() {
           : product
       )
     );
+    } catch (error) {
+      console.error('Error liking product:', error);
+    }
   };
 
-  const handleSave = (productId: string) => {
+  const handleSave = async (productId: string) => {
+    try {
+      await apiService.toggleSaveProduct(productId);
     setProducts(prev =>
       prev.map(product =>
         product.id === productId
@@ -270,12 +364,14 @@ export default function ProductsScreen() {
           : product
       )
     );
+    } catch (error) {
+      console.error('Error saving product:', error);
+      Alert.alert('Error', 'Failed to save product');
+    }
   };
 
   // Filter products based on distress filter
-  const filteredProducts = showDistressOnly 
-    ? mockProducts.filter(product => product.isDistress)
-    : mockProducts;
+  const filteredProducts = products;
 
   const renderProduct = ({ item }: { item: any }) => (
     <TouchableOpacity
@@ -284,7 +380,21 @@ export default function ProductsScreen() {
     >
       {/* Product Image */}
       <View style={styles.productImage}>
-        <Text style={styles.imagePlaceholder}>{item.images[0]}</Text>
+        {item.images && item.images[0] && 
+         !item.images[0].startsWith('📦') && 
+         !item.images[0].startsWith('📱') && 
+         !item.images[0].startsWith('💻') && 
+         !item.images[0].startsWith('👜') && 
+         !item.images[0].startsWith('🚗') &&
+         (item.images[0].startsWith('http') || item.images[0].startsWith('https')) ? (
+          <Image 
+            source={{ uri: item.images[0] }} 
+            style={styles.productImage}
+            resizeMode="cover"
+          />
+        ) : (
+          <Text style={styles.imagePlaceholder}>{item.images?.[0] || '📦'}</Text>
+        )}
         <View style={styles.imageOverlay}>
           <TouchableOpacity
             style={styles.saveButton}
@@ -297,14 +407,14 @@ export default function ProductsScreen() {
             />
           </TouchableOpacity>
         </View>
-                 {item.originalPrice !== item.price && (
+        {item.originalPrice && item.originalPrice !== item.price && (
            <View style={styles.discountBadge}>
              <Text style={styles.discountText}>
-               {Math.round(((parseInt(item.originalPrice.replace(/[^\d]/g, '')) - parseInt(item.price.replace(/[^\d]/g, ''))) / parseInt(item.originalPrice.replace(/[^\d]/g, ''))) * 100)}% OFF
+              {Math.round(((parseFloat(item.originalPrice) - parseFloat(item.price)) / parseFloat(item.originalPrice)) * 100)}% OFF
              </Text>
            </View>
          )}
-         {item.isDistress && (
+        {item.isDistressSale && (
            <View style={styles.distressBadge}>
              <Text style={styles.distressText}>🔥 URGENT</Text>
            </View>
@@ -314,32 +424,46 @@ export default function ProductsScreen() {
       {/* Product Info */}
       <View style={styles.productInfo}>
         <View style={styles.priceRow}>
-          <Text style={styles.price}>{item.price}</Text>
-          {item.originalPrice !== item.price && (
-            <Text style={styles.originalPrice}>{item.originalPrice}</Text>
+          <Text style={styles.price}>
+            {item.currency || '₦'} {parseFloat(item.price).toLocaleString()}
+          </Text>
+          {item.originalPrice && item.originalPrice !== item.price && (
+            <Text style={styles.originalPrice}>
+              {item.currency || '₦'} {parseFloat(item.originalPrice).toLocaleString()}
+            </Text>
           )}
         </View>
         
         <Text style={styles.productName} numberOfLines={2}>
-          {item.name}
+          {item.title || item.name}
         </Text>
         
         <View style={styles.sellerRow}>
-          <Text style={styles.sellerAvatar}>{item.seller.avatar}</Text>
+          {item.seller?.user?.profilePicture && 
+           item.seller.user.profilePicture !== '👤' && 
+           (item.seller.user.profilePicture.startsWith('http') || item.seller.user.profilePicture.startsWith('https')) ? (
+            <Image 
+              source={{ uri: item.seller.user.profilePicture }} 
+              style={styles.sellerAvatarImage}
+              resizeMode="cover"
+            />
+          ) : (
+            <Text style={styles.sellerAvatar}>{item.seller?.user?.profilePicture || '👤'}</Text>
+          )}
           <View style={styles.sellerInfo}>
             <View style={styles.sellerNameRow}>
-              <Text style={styles.sellerName}>{item.seller.name}</Text>
-              {item.seller.verified && (
+              <Text style={styles.sellerName}>{item.seller?.user?.fullName || item.seller?.businessName || 'Unknown Seller'}</Text>
+              {item.seller?.verificationStatus === 'verified' && (
                 <Ionicons name="checkmark-circle" size={12} color="#3B82F6" />
               )}
             </View>
-            <Text style={styles.sellerRating}>⭐ {item.seller.rating}</Text>
+            <Text style={styles.sellerRating}>⭐ 4.5</Text>
           </View>
         </View>
         
         <View style={styles.productMeta}>
           <View style={styles.conditionBadge}>
-            <Text style={styles.conditionText}>{item.condition}</Text>
+            <Text style={styles.conditionText}>{item.condition || 'Good'}</Text>
           </View>
           <Text style={styles.locationText}>{item.location}</Text>
         </View>
@@ -354,12 +478,12 @@ export default function ProductsScreen() {
               size={16}
               color={item.isLiked ? "#EF4444" : "#6B7280"}
             />
-            <Text style={styles.likeCount}>{item.likes}</Text>
+            <Text style={styles.likeCount}>{item.likes || 0}</Text>
           </TouchableOpacity>
           
           <TouchableOpacity
             style={styles.messageButton}
-            onPress={() => router.push('/chat/1' as any)}
+            onPress={() => handleMessageSeller(item)}
           >
             <Ionicons name="chatbubble-outline" size={16} color="#6B46C1" />
             <Text style={styles.messageText}>Message</Text>
@@ -428,7 +552,7 @@ export default function ProductsScreen() {
       {/* Categories */}
       <View style={styles.categoriesContainer}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          {categories.map((category) => (
+          {categoryList.map((category) => (
             <TouchableOpacity
               key={category}
               style={[
@@ -461,6 +585,12 @@ export default function ProductsScreen() {
        </View>
 
        {/* Products Grid */}
+       {isLoading ? (
+         <View style={styles.loadingContainer}>
+           <ActivityIndicator size="large" color="#6B46C1" />
+           <Text style={styles.loadingText}>Loading products...</Text>
+         </View>
+       ) : (
        <FlatList
          data={filteredProducts}
         renderItem={renderProduct}
@@ -469,7 +599,10 @@ export default function ProductsScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.productsContainer}
         columnWrapperStyle={styles.productRow}
+           refreshing={refreshing}
+           onRefresh={handleRefresh}
       />
+       )}
     </View>
   );
 }
@@ -712,6 +845,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginRight: 6,
   },
+  sellerAvatarImage: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    marginRight: 6,
+  },
   sellerInfo: {
     flex: 1,
   },
@@ -790,5 +929,18 @@ const styles = StyleSheet.create({
      height: 8,
      borderRadius: 4,
      backgroundColor: '#EF4444',
+   },
+   
+   // Loading styles
+   loadingContainer: {
+     flex: 1,
+     justifyContent: 'center',
+     alignItems: 'center',
+     paddingVertical: 60,
+   },
+   loadingText: {
+     marginTop: 16,
+     fontSize: 16,
+     color: '#6B7280',
    },
  });

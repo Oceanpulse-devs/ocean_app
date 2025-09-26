@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,9 +9,15 @@ import {
   Dimensions,
   StatusBar,
   FlatList,
+  ActivityIndicator,
+  Alert,
+  RefreshControl,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import { useAuth } from '../../contexts/AuthContext';
+import apiService from '../../services/api';
 
 const { width, height } = Dimensions.get('window');
 
@@ -130,65 +136,121 @@ const mockConversations = [
 ];
 
 export default function MessagesScreen() {
+  const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
-  const [conversations, setConversations] = useState(mockConversations);
+  const [conversations, setConversations] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedConversation, setSelectedConversation] = useState(null);
 
-  const filteredConversations = conversations.filter(conv =>
-    conv.user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    conv.product.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Fetch conversations from API
+  useEffect(() => {
+    fetchConversations();
+  }, []);
 
-  const renderConversation = ({ item }: { item: any }) => (
-    <TouchableOpacity 
-      style={styles.conversationItem}
-      onPress={() => router.push(`/chat/${item.id}`)}
-    >
-      {/* User Avatar */}
-      <View style={styles.avatarContainer}>
-        <Text style={styles.avatar}>{item.user.avatar}</Text>
-        {item.user.online && <View style={styles.onlineIndicator} />}
-      </View>
+  const fetchConversations = async () => {
+    try {
+      setIsLoading(true);
+      const response = await apiService.getConversations() as any;
+      setConversations(response.conversations || []);
+    } catch (error) {
+      console.error('Error fetching conversations:', error);
+      // Fallback to mock data if API fails
+      setConversations(mockConversations);
+      Alert.alert('Connection Error', 'Unable to load conversations. Showing sample data.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-      {/* Conversation Content */}
-      <View style={styles.conversationContent}>
-        <View style={styles.conversationHeader}>
-          <View style={styles.nameRow}>
-            <Text style={styles.userName}>{item.user.name}</Text>
-            {item.user.verified && (
-              <Ionicons name="checkmark-circle" size={14} color="#3B82F6" />
-            )}
+  const onRefresh = async () => {
+    setIsRefreshing(true);
+    await fetchConversations();
+    setIsRefreshing(false);
+  };
+
+  const filteredConversations = conversations.filter(conv => {
+    const userName = conv.participants?.[0]?.fullName || conv.user?.name || 'Unknown User';
+    const productName = conv.product?.name || 'Unknown Product';
+    return userName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+           productName.toLowerCase().includes(searchQuery.toLowerCase());
+  });
+
+  const renderConversation = ({ item }: { item: any }) => {
+    // Handle both API data and mock data structures
+    const isApiData = item.participants;
+    const otherParticipant = isApiData ? item.participants?.find((p: any) => p.userId !== user?.id) : null;
+    
+    const userName = isApiData ? (otherParticipant?.fullName || 'Unknown User') : item.user.name;
+    const userAvatar = isApiData ? (otherParticipant?.profilePicture || '👤') : item.user.avatar;
+    const isVerified = isApiData ? otherParticipant?.isVerified : item.user.verified;
+    const isOnline = isApiData ? otherParticipant?.isOnline : item.user.online;
+    const lastMessage = isApiData ? item.lastMessage : item.lastMessage;
+    const messageTime = isApiData ? (lastMessage?.createdAt ? new Date(lastMessage.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '') : lastMessage.time;
+    const unreadCount = isApiData ? item.unreadCount : item.unreadCount;
+
+    return (
+      <TouchableOpacity 
+        style={styles.conversationItem}
+        onPress={() => router.push(`/chat/${item.id}`)}
+      >
+        {/* User Avatar */}
+        <View style={styles.avatarContainer}>
+          {userAvatar && userAvatar !== '👤' && 
+           (userAvatar.startsWith('http') || userAvatar.startsWith('https')) ? (
+            <Image 
+              source={{ uri: userAvatar }} 
+              style={styles.avatarImage}
+              resizeMode="cover"
+            />
+          ) : (
+            <Text style={styles.avatar}>{userAvatar || '👤'}</Text>
+          )}
+          {isOnline && <View style={styles.onlineIndicator} />}
+        </View>
+
+        {/* Conversation Content */}
+        <View style={styles.conversationContent}>
+          <View style={styles.conversationHeader}>
+            <View style={styles.nameRow}>
+              <Text style={styles.userName}>{userName}</Text>
+              {isVerified && (
+                <Ionicons name="checkmark-circle" size={14} color="#3B82F6" />
+              )}
+            </View>
+            <Text style={styles.messageTime}>{messageTime}</Text>
           </View>
-          <Text style={styles.messageTime}>{item.lastMessage.time}</Text>
-        </View>
 
-        {/* Product Info */}
-        <View style={styles.productInfo}>
-          <Text style={styles.productImage}>{item.product.image}</Text>
-          <Text style={styles.productName}>{item.product.name}</Text>
-          <Text style={styles.productPrice}>{item.product.price}</Text>
-        </View>
-
-        {/* Last Message */}
-        <View style={styles.lastMessageRow}>
-          <Text 
-            style={[
-              styles.lastMessageText,
-              !item.lastMessage.isRead && styles.unreadMessage
-            ]}
-            numberOfLines={1}
-          >
-            {item.lastMessage.isFromMe ? 'You: ' : ''}{item.lastMessage.text}
-          </Text>
-          {item.unreadCount > 0 && (
-            <View style={styles.unreadBadge}>
-              <Text style={styles.unreadCount}>{item.unreadCount}</Text>
+          {/* Product Info - Only show if available */}
+          {item.product && (
+            <View style={styles.productInfo}>
+              <Text style={styles.productImage}>{item.product.image || '📦'}</Text>
+              <Text style={styles.productName}>{item.product.name || 'Product'}</Text>
+              <Text style={styles.productPrice}>{item.product.price || 'Price not specified'}</Text>
             </View>
           )}
+
+          {/* Last Message */}
+          <View style={styles.lastMessageRow}>
+            <Text 
+              style={[
+                styles.lastMessageText,
+                unreadCount > 0 && styles.unreadMessage
+              ]}
+              numberOfLines={1}
+            >
+              {lastMessage?.content || lastMessage?.text || 'No messages yet'}
+            </Text>
+            {unreadCount > 0 && (
+              <View style={styles.unreadBadge}>
+                <Text style={styles.unreadCount}>{unreadCount}</Text>
+              </View>
+            )}
+          </View>
         </View>
-      </View>
-    </TouchableOpacity>
-  );
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -249,13 +311,28 @@ export default function MessagesScreen() {
       </View>
 
       {/* Conversations List */}
-      <FlatList
-        data={filteredConversations}
-        renderItem={renderConversation}
-        keyExtractor={(item) => item.id}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.conversationsList}
-      />
+      {isLoading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#6B46C1" />
+          <Text style={styles.loadingText}>Loading conversations...</Text>
+        </View>
+      ) : (
+        <FlatList
+          data={filteredConversations}
+          renderItem={renderConversation}
+          keyExtractor={(item) => item.id}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.conversationsList}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefreshing}
+              onRefresh={onRefresh}
+              colors={['#6B46C1']}
+              tintColor="#6B46C1"
+            />
+          }
+        />
+      )}
 
       {/* Empty State */}
       {filteredConversations.length === 0 && (
@@ -375,6 +452,11 @@ const styles = StyleSheet.create({
   avatar: {
     fontSize: 40,
   },
+  avatarImage: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+  },
   onlineIndicator: {
     position: 'absolute',
     bottom: 2,
@@ -480,5 +562,17 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     textAlign: 'center',
     lineHeight: 24,
+  },
+  
+  // Loading state
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#6B7280',
   },
 });

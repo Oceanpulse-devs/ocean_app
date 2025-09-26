@@ -10,9 +10,14 @@ import {
   StatusBar,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
+  Alert,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
+import { useAuth } from '../../contexts/AuthContext';
+import apiService from '../../services/api';
 
 const { width, height } = Dimensions.get('window');
 
@@ -283,83 +288,143 @@ const mockChats = {
 
 export default function ChatScreen() {
   const { id } = useLocalSearchParams();
-  const [messages, setMessages] = useState(mockChats[id as string]?.messages || []);
+  const { user } = useAuth();
+  const [conversation, setConversation] = useState<any>(null);
+  const [messages, setMessages] = useState<any[]>([]);
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const scrollViewRef = useRef<ScrollView>(null);
 
-  const chatData = mockChats[id as string];
-  if (!chatData) {
+  // Poll for new messages (API-based approach)
+  useEffect(() => {
+    if (id) {
+      const pollInterval = setInterval(async () => {
+        try {
+          const messagesResponse = await apiService.getMessages(id as string) as any;
+          setMessages(messagesResponse.messages || []);
+        } catch (error) {
+          console.error('Error polling messages:', error);
+        }
+      }, 2000); // Poll every 2 seconds for near real-time feel
+
+      return () => clearInterval(pollInterval);
+    }
+  }, [id]);
+
+  // Fetch conversation and messages
+  useEffect(() => {
+    if (id) {
+      fetchConversationData();
+    }
+  }, [id]);
+
+  const fetchConversationData = async () => {
+    try {
+      setIsLoading(true);
+      
+      // Fetch conversation details
+      const conversationResponse = await apiService.getConversation(id as string) as any;
+      setConversation(conversationResponse.conversation);
+
+      // Fetch messages
+      const messagesResponse = await apiService.getMessages(id as string) as any;
+      setMessages(messagesResponse.messages || []);
+
+      // Mark conversation as read
+      await apiService.markConversationAsRead(id as string);
+    } catch (error) {
+      console.error('Error fetching conversation data:', error);
+      Alert.alert('Error', 'Failed to load conversation');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleTyping = (text: string) => {
+    setInputText(text);
+    // Typing indicators will be added later with real-time messaging
+  };
+
+  const sendMessage = async () => {
+    if (!inputText.trim() || !id) return;
+
+    try {
+      // Send message via API
+      await apiService.sendMessage(id as string, inputText.trim(), 'text');
+      
+      // Refresh messages to show the new message
+      const messagesResponse = await apiService.getMessages(id as string) as any;
+      setMessages(messagesResponse.messages || []);
+      
+      setInputText('');
+    } catch (error) {
+      console.error('Error sending message:', error);
+      Alert.alert('Error', 'Failed to send message');
+    }
+  };
+
+  const renderMessage = (message: any) => {
+    const isFromMe = message.senderId === user?.id;
+    const messageTime = new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
     return (
-      <View style={styles.container}>
-        <Text>Chat not found</Text>
+      <View
+        key={message.id}
+        style={[
+          styles.messageContainer,
+          isFromMe ? styles.myMessage : styles.theirMessage
+        ]}
+      >
+        <View
+          style={[
+            styles.messageBubble,
+            isFromMe ? styles.myBubble : styles.theirBubble
+          ]}
+        >
+          <Text
+            style={[
+              styles.messageText,
+              isFromMe ? styles.myMessageText : styles.theirMessageText
+            ]}
+          >
+            {message.content}
+          </Text>
+          <Text
+            style={[
+              styles.messageTime,
+              isFromMe ? styles.myMessageTime : styles.theirMessageTime
+            ]}
+          >
+            {messageTime}
+          </Text>
+        </View>
+      </View>
+    );
+  };
+
+  if (isLoading) {
+    return (
+      <View style={[styles.container, styles.loadingContainer]}>
+        <ActivityIndicator size="large" color="#6B46C1" />
+        <Text style={styles.loadingText}>Loading conversation...</Text>
       </View>
     );
   }
 
-  const sendMessage = () => {
-    if (!inputText.trim()) return;
-
-    const newMessage = {
-      id: Date.now().toString(),
-      text: inputText.trim(),
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      isFromMe: true,
-      type: 'text',
-    };
-
-    setMessages([...messages, newMessage]);
-    setInputText('');
-    
-    // Simulate typing indicator
-    setIsTyping(true);
-    setTimeout(() => {
-      setIsTyping(false);
-      // Simulate reply
-      const reply = {
-        id: (Date.now() + 1).toString(),
-        text: 'Thanks for your message! I\'ll get back to you soon.',
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        isFromMe: false,
-        type: 'text',
-      };
-      setMessages(prev => [...prev, reply]);
-    }, 2000);
-  };
-
-  const renderMessage = (message: any) => (
-    <View
-      key={message.id}
-      style={[
-        styles.messageContainer,
-        message.isFromMe ? styles.myMessage : styles.theirMessage
-      ]}
-    >
-      <View
-        style={[
-          styles.messageBubble,
-          message.isFromMe ? styles.myBubble : styles.theirBubble
-        ]}
-      >
-        <Text
-          style={[
-            styles.messageText,
-            message.isFromMe ? styles.myMessageText : styles.theirMessageText
-          ]}
-        >
-          {message.text}
-        </Text>
-        <Text
-          style={[
-            styles.messageTime,
-            message.isFromMe ? styles.myMessageTime : styles.theirMessageTime
-          ]}
-        >
-          {message.time}
-        </Text>
+  if (!conversation) {
+    return (
+      <View style={[styles.container, styles.loadingContainer]}>
+        <Text style={styles.errorText}>Conversation not found</Text>
+        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <Text style={styles.backButtonText}>Go Back</Text>
+        </TouchableOpacity>
       </View>
-    </View>
-  );
+    );
+  }
+
+  // Get the other participant (not the current user)
+  const otherParticipant = conversation.participants?.find((p: any) => p.userId !== user?.id);
 
   return (
     <KeyboardAvoidingView 
@@ -375,16 +440,26 @@ export default function ChatScreen() {
         </TouchableOpacity>
         
         <View style={styles.userInfo}>
-          <Text style={styles.userAvatar}>{chatData.user.avatar}</Text>
+          {otherParticipant?.profilePicture && 
+           otherParticipant.profilePicture !== '👤' && 
+           (otherParticipant.profilePicture.startsWith('http') || otherParticipant.profilePicture.startsWith('https')) ? (
+            <Image 
+              source={{ uri: otherParticipant.profilePicture }} 
+              style={styles.userAvatarImage}
+              resizeMode="cover"
+            />
+          ) : (
+            <Text style={styles.userAvatar}>{otherParticipant?.profilePicture || '👤'}</Text>
+          )}
           <View style={styles.userDetails}>
             <View style={styles.nameRow}>
-              <Text style={styles.userName}>{chatData.user.name}</Text>
-              {chatData.user.verified && (
+              <Text style={styles.userName}>{otherParticipant?.fullName || 'Unknown User'}</Text>
+              {otherParticipant?.isVerified && (
                 <Ionicons name="checkmark-circle" size={16} color="#3B82F6" />
               )}
             </View>
             <Text style={styles.userStatus}>
-              {chatData.user.online ? 'Online' : `Last seen ${chatData.user.lastSeen}`}
+              {otherParticipant?.isOnline ? 'Online' : `Last seen ${otherParticipant?.lastSeenAt ? new Date(otherParticipant.lastSeenAt).toLocaleDateString() : 'Recently'}`}
             </Text>
           </View>
         </View>
@@ -402,19 +477,6 @@ export default function ChatScreen() {
         </View>
       </View>
 
-      {/* Product Info */}
-      <View style={styles.productInfo}>
-        <Text style={styles.productImage}>{chatData.product.image}</Text>
-        <View style={styles.productDetails}>
-          <Text style={styles.productName}>{chatData.product.name}</Text>
-          <Text style={styles.productPrice}>{chatData.product.price}</Text>
-          <Text style={styles.productCondition}>{chatData.product.condition}</Text>
-        </View>
-        <TouchableOpacity style={styles.viewProductButton}>
-          <Text style={styles.viewProductText}>View</Text>
-        </TouchableOpacity>
-      </View>
-
       {/* Messages */}
       <ScrollView
         ref={scrollViewRef}
@@ -425,17 +487,7 @@ export default function ChatScreen() {
       >
         {messages.map(renderMessage)}
         
-        {isTyping && (
-          <View style={[styles.messageContainer, styles.theirMessage]}>
-            <View style={[styles.messageBubble, styles.theirBubble]}>
-              <View style={styles.typingIndicator}>
-                <View style={styles.typingDot} />
-                <View style={styles.typingDot} />
-                <View style={styles.typingDot} />
-              </View>
-            </View>
-          </View>
-        )}
+        {/* Typing indicators will be added later with real-time messaging */}
       </ScrollView>
 
       {/* Quick Actions */}
@@ -466,7 +518,7 @@ export default function ChatScreen() {
             placeholder="Type a message..."
             placeholderTextColor="#9CA3AF"
             value={inputText}
-            onChangeText={setInputText}
+            onChangeText={handleTyping}
             multiline
             maxLength={500}
           />
@@ -652,6 +704,16 @@ const styles = StyleSheet.create({
   // Typing Indicator
   typingIndicator: {
     flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  typingText: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    fontStyle: 'italic',
+  },
+  typingDots: {
+    flexDirection: 'row',
     gap: 4,
   },
   typingDot: {
@@ -659,7 +721,15 @@ const styles = StyleSheet.create({
     height: 6,
     borderRadius: 3,
     backgroundColor: '#9CA3AF',
+  },
+  typingDot1: {
+    opacity: 0.4,
+  },
+  typingDot2: {
     opacity: 0.6,
+  },
+  typingDot3: {
+    opacity: 0.8,
   },
   
   // Quick Actions
@@ -721,5 +791,35 @@ const styles = StyleSheet.create({
   },
   sendButtonDisabled: {
     backgroundColor: '#F3F4F6',
+  },
+  
+  // Loading and error states
+  loadingContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#6B7280',
+  },
+  errorText: {
+    fontSize: 16,
+    color: '#EF4444',
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  backButtonText: {
+    color: '#6B46C1',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  
+  // User avatar image
+  userAvatarImage: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginRight: 12,
   },
 });

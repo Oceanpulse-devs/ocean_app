@@ -561,32 +561,32 @@ export default function FeedScreen() {
         console.log('Comment creation response:', response);
         
         // Create new comment object from API response
-        const newComment = {
+    const newComment = {
           id: response.data.id,
-          user: {
+      user: {
             name: response.data.user.fullName,
             avatar: response.data.user.profilePicture || '👤',
             verified: response.data.user.accountStatus === 'verified',
           },
           text: response.data.content,
-          timeAgo: 'Just now',
-          likes: 0,
-        };
+      timeAgo: 'Just now',
+      likes: 0,
+    };
 
         // Update local state
-        setPosts(posts.map(post => 
-          post.id === postId 
-            ? { 
-                ...post, 
-                commentList: [newComment, ...post.commentList],
-                comments: post.comments + 1
-              }
-            : post
-        ));
+    setPosts(posts.map(post => 
+      post.id === postId 
+        ? { 
+            ...post, 
+            commentList: [newComment, ...post.commentList],
+            comments: post.comments + 1
+          }
+        : post
+    ));
       }
 
-      // Clear the input
-      setCommentInputs(prev => ({ ...prev, [postId]: '' }));
+    // Clear the input
+    setCommentInputs(prev => ({ ...prev, [postId]: '' }));
     } catch (error) {
       console.error('Error with comment:', error);
       Alert.alert('Error', 'Failed to save comment. Please try again.');
@@ -674,6 +674,38 @@ export default function FeedScreen() {
     } catch (error) {
       console.error('Error sharing post:', error);
       Alert.alert('Error', 'Failed to share post. Please try again.');
+    }
+  };
+
+  const handleMessageUser = async (item: any) => {
+    try {
+      if (!user?.id) {
+        Alert.alert('Error', 'Please log in to send messages');
+        return;
+      }
+
+      // Get the user ID to message (buyer or seller depending on post type)
+      let targetUserId;
+      if (item.type === 'buyer') {
+        targetUserId = item.buyer?.id || item.user?.id;
+      } else {
+        targetUserId = item.seller?.id || item.user?.id;
+      }
+
+      if (!targetUserId) {
+        Alert.alert('Error', 'Unable to find user to message');
+        return;
+      }
+
+      // Create conversation with the target user
+      const response = await apiService.createConversation([user.id, targetUserId]);
+      const conversationId = response.data.id;
+      
+      // Navigate to chat
+      router.push(`/chat/${conversationId}` as any);
+    } catch (error) {
+      console.error('Error creating conversation:', error);
+      Alert.alert('Error', 'Failed to start conversation');
     }
   };
 
@@ -921,7 +953,7 @@ export default function FeedScreen() {
             </TouchableOpacity>
             <TouchableOpacity 
               style={styles.secondaryButton}
-              onPress={() => router.push(`/chat/${item.id}`)}
+              onPress={() => handleMessageUser(item)}
             >
               <Text style={styles.secondaryButtonText}>Contact Buyer</Text>
             </TouchableOpacity>
@@ -931,7 +963,7 @@ export default function FeedScreen() {
           <>
             <TouchableOpacity 
               style={styles.primaryButton}
-              onPress={() => router.push(`/chat/${item.id}`)}
+              onPress={() => handleMessageUser(item)}
             >
               <Text style={styles.primaryButtonText}>Message Seller</Text>
             </TouchableOpacity>

@@ -283,6 +283,156 @@ class ApiService {
     console.log('Share functionality not yet implemented in backend');
     return Promise.resolve({ message: 'Share functionality coming soon' });
   }
+
+  // Product methods
+  async getProducts(params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    category?: string;
+    subcategory?: string;
+    brand?: string;
+    minPrice?: number;
+    maxPrice?: number;
+    condition?: string;
+    location?: string;
+    sortBy?: string;
+    sortOrder?: string;
+    sellerId?: string;
+  }) {
+    const queryParams = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          queryParams.append(key, value.toString());
+        }
+      });
+    }
+    return this.get(`/api/products?${queryParams.toString()}`);
+  }
+
+  async getProduct(productId: string) {
+    return this.get(`/api/product/${productId}`);
+  }
+
+  async getCategories() {
+    return this.get('/api/categories');
+  }
+
+  async toggleSaveProduct(productId: string) {
+    return this.post(`/api/products/${productId}/save`);
+  }
+
+  // Messaging methods (using separate messaging server with JWT auth)
+  private async getMessagingToken(): Promise<string | null> {
+    try {
+      // Get the JWT token from the main server
+      const response = await fetch(`${this.baseURL}/api/messaging-token`, {
+        method: 'GET',
+        credentials: 'include', // Include cookies
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        return data.token;
+      }
+      return null;
+    } catch (error) {
+      console.error('Error getting messaging token:', error);
+      return null;
+    }
+  }
+
+  private async messagingRequest(endpoint: string, options: RequestInit = {}): Promise<any> {
+    const token = await this.getMessagingToken();
+    if (!token) {
+      throw new Error('No messaging token available');
+    }
+
+    const messagingServerUrl = 'https://messageserver-production-88ba.up.railway.app';
+    const url = `${messagingServerUrl}${endpoint}`;
+    const response = await fetch(url, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+        ...options.headers,
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `HTTP ${response.status}`);
+    }
+
+    return response.json();
+  }
+
+  async getConversations(page: number = 1, limit: number = 20) {
+    return this.messagingRequest(`/api/conversations?page=${page}&limit=${limit}`);
+  }
+
+  async createConversation(participants: string[], type: 'direct' | 'group' = 'direct', name?: string) {
+    return this.messagingRequest('/api/conversations', {
+      method: 'POST',
+      body: JSON.stringify({
+        type,
+        participants,
+        ...(name && { name })
+      }),
+    });
+  }
+
+  async getConversation(conversationId: string) {
+    return this.messagingRequest(`/api/conversations/${conversationId}`);
+  }
+
+  async getMessages(conversationId: string, page: number = 1, limit: number = 50) {
+    return this.messagingRequest(`/api/messages/${conversationId}?page=${page}&limit=${limit}`);
+  }
+
+  async sendMessage(conversationId: string, content: string, type: 'text' | 'image' | 'video' | 'file' = 'text', replyToId?: string) {
+    return this.messagingRequest('/api/messages', {
+      method: 'POST',
+      body: JSON.stringify({
+        conversationId,
+        content,
+        type,
+        ...(replyToId && { replyToId })
+      }),
+    });
+  }
+
+  async deleteMessage(messageId: string) {
+    return this.messagingRequest(`/api/messages/${messageId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async addReaction(messageId: string, reaction: string) {
+    return this.messagingRequest(`/api/messages/${messageId}/reactions`, {
+      method: 'POST',
+      body: JSON.stringify({ reaction }),
+    });
+  }
+
+  async markConversationAsRead(conversationId: string) {
+    return this.messagingRequest(`/api/conversations/${conversationId}/read`, {
+      method: 'POST',
+    });
+  }
+
+  async searchUsers(query: string, page: number = 1, limit: number = 20) {
+    return this.messagingRequest(`/api/users/search?q=${encodeURIComponent(query)}&page=${page}&limit=${limit}`);
+  }
+
+  async getOnlineUsers(page: number = 1, limit: number = 20) {
+    return this.messagingRequest(`/api/users/online?page=${page}&limit=${limit}`);
+  }
+
+  async getRecentContacts(limit: number = 10) {
+    return this.messagingRequest(`/api/users/recent/contacts?limit=${limit}`);
+  }
 }
 
 // Create and export a singleton instance

@@ -16,6 +16,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { getUserDisplayRole, getRoleColor, canAccessSellerFeatures, canCreateAuctions } from '../../utils/permissions';
 import apiService, { User } from '../../services/api';
 import ImageZoomModal from '../../components/ImageZoomModal';
+import { Alert } from 'react-native';
 
 const { width, height } = Dimensions.get('window');
 
@@ -28,21 +29,21 @@ export default function ProfileScreen() {
   const [selectedImageUri, setSelectedImageUri] = useState<string>('');
 
   // Fetch profile data
-  const fetchProfileData = async () => {
-    try {
-      setIsLoading(true);
-      const response = await apiService.getProfile();
+    const fetchProfileData = async () => {
+      try {
+        setIsLoading(true);
+        const response = await apiService.getProfile();
       console.log('Profile API response:', response);
       console.log('Profile data:', response.user);
       console.log('Profile picture URL:', response.user?.profilePicture);
-      setProfileData(response.user);
-    } catch (error) {
-      console.error('Error fetching profile data:', error);
-      Alert.alert('Error', 'Failed to load profile data');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+        setProfileData(response.user);
+      } catch (error) {
+        console.error('Error fetching profile data:', error);
+        Alert.alert('Error', 'Failed to load profile data');
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
   useEffect(() => {
     if (user) {
@@ -58,6 +59,21 @@ export default function ProfileScreen() {
       }
     }, [user])
   );
+
+  const handleMessageUser = async () => {
+    try {
+      if (!user?.id) {
+        Alert.alert('Error', 'Please log in to send messages');
+        return;
+      }
+
+      // For profile page, we can't message ourselves
+      Alert.alert('Info', 'You cannot message yourself from your own profile');
+    } catch (error) {
+      console.error('Error creating conversation:', error);
+      Alert.alert('Error', 'Failed to start conversation');
+    }
+  };
 
   // Handle image tap
   const handleImagePress = (imageUri: string) => {
@@ -156,7 +172,7 @@ export default function ProfileScreen() {
                     }}
                   />
                 ) : (
-                  <Text style={styles.avatarPlaceholder}>👩‍💼</Text>
+                <Text style={styles.avatarPlaceholder}>👩‍💼</Text>
                 )}
               </TouchableOpacity>
               <View style={styles.verifiedBadge}>
@@ -204,7 +220,7 @@ export default function ProfileScreen() {
 
         {/* Quick Actions */}
         <View style={styles.quickActions}>
-          <TouchableOpacity style={styles.messageButton}>
+          <TouchableOpacity style={styles.messageButton} onPress={handleMessageUser}>
             <Ionicons name="chatbubble-outline" size={20} color="#FFFFFF" />
             <Text style={styles.messageButtonText}>Message Seller</Text>
           </TouchableOpacity>

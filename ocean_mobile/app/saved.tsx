@@ -67,11 +67,9 @@ export default function SavedScreen() {
   ];
 
   const handleItemPress = (item: any) => {
-    if (item.type === 'feed-post') {
-      router.push('/product-detail');
-    } else {
-      router.push('/product-detail');
-    }
+    // Disabled navigation - users can only use the message button
+    // This prevents accidental navigation when tapping on saved items
+    return;
   };
 
   const handleRemoveSaved = async (itemId: string, itemType: string) => {
@@ -92,18 +90,43 @@ export default function SavedScreen() {
     }
   };
 
-  const handleMessageSeller = (item: any) => {
-    router.push('/chat/1' as any);
+  const handleMessageSeller = async (item: any) => {
+    try {
+      if (!user?.id) {
+        Alert.alert('Error', 'Please log in to send messages');
+        return;
+      }
+
+      // Get the user ID to message
+      let targetUserId;
+      if (item.type === 'feed-post' && item.postType === 'buyer') {
+        targetUserId = item.buyer?.id;
+      } else {
+        targetUserId = item.seller?.userId;
+      }
+
+      if (!targetUserId) {
+        Alert.alert('Error', 'Unable to find user to message');
+        return;
+      }
+
+      // Create conversation with the target user
+      const response = await apiService.createConversation([user.id, targetUserId]);
+      const conversationId = response.data.id;
+      
+      // Navigate to chat
+      router.push(`/chat/${conversationId}` as any);
+    } catch (error) {
+      console.error('Error creating conversation:', error);
+      Alert.alert('Error', 'Failed to start conversation');
+    }
   };
 
   // Filter items based on selected category (now handled by backend)
   const filteredItems = savedItems;
 
   const renderProductCard = ({ item }: { item: any }) => (
-    <TouchableOpacity
-      style={styles.productCard}
-      onPress={() => handleItemPress(item)}
-    >
+    <View style={styles.productCard}>
       {/* Product Image */}
       <View style={styles.productImage}>
         {item.images && item.images[0] && 
@@ -131,10 +154,10 @@ export default function SavedScreen() {
             <Ionicons name="bookmark" size={20} color="#6B46C1" />
           </TouchableOpacity>
         </View>
-        {item.originalPrice !== item.price && (
+        {item.originalPrice && item.price && item.originalPrice !== item.price && (
           <View style={styles.discountBadge}>
             <Text style={styles.discountText}>
-              {Math.round(((parseInt(item.originalPrice.replace(/[^\d]/g, '')) - parseInt(item.price.replace(/[^\d]/g, ''))) / parseInt(item.originalPrice.replace(/[^\d]/g, ''))) * 100)}% OFF
+              {Math.round(((parseFloat(item.originalPrice) - parseFloat(item.price)) / parseFloat(item.originalPrice)) * 100)}% OFF
             </Text>
           </View>
         )}
@@ -153,14 +176,21 @@ export default function SavedScreen() {
           <Text style={styles.price}>
             {item.type === 'feed-post' && item.postType === 'buyer' ? item.budget : item.price}
           </Text>
-          {item.originalPrice !== item.price && item.type !== 'feed-post' && (
+          {item.originalPrice && item.price && item.originalPrice !== item.price && item.type !== 'feed-post' && (
             <Text style={styles.originalPrice}>{item.originalPrice}</Text>
           )}
         </View>
         
         <Text style={styles.productName} numberOfLines={2}>
-          {item.name}
+          {item.name || item.title || 'Untitled'}
         </Text>
+        
+        {/* Show post content for feed posts */}
+        {item.type === 'feed-post' && item.description && (
+          <Text style={styles.postContent} numberOfLines={3}>
+            {item.description}
+          </Text>
+        )}
         
         <View style={styles.sellerRow}>
           {item.type === 'feed-post' && item.postType === 'buyer' ? (
@@ -211,7 +241,7 @@ export default function SavedScreen() {
         </View>
         
         <View style={styles.productActions}>
-          <Text style={styles.savedDate}>Saved {item.savedDate}</Text>
+          <Text style={styles.savedDate}>Saved {item.savedDate || 'Recently'}</Text>
           
           <TouchableOpacity
             style={styles.messageButton}
@@ -224,14 +254,11 @@ export default function SavedScreen() {
           </TouchableOpacity>
         </View>
       </View>
-    </TouchableOpacity>
+    </View>
   );
 
   const renderListItem = ({ item }: { item: any }) => (
-    <TouchableOpacity
-      style={styles.listItem}
-      onPress={() => handleItemPress(item)}
-    >
+    <View style={styles.listItem}>
       <View style={styles.listImage}>
         {item.images && item.images[0] && 
          !item.images[0].startsWith('📦') && 
@@ -261,15 +288,25 @@ export default function SavedScreen() {
       
       <View style={styles.listContent}>
         <Text style={styles.listTitle} numberOfLines={1}>
-          {item.name}
+          {item.name || item.title || 'Untitled'}
         </Text>
+        
+        {/* Show post content for feed posts in list view */}
+        {item.type === 'feed-post' && item.description && (
+          <Text style={styles.listPostContent} numberOfLines={2}>
+            {item.description}
+        </Text>
+        )}
         <Text style={styles.listPrice}>
           {item.type === 'feed-post' && item.postType === 'buyer' ? item.budget : item.price}
         </Text>
         <Text style={styles.listSeller}>
-          {item.type === 'feed-post' && item.postType === 'buyer' ? item.buyer.name : item.seller.name}
+          {item.type === 'feed-post' && item.postType === 'buyer' ? 
+            (item.buyer?.name || 'Unknown Buyer') : 
+            (item.seller?.name || 'Unknown Seller')
+          }
         </Text>
-        <Text style={styles.listSavedDate}>Saved {item.savedDate}</Text>
+        <Text style={styles.listSavedDate}>Saved {item.savedDate || 'Recently'}</Text>
       </View>
       
       <View style={styles.listActions}>
@@ -286,7 +323,7 @@ export default function SavedScreen() {
           <Ionicons name="chatbubble-outline" size={16} color="#6B46C1" />
         </TouchableOpacity>
       </View>
-    </TouchableOpacity>
+    </View>
   );
 
   return (
@@ -367,6 +404,7 @@ export default function SavedScreen() {
         </View>
       ) : filteredItems.length > 0 ? (
         <FlatList
+          key={viewMode} // Force re-render when view mode changes
           data={filteredItems}
           renderItem={viewMode === 'grid' ? renderProductCard : renderListItem}
           keyExtractor={(item) => item.id}
@@ -587,6 +625,12 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     lineHeight: 18,
   },
+  postContent: {
+    fontSize: 13,
+    color: '#6B7280',
+    lineHeight: 18,
+    marginBottom: 8,
+  },
   sellerRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -709,6 +753,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#1F2937',
     marginBottom: 4,
+  },
+  listPostContent: {
+    fontSize: 14,
+    color: '#6B7280',
+    lineHeight: 18,
+    marginBottom: 8,
   },
   listPrice: {
     fontSize: 14,

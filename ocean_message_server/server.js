@@ -44,6 +44,9 @@ const io = socketIo(server, {
 
 const PORT = process.env.PORT || 5001;
 
+// Trust proxy for Railway deployment
+app.set('trust proxy', true);
+
 // Security middleware
 app.use(helmet({
   crossOriginEmbedderPolicy: false,
@@ -79,7 +82,9 @@ app.use(cors({
   origin: [
     process.env.CLIENT_URL || "http://localhost:5173",
     "http://localhost:3000",
-    "http://localhost:5173"
+    "http://localhost:5173",
+    "https://mainserver-production-7ad9.up.railway.app", // Main server
+    "*" // Allow all origins for mobile app
   ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
