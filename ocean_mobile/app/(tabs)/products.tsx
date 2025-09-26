@@ -320,73 +320,6 @@ export default function ProductsScreen() {
     router.push(`/product-detail?id=${product.id}`);
   };
 
-  const handleMessageSeller = async (product: any) => {
-    try {
-      if (!user?.id) {
-        Alert.alert('Error', 'Please log in to send messages');
-        return;
-      }
-
-      console.log('🔍 Product data:', JSON.stringify(product, null, 2));
-
-      if (!product.seller?.id) {
-        console.log('❌ No seller id found. Product structure:', {
-          seller: product.seller,
-          productId: product.id
-        });
-        Alert.alert('Error', 'Unable to find seller to message');
-        return;
-      }
-
-      // Create conversation with the seller (server will add current user automatically)
-      console.log('🚀 Creating conversation with seller ID:', product.seller.id);
-      const response = await apiService.createConversation([product.seller.id]);
-      console.log('✅ Conversation created successfully:', response);
-      const conversationId = response.data.id;
-      
-      // Navigate to chat
-      router.push(`/chat/${conversationId}` as any);
-    } catch (error) {
-      console.error('❌ Error creating conversation:', error);
-      console.error('❌ Error details:', error.message);
-      console.error('❌ Original error:', (error as any).originalError);
-      console.error('❌ Status:', (error as any).status);
-      
-      // If conversation already exists, find and navigate to it
-      if (error.message && error.message.includes('Direct conversation already exists')) {
-        try {
-          const conversationsResponse = await apiService.getConversations();
-          const existingConversation = conversationsResponse.conversations?.find((conv: any) => {
-            const otherParticipant = conv.participants?.find((p: any) => p.userId !== user?.id);
-            return otherParticipant?.userId === product.seller.id;
-          });
-          
-          if (existingConversation) {
-            console.log('✅ Found existing conversation:', existingConversation.id);
-            router.push(`/chat/${existingConversation.id}` as any);
-            return;
-          }
-        } catch (fetchError) {
-          console.error('Error fetching existing conversations:', fetchError);
-        }
-      }
-      
-      // If it's a foreign key constraint error, the seller user doesn't exist in the messaging system
-      const isForeignKeyError = error.message && (
-        error.message.includes('foreign key constraint') || 
-        error.message.includes('ER_NO_REFERENCED_ROW_2') ||
-        (error as any).originalError?.message?.includes('foreign key constraint') ||
-        (error as any).originalError?.message?.includes('ER_NO_REFERENCED_ROW_2')
-      );
-      
-      if (isForeignKeyError) {
-        Alert.alert('Error', 'This seller is not available for messaging yet. They may need to set up their messaging account.');
-        return;
-      }
-      
-      Alert.alert('Error', `Failed to start conversation: ${error.message}`);
-    }
-  };
 
   const handleLike = async (productId: string) => {
     try {
@@ -530,13 +463,6 @@ export default function ProductsScreen() {
             <Text style={styles.likeCount}>{item.likes || 0}</Text>
           </TouchableOpacity>
           
-          <TouchableOpacity
-            style={styles.messageButton}
-            onPress={() => handleMessageSeller(item)}
-          >
-            <Ionicons name="chatbubble-outline" size={16} color="#6B46C1" />
-            <Text style={styles.messageText}>Message</Text>
-          </TouchableOpacity>
         </View>
       </View>
     </TouchableOpacity>
@@ -951,20 +877,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#6B7280',
   },
-  messageButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: '#F3F4F6',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-     messageText: {
-     fontSize: 12,
-     color: '#6B46C1',
-     fontWeight: '500',
-   },
    
    // Notification Badge
    notificationIconContainer: {

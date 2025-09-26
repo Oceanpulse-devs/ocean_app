@@ -194,14 +194,20 @@ class ApiService {
 
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), API_CONFIG.TIMEOUT);
+      // Use longer timeout for file uploads (60 seconds)
+      const timeoutId = setTimeout(() => {
+        console.log('Upload request timed out after 60 seconds');
+        controller.abort();
+      }, 60000);
       
+      console.log('Starting profile update with FormData...');
       const response = await fetch(url, {
         ...config,
         signal: controller.signal
       });
       
       clearTimeout(timeoutId);
+      console.log('Profile update request completed');
       
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
@@ -216,8 +222,15 @@ class ApiService {
       }
       
       return {};
-    } catch (error) {
+    } catch (error: any) {
       console.error('API request failed:', error);
+      
+      // Handle specific abort errors
+      if (error.name === 'AbortError') {
+        console.error('Request was aborted - this could be due to timeout or network issues');
+        throw new Error('Upload request was cancelled. Please check your internet connection and try again.');
+      }
+      
       throw error;
     }
   }
@@ -317,6 +330,10 @@ class ApiService {
 
   async getCategories() {
     return this.get('/api/categories');
+  }
+
+  async getCurrentSubscription() {
+    return this.get('/api/subscriptions/current');
   }
 
   async toggleSaveProduct(productId: string) {

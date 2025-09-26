@@ -181,13 +181,52 @@ export default function MessagesScreen() {
     const isApiData = item.participants;
     const otherParticipant = isApiData ? item.participants?.find((p: any) => p.userId !== user?.id) : null;
     
+    console.log('🔍 Current user ID:', user?.id);
+    console.log('🔍 All participants:', item.participants?.map((p: any) => ({ userId: p.userId, fullName: p.user?.fullName })));
+    console.log('🔍 Selected other participant:', otherParticipant?.userId, otherParticipant?.user?.fullName);
+    
     console.log('🔍 Conversation item:', JSON.stringify(item, null, 2));
     console.log('👥 Other participant:', JSON.stringify(otherParticipant, null, 2));
     
-    const userName = isApiData ? (otherParticipant?.fullName || otherParticipant?.user?.fullName || 'Unknown User') : item.user.name;
-    const userAvatar = isApiData ? (otherParticipant?.profilePicture || otherParticipant?.user?.profilePicture || '👤') : item.user.avatar;
-    const isVerified = isApiData ? (otherParticipant?.isVerified || otherParticipant?.user?.isVerified) : item.user.verified;
-    const isOnline = isApiData ? (otherParticipant?.isOnline || otherParticipant?.user?.isOnline) : item.user.online;
+    // Extract user data with better fallbacks
+    let userName = 'Unknown User';
+    let userAvatar = '👤';
+    let isVerified = false;
+    let isOnline = false;
+    
+    if (isApiData && otherParticipant) {
+      // Try multiple possible field names for user data
+      userName = otherParticipant.fullName || 
+                 otherParticipant.user?.fullName || 
+                 otherParticipant.name ||
+                 otherParticipant.user?.name || 
+                 'Unknown User';
+                 
+      userAvatar = otherParticipant.profilePicture || 
+                   otherParticipant.user?.profilePicture || 
+                   otherParticipant.avatar ||
+                   otherParticipant.user?.avatar || 
+                   '👤';
+                   
+      isVerified = otherParticipant.isVerified || 
+                   otherParticipant.user?.isVerified || 
+                   otherParticipant.verified ||
+                   otherParticipant.user?.verified || 
+                   false;
+                   
+      isOnline = otherParticipant.isOnline || 
+                 otherParticipant.user?.isOnline || 
+                 otherParticipant.online ||
+                 otherParticipant.user?.online || 
+                 false;
+    } else {
+      // Mock data fallback
+      userName = item.user?.name || 'Unknown User';
+      userAvatar = item.user?.avatar || '👤';
+      isVerified = item.user?.verified || false;
+      isOnline = item.user?.online || false;
+    }
+    
     const lastMessage = isApiData ? item.lastMessage : item.lastMessage;
     const messageTime = isApiData ? (lastMessage?.createdAt ? new Date(lastMessage.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '') : lastMessage.time;
     const unreadCount = isApiData ? item.unreadCount : item.unreadCount;

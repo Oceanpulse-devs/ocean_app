@@ -15,12 +15,17 @@ const syncUserFromMainServer = async (userId) => {
     
     // Fetch user data from main server
     const mainServerUrl = process.env.MAIN_SERVER_URL || 'https://mainserver-production-7ad9.up.railway.app';
+    console.log(`🔄 Fetching user ${userId} from: ${mainServerUrl}/api/user/${userId}`);
+    
     const response = await axios.get(`${mainServerUrl}/api/user/${userId}`, {
       timeout: 5000,
       headers: {
         'User-Agent': 'MessagingServer/1.0'
       }
     });
+    
+    console.log(`✅ User fetch response status: ${response.status}`);
+    console.log(`📋 User data received:`, response.data);
 
     if (response.data && response.data.data) {
       const userData = response.data.data;
@@ -50,13 +55,16 @@ const syncUserFromMainServer = async (userId) => {
     // Handle 404 error - user doesn't exist in main server
     if (error.response && error.response.status === 404) {
       console.log('⚠️ User not found in main server, creating minimal user record');
+      console.log(`❌ User ${userId} not found in main server at ${mainServerUrl}/api/user/${userId}`);
+    } else {
+      console.log(`❌ Error fetching user ${userId}:`, error.message);
     }
     
     // Create a minimal user record as fallback
     try {
       const fallbackUser = await UserReference.create({
         id: userId,
-        fullName: 'Unknown User',
+        fullName: `User ${userId.substring(0, 8)}`, // Use part of user ID instead of "Unknown User"
         email: `${userId}@temp.com`,
         password: 'temp_password', // Required field
         profilePicture: null,

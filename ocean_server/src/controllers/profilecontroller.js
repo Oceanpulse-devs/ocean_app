@@ -21,22 +21,28 @@ const currentUserprofile = async(req,res)=>{
      where: { userId: id }
    });
    
-   // Get products count
-   const productsCount = await Product.count({
-     where: { sellerId: id }
-   });
+   // Get products count and featured products only if user is a seller
+   let productsCount = 0;
+   let featuredProducts = [];
    
-   // Get featured products (latest 3 products)
-   const featuredProducts = await Product.findAll({
-     where: { 
-       sellerId: id,
-       status: 'active',
-       isAvailable: true
-     },
-     order: [['createdAt', 'DESC']],
-     limit: 3,
-     attributes: ['id', 'title', 'price', 'currency', 'brand', 'location', 'images', 'condition']
-   });
+   if (alsoSeller) {
+     // Use seller's business ID, not user ID
+     productsCount = await Product.count({
+       where: { sellerId: alsoSeller.id }
+     });
+     
+     // Get featured products (latest 3 products)
+     featuredProducts = await Product.findAll({
+       where: { 
+         sellerId: alsoSeller.id,
+         status: 'active',
+         isAvailable: true
+       },
+       order: [['createdAt', 'DESC']],
+       limit: 3,
+       attributes: ['id', 'title', 'price', 'currency', 'brand', 'location', 'images', 'condition']
+     });
+   }
    
    const fullName = currentUser.fullName
    const email = currentUser.email

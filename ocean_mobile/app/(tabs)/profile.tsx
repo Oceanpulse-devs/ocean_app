@@ -27,16 +27,41 @@ export default function ProfileScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [imageModalVisible, setImageModalVisible] = useState(false);
   const [selectedImageUri, setSelectedImageUri] = useState<string>('');
+  const [categoryName, setCategoryName] = useState<string>('');
+  const [subscriptionPlan, setSubscriptionPlan] = useState<string>('');
 
   // Fetch profile data
     const fetchProfileData = async () => {
       try {
         setIsLoading(true);
         const response = await apiService.getProfile();
-      console.log('Profile API response:', response);
-      console.log('Profile data:', response.user);
-      console.log('Profile picture URL:', response.user?.profilePicture);
+        console.log('Profile API response:', response);
+        console.log('Profile data:', response.user);
+        console.log('Profile picture URL:', response.user?.profilePicture);
         setProfileData(response.user);
+
+        // Fetch category name if user is a seller
+        if (response.user?.accountType === 'seller' && response.user?.category) {
+          try {
+            const categoriesResponse = await apiService.getCategories();
+            const category = categoriesResponse.data?.find((cat: any) => cat.id === response.user.category);
+            setCategoryName(category?.name || 'Not specified');
+          } catch (error) {
+            console.error('Error fetching category name:', error);
+            setCategoryName('Not specified');
+          }
+        }
+
+        // Fetch subscription plan if user is a seller
+        if (response.user?.accountType === 'seller') {
+          try {
+            const subscriptionResponse = await apiService.getCurrentSubscription();
+            setSubscriptionPlan(subscriptionResponse.data?.plan?.name || 'Free');
+          } catch (error) {
+            console.error('Error fetching subscription plan:', error);
+            setSubscriptionPlan('Free');
+          }
+        }
       } catch (error) {
         console.error('Error fetching profile data:', error);
         Alert.alert('Error', 'Failed to load profile data');
@@ -98,6 +123,8 @@ export default function ProfileScreen() {
 
   // Get display data from backend or fallback to user data
   const displayData = profileData || user;
+  const isSeller = canAccessSellerFeatures(user);
+  
   const sellerData = {
     name: displayData?.fullName || 'User',
     username: displayData?.username || `@${displayData?.fullName?.toLowerCase().replace(/\s+/g, '_')}` || '@user',
@@ -107,6 +134,17 @@ export default function ProfileScreen() {
     following: displayData?.followingCount || 0,
     lastActive: displayData?.lastActive || 'Recently',
     products: displayData?.featuredProducts || [],
+    // Seller-specific business data
+    businessName: displayData?.businessName || displayData?.fullName,
+    businessAddress: displayData?.businessAddress || 'Not specified',
+    country: displayData?.country || 'Not specified',
+    state: displayData?.state || 'Not specified',
+    category: displayData?.category || 'Not specified',
+    categoryName: categoryName,
+    subscriptionPlan: subscriptionPlan,
+    verificationStatus: displayData?.verificationStatus || 'pending',
+    verificationLevel: displayData?.verificationLevel || 'basic',
+    isVerified: displayData?.isVerified || false,
   };
 
   if (isLoading) {
@@ -218,6 +256,75 @@ export default function ProfileScreen() {
            </View>
         </View>
 
+        {/* Business Information - Only show for sellers */}
+        {isSeller && (
+          <View style={styles.businessSection}>
+            <Text style={styles.sectionTitle}>Business Information</Text>
+            
+            {/* Business Name and Verification Status */}
+            <View style={styles.businessHeader}>
+              <View style={styles.businessNameContainer}>
+                <Text style={styles.businessName}>{sellerData.businessName}</Text>
+                {sellerData.isVerified && (
+                  <View style={styles.verifiedBadge}>
+                    <Ionicons name="checkmark-circle" size={16} color="#10B981" />
+                    <Text style={styles.verifiedText}>Verified</Text>
+                  </View>
+                )}
+              </View>
+              <View style={styles.verificationStatus}>
+                <Text style={[styles.statusText, { 
+                  color: sellerData.verificationStatus === 'approved' ? '#10B981' : 
+                         sellerData.verificationStatus === 'pending' ? '#F59E0B' : '#EF4444'
+                }]}>
+                  {sellerData.verificationStatus.charAt(0).toUpperCase() + sellerData.verificationStatus.slice(1)}
+                </Text>
+              </View>
+            </View>
+
+            {/* Business Details Grid */}
+            <View style={styles.businessDetailsGrid}>
+              <View style={styles.businessDetailItem}>
+                <Ionicons name="business-outline" size={20} color="#6B7280" />
+                <View style={styles.businessDetailContent}>
+                  <Text style={styles.businessDetailLabel}>Category</Text>
+                  <Text style={styles.businessDetailValue}>{sellerData.categoryName || 'Not specified'}</Text>
+                </View>
+              </View>
+
+              <View style={styles.businessDetailItem}>
+                <Ionicons name="location-outline" size={20} color="#6B7280" />
+                <View style={styles.businessDetailContent}>
+                  <Text style={styles.businessDetailLabel}>Location</Text>
+                  <Text style={styles.businessDetailValue}>{sellerData.state}, {sellerData.country}</Text>
+                </View>
+              </View>
+
+              <View style={styles.businessDetailItem}>
+                <Ionicons name="card-outline" size={20} color="#6B7280" />
+                <View style={styles.businessDetailContent}>
+                  <Text style={styles.businessDetailLabel}>Plan</Text>
+                  <Text style={styles.businessDetailValue}>{sellerData.subscriptionPlan || 'Free'}</Text>
+                </View>
+              </View>
+
+              <View style={styles.businessDetailItem}>
+                <Ionicons name="medal-outline" size={20} color="#6B7280" />
+                <View style={styles.businessDetailContent}>
+                  <Text style={styles.businessDetailLabel}>Level</Text>
+                  <Text style={styles.businessDetailValue}>{sellerData.verificationLevel.charAt(0).toUpperCase() + sellerData.verificationLevel.slice(1)}</Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Business Address */}
+            <View style={styles.businessAddressContainer}>
+              <Ionicons name="map-outline" size={20} color="#6B7280" />
+              <Text style={styles.businessAddressText}>{sellerData.businessAddress}</Text>
+            </View>
+          </View>
+        )}
+
         {/* Quick Actions */}
         <View style={styles.quickActions}>
           <TouchableOpacity style={styles.messageButton} onPress={handleMessageUser}>
@@ -235,7 +342,10 @@ export default function ProfileScreen() {
           <View style={styles.featuredSection}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Featured Products</Text>
-              <TouchableOpacity style={styles.viewAllButton}>
+              <TouchableOpacity 
+                style={styles.viewAllButton}
+                onPress={() => router.push('/my-products')}
+              >
                 <Text style={styles.viewAllText}>View All</Text>
                 <Ionicons name="chevron-forward" size={16} color="#6B46C1" />
               </TouchableOpacity>
@@ -746,5 +856,98 @@ const styles = StyleSheet.create({
     color: '#9CA3AF',
     textAlign: 'center',
     paddingHorizontal: 8,
+  },
+  
+  // Business Information Styles
+  businessSection: {
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 20,
+    marginVertical: 10,
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  businessHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 20,
+  },
+  businessNameContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  businessName: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1F2937',
+  },
+  verifiedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ECFDF5',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 4,
+  },
+  verifiedText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#10B981',
+  },
+  verificationStatus: {
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  businessDetailsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 16,
+    marginBottom: 20,
+  },
+  businessDetailItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '47%',
+    backgroundColor: '#F8FAFC',
+    padding: 12,
+    borderRadius: 12,
+    gap: 8,
+  },
+  businessDetailContent: {
+    flex: 1,
+  },
+  businessDetailLabel: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginBottom: 2,
+  },
+  businessDetailValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1F2937',
+  },
+  businessAddressContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#F8FAFC',
+    padding: 12,
+    borderRadius: 12,
+    gap: 8,
+  },
+  businessAddressText: {
+    flex: 1,
+    fontSize: 14,
+    color: '#374151',
+    lineHeight: 20,
   },
 });

@@ -90,83 +90,6 @@ export default function SavedScreen() {
     }
   };
 
-  const handleMessageSeller = async (item: any) => {
-    try {
-      if (!user?.id) {
-        Alert.alert('Error', 'Please log in to send messages');
-        return;
-      }
-
-      console.log('🔍 Saved item data:', JSON.stringify(item, null, 2));
-
-      // Get the user ID to message
-      let targetUserId;
-      if (item.type === 'feed-post') {
-        // For saved feed posts, use the post author's ID
-        targetUserId = item.userId || item.user?.id;
-        
-        // If still no user ID, try to extract from avatar URL
-        if (!targetUserId && item.user?.avatar) {
-          const avatarUrl = item.user.avatar;
-          const userIdMatch = avatarUrl.match(/\/profiles\/([^\/]+)\//);
-          if (userIdMatch) {
-            targetUserId = userIdMatch[1];
-            console.log('📱 Extracted user ID from saved post avatar URL:', targetUserId);
-          }
-        }
-        
-        console.log('📱 Saved feed post - targetUserId:', targetUserId);
-      } else {
-        // For saved products, use the seller's ID
-        targetUserId = item.seller?.id;
-        console.log('🏪 Saved product - targetUserId:', targetUserId);
-      }
-
-      if (!targetUserId) {
-        console.log('❌ No target user ID found in saved item. Item structure:', {
-          type: item.type,
-          postType: item.postType,
-          buyer: item.buyer,
-          seller: item.seller,
-          user: item.user,
-          userId: item.userId
-        });
-        Alert.alert('Error', 'Unable to find user to message');
-        return;
-      }
-
-      // Create conversation with the target user (server will add current user automatically)
-      const response = await apiService.createConversation([targetUserId]);
-      const conversationId = response.data.id;
-      
-      // Navigate to chat
-      router.push(`/chat/${conversationId}` as any);
-    } catch (error) {
-      console.error('Error creating conversation:', error);
-      
-      // If conversation already exists, extract the conversation ID from error message
-      if (error.message && error.message.includes('Direct conversation already exists')) {
-        try {
-          // Try to get existing conversations and find the one with this user
-          const conversationsResponse = await apiService.getConversations();
-          const existingConversation = conversationsResponse.conversations?.find((conv: any) => {
-            const otherParticipant = conv.participants?.find((p: any) => p.userId !== user?.id);
-            return otherParticipant?.userId === targetUserId;
-          });
-          
-          if (existingConversation) {
-            console.log('✅ Found existing conversation:', existingConversation.id);
-            router.push(`/chat/${existingConversation.id}` as any);
-            return;
-          }
-        } catch (fetchError) {
-          console.error('Error fetching existing conversations:', fetchError);
-        }
-      }
-      
-      Alert.alert('Error', 'Failed to start conversation');
-    }
-  };
 
   // Filter items based on selected category (now handled by backend)
   const filteredItems = savedItems;
@@ -289,15 +212,6 @@ export default function SavedScreen() {
         <View style={styles.productActions}>
           <Text style={styles.savedDate}>Saved {item.savedDate || 'Recently'}</Text>
           
-          <TouchableOpacity
-            style={styles.messageButton}
-            onPress={() => handleMessageSeller(item)}
-          >
-            <Ionicons name="chatbubble-outline" size={16} color="#6B46C1" />
-            <Text style={styles.messageText}>
-              {item.type === 'feed-post' && item.postType === 'buyer' ? 'Contact' : 'Message'}
-            </Text>
-          </TouchableOpacity>
         </View>
       </View>
     </View>
@@ -361,12 +275,6 @@ export default function SavedScreen() {
           onPress={() => handleRemoveSaved(item.id)}
         >
           <Ionicons name="bookmark" size={20} color="#6B46C1" />
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.listMessageButton}
-          onPress={() => handleMessageSeller(item)}
-        >
-          <Ionicons name="chatbubble-outline" size={16} color="#6B46C1" />
         </TouchableOpacity>
       </View>
     </View>
@@ -732,20 +640,6 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: '#9CA3AF',
   },
-  messageButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: '#F3F4F6',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  messageText: {
-    fontSize: 12,
-    color: '#6B46C1',
-    fontWeight: '500',
-  },
   
   // List View
   listItem: {
@@ -828,11 +722,6 @@ const styles = StyleSheet.create({
   listRemoveButton: {
     padding: 8,
     marginBottom: 8,
-  },
-  listMessageButton: {
-    padding: 8,
-    backgroundColor: '#F3F4F6',
-    borderRadius: 8,
   },
   
   // Empty State

@@ -156,9 +156,21 @@ export default function EditProfileScreen() {
           }
         ]);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating profile:', error);
-      Alert.alert('Error', 'Failed to update profile. Please try again.');
+      
+      // Show more specific error messages
+      let errorMessage = 'Failed to update profile. Please try again.';
+      
+      if (error.message && error.message.includes('cancelled')) {
+        errorMessage = 'Upload was cancelled. Please check your internet connection and try again.';
+      } else if (error.message && error.message.includes('timeout')) {
+        errorMessage = 'Upload timed out. Please check your internet connection and try again.';
+      } else if (error.message && error.message.includes('network')) {
+        errorMessage = 'Network error. Please check your internet connection and try again.';
+      }
+      
+      Alert.alert('Error', errorMessage);
     } finally {
       setIsSaving(false);
     }

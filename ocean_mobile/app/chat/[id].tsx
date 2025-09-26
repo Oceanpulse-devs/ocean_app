@@ -425,6 +425,17 @@ export default function ChatScreen() {
 
   // Get the other participant (not the current user)
   const otherParticipant = conversation.participants?.find((p: any) => p.userId !== user?.id);
+  
+  console.log('🔍 Chat - Current user ID:', user?.id);
+  console.log('🔍 Chat - All participants:', conversation.participants?.map((p: any) => ({ userId: p.userId, fullName: p.user?.fullName })));
+  console.log('🔍 Chat - Selected other participant:', otherParticipant?.userId, otherParticipant?.user?.fullName);
+  
+  // Extract user data with better fallbacks
+  const participantUser = otherParticipant?.user || otherParticipant;
+  const participantName = participantUser?.fullName || participantUser?.name || 'Unknown User';
+  const participantAvatar = participantUser?.profilePicture || participantUser?.avatar || '👤';
+  const participantVerified = participantUser?.isVerified || participantUser?.verified || false;
+  const participantOnline = participantUser?.isOnline || participantUser?.online || false;
 
   return (
     <KeyboardAvoidingView 
@@ -440,26 +451,26 @@ export default function ChatScreen() {
         </TouchableOpacity>
         
         <View style={styles.userInfo}>
-          {otherParticipant?.profilePicture && 
-           otherParticipant.profilePicture !== '👤' && 
-           (otherParticipant.profilePicture.startsWith('http') || otherParticipant.profilePicture.startsWith('https')) ? (
+          {participantAvatar && 
+           participantAvatar !== '👤' && 
+           (participantAvatar.startsWith('http') || participantAvatar.startsWith('https')) ? (
             <Image 
-              source={{ uri: otherParticipant.profilePicture }} 
+              source={{ uri: participantAvatar }} 
               style={styles.userAvatarImage}
               resizeMode="cover"
             />
           ) : (
-            <Text style={styles.userAvatar}>{otherParticipant?.profilePicture || '👤'}</Text>
+            <Text style={styles.userAvatar}>{participantAvatar}</Text>
           )}
           <View style={styles.userDetails}>
             <View style={styles.nameRow}>
-              <Text style={styles.userName}>{otherParticipant?.fullName || 'Unknown User'}</Text>
-              {otherParticipant?.isVerified && (
+              <Text style={styles.userName}>{participantName}</Text>
+              {participantVerified && (
                 <Ionicons name="checkmark-circle" size={16} color="#3B82F6" />
               )}
             </View>
             <Text style={styles.userStatus}>
-              {otherParticipant?.isOnline ? 'Online' : `Last seen ${otherParticipant?.lastSeenAt ? new Date(otherParticipant.lastSeenAt).toLocaleDateString() : 'Recently'}`}
+              {participantOnline ? 'Online' : `Last seen ${participantUser?.lastSeenAt ? new Date(participantUser.lastSeenAt).toLocaleDateString() : 'Recently'}`}
             </Text>
           </View>
         </View>
