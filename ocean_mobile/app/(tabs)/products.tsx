@@ -322,20 +322,69 @@ export default function ProductsScreen() {
 
   const handleMessageSeller = async (product: any) => {
     try {
-      if (!user?.id || !product.seller?.userId) {
-        Alert.alert('Error', 'Unable to start conversation');
+      if (!user?.id) {
+        Alert.alert('Error', 'Please log in to send messages');
         return;
       }
 
-      // Create conversation with the seller
-      const response = await apiService.createConversation([user.id, product.seller.userId]);
+      console.log('🔍 Product data:', JSON.stringify(product, null, 2));
+
+      if (!product.seller?.id) {
+        console.log('❌ No seller id found. Product structure:', {
+          seller: product.seller,
+          productId: product.id
+        });
+        Alert.alert('Error', 'Unable to find seller to message');
+        return;
+      }
+
+      // Create conversation with the seller (server will add current user automatically)
+      console.log('🚀 Creating conversation with seller ID:', product.seller.id);
+      const response = await apiService.createConversation([product.seller.id]);
+      console.log('✅ Conversation created successfully:', response);
       const conversationId = response.data.id;
       
       // Navigate to chat
       router.push(`/chat/${conversationId}` as any);
     } catch (error) {
-      console.error('Error creating conversation:', error);
-      Alert.alert('Error', 'Failed to start conversation');
+      console.error('❌ Error creating conversation:', error);
+      console.error('❌ Error details:', error.message);
+      console.error('❌ Original error:', (error as any).originalError);
+      console.error('❌ Status:', (error as any).status);
+      
+      // If conversation already exists, find and navigate to it
+      if (error.message && error.message.includes('Direct conversation already exists')) {
+        try {
+          const conversationsResponse = await apiService.getConversations();
+          const existingConversation = conversationsResponse.conversations?.find((conv: any) => {
+            const otherParticipant = conv.participants?.find((p: any) => p.userId !== user?.id);
+            return otherParticipant?.userId === product.seller.id;
+          });
+          
+          if (existingConversation) {
+            console.log('✅ Found existing conversation:', existingConversation.id);
+            router.push(`/chat/${existingConversation.id}` as any);
+            return;
+          }
+        } catch (fetchError) {
+          console.error('Error fetching existing conversations:', fetchError);
+        }
+      }
+      
+      // If it's a foreign key constraint error, the seller user doesn't exist in the messaging system
+      const isForeignKeyError = error.message && (
+        error.message.includes('foreign key constraint') || 
+        error.message.includes('ER_NO_REFERENCED_ROW_2') ||
+        (error as any).originalError?.message?.includes('foreign key constraint') ||
+        (error as any).originalError?.message?.includes('ER_NO_REFERENCED_ROW_2')
+      );
+      
+      if (isForeignKeyError) {
+        Alert.alert('Error', 'This seller is not available for messaging yet. They may need to set up their messaging account.');
+        return;
+      }
+      
+      Alert.alert('Error', `Failed to start conversation: ${error.message}`);
     }
   };
 

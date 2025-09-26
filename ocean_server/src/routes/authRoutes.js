@@ -142,6 +142,8 @@ router.post('/api/seller-registration', authMiddleware,sellerRegistration)
 //profile routes 
 router.get('/api/profile', authMiddleware, currentUserprofile)
 router.get('/api/users/:userId', authMiddleware, getUserProfileById)
+// Public endpoint for messaging server to sync users
+router.get('/api/user/:userId', getUserProfileById)
 router.put('/api/profile', authMiddleware, upload.fields([
   { name: 'profilePicture', maxCount: 1 },
   { name: 'coverPicture', maxCount: 1 }

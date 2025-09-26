@@ -684,27 +684,67 @@ export default function FeedScreen() {
         return;
       }
 
-      // Get the user ID to message (buyer or seller depending on post type)
+      console.log('🔍 Message item data:', JSON.stringify(item, null, 2));
+
+      // Get the user ID to message (use the post author's ID)
       let targetUserId;
-      if (item.type === 'buyer') {
-        targetUserId = item.buyer?.id || item.user?.id;
-      } else {
-        targetUserId = item.seller?.id || item.user?.id;
+      
+      // Try to get user ID from various sources
+      targetUserId = item.userId || item.user?.id;
+      
+      // If still no user ID, try to extract from avatar URL
+      if (!targetUserId && item.user?.avatar) {
+        const avatarUrl = item.user.avatar;
+        const userIdMatch = avatarUrl.match(/\/profiles\/([^\/]+)\//);
+        if (userIdMatch) {
+          targetUserId = userIdMatch[1];
+          console.log('📱 Extracted user ID from avatar URL:', targetUserId);
+        }
       }
+      
+      console.log('📱 Feed post - targetUserId:', targetUserId);
 
       if (!targetUserId) {
+        console.log('❌ No target user ID found. Item structure:', {
+          type: item.type,
+          buyer: item.buyer,
+          seller: item.seller,
+          user: item.user,
+          userId: item.userId
+        });
         Alert.alert('Error', 'Unable to find user to message');
         return;
       }
 
-      // Create conversation with the target user
-      const response = await apiService.createConversation([user.id, targetUserId]);
+      // Create conversation with the target user (server will add current user automatically)
+      const response = await apiService.createConversation([targetUserId]);
       const conversationId = response.data.id;
       
       // Navigate to chat
       router.push(`/chat/${conversationId}` as any);
     } catch (error) {
       console.error('Error creating conversation:', error);
+      
+      // If conversation already exists, extract the conversation ID from error message
+      if (error.message && error.message.includes('Direct conversation already exists')) {
+        try {
+          // Try to get existing conversations and find the one with this user
+          const conversationsResponse = await apiService.getConversations();
+          const existingConversation = conversationsResponse.conversations?.find((conv: any) => {
+            const otherParticipant = conv.participants?.find((p: any) => p.userId !== user?.id);
+            return otherParticipant?.userId === targetUserId;
+          });
+          
+          if (existingConversation) {
+            console.log('✅ Found existing conversation:', existingConversation.id);
+            router.push(`/chat/${existingConversation.id}` as any);
+            return;
+          }
+        } catch (fetchError) {
+          console.error('Error fetching existing conversations:', fetchError);
+        }
+      }
+      
       Alert.alert('Error', 'Failed to start conversation');
     }
   };

@@ -181,10 +181,13 @@ export default function MessagesScreen() {
     const isApiData = item.participants;
     const otherParticipant = isApiData ? item.participants?.find((p: any) => p.userId !== user?.id) : null;
     
-    const userName = isApiData ? (otherParticipant?.fullName || 'Unknown User') : item.user.name;
-    const userAvatar = isApiData ? (otherParticipant?.profilePicture || '👤') : item.user.avatar;
-    const isVerified = isApiData ? otherParticipant?.isVerified : item.user.verified;
-    const isOnline = isApiData ? otherParticipant?.isOnline : item.user.online;
+    console.log('🔍 Conversation item:', JSON.stringify(item, null, 2));
+    console.log('👥 Other participant:', JSON.stringify(otherParticipant, null, 2));
+    
+    const userName = isApiData ? (otherParticipant?.fullName || otherParticipant?.user?.fullName || 'Unknown User') : item.user.name;
+    const userAvatar = isApiData ? (otherParticipant?.profilePicture || otherParticipant?.user?.profilePicture || '👤') : item.user.avatar;
+    const isVerified = isApiData ? (otherParticipant?.isVerified || otherParticipant?.user?.isVerified) : item.user.verified;
+    const isOnline = isApiData ? (otherParticipant?.isOnline || otherParticipant?.user?.isOnline) : item.user.online;
     const lastMessage = isApiData ? item.lastMessage : item.lastMessage;
     const messageTime = isApiData ? (lastMessage?.createdAt ? new Date(lastMessage.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '') : lastMessage.time;
     const unreadCount = isApiData ? item.unreadCount : item.unreadCount;

@@ -1,5 +1,65 @@
 const { Conversation, ConversationParticipant, UserReference, Message } = require('../../models');
 const { Op } = require('sequelize');
+const axios = require('axios');
+
+// Helper function to sync user from main server
+const syncUserFromMainServer = async (userId) => {
+  try {
+    // Check if user already exists in messaging system
+    const existingUser = await UserReference.findByPk(userId);
+    if (existingUser) {
+      return existingUser;
+    }
+
+    console.log('🔄 Syncing user from main server:', userId);
+    
+    // Fetch user data from main server
+    const mainServerUrl = process.env.MAIN_SERVER_URL || 'https://mainserver-production-7ad9.up.railway.app';
+    const response = await axios.get(`${mainServerUrl}/api/user/${userId}`, {
+      timeout: 5000,
+      headers: {
+        'User-Agent': 'MessagingServer/1.0'
+      }
+    });
+
+    if (response.data && response.data.data) {
+      const userData = response.data.data;
+      
+      // Create user in messaging system
+      const newUser = await UserReference.create({
+        id: userData.id,
+        fullName: userData.fullName || 'Unknown User',
+        email: userData.email || `${userData.id}@temp.com`,
+        profilePicture: userData.profilePicture || null,
+        accountType: userData.role || 'buyer',
+        accountStatus: userData.accountStatus || 'active'
+      });
+
+      console.log('✅ User synced successfully:', newUser.id);
+      return newUser;
+    }
+  } catch (error) {
+    console.error('❌ Error syncing user from main server:', error.message);
+    
+    // Create a minimal user record as fallback
+    try {
+      const fallbackUser = await UserReference.create({
+        id: userId,
+        fullName: 'Unknown User',
+        email: `${userId}@temp.com`,
+        profilePicture: null,
+        accountType: 'buyer',
+        accountStatus: 'active'
+      });
+      
+      console.log('⚠️ Created fallback user:', fallbackUser.id);
+      return fallbackUser;
+    } catch (fallbackError) {
+      console.error('❌ Failed to create fallback user:', fallbackError.message);
+      throw new Error('Unable to sync user from main server');
+    }
+  }
+};
 
 // Get user's conversations
 const getConversations = async (req, res) => {
@@ -219,6 +279,17 @@ const createConversation = async (req, res) => {
       createdBy: userId
     });
     console.log('✅ Conversation created with ID:', conversation.id);
+
+    // Sync all participants to ensure they exist in the messaging system
+    console.log('🔄 Syncing participants before adding to conversation...');
+    for (const participantId of participants) {
+      try {
+        await syncUserFromMainServer(participantId);
+      } catch (error) {
+        console.error(`❌ Failed to sync participant ${participantId}:`, error.message);
+        // Continue with other participants even if one fails
+      }
+    }
 
     // Add participants
     const participantData = participants.map(participantId => ({
