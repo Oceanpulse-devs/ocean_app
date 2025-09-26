@@ -30,9 +30,15 @@ const syncUserFromMainServer = async (userId) => {
         id: userData.id,
         fullName: userData.fullName || 'Unknown User',
         email: userData.email || `${userData.id}@temp.com`,
+        password: 'temp_password', // Required field
         profilePicture: userData.profilePicture || null,
         accountType: userData.role || 'buyer',
-        accountStatus: userData.accountStatus || 'active'
+        accountStatus: userData.accountStatus || 'active',
+        username: userData.username || null,
+        bio: userData.bio || null,
+        location: userData.location || null,
+        website: userData.website || null,
+        emailVerified: userData.emailVerified || false
       });
 
       console.log('✅ User synced successfully:', newUser.id);
@@ -41,15 +47,26 @@ const syncUserFromMainServer = async (userId) => {
   } catch (error) {
     console.error('❌ Error syncing user from main server:', error.message);
     
+    // Handle 404 error - user doesn't exist in main server
+    if (error.response && error.response.status === 404) {
+      console.log('⚠️ User not found in main server, creating minimal user record');
+    }
+    
     // Create a minimal user record as fallback
     try {
       const fallbackUser = await UserReference.create({
         id: userId,
         fullName: 'Unknown User',
         email: `${userId}@temp.com`,
+        password: 'temp_password', // Required field
         profilePicture: null,
         accountType: 'buyer',
-        accountStatus: 'active'
+        accountStatus: 'active',
+        username: null,
+        bio: null,
+        location: null,
+        website: null,
+        emailVerified: false
       });
       
       console.log('⚠️ Created fallback user:', fallbackUser.id);
@@ -282,17 +299,28 @@ const createConversation = async (req, res) => {
 
     // Sync all participants to ensure they exist in the messaging system
     console.log('🔄 Syncing participants before adding to conversation...');
+    const syncedParticipants = [];
+    
     for (const participantId of participants) {
       try {
-        await syncUserFromMainServer(participantId);
+        const syncedUser = await syncUserFromMainServer(participantId);
+        syncedParticipants.push(participantId);
+        console.log(`✅ Successfully synced participant: ${participantId}`);
       } catch (error) {
         console.error(`❌ Failed to sync participant ${participantId}:`, error.message);
         // Continue with other participants even if one fails
       }
     }
 
+    // Only add participants that were successfully synced
+    if (syncedParticipants.length === 0) {
+      return res.status(400).json({
+        message: 'No participants could be synced'
+      });
+    }
+
     // Add participants
-    const participantData = participants.map(participantId => ({
+    const participantData = syncedParticipants.map(participantId => ({
       conversationId: conversation.id,
       userId: participantId,
       role: participantId === userId ? 'admin' : 'member'

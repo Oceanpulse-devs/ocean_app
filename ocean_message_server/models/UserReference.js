@@ -4,33 +4,64 @@ module.exports = (sequelize) => {
   const UserReference = sequelize.define('UserReference', {
     id: {
       type: DataTypes.UUID,
-      primaryKey: true
+      primaryKey: true,
+      allowNull: false
     },
     fullName: {
-      type: DataTypes.STRING(255),
+      type: DataTypes.STRING,
       allowNull: false
     },
     email: {
-      type: DataTypes.STRING(255),
+      type: DataTypes.STRING,
+      allowNull: false
+    },
+    password: {
+      type: DataTypes.STRING,
       allowNull: false
     },
     profilePicture: {
-      type: DataTypes.STRING(500),
+      type: DataTypes.STRING,
       allowNull: true
     },
     accountType: {
-      type: DataTypes.ENUM('buyer', 'seller', 'admin', 'pending-seller'),
+      type: DataTypes.ENUM('admin', 'buyer', 'seller', 'pending-seller'),
       allowNull: false,
       defaultValue: 'buyer'
     },
     accountStatus: {
-      type: DataTypes.ENUM('active', 'suspended', 'inactive'),
+      type: DataTypes.ENUM('pending', 'active', 'suspended', 'deactivated'),
       allowNull: false,
-      defaultValue: 'active'
+      defaultValue: 'pending'
+    },
+    // Additional fields that exist in main server but not used in messaging
+    username: {
+      type: DataTypes.STRING,
+      allowNull: true
+    },
+    bio: {
+      type: DataTypes.TEXT,
+      allowNull: true
+    },
+    location: {
+      type: DataTypes.STRING,
+      allowNull: true
+    },
+    website: {
+      type: DataTypes.STRING,
+      allowNull: true
+    },
+    lastActive: {
+      type: DataTypes.DATE,
+      allowNull: true
+    },
+    emailVerified: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false
     }
   }, {
     tableName: 'users',
-    timestamps: false,
+    timestamps: true,
     freezeTableName: true
   });
 
