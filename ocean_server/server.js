@@ -322,6 +322,15 @@ app.use(cors({
         ? [
             process.env.FRONTEND_URL, 
             'https://your-frontend-domain.com',
+            // Flutter Web development origins (for testing)
+            'http://localhost:51327',
+            'http://localhost:51328',
+            'http://localhost:51329',
+            'http://localhost:51330',
+            'http://127.0.0.1:51327',
+            'http://127.0.0.1:51328',
+            'http://127.0.0.1:51329',
+            'http://127.0.0.1:51330',
             // Add mobile app origins here
             'capacitor://localhost',
             'ionic://localhost',
