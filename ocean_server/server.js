@@ -334,6 +334,15 @@ app.use(cors({
             'http://localhost:5173', 
             'http://127.0.0.1:3000', 
             'http://127.0.0.1:5173',
+            // Flutter Web development origins
+            'http://localhost:51327',
+            'http://localhost:51328',
+            'http://localhost:51329',
+            'http://localhost:51330',
+            'http://127.0.0.1:51327',
+            'http://127.0.0.1:51328',
+            'http://127.0.0.1:51329',
+            'http://127.0.0.1:51330',
             // Mobile development origins
             'http://localhost:8100',
             'http://localhost:8080',

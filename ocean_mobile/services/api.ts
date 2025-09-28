@@ -336,6 +336,23 @@ class ApiService {
     return this.get('/api/subscriptions/current');
   }
 
+  async createProduct(formData: FormData) {
+    console.log('Creating product with FormData...');
+    console.log('FormData entries:', Array.from(formData.entries()).map(([key, value]) => ({
+      key,
+      value: typeof value === 'object' ? `File: ${value.name || 'unnamed'}` : value
+    })));
+    
+    try {
+      const response = await this.post('/api/products', formData);
+      console.log('Product creation successful:', response);
+      return response;
+    } catch (error) {
+      console.error('Product creation failed:', error);
+      throw error;
+    }
+  }
+
   async toggleSaveProduct(productId: string) {
     return this.post(`/api/products/${productId}/save`);
   }

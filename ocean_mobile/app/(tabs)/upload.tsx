@@ -17,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '../../contexts/AuthContext';
 import apiService from '../../services/api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function UploadScreen() {
   const { user } = useAuth();
@@ -29,7 +30,17 @@ export default function UploadScreen() {
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
   const [formData, setFormData] = useState({
     content: '',
-    images: []
+    images: [],
+    // Product form fields
+    title: '',
+    description: '',
+    price: '',
+    currency: 'USD',
+    brand: '',
+    category: '',
+    subcategory: '',
+    condition: '',
+    location: ''
   });
 
   // Fetch categories and determine user type
@@ -146,8 +157,8 @@ export default function UploadScreen() {
     );
   };
 
-  const handleCategorySelect = (category: string) => {
-    setFormData(prev => ({ ...prev, category }));
+  const handleCategorySelect = (categoryId: string) => {
+    setFormData(prev => ({ ...prev, category: categoryId }));
     setShowCategoryPicker(false);
   };
 
@@ -257,8 +268,8 @@ export default function UploadScreen() {
     try {
       setIsLoading(true);
 
-      // Validate form data
-      if (!formData.content.trim()) {
+      // Validate form data based on upload type
+      if (selectedUploadType === 'feed-post' && !formData.content.trim()) {
         Alert.alert('Error', 'Content is required');
         setIsLoading(false);
         return;
@@ -323,9 +334,104 @@ export default function UploadScreen() {
           });
         }
       } else if (selectedUploadType === 'product') {
-        Alert.alert('Error', 'Product upload not implemented yet');
-        setIsLoading(false);
-        return;
+        // Validate product form data
+        if (!formData.title.trim()) {
+          Alert.alert('Error', 'Product title is required');
+          setIsLoading(false);
+          return;
+        }
+        if (!formData.description.trim()) {
+          Alert.alert('Error', 'Product description is required');
+          setIsLoading(false);
+          return;
+        }
+        if (!formData.price.trim()) {
+          Alert.alert('Error', 'Product price is required');
+          setIsLoading(false);
+          return;
+        }
+        if (!formData.category) {
+          Alert.alert('Error', 'Product category is required');
+          setIsLoading(false);
+          return;
+        }
+        if (!formData.condition) {
+          Alert.alert('Error', 'Product condition is required');
+          setIsLoading(false);
+          return;
+        }
+        if (!formData.location.trim()) {
+          Alert.alert('Error', 'Product location is required');
+          setIsLoading(false);
+          return;
+        }
+        if (formData.images.length === 0) {
+          Alert.alert('Error', 'At least one product image is required');
+          setIsLoading(false);
+          return;
+        }
+
+        // Create FormData for product upload
+        const productFormData = new FormData();
+        productFormData.append('title', formData.title);
+        productFormData.append('description', formData.description);
+        productFormData.append('price', formData.price);
+        productFormData.append('currency', formData.currency);
+        if (formData.brand.trim()) {
+          productFormData.append('brand', formData.brand);
+        }
+        productFormData.append('category', formData.category);
+        if (formData.subcategory.trim()) {
+          productFormData.append('subcategory', formData.subcategory);
+        }
+        productFormData.append('condition', formData.condition);
+        productFormData.append('location', formData.location);
+        
+        // Add images
+        formData.images.forEach((image, index) => {
+          const fileObject = {
+            uri: image.uri,
+            type: 'image/jpeg',
+            name: image.name || `product_image_${index}.jpg`
+          };
+          productFormData.append('images', fileObject);
+        });
+
+        console.log('Creating product with FormData...');
+        console.log('Product FormData entries:', Array.from(productFormData.entries()).map(([key, value]) => ({
+          key,
+          value: typeof value === 'object' ? `File: ${value.name || 'unnamed'}` : value
+        })));
+        
+        try {
+          response = await apiService.createProduct(productFormData);
+        } catch (error) {
+          console.error('Product creation failed, trying alternative approach:', error);
+          
+          // Alternative approach: Try with explicit headers
+          const token = await AsyncStorage.getItem('authToken');
+          const headers: any = {
+            'Accept': 'application/json',
+          };
+          
+          if (token && token !== 'authenticated') {
+            headers['Authorization'] = `Bearer ${token}`;
+          }
+          
+          response = await fetch(`${apiService.baseURL}/api/products`, {
+            method: 'POST',
+            headers,
+            body: productFormData,
+            credentials: 'include',
+          });
+          
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+          }
+          
+          response = await response.json();
+        }
       } else if (selectedUploadType === 'distress') {
         Alert.alert('Error', 'Distress sale upload not implemented yet');
         setIsLoading(false);
@@ -336,12 +442,22 @@ export default function UploadScreen() {
         return;
       }
 
-      Alert.alert('Success', 'Post uploaded successfully!');
+      Alert.alert('Success', selectedUploadType === 'product' ? 'Product created successfully!' : 'Post uploaded successfully!');
       setShowUploadModal(false);
       setSelectedUploadType(null);
       setFormData({
         content: '',
-        images: []
+        images: [],
+        // Reset product form fields
+        title: '',
+        description: '',
+        price: '',
+        currency: 'USD',
+        brand: '',
+        category: '',
+        subcategory: '',
+        condition: '',
+        location: ''
       });
 
     } catch (error) {
@@ -454,46 +570,196 @@ export default function UploadScreen() {
 
             {/* Upload Form Fields */}
             <View style={styles.formSection}>
-              <Text style={styles.sectionTitle}>Create Post</Text>
+              <Text style={styles.sectionTitle}>
+                {selectedUploadType === 'product' ? 'Product Details' : 'Create Post'}
+              </Text>
               
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>What's on your mind? *</Text>
-                <TextInput
-                  style={[styles.textInput, styles.textArea]}
-                  placeholder="Share your thoughts with the community..."
-                  placeholderTextColor="#9CA3AF"
-                  multiline
-                  numberOfLines={6}
-                  value={formData.content}
-                  onChangeText={(text) => setFormData(prev => ({ ...prev, content: text }))}
-                />
-              </View>
+              {selectedUploadType === 'product' ? (
+                // Product Form
+                <>
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.inputLabel}>Product Title *</Text>
+                    <TextInput
+                      style={styles.textInput}
+                      placeholder="Enter product title..."
+                      placeholderTextColor="#9CA3AF"
+                      value={formData.title}
+                      onChangeText={(text) => setFormData(prev => ({ ...prev, title: text }))}
+                    />
+                  </View>
 
-              {selectedUploadType === 'feed-post' && (
-                <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>Add Photos (Optional)</Text>
-                  <TouchableOpacity style={styles.photoUpload} onPress={showImagePicker}>
-                    <Ionicons name="camera-outline" size={32} color="#6B7280" />
-                    <Text style={styles.photoUploadText}>Tap to add photos</Text>
-                    <Text style={styles.photoUploadSubtext}>Up to 10 images</Text>
-                  </TouchableOpacity>
-                  
-                  {formData.images.length > 0 && (
-                    <View style={styles.imagePreviewContainer}>
-                      {formData.images.map((image, index) => (
-                        <View key={index} style={styles.imagePreview}>
-                          <Image source={{ uri: image.uri }} style={styles.previewImage} />
-                          <TouchableOpacity 
-                            style={styles.removeImageButton}
-                            onPress={() => removeImage(index)}
-                          >
-                            <Ionicons name="close-circle" size={20} color="#EF4444" />
-                          </TouchableOpacity>
-                        </View>
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.inputLabel}>Description *</Text>
+                    <TextInput
+                      style={[styles.textInput, styles.textArea]}
+                      placeholder="Describe your product..."
+                      placeholderTextColor="#9CA3AF"
+                      multiline
+                      numberOfLines={4}
+                      value={formData.description}
+                      onChangeText={(text) => setFormData(prev => ({ ...prev, description: text }))}
+                    />
+                  </View>
+
+                  <View style={styles.inputRow}>
+                    <View style={[styles.inputGroup, styles.halfWidth]}>
+                      <Text style={styles.inputLabel}>Price *</Text>
+                      <TextInput
+                        style={styles.textInput}
+                        placeholder="0.00"
+                        placeholderTextColor="#9CA3AF"
+                        keyboardType="numeric"
+                        value={formData.price}
+                        onChangeText={(text) => setFormData(prev => ({ ...prev, price: text }))}
+                      />
+                    </View>
+                    <View style={[styles.inputGroup, styles.halfWidth]}>
+                      <Text style={styles.inputLabel}>Currency</Text>
+                      <TextInput
+                        style={styles.textInput}
+                        placeholder="USD"
+                        placeholderTextColor="#9CA3AF"
+                        value={formData.currency}
+                        onChangeText={(text) => setFormData(prev => ({ ...prev, currency: text }))}
+                      />
+                    </View>
+                  </View>
+
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.inputLabel}>Brand (Optional)</Text>
+                    <TextInput
+                      style={styles.textInput}
+                      placeholder="Enter brand name..."
+                      placeholderTextColor="#9CA3AF"
+                      value={formData.brand}
+                      onChangeText={(text) => setFormData(prev => ({ ...prev, brand: text }))}
+                    />
+                  </View>
+
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.inputLabel}>Category *</Text>
+                    <TouchableOpacity 
+                      style={styles.categorySelector}
+                      onPress={() => setShowCategoryPicker(true)}
+                    >
+                      <Text style={styles.categorySelectorText}>
+                        {formData.category ? categories.find((cat: any) => cat.id === formData.category)?.name || 'Select Category' : 'Select Category'}
+                      </Text>
+                      <Ionicons name="chevron-down" size={20} color="#6B7280" />
+                    </TouchableOpacity>
+                  </View>
+
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.inputLabel}>Subcategory (Optional)</Text>
+                    <TextInput
+                      style={styles.textInput}
+                      placeholder="Enter subcategory..."
+                      placeholderTextColor="#9CA3AF"
+                      value={formData.subcategory}
+                      onChangeText={(text) => setFormData(prev => ({ ...prev, subcategory: text }))}
+                    />
+                  </View>
+
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.inputLabel}>Condition *</Text>
+                    <View style={styles.conditionButtons}>
+                      {['new', 'like_new', 'good', 'fair', 'poor'].map((condition) => (
+                        <TouchableOpacity
+                          key={condition}
+                          style={[
+                            styles.conditionButton,
+                            formData.condition === condition && styles.conditionButtonSelected
+                          ]}
+                          onPress={() => setFormData(prev => ({ ...prev, condition }))}
+                        >
+                          <Text style={[
+                            styles.conditionButtonText,
+                            formData.condition === condition && styles.conditionButtonTextSelected
+                          ]}>
+                            {condition === 'like_new' ? 'Like New' : condition.charAt(0).toUpperCase() + condition.slice(1)}
+                          </Text>
+                        </TouchableOpacity>
                       ))}
                     </View>
-                  )}
-                </View>
+                  </View>
+
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.inputLabel}>Location *</Text>
+                    <TextInput
+                      style={styles.textInput}
+                      placeholder="Enter location..."
+                      placeholderTextColor="#9CA3AF"
+                      value={formData.location}
+                      onChangeText={(text) => setFormData(prev => ({ ...prev, location: text }))}
+                    />
+                  </View>
+
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.inputLabel}>Product Images *</Text>
+                    <TouchableOpacity style={styles.photoUpload} onPress={showImagePicker}>
+                      <Ionicons name="camera-outline" size={32} color="#6B7280" />
+                      <Text style={styles.photoUploadText}>Tap to add product photos</Text>
+                      <Text style={styles.photoUploadSubtext}>At least 1 image required</Text>
+                    </TouchableOpacity>
+                    
+                    {formData.images.length > 0 && (
+                      <View style={styles.imagePreviewContainer}>
+                        {formData.images.map((image, index) => (
+                          <View key={index} style={styles.imagePreview}>
+                            <Image source={{ uri: image.uri }} style={styles.previewImage} />
+                            <TouchableOpacity 
+                              style={styles.removeImageButton}
+                              onPress={() => removeImage(index)}
+                            >
+                              <Ionicons name="close-circle" size={20} color="#EF4444" />
+                            </TouchableOpacity>
+                          </View>
+                        ))}
+                      </View>
+                    )}
+                  </View>
+                </>
+              ) : (
+                // Feed Post Form
+                <>
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.inputLabel}>What's on your mind? *</Text>
+                    <TextInput
+                      style={[styles.textInput, styles.textArea]}
+                      placeholder="Share your thoughts with the community..."
+                      placeholderTextColor="#9CA3AF"
+                      multiline
+                      numberOfLines={6}
+                      value={formData.content}
+                      onChangeText={(text) => setFormData(prev => ({ ...prev, content: text }))}
+                    />
+                  </View>
+
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.inputLabel}>Add Photos (Optional)</Text>
+                    <TouchableOpacity style={styles.photoUpload} onPress={showImagePicker}>
+                      <Ionicons name="camera-outline" size={32} color="#6B7280" />
+                      <Text style={styles.photoUploadText}>Tap to add photos</Text>
+                      <Text style={styles.photoUploadSubtext}>Up to 10 images</Text>
+                    </TouchableOpacity>
+                    
+                    {formData.images.length > 0 && (
+                      <View style={styles.imagePreviewContainer}>
+                        {formData.images.map((image, index) => (
+                          <View key={index} style={styles.imagePreview}>
+                            <Image source={{ uri: image.uri }} style={styles.previewImage} />
+                            <TouchableOpacity 
+                              style={styles.removeImageButton}
+                              onPress={() => removeImage(index)}
+                            >
+                              <Ionicons name="close-circle" size={20} color="#EF4444" />
+                            </TouchableOpacity>
+                          </View>
+                        ))}
+                      </View>
+                    )}
+                  </View>
+                </>
               )}
             </View>
           </ScrollView>
@@ -514,7 +780,7 @@ export default function UploadScreen() {
                 <Ionicons name="cloud-upload-outline" size={20} color="#FFFFFF" />
               )}
               <Text style={styles.uploadButtonText}>
-                {isLoading ? 'Uploading...' : 'Create Post'}
+                {isLoading ? 'Uploading...' : (selectedUploadType === 'product' ? 'Create Product' : 'Create Post')}
               </Text>
             </TouchableOpacity>
           </View>
@@ -550,7 +816,7 @@ export default function UploadScreen() {
                 <TouchableOpacity
                   key={index}
                   style={styles.categoryItem}
-                  onPress={() => handleCategorySelect(category.name || category)}
+                  onPress={() => handleCategorySelect(category.id || category)}
                 >
                   <Text style={styles.categoryItemText}>
                     {category.name || category}
@@ -1156,5 +1422,39 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#1F2937',
     fontWeight: '500',
+  },
+
+  // Product form styles
+  inputRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  halfWidth: {
+    flex: 1,
+  },
+  conditionButtons: {
+    flexDirection: 'row',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  conditionButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    backgroundColor: '#FFFFFF',
+  },
+  conditionButtonSelected: {
+    backgroundColor: '#6B46C1',
+    borderColor: '#6B46C1',
+  },
+  conditionButtonText: {
+    fontSize: 14,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+  conditionButtonTextSelected: {
+    color: '#FFFFFF',
   },
 });
