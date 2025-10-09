@@ -318,46 +318,7 @@ app.get('/verify-email', async (req, res) => {
 });
 
 app.use(cors({
-    origin: process.env.NODE_ENV === 'production' 
-        ? [
-            process.env.FRONTEND_URL, 
-            'https://your-frontend-domain.com',
-            // Flutter Web development origins (for testing)
-            'http://localhost:51327',
-            'http://localhost:51328',
-            'http://localhost:51329',
-            'http://localhost:51330',
-            'http://127.0.0.1:51327',
-            'http://127.0.0.1:51328',
-            'http://127.0.0.1:51329',
-            'http://127.0.0.1:51330',
-            // Add mobile app origins here
-            'capacitor://localhost',
-            'ionic://localhost',
-            'http://localhost:8100', // Ionic dev server
-            'http://localhost:8080', // Capacitor dev server
-            process.env.MOBILE_APP_URL // Add this to your env
-          ]
-        : [
-            'http://localhost:3000', 
-            'http://localhost:5173', 
-            'http://127.0.0.1:3000', 
-            'http://127.0.0.1:5173',
-            // Flutter Web development origins
-            'http://localhost:51327',
-            'http://localhost:51328',
-            'http://localhost:51329',
-            'http://localhost:51330',
-            'http://127.0.0.1:51327',
-            'http://127.0.0.1:51328',
-            'http://127.0.0.1:51329',
-            'http://127.0.0.1:51330',
-            // Mobile development origins
-            'http://localhost:8100',
-            'http://localhost:8080',
-            'capacitor://localhost',
-            'ionic://localhost'
-          ],
+    origin: true,
     credentials: true, // Allow cookies to be sent with requests
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
