@@ -81,19 +81,17 @@ module.exports = (sequelize, DataTypes) => {
     allowNull: true,
     comment: 'When the participation was completed'
   },
-  created_at: {
+  createdAt: {
     type: DataTypes.DATE,
     defaultValue: DataTypes.NOW
   },
-  updated_at: {
+  updatedAt: {
     type: DataTypes.DATE,
     defaultValue: DataTypes.NOW
   }
 }, {
   tableName: 'group_buy_participants',
   timestamps: true,
-  createdAt: 'created_at',
-  updatedAt: 'updated_at',
   indexes: [
     {
       fields: ['group_buy_id']
