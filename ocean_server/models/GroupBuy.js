@@ -121,19 +121,17 @@ module.exports = (sequelize, DataTypes) => {
     allowNull: true,
     comment: 'Reference to promotional boost'
   },
-  created_at: {
+  createdAt: {
     type: DataTypes.DATE,
     defaultValue: DataTypes.NOW
   },
-  updated_at: {
+  updatedAt: {
     type: DataTypes.DATE,
     defaultValue: DataTypes.NOW
   }
 }, {
   tableName: 'group_buys',
   timestamps: true,
-  createdAt: 'created_at',
-  updatedAt: 'updated_at',
   indexes: [
     {
       fields: ['category_id']
