@@ -3,7 +3,15 @@ const JWT_SECRET = process.env.JWT_SECRET
 const redisClient = require('../config/redisdb')
 
 const authMiddleware = async (req,res,next)=>{
-    const token = req.cookies.token;
+    // Try to get token from Authorization header first (for Flutter Web)
+    let token = req.headers.authorization;
+    if (token && token.startsWith('Bearer ')) {
+        token = token.substring(7); // Remove 'Bearer ' prefix
+    } else {
+        // Fallback to cookie (for web browsers)
+        token = req.cookies.token;
+    }
+    
     if(!token){
        return res.status(401).json({message:"Access denied. Token not found!"})
     }

@@ -2,6 +2,7 @@
 
 # Ignore Flutter mobile app (it has its own Git repository)
 ocean_flutter/
+ocean-main/
 
 
 

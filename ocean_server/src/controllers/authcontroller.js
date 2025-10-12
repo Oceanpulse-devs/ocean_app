@@ -282,7 +282,8 @@ const login = async(req,res)=>{
             role: existingUser.accountType, // Current role for permissions
             accountType: existingUser.accountType, // Account classification
             accountStatus: existingUser.accountStatus
-        }
+        },
+        token: token // Include token in response for Flutter Web
     })
    }catch(error){
     res.status(500).json({message:"Error signing user in", error:error.message})
