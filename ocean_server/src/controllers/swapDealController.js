@@ -388,12 +388,12 @@ class SwapDealController {
           {
             model: db.UserTable,
             as: 'initiator',
-            attributes: ['id', 'username', 'profilePicture', 'email']
+            attributes: ['id', 'fullName', 'username', 'profilePicture', 'email']
           },
           {
             model: db.UserTable,
             as: 'responder',
-            attributes: ['id', 'username', 'profilePicture', 'email']
+            attributes: ['id', 'fullName', 'username', 'profilePicture', 'email']
           },
           {
             model: db.Product,
