@@ -421,6 +421,153 @@ class SubscriptionAwareSearchService {
     
     return engagementScore + (recencyScore * 10);
   }
+
+  /**
+   * Search swap deals with subscription prioritization
+   * @param {Object} searchParams - Search parameters
+   * @param {string} userId - User ID (optional)
+   * @returns {Object} Search results
+   */
+  static async searchSwapDeals(searchParams, userId = null) {
+    try {
+      const { 
+        query, 
+        status = 'pending',
+        initiatorId, 
+        responderId, 
+        featured,
+        page = 1, 
+        limit = 20 
+      } = searchParams;
+
+      // Build where clause
+      const whereClause = {};
+      
+      if (query) {
+        whereClause[Op.or] = [
+          { title: { [Op.like]: `%${query}%` } },
+          { description: { [Op.like]: `%${query}%` } }
+        ];
+      }
+      
+      if (status) whereClause.status = status;
+      if (initiatorId) whereClause.initiator_id = initiatorId;
+      if (responderId) whereClause.responder_id = responderId;
+      if (featured !== undefined) whereClause.is_featured = featured;
+
+      const offset = (page - 1) * limit;
+
+      // Build order with subscription priorities
+      let orderClause = [];
+      
+      // Priority 1: Boosted items first
+      orderClause.push(['is_boosted', 'DESC']);
+      
+      // Priority 2: Featured items
+      orderClause.push(['is_featured', 'DESC']);
+      
+      // Priority 3: Verified sellers (if user has subscription)
+      if (userId) {
+        const userSubscription = await this.getUserActiveSubscription(userId);
+        if (userSubscription && userSubscription.plan.has_priority_search) {
+          // This would require a join with user verification status
+          // For now, we'll prioritize by views and creation date
+        }
+      }
+      
+      // Priority 4: Sort by views and creation date
+      orderClause.push(['views_count', 'DESC']);
+      orderClause.push(['created_at', 'DESC']);
+
+      const { count, rows: swapDeals } = await SwapDeal.findAndCountAll({
+        where: whereClause,
+        include: [
+          {
+            model: require('../../models').UserTable,
+            as: 'initiator',
+            attributes: ['id', 'fullName', 'username', 'profilePicture', 'email']
+          },
+          {
+            model: require('../../models').UserTable,
+            as: 'responder',
+            attributes: ['id', 'fullName', 'username', 'profilePicture', 'email']
+          },
+          {
+            model: require('../../models').Product,
+            as: 'initiatorItem',
+            attributes: ['id', 'title', 'description', 'price', 'images', 'condition', 'category']
+          },
+          {
+            model: require('../../models').Product,
+            as: 'responderItem',
+            attributes: ['id', 'title', 'description', 'price', 'images', 'condition', 'category']
+          }
+        ],
+        order: orderClause,
+        limit: parseInt(limit),
+        offset: offset
+      });
+
+      // Add subscription-aware metadata to each swap deal
+      const enhancedSwapDeals = swapDeals.map(swapDeal => ({
+        ...swapDeal.toJSON(),
+        subscription: {
+          isBoosted: swapDeal.is_boosted,
+          boostExpiresAt: swapDeal.boost_expires_at,
+          isFeatured: swapDeal.is_featured,
+          viewsCount: swapDeal.views_count,
+          priorityScore: this.calculateSwapDealPriorityScore(swapDeal, userId)
+        }
+      }));
+
+      return {
+        swapDeals: enhancedSwapDeals,
+        pagination: {
+          currentPage: parseInt(page),
+          totalPages: Math.ceil(count / parseInt(limit)),
+          totalItems: count,
+          itemsPerPage: parseInt(limit)
+        },
+        searchInfo: {
+          query,
+          status,
+          initiatorId,
+          responderId,
+          featured,
+          hasSubscriptionPriority: userId ? await this.userHasSearchPriority(userId) : false
+        }
+      };
+    } catch (error) {
+      console.error('Error searching swap deals:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Calculate priority score for a swap deal
+   * @param {Object} swapDeal - Swap deal object
+   * @param {string} userId - User ID
+   * @returns {number} Priority score
+   */
+  static calculateSwapDealPriorityScore(swapDeal, userId) {
+    let score = 0;
+    
+    // Boosted items get highest priority
+    if (swapDeal.is_boosted) score += 100;
+    
+    // Featured items get priority
+    if (swapDeal.is_featured) score += 50;
+    
+    // Views count contributes to priority
+    score += Math.min(swapDeal.views_count || 0, 50);
+    
+    // Recent items get slight priority
+    const daysSinceCreated = Math.max(1, Math.ceil((new Date() - swapDeal.created_at) / (1000 * 60 * 60 * 24)));
+    const recencyScore = Math.max(0, 7 - daysSinceCreated);
+    score += recencyScore * 5;
+    
+    return score;
+  }
 }
 
 module.exports = SubscriptionAwareSearchService;
