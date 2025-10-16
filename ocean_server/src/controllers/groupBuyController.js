@@ -689,7 +689,7 @@ class GroupBuyController {
           },
           ...includeClause
         ],
-        order: [['created_at', 'DESC']]
+        order: [['createdAt', 'DESC']]
       });
 
       res.json({

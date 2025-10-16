@@ -171,7 +171,7 @@ class SubscriptionAwareSearchService {
         ['is_boosted', 'DESC'],
         ['is_featured', 'DESC'],
         ['views_count', 'DESC'],
-        ['created_at', 'DESC']
+        ['createdAt', 'DESC']
       ];
 
       const { count, rows: groupBuys } = await GroupBuy.findAndCountAll({
