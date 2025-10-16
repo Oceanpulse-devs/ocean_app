@@ -98,6 +98,7 @@ const getHomeFeed = async (req, res) => {
                 }
             ],
             order: [
+                [Sequelize.fn('RAND')], // Random ordering for dynamic feed
                 ['createdAt', 'DESC']
             ],
             limit: parseInt(limit),
