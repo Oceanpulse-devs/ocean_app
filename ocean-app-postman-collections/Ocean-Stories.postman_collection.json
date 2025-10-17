@@ -1,0 +1,268 @@
+{
+	"info": {
+		"_postman_id": "stories-api-collection",
+		"name": "Ocean Stories API",
+		"description": "API collection for Ocean app Stories feature - includes follower privacy controls and 24-hour expiration",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Create Story",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{auth_token}}"
+					}
+				],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "media",
+							"type": "file",
+							"src": [],
+							"description": "Image or video file for the story (optional for text-only stories)"
+						},
+						{
+							"key": "caption",
+							"value": "Check out this amazing product!",
+							"type": "text",
+							"description": "Story caption (required for text-only stories)"
+						},
+						{
+							"key": "background_color",
+							"value": "#FF5733",
+							"type": "text",
+							"description": "Background color for text overlay (required for text-only stories)"
+						},
+						{
+							"key": "text_color",
+							"value": "#FFFFFF",
+							"type": "text",
+							"description": "Text color for overlay (optional)"
+						},
+						{
+							"key": "font_family",
+							"value": "Arial",
+							"type": "text",
+							"description": "Font family for text (optional)"
+						}
+					]
+				},
+				"url": {
+					"raw": "{{base_url}}/api/stories",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"stories"
+					]
+				},
+				"description": "Create a new story with media upload. Stories expire after 24 hours automatically. Use form-data to upload image or video files."
+			},
+			"response": []
+		},
+		{
+			"name": "Get All Stories (Feed)",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{auth_token}}"
+					}
+				],
+				"url": {
+					"raw": "{{base_url}}/api/stories/all",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"stories",
+						"all"
+					]
+				},
+				"description": "Get all stories from users you follow. Only shows non-expired stories."
+			},
+			"response": []
+		},
+		{
+			"name": "Get My Stories",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{auth_token}}"
+					}
+				],
+				"url": {
+					"raw": "{{base_url}}/api/stories/my",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"stories",
+						"my"
+					]
+				},
+				"description": "Get your own stories with view analytics."
+			},
+			"response": []
+		},
+		{
+			"name": "Get User Stories",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{auth_token}}"
+					}
+				],
+				"url": {
+					"raw": "{{base_url}}/api/stories/user/{{user_id}}",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"stories",
+						"user",
+						"{{user_id}}"
+					]
+				},
+				"description": "Get stories from a specific user (only if you follow them)."
+			},
+			"response": []
+		},
+		{
+			"name": "View Story",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					},
+					{
+						"key": "Authorization",
+						"value": "Bearer {{auth_token}}"
+					}
+				],
+				"url": {
+					"raw": "{{base_url}}/api/stories/{{story_id}}/view",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"stories",
+						"{{story_id}}",
+						"view"
+					]
+				},
+				"description": "Mark a story as viewed. Only works if you follow the story owner."
+			},
+			"response": []
+		},
+		{
+			"name": "Get Story Viewers",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{auth_token}}"
+					}
+				],
+				"url": {
+					"raw": "{{base_url}}/api/stories/{{story_id}}/viewers",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"stories",
+						"{{story_id}}",
+						"viewers"
+					]
+				},
+				"description": "Get list of users who viewed your story (only story owner can access)."
+			},
+			"response": []
+		},
+		{
+			"name": "Delete Story",
+			"request": {
+				"method": "DELETE",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{auth_token}}"
+					}
+				],
+				"url": {
+					"raw": "{{base_url}}/api/stories/{{story_id}}",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"stories",
+						"{{story_id}}"
+					]
+				},
+				"description": "Delete your own story."
+			},
+			"response": []
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "https://your-api-domain.com",
+			"type": "string"
+		},
+		{
+			"key": "auth_token",
+			"value": "your_jwt_token_here",
+			"type": "string"
+		},
+		{
+			"key": "user_id",
+			"value": "user_uuid_here",
+			"type": "string"
+		},
+		{
+			"key": "story_id",
+			"value": "story_uuid_here",
+			"type": "string"
+		}
+	]
+}

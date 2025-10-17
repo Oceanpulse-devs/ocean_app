@@ -344,6 +344,8 @@ const distressSaleRoutes = require('./src/routes/distressSaleRoutes');
 const heavyDistributorRoutes = require('./src/routes/heavyDistributorRoutes');
 const sellerVerificationRoutes = require('./src/routes/sellerVerificationRoutes');
 const subscriptionRoutes = require('./src/routes/subscriptionRoutes');
+const storyRoutes = require('./src/routes/storyRoutes');
+const StoryCleanupService = require('./src/services/storyCleanupService');
 
 app.use('/', authRoutes);
 app.use('/', notificationRoutes);
@@ -361,6 +363,10 @@ app.use('/api/distress-sales', distressSaleRoutes);
 app.use('/api/heavy-distributors', heavyDistributorRoutes);
 app.use('/api/seller-verification', sellerVerificationRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
+app.use('/api/stories', (req, res, next) => {
+    console.log('🚀 Stories route registered - Path:', req.path, 'Method:', req.method);
+    next();
+}, storyRoutes);
 
 
 
@@ -379,6 +385,10 @@ db.sequelize.sync({
     `);
 }).then(() => {
     console.log('✅ Timestamps updated for existing users');
+    
+    // Initialize story cleanup service
+    StoryCleanupService.scheduleCleanup();
+    
 }).catch((error) => {
     console.error('❌ Database sync error:', error);
 });

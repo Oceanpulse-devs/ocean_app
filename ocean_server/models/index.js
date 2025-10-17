@@ -55,6 +55,8 @@ const SubscriptionPlan = require('./SubscriptionPlan');
 const UserSubscription = require('./UserSubscription');
 const SubscriptionUsage = require('./SubscriptionUsage');
 const PromotionalBoost = require('./PromotionalBoost');
+const Story = require('./Story');
+const StoryView = require('./StoryView');
 
 // Initialize all models
 db.UserTable = UserTable(sequelize, Sequelize.DataTypes);
@@ -97,6 +99,8 @@ db.ShareStats = ShareStats(sequelize, Sequelize.DataTypes);
   db.UserSubscription = UserSubscription(sequelize, Sequelize.DataTypes);
   db.SubscriptionUsage = SubscriptionUsage(sequelize, Sequelize.DataTypes);
   db.PromotionalBoost = PromotionalBoost(sequelize, Sequelize.DataTypes);
+  db.Story = Story(sequelize, Sequelize.DataTypes);
+  db.StoryView = StoryView(sequelize, Sequelize.DataTypes);
 
 // Set up associations
 const setupAssociations = () => {
@@ -294,6 +298,18 @@ const setupAssociations = () => {
   db.UserTable.hasMany(db.UserSubscription, { foreignKey: 'user_id', as: 'subscriptions' });
   db.UserTable.hasMany(db.SubscriptionUsage, { foreignKey: 'user_id', as: 'usageHistory' });
   db.UserTable.hasMany(db.PromotionalBoost, { foreignKey: 'user_id', as: 'boosts' });
+
+  // Story associations
+  db.Story.belongsTo(db.UserTable, { foreignKey: 'user_id', as: 'user' });
+  db.Story.hasMany(db.StoryView, { foreignKey: 'story_id', as: 'views' });
+  
+  // StoryView associations
+  db.StoryView.belongsTo(db.Story, { foreignKey: 'story_id', as: 'story' });
+  db.StoryView.belongsTo(db.UserTable, { foreignKey: 'viewer_id', as: 'viewer' });
+  
+  // UserTable story associations
+  db.UserTable.hasMany(db.Story, { foreignKey: 'user_id', as: 'stories' });
+  db.UserTable.hasMany(db.StoryView, { foreignKey: 'viewer_id', as: 'storyViews' });
 };
 
 // Setup associations

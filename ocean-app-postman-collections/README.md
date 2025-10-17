@@ -59,6 +59,29 @@ The Ocean Postman collections have been updated to include the complete subscrip
 - `GET /api/promotional-boosts/active` - Get active boosts
 - `GET /api/promotional-boosts/expired` - Get expired boosts
 
+### **3. Ocean-Stories.postman_collection.json**
+**Complete stories feature API endpoints with follower privacy:**
+
+#### **📱 Story Management**
+- `POST /api/stories` - Create new story with file upload (24-hour expiration)
+- `GET /api/stories/my` - Get your own stories with analytics
+- `DELETE /api/stories/:id` - Delete your own story
+
+#### **👀 Story Viewing**
+- `GET /api/stories/all` - Get all stories from users you follow
+- `GET /api/stories/user/:userId` - Get specific user's stories (if you follow them)
+- `POST /api/stories/:id/view` - Mark story as viewed
+
+#### **📊 Story Analytics**
+- `GET /api/stories/:id/viewers` - Get story viewers (only story owner)
+
+#### **🔒 Privacy Features**
+- **Follower-Only Access** - Stories only visible to followers
+- **View Tracking** - Track who viewed your stories
+- **Auto-Expiration** - Stories expire after 24 hours
+- **Owner Analytics** - Only story owners can see viewer analytics
+- **File Upload** - Direct image/video upload via Cloudinary
+
 ---
 
 ## 🔄 **UPDATED EXISTING COLLECTIONS**
@@ -225,6 +248,30 @@ GET /api/auctions?search=phone&sortBy=endTime
 
 # 3. Get trending products
 GET /api/products/trending?limit=10&days=7
+```
+
+### **4. Stories Feature**
+```bash
+# 1. Create a story (with file upload)
+POST /api/stories
+Content-Type: multipart/form-data
+- media: [image/video file]
+- caption: "Check out this amazing product!"
+- background_color: "#FF5733"
+- text_color: "#FFFFFF"
+- font_family: "Arial"
+
+# 2. Get all stories from users you follow
+GET /api/stories/all
+
+# 3. View a story (increments view count)
+POST /api/stories/story-id/view
+
+# 4. Get your own stories with analytics
+GET /api/stories/my
+
+# 5. Get story viewers (only story owner)
+GET /api/stories/story-id/viewers
 ```
 
 ---
