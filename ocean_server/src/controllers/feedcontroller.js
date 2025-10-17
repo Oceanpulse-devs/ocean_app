@@ -114,50 +114,13 @@ const getHomeFeed = async (req, res) => {
                 // Determine post type and format accordingly
                 let formattedPost;
                 
-                if (postData.postSubType === 'buyer') {
-                    // Buyer post format
+                // Format based on content type for unified feed
+                if (postData.contentType === 'product') {
+                    // Product post format
                     formattedPost = {
                         id: postData.id,
-                        type: 'buyer',
-                        user: {
-                            name: postData.user.fullName,
-                            avatar: postData.user.profilePicture || '👤',
-                            verified: postData.user.accountStatus === 'verified',
-                            location: postData.user.location
-                        },
-                        wantToBuy: {
-                            title: postData.productName || 'Looking for...',
-                            budget: postData.minBudget && postData.maxBudget 
-                                ? `₦${parseInt(postData.minBudget).toLocaleString()} - ₦${parseInt(postData.maxBudget).toLocaleString()}`
-                                : 'Budget not specified',
-                            description: postData.content,
-                            images: postData.media?.map(m => m.mediaUrl) || [],
-                            category: postData.category,
-                            urgency: 'medium' // TODO: Add urgency field to posts
-                        },
-                        likes: postData.likes?.length || 0,
-                        comments: postData.comments?.length || 0,
-                        shares: 0, // TODO: Implement shares
-                        timeAgo: getTimeAgo(postData.createdAt),
-                        isLiked: false, // Will be set below
-                        isSaved: false, // Will be set below
-                        showComments: false,
-                        commentList: postData.comments?.map(comment => ({
-                            id: comment.id,
-                            user: {
-                                name: comment.user.fullName,
-                                avatar: comment.user.profilePicture || '👤',
-                                verified: comment.user.accountStatus === 'verified'
-                            },
-                            text: comment.content,
-                            timeAgo: getTimeAgo(comment.createdAt),
-                            likes: 0 // TODO: Add comment likes
-                        })) || []
-                    };
-                } else {
-                    // Seller post format
-                    formattedPost = {
-                        id: postData.id,
+                        type: 'product',
+                        contentType: postData.contentType,
                         user: {
                             name: postData.user.fullName,
                             avatar: postData.user.profilePicture || '👤',
@@ -165,32 +128,100 @@ const getHomeFeed = async (req, res) => {
                             location: postData.user.location
                         },
                         product: {
-                            name: postData.productName || 'Product',
+                            title: postData.productName || 'Product',
                             price: postData.price ? `₦${parseInt(postData.price).toLocaleString()}` : 'Price not specified',
-                            originalPrice: postData.originalPrice ? `₦${parseInt(postData.originalPrice).toLocaleString()}` : null,
+                            brand: postData.brand,
+                            description: postData.content,
                             images: postData.media?.map(m => m.mediaUrl) || [],
-                            condition: postData.condition || 'Not specified',
-                            category: postData.category || 'General'
+                            metadata: postData.feedMetadata
                         },
-                        description: postData.content,
-                        likes: postData.likes?.length || 0,
-                        comments: postData.comments?.length || 0,
-                        shares: 0, // TODO: Implement shares
+                        likes: postData.likesCount || 0,
+                        comments: postData.commentsCount || 0,
+                        shares: postData.sharesCount || 0,
                         timeAgo: getTimeAgo(postData.createdAt),
                         isLiked: false, // Will be set below
                         isSaved: false, // Will be set below
                         showComments: false,
-                        commentList: postData.comments?.map(comment => ({
-                            id: comment.id,
-                            user: {
-                                name: comment.user.fullName,
-                                avatar: comment.user.profilePicture || '👤',
-                                verified: comment.user.accountStatus === 'verified'
-                            },
-                            text: comment.content,
-                            timeAgo: getTimeAgo(comment.createdAt),
-                            likes: 0 // TODO: Add comment likes
-                        })) || []
+                        commentList: []
+                    };
+                } else if (postData.contentType === 'auction') {
+                    // Auction post format
+                    formattedPost = {
+                        id: postData.id,
+                        type: 'auction',
+                        contentType: postData.contentType,
+                        user: {
+                            name: postData.user.fullName,
+                            avatar: postData.user.profilePicture || '👤',
+                            verified: postData.user.accountStatus === 'verified',
+                            location: postData.user.location
+                        },
+                        auction: {
+                            title: postData.productName || 'Auction',
+                            startingPrice: postData.price ? `₦${parseInt(postData.price).toLocaleString()}` : 'Price not specified',
+                            description: postData.content,
+                            images: postData.media?.map(m => m.mediaUrl) || [],
+                            metadata: postData.feedMetadata
+                        },
+                        likes: postData.likesCount || 0,
+                        comments: postData.commentsCount || 0,
+                        shares: postData.sharesCount || 0,
+                        timeAgo: getTimeAgo(postData.createdAt),
+                        isLiked: false,
+                        isSaved: false,
+                        showComments: false,
+                        commentList: []
+                    };
+                } else if (postData.contentType === 'group_buy') {
+                    // Group buy post format
+                    formattedPost = {
+                        id: postData.id,
+                        type: 'group_buy',
+                        contentType: postData.contentType,
+                        user: {
+                            name: postData.user.fullName,
+                            avatar: postData.user.profilePicture || '👤',
+                            verified: postData.user.accountStatus === 'verified',
+                            location: postData.user.location
+                        },
+                        groupBuy: {
+                            title: postData.productName || 'Group Buy',
+                            price: postData.price ? `₦${parseInt(postData.price).toLocaleString()}` : 'Price not specified',
+                            description: postData.content,
+                            images: postData.media?.map(m => m.mediaUrl) || [],
+                            metadata: postData.feedMetadata
+                        },
+                        likes: postData.likesCount || 0,
+                        comments: postData.commentsCount || 0,
+                        shares: postData.sharesCount || 0,
+                        timeAgo: getTimeAgo(postData.createdAt),
+                        isLiked: false,
+                        isSaved: false,
+                        showComments: false,
+                        commentList: []
+                    };
+                } else {
+                    // General post format (default)
+                    formattedPost = {
+                        id: postData.id,
+                        type: 'general',
+                        contentType: postData.contentType || 'post',
+                        user: {
+                            name: postData.user.fullName,
+                            avatar: postData.user.profilePicture || '👤',
+                            verified: postData.user.accountStatus === 'verified',
+                            location: postData.user.location
+                        },
+                        content: postData.content,
+                        images: postData.media?.map(m => m.mediaUrl) || [],
+                        likes: postData.likesCount || 0,
+                        comments: postData.commentsCount || 0,
+                        shares: postData.sharesCount || 0,
+                        timeAgo: getTimeAgo(postData.createdAt),
+                        isLiked: false,
+                        isSaved: false,
+                        showComments: false,
+                        commentList: []
                     };
                 }
 
@@ -285,7 +316,8 @@ const getFeed = async (req, res) => {
 
         // Build where clause
         let whereClause = {
-            status: 'active'
+            status: 'active',
+            feedVisible: true  // Only show posts that should appear in feed
         };
 
         // Region filtering
@@ -297,6 +329,11 @@ const getFeed = async (req, res) => {
         }
         if (postType) {
             whereClause.postType = postType;
+        }
+        
+        // Content type filtering (for unified feed)
+        if (req.query.contentType) {
+            whereClause.contentType = req.query.contentType;
         }
 
         // Search functionality
@@ -327,7 +364,8 @@ const getFeed = async (req, res) => {
                 }
             ],
             order: [
-                [Sequelize.fn('RAND')], // Random ordering
+                ['feedPriority', 'DESC'], // Priority first (boosted items)
+                [Sequelize.fn('RAND')], // Random ordering for same priority
                 ['createdAt', 'DESC']
             ],
             limit: parseInt(limit),
@@ -427,7 +465,7 @@ const createPost = async (req, res) => {
         const autoFilledData = {
             userId,
             postType: 'general', // Always 'general' for social media style posts
-            postSubType: 'seller', // Default to 'seller' (only 'buyer' or 'seller' allowed)
+            contentType: 'post', // This is a regular post, not auto-generated
             content: content.trim(),
             
             // Auto-generate productName from first few words of content
@@ -436,16 +474,10 @@ const createPost = async (req, res) => {
             // Set defaults for product-related fields
             brand: null,
             price: null,
-            minBudget: null,
-            maxBudget: null,
             currency: 'NGN',
             
             // Use user's location or default
             location: user.location || 'Lagos, Nigeria',
-            
-            // Set to general category
-            category: 'general',
-            condition: 'not applicable',
             
             // Auto-generate tags from content (simple keyword extraction)
             tags: generateTagsFromContent(content),
@@ -459,6 +491,11 @@ const createPost = async (req, res) => {
             commentsCount: 0,
             sharesCount: 0,
             savedCount: 0,
+            
+            // Unified feed system fields
+            autoGenerated: false,
+            feedVisible: true,
+            feedPriority: 0,
             
             // Status
             status: 'active'

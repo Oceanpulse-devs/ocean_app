@@ -90,28 +90,33 @@ module.exports = (sequelize, DataTypes) => {
     allowNull: true,
     comment: 'When the swap offer expires'
   },
-  is_boosted: {
+  isBoosted: {
     type: DataTypes.BOOLEAN,
     defaultValue: false,
+    field: 'is_boosted',
     comment: 'Whether swap deal is currently boosted'
   },
-  boost_expires_at: {
+  boostExpiresAt: {
     type: DataTypes.DATE,
     allowNull: true,
+    field: 'boost_expires_at',
     comment: 'When boost expires'
   },
-  boost_id: {
+  boostId: {
     type: DataTypes.INTEGER,
     allowNull: true,
+    field: 'boost_id',
     comment: 'Reference to promotional boost'
   },
-  created_at: {
+  createdAt: {
     type: DataTypes.DATE,
-    defaultValue: DataTypes.NOW
+    defaultValue: DataTypes.NOW,
+    field: 'created_at'
   },
-  updated_at: {
+  updatedAt: {
     type: DataTypes.DATE,
-    defaultValue: DataTypes.NOW
+    defaultValue: DataTypes.NOW,
+    field: 'updated_at'
   }
 }, {
   tableName: 'swap_deals',
@@ -142,6 +147,33 @@ module.exports = (sequelize, DataTypes) => {
     }
   ]
   });
+
+  // Define associations
+  SwapDeal.associate = function(models) {
+    // SwapDeal belongs to User (initiator)
+    SwapDeal.belongsTo(models.UserTable, {
+      foreignKey: 'initiator_id',
+      as: 'initiator'
+    });
+
+    // SwapDeal belongs to User (responder)
+    SwapDeal.belongsTo(models.UserTable, {
+      foreignKey: 'responder_id',
+      as: 'responder'
+    });
+
+    // SwapDeal belongs to Product (initiator item)
+    SwapDeal.belongsTo(models.Product, {
+      foreignKey: 'initiator_item_id',
+      as: 'initiatorItem'
+    });
+
+    // SwapDeal belongs to Product (responder item)
+    SwapDeal.belongsTo(models.Product, {
+      foreignKey: 'responder_item_id',
+      as: 'responderItem'
+    });
+  };
   
   return SwapDeal;
 };

@@ -453,7 +453,7 @@ class SubscriptionAwareSearchService {
       if (status) whereClause.status = status;
       if (initiatorId) whereClause.initiator_id = initiatorId;
       if (responderId) whereClause.responder_id = responderId;
-      if (featured !== undefined) whereClause.is_featured = featured;
+      if (featured !== undefined && featured !== null) whereClause.is_featured = featured;
 
       const offset = (page - 1) * limit;
 
@@ -512,8 +512,8 @@ class SubscriptionAwareSearchService {
       const enhancedSwapDeals = swapDeals.map(swapDeal => ({
         ...swapDeal.toJSON(),
         subscription: {
-          isBoosted: swapDeal.is_boosted,
-          boostExpiresAt: swapDeal.boost_expires_at,
+          isBoosted: swapDeal.isBoosted,
+          boostExpiresAt: swapDeal.boostExpiresAt,
           isFeatured: swapDeal.is_featured,
           viewsCount: swapDeal.views_count,
           priorityScore: this.calculateSwapDealPriorityScore(swapDeal, userId)
@@ -553,7 +553,7 @@ class SubscriptionAwareSearchService {
     let score = 0;
     
     // Boosted items get highest priority
-    if (swapDeal.is_boosted) score += 100;
+    if (swapDeal.isBoosted) score += 100;
     
     // Featured items get priority
     if (swapDeal.is_featured) score += 50;
@@ -562,7 +562,7 @@ class SubscriptionAwareSearchService {
     score += Math.min(swapDeal.views_count || 0, 50);
     
     // Recent items get slight priority
-    const daysSinceCreated = Math.max(1, Math.ceil((new Date() - swapDeal.created_at) / (1000 * 60 * 60 * 24)));
+    const daysSinceCreated = Math.max(1, Math.ceil((new Date() - swapDeal.createdAt) / (1000 * 60 * 60 * 24)));
     const recencyScore = Math.max(0, 7 - daysSinceCreated);
     score += recencyScore * 5;
     
