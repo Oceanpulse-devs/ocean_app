@@ -12,6 +12,8 @@ class SellerVerificationController {
         country,
         state,
         category,
+        sellerType,
+        phoneNumber,
         documents
       } = req.body;
 
@@ -73,6 +75,39 @@ class SellerVerificationController {
         return res.status(400).json({
           success: false,
           message: 'Business category is required'
+        });
+      }
+
+      if (!sellerType) {
+        return res.status(400).json({
+          success: false,
+          message: 'Seller type is required'
+        });
+      }
+
+      // Validate seller type
+      const validSellerTypes = ['retailer', 'wholesaler', 'distributor', 'manufacturer'];
+      if (!validSellerTypes.includes(sellerType)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid seller type. Must be one of: ' + validSellerTypes.join(', ')
+        });
+      }
+
+      // Validate phone number
+      if (!phoneNumber) {
+        return res.status(400).json({
+          success: false,
+          message: 'Phone number is required'
+        });
+      }
+
+      // Basic phone number format validation (international format)
+      const phoneRegex = /^[\+]?[1-9][\d]{0,15}$/;
+      if (!phoneRegex.test(phoneNumber.replace(/[\s\-\(\)]/g, ''))) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid phone number format. Please provide a valid international phone number.'
         });
       }
 
@@ -208,6 +243,8 @@ class SellerVerificationController {
           country,
           state,
           category: categoryRecord.id, // Use UUID instead of string
+          sellerType,
+          phoneNumber: phoneNumber,
           verificationStatus: 'pending',
           documentsSubmitted: parsedDocuments.length,
           documentsApproved: 0,
@@ -223,8 +260,9 @@ class SellerVerificationController {
           country,
           state,
           category: categoryRecord.id, // Use UUID instead of string
+          sellerType,
           email: req.user.email,
-          phoneNumber: req.user.phone || '',
+          phoneNumber: phoneNumber,
           verificationStatus: 'pending',
           documentsSubmitted: parsedDocuments.length,
           documentsApproved: 0,

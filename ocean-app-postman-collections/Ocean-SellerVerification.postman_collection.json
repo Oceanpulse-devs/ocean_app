@@ -70,6 +70,18 @@
 									"type": "text"
 								},
 								{
+									"key": "sellerType",
+									"value": "wholesaler",
+									"type": "text",
+									"description": "Seller type: retailer, wholesaler, distributor, manufacturer"
+								},
+								{
+									"key": "phoneNumber",
+									"value": "+2348123456789",
+									"type": "text",
+									"description": "Business phone number (international format)"
+								},
+								{
 									"key": "state",
 									"value": "Lagos",
 									"type": "text"
@@ -134,6 +146,18 @@
 									"key": "category",
 									"value": "Tech",
 									"type": "text"
+								},
+								{
+									"key": "sellerType",
+									"value": "manufacturer",
+									"type": "text",
+									"description": "Seller type: retailer, wholesaler, distributor, manufacturer"
+								},
+								{
+									"key": "phoneNumber",
+									"value": "+1234567890",
+									"type": "text",
+									"description": "Business phone number (international format)"
 								},
 								{
 									"key": "state",

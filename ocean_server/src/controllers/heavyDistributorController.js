@@ -204,6 +204,14 @@ class HeavyDistributorController {
         whereClause.isVerified = isVerified === 'true';
       }
 
+      // Filter by seller type from verification (only show manufacturers, wholesalers, distributors)
+      const sellerTypeFilter = {
+        sellerType: {
+          [Op.in]: ['manufacturer', 'wholesaler', 'distributor']
+        },
+        verificationStatus: 'approved'
+      };
+
       if (minRating) {
         whereClause.rating = {
           [Op.gte]: parseFloat(minRating)
@@ -250,7 +258,9 @@ class HeavyDistributorController {
           {
             model: db.SellersTable,
             as: 'supplier',
-            attributes: ['id', 'businessName', 'verificationStatus', 'businessAddress']
+            where: sellerTypeFilter, // Filter by seller type from verification
+            attributes: ['id', 'businessName', 'verificationStatus', 'businessAddress', 'sellerType'],
+            required: true // Inner join to only include distributors with approved seller profiles
           }
         ],
         order: [[sortBy, sortOrder]],
@@ -664,6 +674,14 @@ class HeavyDistributorController {
         whereClause.businessType = businessType;
       }
 
+      // Filter by seller type from verification (only show manufacturers, wholesalers, distributors)
+      const sellerTypeFilter = {
+        sellerType: {
+          [Op.in]: ['manufacturer', 'wholesaler', 'distributor']
+        },
+        verificationStatus: 'approved'
+      };
+
       // Location-based search (only if location is provided)
       if (location) {
         whereClause.coverageAreas = {
@@ -697,7 +715,9 @@ class HeavyDistributorController {
           {
             model: db.SellersTable,
             as: 'supplier',
-            attributes: ['id', 'businessName', 'verificationStatus', 'businessAddress']
+            where: sellerTypeFilter, // Filter by seller type from verification
+            attributes: ['id', 'businessName', 'verificationStatus', 'businessAddress', 'sellerType'],
+            required: true // Inner join to only include distributors with approved seller profiles
           }
         ],
         order: [

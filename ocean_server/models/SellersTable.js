@@ -46,6 +46,13 @@ module.exports = (sequelize) => {
       allowNull: true,
       comment: 'Category UUID from ProductCategory table (Universal Category System)'
     },
+    sellerType: {
+      type: DataTypes.ENUM('retailer', 'wholesaler', 'distributor', 'manufacturer'),
+      allowNull: false,
+      defaultValue: 'retailer',
+      field: 'seller_type',
+      comment: 'Type of seller business operation'
+    },
     isVerified: {
       type: DataTypes.BOOLEAN,
       defaultValue: false,
