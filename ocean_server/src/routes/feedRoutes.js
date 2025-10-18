@@ -35,10 +35,7 @@ const upload = multer({
   }
 });
 
-// Route for text-only posts (no images)
-router.post('/api/posts/text', authMiddleware, feedController.createPost);
-
-// Main route - handles both JSON (no files) and form-data (with files)
+// Single flexible route for post creation - handles both JSON and form-data
 router.post('/api/posts', authMiddleware, upload.array('media', 10), feedController.createPost);
 
 router.put('/api/posts/:postId', authMiddleware, (req, res, next) => {

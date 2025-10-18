@@ -27,7 +27,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"conversationId\": \"{{conversation_id}}\",\n  \"content\": \"Hey! I'm interested in your swap deal. Can we discuss the details?\",\n  \"type\": \"text\",\n  \"replyToId\": null,\n  \"mediaUrl\": null,\n  \"mediaType\": null\n}"
+							"raw": "{\n  \"conversationId\": \"{{conversation_id}}\",\n  \"content\": \"Hey! I'm interested in your swap deal. Can we discuss the details?\",\n  \"type\": \"text\",\n  \"replyToId\": null,\n  \"mediaUrl\": null,\n  \"mediaType\": null,\n  \"referenceType\": \"buyer_need\",\n  \"referenceId\": \"{{buyer_need_id}}\",\n  \"referenceTitle\": \"Looking for Vintage Guitar\",\n  \"referenceCategory\": \"Electronics\",\n  \"buyerNeedId\": \"{{buyer_need_id}}\"\n}"
 						},
 						"url": {
 							"raw": "{{base_url}}/api/messages",
@@ -212,6 +212,182 @@
 					"response": []
 				}
 			]
+		},
+		{
+			"name": "Reference Context Messages",
+			"item": [
+				{
+					"name": "Send Message with Buyer Need Reference",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"conversationId\": \"{{conversation_id}}\",\n  \"content\": \"I'm interested in your buyer need for a vintage guitar. I have exactly what you're looking for!\",\n  \"type\": \"text\",\n  \"referenceType\": \"buyer_need\",\n  \"referenceId\": \"{{buyer_need_id}}\",\n  \"referenceTitle\": \"Looking for Vintage Guitar\",\n  \"referenceCategory\": \"Electronics\",\n  \"buyerNeedId\": \"{{buyer_need_id}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/messages",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"messages"
+							]
+						},
+						"description": "Send a message with buyer need reference - this will increment the reach count"
+					},
+					"response": []
+				},
+				{
+					"name": "Send Message with Product Reference",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"conversationId\": \"{{conversation_id}}\",\n  \"content\": \"Is this product still available? I'm very interested!\",\n  \"type\": \"text\",\n  \"referenceType\": \"product\",\n  \"referenceId\": \"{{product_id}}\",\n  \"referenceTitle\": \"iPhone 13 Pro Max\",\n  \"referenceCategory\": \"Electronics\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/messages",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"messages"
+							]
+						},
+						"description": "Send a message with product reference - no reach increment"
+					},
+					"response": []
+				},
+				{
+					"name": "Send Message with Swap Deal Reference",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"conversationId\": \"{{conversation_id}}\",\n  \"content\": \"I'd like to discuss your swap deal. Can we negotiate the terms?\",\n  \"type\": \"text\",\n  \"referenceType\": \"swap_deal\",\n  \"referenceId\": \"{{swap_deal_id}}\",\n  \"referenceTitle\": \"Guitar for Camera Swap\",\n  \"referenceCategory\": \"Electronics\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/messages",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"messages"
+							]
+						},
+						"description": "Send a message with swap deal reference - no reach increment"
+					},
+					"response": []
+				},
+				{
+					"name": "Send Message with Auction Reference",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"conversationId\": \"{{conversation_id}}\",\n  \"content\": \"I'm bidding on your auction. Can you tell me more about the item condition?\",\n  \"type\": \"text\",\n  \"referenceType\": \"auction\",\n  \"referenceId\": \"{{auction_id}}\",\n  \"referenceTitle\": \"Vintage Guitar Auction\",\n  \"referenceCategory\": \"Electronics\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/messages",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"messages"
+							]
+						},
+						"description": "Send a message with auction reference - no reach increment"
+					},
+					"response": []
+				},
+				{
+					"name": "Send Message with Distress Sale Reference",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"conversationId\": \"{{conversation_id}}\",\n  \"content\": \"I'm interested in your distress sale. Is the price negotiable?\",\n  \"type\": \"text\",\n  \"referenceType\": \"distress_sale\",\n  \"referenceId\": \"{{distress_sale_id}}\",\n  \"referenceTitle\": \"Urgent Sale - Vintage Guitar\",\n  \"referenceCategory\": \"Electronics\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/messages",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"messages"
+							]
+						},
+						"description": "Send a message with distress sale reference - no reach increment"
+					},
+					"response": []
+				}
+			],
+			"description": "Test messages with different reference contexts - only buyer_need messages increment reach"
 		},
 		{
 			"name": "Conversation Management",
@@ -726,6 +902,36 @@
 			"value": "another_user_uuid_here",
 			"type": "string",
 			"description": "Additional user ID for group conversation creation"
+		},
+		{
+			"key": "buyer_need_id",
+			"value": "buyer_need_uuid_here",
+			"type": "string",
+			"description": "Buyer need ID for reference context messages"
+		},
+		{
+			"key": "product_id",
+			"value": "product_uuid_here",
+			"type": "string",
+			"description": "Product ID for reference context messages"
+		},
+		{
+			"key": "swap_deal_id",
+			"value": "swap_deal_uuid_here",
+			"type": "string",
+			"description": "Swap deal ID for reference context messages"
+		},
+		{
+			"key": "auction_id",
+			"value": "auction_uuid_here",
+			"type": "string",
+			"description": "Auction ID for reference context messages"
+		},
+		{
+			"key": "distress_sale_id",
+			"value": "distress_sale_uuid_here",
+			"type": "string",
+			"description": "Distress sale ID for reference context messages"
 		}
 	]
 }

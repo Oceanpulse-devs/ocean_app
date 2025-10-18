@@ -27,7 +27,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"title\": \"Looking for Vintage Guitar\",\n  \"description\": \"I'm looking for a vintage Fender Stratocaster from the 1960s in good condition\",\n  \"category_id\": \"{{tech_category_id}}\",\n  \"budget\": {\n    \"min\": 1000,\n    \"max\": 3000,\n    \"currency\": \"USD\"\n  },\n  \"location\": {\n    \"city\": \"Los Angeles\",\n    \"state\": \"CA\",\n    \"country\": \"USA\",\n    \"radius\": 50\n  },\n  \"urgency\": \"medium\",\n  \"preferredCondition\": \"good\",\n  \"images\": [\"https://example.com/reference-guitar.jpg\"],\n  \"tags\": [\"vintage\", \"guitar\", \"fender\", \"stratocaster\"],\n  \"expiryDate\": \"2024-03-15T23:59:59Z\"\n}"
+							"raw": "{\n  \"title\": \"Looking for Vintage Guitar\",\n  \"description\": \"I'm looking for a vintage Fender Stratocaster from the 1960s in good condition\",\n  \"category_id\": \"{{tech_category_id}}\",\n  \"budget\": {\n    \"min\": 1000,\n    \"max\": 3000,\n    \"currency\": \"USD\"\n  },\n  \"location\": {\n    \"city\": \"Los Angeles\",\n    \"state\": \"CA\",\n    \"country\": \"USA\",\n    \"radius\": 50\n  },\n  \"urgency\": \"medium\",\n  \"preferredCondition\": \"good\",\n  \"images\": [\"https://example.com/reference-guitar.jpg\"],\n  \"tags\": [\"vintage\", \"guitar\", \"fender\", \"stratocaster\"],\n  \"expiryDate\": \"2024-03-15T23:59:59Z\",\n  \"reach_limit\": 5,\n  \"contact_preference\": \"message\"\n}"
 						},
 						"url": {
 							"raw": "{{base_url}}/api/buyer-needs/create",
@@ -675,6 +675,75 @@
 				}
 			],
 			"description": "Response actions and management"
+		},
+		{
+			"name": "Reach Management",
+			"item": [
+				{
+					"name": "Increment Reach",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/buyer-needs/{{buyerNeedId}}/increment-reach",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"buyer-needs",
+								"{{buyerNeedId}}",
+								"increment-reach"
+							]
+						},
+						"description": "Increment the reach count for a buyer need (called when someone contacts the buyer)"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Reach Status",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/buyer-needs/{{buyerNeedId}}/reach-status",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"buyer-needs",
+								"{{buyerNeedId}}",
+								"reach-status"
+							]
+						},
+						"description": "Get the current reach status for a buyer need"
+					},
+					"response": []
+				}
+			],
+			"description": "Reach management for buyer needs - controls how many people can contact the buyer"
 		}
 	],
 	"variable": [

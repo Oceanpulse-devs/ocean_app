@@ -193,7 +193,11 @@ class BuyerNeedController {
 
       res.json({
         success: true,
-        data: rows,
+        data: rows.map(buyerNeed => ({
+          ...buyerNeed.toJSON(),
+          canContact: !buyerNeed.reach_exceeded && buyerNeed.current_reach < buyerNeed.reach_limit,
+          reachStatus: `${buyerNeed.current_reach}/${buyerNeed.reach_limit}`
+        })),
         pagination: {
           current_page: parseInt(page),
           total_pages: Math.ceil(count / limit),
@@ -586,6 +590,86 @@ class BuyerNeedController {
 
     } catch (error) {
       console.error('Error fetching buyer need stats:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error',
+        error: error.message
+      });
+    }
+  }
+
+  // Increment reach for a buyer need
+  async incrementReach(req, res) {
+    try {
+      const { id } = req.params;
+      
+      const buyerNeed = await db.BuyerNeed.findByPk(id);
+      if (!buyerNeed) {
+        return res.status(404).json({ 
+          success: false, 
+          message: 'Buyer need not found' 
+        });
+      }
+
+      if (buyerNeed.current_reach < buyerNeed.reach_limit) {
+        await buyerNeed.increment('current_reach');
+        
+        // Check if reach limit is now exceeded
+        if (buyerNeed.current_reach >= buyerNeed.reach_limit) {
+          await buyerNeed.update({ reach_exceeded: true });
+        }
+        
+        res.json({ 
+          success: true, 
+          currentReach: buyerNeed.current_reach,
+          reachLimit: buyerNeed.reach_limit,
+          reachExceeded: buyerNeed.reach_exceeded,
+          canContact: !buyerNeed.reach_exceeded && buyerNeed.current_reach < buyerNeed.reach_limit
+        });
+      } else {
+        res.status(400).json({ 
+          success: false, 
+          message: 'Reach limit already exceeded' 
+        });
+      }
+    } catch (error) {
+      console.error('Error incrementing reach:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error',
+        error: error.message
+      });
+    }
+  }
+
+  // Get reach status for a buyer need
+  async getReachStatus(req, res) {
+    try {
+      const { id } = req.params;
+      
+      const buyerNeed = await db.BuyerNeed.findByPk(id, {
+        attributes: ['id', 'current_reach', 'reach_limit', 'reach_exceeded']
+      });
+      
+      if (!buyerNeed) {
+        return res.status(404).json({ 
+          success: false, 
+          message: 'Buyer need not found' 
+        });
+      }
+
+      res.json({
+        success: true,
+        data: {
+          currentReach: buyerNeed.current_reach,
+          reachLimit: buyerNeed.reach_limit,
+          reachExceeded: buyerNeed.reach_exceeded,
+          canContact: !buyerNeed.reach_exceeded && buyerNeed.current_reach < buyerNeed.reach_limit,
+          reachStatus: `${buyerNeed.current_reach}/${buyerNeed.reach_limit}`
+        }
+      });
+    } catch (error) {
+      console.error('Error getting reach status:', error);
       res.status(500).json({
         success: false,
         message: 'Internal server error',

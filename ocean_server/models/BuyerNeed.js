@@ -91,6 +91,24 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: true,
       comment: 'Any additional requirements or preferences'
     },
+    reach_limit: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 5,
+      comment: 'Maximum number of people who can contact the buyer'
+    },
+    current_reach: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+      comment: 'Current number of people who have contacted the buyer'
+    },
+    reach_exceeded: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+      comment: 'Whether the reach limit has been exceeded'
+    },
     created_at: {
       type: DataTypes.DATE,
       defaultValue: DataTypes.NOW
@@ -125,6 +143,12 @@ module.exports = (sequelize, DataTypes) => {
       },
       {
         fields: ['created_at']
+      },
+      {
+        fields: ['reach_exceeded', 'current_reach']
+      },
+      {
+        fields: ['status', 'reach_exceeded']
       }
     ]
   });

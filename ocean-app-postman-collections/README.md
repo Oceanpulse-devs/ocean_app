@@ -82,6 +82,54 @@ The Ocean Postman collections have been updated to include the complete subscrip
 - **Owner Analytics** - Only story owners can see viewer analytics
 - **File Upload** - Direct image/video upload via Cloudinary
 
+### **4. Ocean-BuyerNeeds.postman_collection.json** ⭐ **UPDATED WITH REACH FEATURE**
+**Complete buyer needs management with new reach control system:**
+
+#### **📋 Buyer Needs CRUD**
+- `POST /api/buyer-needs/create` - Create buyer need with reach limit
+- `GET /api/buyer-needs/all` - Get all buyer needs with reach status
+- `GET /api/buyer-needs/:id` - Get specific buyer need details
+- `PUT /api/buyer-needs/:id` - Update buyer need
+- `DELETE /api/buyer-needs/:id` - Delete buyer need
+
+#### **🎯 Reach Management** ⭐ **NEW**
+- `POST /api/buyer-needs/:id/increment-reach` - Increment reach count
+- `GET /api/buyer-needs/:id/reach-status` - Get reach status and contact availability
+
+#### **💬 Buyer Need Responses**
+- `POST /api/buyer-needs/:id/responses` - Create response to buyer need
+- `GET /api/buyer-needs/:id/responses` - Get all responses
+- `PUT /api/buyer-needs/responses/:id/accept` - Accept response
+- `PUT /api/buyer-needs/responses/:id/reject` - Reject response
+
+#### **🔒 Reach Control Features** ⭐ **NEW**
+- **Contact Limit** - Set how many people can contact you
+- **Auto-Increment** - Reach count increases when contacted via buyer needs page
+- **Contact Button Control** - Button disappears when limit reached
+- **Reach Status Tracking** - Real-time reach status monitoring
+
+### **5. Ocean-Messaging.postman_collection.json** ⭐ **UPDATED WITH REFERENCE CONTEXT**
+**Complete messaging system with reference context tracking:**
+
+#### **💬 Message Management**
+- `POST /api/messages` - Send message with reference context
+- `GET /api/messages/:conversationId` - Get conversation messages
+- `PUT /api/messages/:id` - Edit message
+- `DELETE /api/messages/:id` - Delete message
+
+#### **🔗 Reference Context Messages** ⭐ **NEW**
+- **Buyer Need Messages** - Messages with buyer need reference (increment reach)
+- **Product Messages** - Messages with product reference (no reach increment)
+- **Swap Deal Messages** - Messages with swap deal reference
+- **Auction Messages** - Messages with auction reference
+- **Distress Sale Messages** - Messages with distress sale reference
+
+#### **📊 Cross-Server Communication** ⭐ **NEW**
+- **Reach Increment** - Automatic reach increment for buyer need messages
+- **Reference Tracking** - Messages store reference information
+- **Context Preservation** - Rich context in notifications
+- **Error Resilience** - Message sending succeeds even if reach increment fails
+
 ---
 
 ## 🔄 **UPDATED EXISTING COLLECTIONS**
@@ -274,6 +322,42 @@ GET /api/stories/my
 GET /api/stories/story-id/viewers
 ```
 
+### **5. Reach Feature** ⭐ **NEW**
+```bash
+# 1. Create a post (automatically creates buyer need)
+POST /api/posts
+{
+  "content": "Looking for a vintage guitar",
+  "reach_limit": 3,
+  "category_id": "550e8400-e29b-41d4-a716-446655440000"
+}
+
+# 2. Check buyer need reach status
+GET /api/buyer-needs/buyer-need-id/reach-status
+
+# 3. Send buyer need message (increments reach)
+POST /api/messages
+{
+  "conversationId": "conversation-id",
+  "content": "I'm interested in your buyer need!",
+  "referenceType": "buyer_need",
+  "referenceId": "buyer-need-id",
+  "buyerNeedId": "buyer-need-id"
+}
+
+# 4. Check reach increment
+GET /api/buyer-needs/buyer-need-id/reach-status
+
+# 5. Send product message (no reach increment)
+POST /api/messages
+{
+  "conversationId": "conversation-id",
+  "content": "Is this product available?",
+  "referenceType": "product",
+  "referenceId": "product-id"
+}
+```
+
 ---
 
 ## 📈 **ANALYTICS ENDPOINTS**
@@ -301,6 +385,10 @@ The Ocean Postman collections are now fully updated with:
 - ✅ **Analytics & Reporting** - Comprehensive analytics endpoints
 - ✅ **Payment Integration** - Payment webhook handling
 - ✅ **Admin Features** - Admin analytics and management
+- ✅ **Stories Feature** - Complete stories system with follower privacy
+- ✅ **Reach Feature** ⭐ **NEW** - Automatic buyer need creation with contact limits
+- ✅ **Reference Context Messaging** ⭐ **NEW** - Rich message context tracking
+- ✅ **Cross-Server Communication** ⭐ **NEW** - Seamless integration between servers
 
 **The Ocean Subscription System is ready for comprehensive testing!** 🎉
 

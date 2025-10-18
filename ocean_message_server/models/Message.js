@@ -115,6 +115,26 @@ module.exports = (sequelize) => {
     userAgent: {
       type: DataTypes.TEXT,
       allowNull: true
+    },
+    referenceType: {
+      type: DataTypes.ENUM('buyer_need', 'product', 'swap_deal', 'distress_sale', 'auction'),
+      allowNull: true,
+      field: 'reference_type'
+    },
+    referenceId: {
+      type: DataTypes.UUID,
+      allowNull: true,
+      field: 'reference_id'
+    },
+    referenceTitle: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+      field: 'reference_title'
+    },
+    referenceCategory: {
+      type: DataTypes.STRING(100),
+      allowNull: true,
+      field: 'reference_category'
     }
   }, {
     tableName: 'messages',
@@ -137,6 +157,15 @@ module.exports = (sequelize) => {
       },
       {
         fields: ['replyToId']
+      },
+      {
+        fields: ['referenceType']
+      },
+      {
+        fields: ['referenceId']
+      },
+      {
+        fields: ['referenceType', 'referenceId']
       }
     ]
   });

@@ -178,42 +178,7 @@
 					"response": []
 				},
 				{
-					"name": "Create Post (Text Only)",
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{auth_token}}",
-								"type": "text"
-							},
-							{
-								"key": "Content-Type",
-								"value": "application/json",
-								"type": "text"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"content\": \"Just sharing my thoughts! This is a simple social media style post. 🚀\"\n}"
-						},
-						"url": {
-							"raw": "{{base_url}}/api/posts/text",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"api",
-								"posts",
-								"text"
-							]
-						},
-						"description": "Create a new text-only post (no images)"
-					},
-					"response": []
-				},
-				{
-					"name": "Create Post (With Images)",
+					"name": "Create Post (Flexible - Text or Media)",
 					"request": {
 						"method": "POST",
 						"header": [
@@ -228,13 +193,27 @@
 							"formdata": [
 								{
 									"key": "content",
-									"value": "Check out this amazing sunset! 🌅 Simple post with images/videos.",
-									"type": "text"
+									"value": "Looking for a vintage guitar in excellent condition! 🎸",
+									"type": "text",
+									"description": "Post content (required)"
+								},
+								{
+									"key": "reach_limit",
+									"value": "5",
+									"type": "text",
+									"description": "Number of people who can contact you (1-50, default: 5)"
+								},
+								{
+									"key": "category_id",
+									"value": "{{electronics_category_id}}",
+									"type": "text",
+									"description": "Optional category UUID from ProductCategory table"
 								},
 								{
 									"key": "media",
 									"type": "file",
-									"src": []
+									"src": [],
+									"description": "Optional image/video files (max 10 files, 100MB each)"
 								}
 							]
 						},
@@ -248,7 +227,7 @@
 								"posts"
 							]
 						},
-						"description": "Create a new post with images/videos (uploads to Cloudinary)"
+						"description": "Single flexible route for post creation. \n\n**For Text-Only Posts:** Change body mode to 'raw' and use JSON:\n```json\n{\n  \"content\": \"Your post content\",\n  \"reach_limit\": 5,\n  \"category_id\": \"{{electronics_category_id}}\"\n}\n```\n\n**For Posts with Media:** Use form-data (current setup) and add files to the 'media' field.\n\n**Features:**\n- Automatically creates buyer need\n- Validates category_id exists in database\n- Supports 1-50 reach limit (default: 5)\n- Handles up to 10 media files (100MB each)\n- All fields except 'content' are optional"
 					},
 					"response": []
 				},
@@ -529,6 +508,24 @@
 			"key": "auth_token",
 			"value": "",
 			"type": "string"
+		},
+		{
+			"key": "electronics_category_id",
+			"value": "550e8400-e29b-41d4-a716-446655440000",
+			"type": "string",
+			"description": "Sample Electronics category UUID"
+		},
+		{
+			"key": "automotive_category_id",
+			"value": "550e8400-e29b-41d4-a716-446655440001",
+			"type": "string",
+			"description": "Sample Automotive category UUID"
+		},
+		{
+			"key": "general_category_id",
+			"value": "550e8400-e29b-41d4-a716-446655440002",
+			"type": "string",
+			"description": "Sample General category UUID"
 		},
 		{
 			"key": "postId",

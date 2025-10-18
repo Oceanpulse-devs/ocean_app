@@ -112,7 +112,20 @@ const getMessages = async (req, res) => {
 // Send a message
 const sendMessage = async (req, res) => {
   try {
-    const { conversationId, content, type = 'text', replyToId, mediaUrl, mediaType } = req.body;
+    const { 
+      conversationId, 
+      content, 
+      type = 'text', 
+      replyToId, 
+      mediaUrl, 
+      mediaType,
+      // Reference fields for context tracking
+      referenceType,
+      referenceId,
+      referenceTitle,
+      referenceCategory,
+      buyerNeedId // Special field to indicate if message is from buyer needs page
+    } = req.body;
     const userId = req.user.id;
 
     // Validate conversation access
@@ -142,6 +155,11 @@ const sendMessage = async (req, res) => {
       replyToId,
       mediaUrl,
       mediaType,
+      // Reference fields for context tracking
+      referenceType,
+      referenceId,
+      referenceTitle,
+      referenceCategory,
       ipAddress: req.ip,
       userAgent: req.get('User-Agent')
     });
@@ -154,6 +172,48 @@ const sendMessage = async (req, res) => {
       },
       { where: { id: conversationId } }
     );
+
+    // Handle reach increment for buyer need messages
+    if (buyerNeedId && referenceType === 'buyer_need') {
+      try {
+        console.log(`📈 Incrementing reach for buyer need: ${buyerNeedId}`);
+        
+        // Make API call to main server to increment reach
+        const axios = require('axios');
+        const mainServerUrl = process.env.MAIN_SERVER_URL || 'http://localhost:3000';
+        
+        const reachResponse = await axios.post(
+          `${mainServerUrl}/api/buyer-needs/${buyerNeedId}/increment-reach`,
+          {},
+          {
+            headers: {
+              'Authorization': req.headers.authorization, // Forward the auth token
+              'Content-Type': 'application/json'
+            }
+          }
+        );
+        
+        if (reachResponse.data.success) {
+          console.log(`✅ Reach incremented successfully: ${reachResponse.data.currentReach}/${reachResponse.data.reachLimit}`);
+          
+          // Update notification metadata to include reach info
+          const reachInfo = {
+            currentReach: reachResponse.data.currentReach,
+            reachLimit: reachResponse.data.reachLimit,
+            reachExceeded: reachResponse.data.reachExceeded,
+            canContact: reachResponse.data.canContact
+          };
+          
+          // Store reach info in message metadata for later use
+          await message.update({
+            metadata: JSON.stringify({ reachInfo })
+          });
+        }
+      } catch (reachError) {
+        console.error('❌ Error incrementing reach:', reachError.message);
+        // Don't fail the message sending if reach increment fails
+      }
+    }
 
     // Send notifications to other participants (not the sender)
     const otherParticipants = await ConversationParticipant.findAll({
@@ -178,20 +238,38 @@ const sendMessage = async (req, res) => {
 
     // Send notification to each participant
     for (const participant of otherParticipants) {
+      const notificationMetadata = { 
+        conversationId: conversationId,
+        messageId: message.id,
+        senderId: userId,
+        senderName: sender.fullName,
+        messagePreview: content ? content.substring(0, 100) : 'Media message',
+        messageType: type
+      };
+
+      // Add reference information if available
+      if (referenceType && referenceId) {
+        notificationMetadata.reference = {
+          type: referenceType,
+          id: referenceId,
+          title: referenceTitle,
+          category: referenceCategory
+        };
+      }
+
+      // Add reach information if this is a buyer need message
+      if (buyerNeedId && referenceType === 'buyer_need') {
+        notificationMetadata.buyerNeedId = buyerNeedId;
+        notificationMetadata.isBuyerNeedMessage = true;
+      }
+
       await createNotification(
         participant.userId,
         'New Message Received',
         `${sender.fullName}: ${content ? content.substring(0, 50) + (content.length > 50 ? '...' : '') : 'Sent a media message'}`,
         'info',
         'message',
-        { 
-          conversationId: conversationId,
-          messageId: message.id,
-          senderId: userId,
-          senderName: sender.fullName,
-          messagePreview: content ? content.substring(0, 100) : 'Media message',
-          messageType: type
-        }
+        notificationMetadata
       );
     }
 

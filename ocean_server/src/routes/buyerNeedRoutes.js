@@ -24,6 +24,10 @@ router.get('/user/me', buyerNeedController.getUserBuyerNeeds);
 // Buyer Need statistics
 router.get('/stats/overview', buyerNeedController.getBuyerNeedStats);
 
+// Reach management routes
+router.post('/:id/increment-reach', buyerNeedController.incrementReach);
+router.get('/:id/reach-status', buyerNeedController.getReachStatus);
+
 // Buyer Need Response routes
 router.post('/:buyer_need_id/responses', buyerNeedResponseController.createResponse);
 router.get('/:buyer_need_id/responses', buyerNeedResponseController.getResponsesByBuyerNeed);
