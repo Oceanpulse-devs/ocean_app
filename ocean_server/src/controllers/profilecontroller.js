@@ -105,6 +105,12 @@ const currentUserprofile = async(req,res)=>{
    if(role === "seller" && alsoSeller){
      profileInfo.businessName = alsoSeller.businessName || fullName;
      profileInfo.businessAddress = alsoSeller.businessAddress;
+     profileInfo.businessDescription = alsoSeller.businessDescription;
+     profileInfo.sellerType = alsoSeller.sellerType;
+     profileInfo.selectedCategories = alsoSeller.selectedCategories ? JSON.parse(alsoSeller.selectedCategories) : [];
+     profileInfo.selectedSubcategories = alsoSeller.selectedSubcategories ? JSON.parse(alsoSeller.selectedSubcategories) : {};
+     profileInfo.businessEmail = alsoSeller.businessEmail;
+     profileInfo.businessPhone = alsoSeller.businessPhone;
      profileInfo.category = alsoSeller.category;
      profileInfo.country = alsoSeller.country;
      profileInfo.state = alsoSeller.state;
@@ -173,6 +179,12 @@ const getUserProfileById = async(req, res) => {
     if(role === "seller" && alsoSeller){
       profileInfo.businessName = alsoSeller.businessName || fullName;
       profileInfo.businessAddress = alsoSeller.businessAddress;
+      profileInfo.businessDescription = alsoSeller.businessDescription;
+      profileInfo.sellerType = alsoSeller.sellerType;
+      profileInfo.selectedCategories = alsoSeller.selectedCategories ? JSON.parse(alsoSeller.selectedCategories) : [];
+      profileInfo.selectedSubcategories = alsoSeller.selectedSubcategories ? JSON.parse(alsoSeller.selectedSubcategories) : {};
+      profileInfo.businessEmail = alsoSeller.businessEmail;
+      profileInfo.businessPhone = alsoSeller.businessPhone;
       profileInfo.category = alsoSeller.category;
       profileInfo.country = alsoSeller.country;
       profileInfo.state = alsoSeller.state;

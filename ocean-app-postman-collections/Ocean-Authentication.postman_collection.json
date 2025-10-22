@@ -85,7 +85,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"businessName\": \"John's Electronics Store\",\n  \"businessAddress\": \"123 Business St, New York, NY 10001, USA\",\n  \"category\": \"{{tech_category_id}}\",\n  \"documentType\": \"BusinessLicense\",\n  \"documentNumber\": \"BL123456\",\n  \"documentImage\": \"https://example.com/business-license.jpg\"\n}"
+							"raw": "{\n  \"businessName\": \"John's Electronics Store\",\n  \"businessAddress\": \"123 Business St, New York, NY 10001, USA\",\n  \"businessDescription\": \"We specialize in selling high-quality electronics including smartphones, laptops, and accessories. Our store has been serving customers for over 10 years with excellent customer service.\",\n  \"sellerTypes\": [\"retailer\", \"wholesaler\"],\n  \"selectedCategories\": [\"Electronics\", \"Clothing & Fashion\"],\n  \"selectedSubcategories\": {\n    \"Electronics\": [\"Smartphones\", \"Laptops\", \"Accessories\"],\n    \"Clothing & Fashion\": [\"Men's Clothing\", \"Women's Clothing\"]\n  },\n  \"businessEmail\": \"business@johnelectronics.com\",\n  \"businessPhone\": \"+1234567890\",\n  \"country\": \"United States\",\n  \"documentType\": \"BusinessLicense\",\n  \"documentNumber\": \"BL123456\",\n  \"documentImage\": \"https://example.com/business-license.jpg\",\n  \"personalIdType\": \"IDCard\",\n  \"personalIdNumber\": \"A123456789\",\n  \"personalIdImage\": \"https://example.com/personal-id.jpg\"\n}"
 						},
 						"url": {
 							"raw": "{{base_url}}/api/seller-registration",
@@ -97,7 +97,7 @@
 								"seller-registration"
 							]
 						},
-						"description": "Register as a seller (requires authentication). Updated for Universal Category System - supports both UUID and name-based category lookup."
+						"description": "Register as a seller with complete business information. Includes business description, seller types, categories, subcategories, business contact info, and document uploads."
 					},
 					"response": []
 				}

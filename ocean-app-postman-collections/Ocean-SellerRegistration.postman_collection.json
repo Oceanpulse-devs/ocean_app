@@ -1,0 +1,224 @@
+{
+	"info": {
+		"_postman_id": "ocean-seller-registration-collection",
+		"name": "Ocean - Seller Registration",
+		"description": "Complete collection for Ocean app seller registration with all new fields",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Complete Seller Registration",
+			"item": [
+				{
+					"name": "Full Registration (All Fields)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"businessName\": \"TechWorld Electronics\",\n  \"businessAddress\": \"456 Tech Street, Silicon Valley, CA 94000, USA\",\n  \"businessDescription\": \"Leading electronics retailer specializing in smartphones, laptops, gaming equipment, and smart home devices. We offer competitive prices and excellent customer service with 15+ years of experience.\",\n  \"sellerTypes\": [\"retailer\", \"wholesaler\"],\n  \"selectedCategories\": [\"Electronics\", \"Home & Garden\", \"Sports & Recreation\"],\n  \"selectedSubcategories\": {\n    \"Electronics\": [\"Smartphones\", \"Laptops\", \"Gaming Equipment\", \"Smart Home\"],\n    \"Home & Garden\": [\"Home Appliances\", \"Smart Home\"],\n    \"Sports & Recreation\": [\"Electronics\", \"Gaming\"]\n  },\n  \"businessEmail\": \"sales@techworld.com\",\n  \"businessPhone\": \"+15551234567\",\n  \"country\": \"United States\",\n  \"documentType\": \"BusinessLicense\",\n  \"documentNumber\": \"BL2024001\",\n  \"documentImage\": \"https://example.com/business-license.jpg\",\n  \"personalIdType\": \"IDCard\",\n  \"personalIdNumber\": \"A123456789\",\n  \"personalIdImage\": \"https://example.com/personal-id.jpg\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/seller-registration",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"seller-registration"
+							]
+						},
+						"description": "Complete seller registration with all fields including business description, multiple seller types, categories, subcategories, business contact info, and both business and personal documents."
+					},
+					"response": []
+				},
+				{
+					"name": "Minimal Registration (Required Fields Only)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"businessName\": \"Simple Store\",\n  \"businessAddress\": \"123 Main Street, City, State 12345, Country\",\n  \"businessDescription\": \"A simple store selling various products to local customers.\",\n  \"sellerTypes\": [\"retailer\"],\n  \"selectedCategories\": [\"Electronics\"],\n  \"selectedSubcategories\": {\n    \"Electronics\": [\"Smartphones\"]\n  },\n  \"country\": \"United States\",\n  \"documentType\": \"BusinessLicense\",\n  \"documentImage\": \"https://example.com/business-license.jpg\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/seller-registration",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"seller-registration"
+							]
+						},
+						"description": "Minimal seller registration with only required fields. Optional fields like businessEmail, businessPhone, personalIdType, personalIdNumber, and personalIdImage are omitted."
+					},
+					"response": []
+				},
+				{
+					"name": "Manufacturer Registration",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"businessName\": \"Innovate Manufacturing Co.\",\n  \"businessAddress\": \"789 Industrial Blvd, Manufacturing District, TX 75001, USA\",\n  \"businessDescription\": \"Leading manufacturer of electronic components and consumer electronics. We design, develop, and manufacture high-quality products for both B2B and B2C markets. ISO certified with 20+ years of manufacturing excellence.\",\n  \"sellerTypes\": [\"manufacturer\", \"distributor\"],\n  \"selectedCategories\": [\"Electronics\", \"Industrial & Scientific\"],\n  \"selectedSubcategories\": {\n    \"Electronics\": [\"Electronics Components\", \"Consumer Electronics\"],\n    \"Industrial & Scientific\": [\"Manufacturing Equipment\", \"Electronic Components\"]\n  },\n  \"businessEmail\": \"manufacturing@innovateco.com\",\n  \"businessPhone\": \"+15559876543\",\n  \"country\": \"United States\",\n  \"documentType\": \"BusinessCertificate\",\n  \"documentNumber\": \"BC2024001\",\n  \"documentImage\": \"https://example.com/business-certificate.jpg\",\n  \"personalIdType\": \"Passport\",\n  \"personalIdNumber\": \"P123456789\",\n  \"personalIdImage\": \"https://example.com/passport.jpg\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/seller-registration",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"seller-registration"
+							]
+						},
+						"description": "Manufacturer registration example with manufacturer and distributor seller types, industrial categories, and business certificate document."
+					},
+					"response": []
+				},
+				{
+					"name": "International Seller Registration",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"businessName\": \"Global Fashion Hub\",\n  \"businessAddress\": \"321 Fashion Avenue, Lagos Island, Lagos 100001, Nigeria\",\n  \"businessDescription\": \"International fashion retailer specializing in African-inspired clothing, accessories, and home decor. We source authentic products from local artisans and designers across Africa.\",\n  \"sellerTypes\": [\"retailer\", \"wholesaler\"],\n  \"selectedCategories\": [\"Clothing & Fashion\", \"Art & Collectibles\"],\n  \"selectedSubcategories\": {\n    \"Clothing & Fashion\": [\"Women's Clothing\", \"Men's Clothing\", \"Accessories\"],\n    \"Art & Collectibles\": [\"Artwork\", \"Cultural Items\"]\n  },\n  \"businessEmail\": \"info@globalfashionhub.ng\",\n  \"businessPhone\": \"+2348123456789\",\n  \"country\": \"Nigeria\",\n  \"documentType\": \"TaxCertificate\",\n  \"documentNumber\": \"TC2024001\",\n  \"documentImage\": \"https://example.com/tax-certificate.jpg\",\n  \"personalIdType\": \"NIN\",\n  \"personalIdNumber\": \"12345678901\",\n  \"personalIdImage\": \"https://example.com/nin.jpg\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/seller-registration",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"seller-registration"
+							]
+						},
+						"description": "International seller registration example from Nigeria with NIN document type and tax certificate."
+					},
+					"response": []
+				}
+			],
+			"description": "Complete seller registration examples with different scenarios"
+		},
+		{
+			"name": "Field Examples",
+			"item": [
+				{
+					"name": "Valid Seller Types",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/seller-registration/types",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"seller-registration",
+								"types"
+							]
+						},
+						"description": "Get list of valid seller types (this endpoint doesn't exist yet, but shows the valid values)"
+					},
+					"response": []
+				},
+				{
+					"name": "Valid Document Types",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/seller-registration/document-types",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"seller-registration",
+								"document-types"
+							]
+						},
+						"description": "Get list of valid document types (this endpoint doesn't exist yet, but shows the valid values)"
+					},
+					"response": []
+				}
+			],
+			"description": "Reference endpoints for valid field values"
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "https://mainserver-production-7ad9.up.railway.app",
+			"type": "string"
+		},
+		{
+			"key": "auth_token",
+			"value": "your_jwt_token_here",
+			"type": "string"
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// Set auth token if not already set",
+					"if (!pm.environment.get('auth_token')) {",
+					"    pm.environment.set('auth_token', 'your_jwt_token_here');",
+					"}"
+				]
+			}
+		}
+	]
+}

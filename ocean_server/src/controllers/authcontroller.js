@@ -475,11 +475,27 @@ const validateImageUrl = (imageUrl) => {
 };
 
 const sellerRegistration = async(req,res)=>{
-    const {businessName, businessAddress, category, documentType, documentNumber, documentImage} = req.body;
+    const {
+        businessName, 
+        businessAddress, 
+        businessDescription,
+        sellerTypes, // Array of seller types (retailer, wholesaler, etc.)
+        selectedCategories, // Array of main categories
+        selectedSubcategories, // Object mapping categories to subcategories
+        businessEmail,
+        businessPhone,
+        country,
+        documentType, 
+        documentNumber, 
+        documentImage,
+        personalIdType,
+        personalIdNumber,
+        personalIdImage
+    } = req.body;
 
     try {
         // Input validation
-        if(!businessName || !businessAddress || !category || !documentType || !documentImage){
+        if(!businessName || !businessAddress || !businessDescription || !sellerTypes || !selectedCategories || !country || !documentType || !documentImage){
             return res.status(400).json({message:"All required fields must be provided"})
         }
 
@@ -491,8 +507,34 @@ const sellerRegistration = async(req,res)=>{
             return res.status(400).json({message:"Business address must be at least 10 characters long"})
         }
 
-        if(!(await validateBusinessCategory(category))){
-            return res.status(400).json({message:"Invalid business category. Please select a valid category from the list."})
+        if(businessDescription.trim().length < 10){
+            return res.status(400).json({message:"Business description must be at least 10 characters long"})
+        }
+
+        // Validate seller types
+        const validSellerTypes = ['retailer', 'wholesaler', 'distributor', 'manufacturer'];
+        if(!Array.isArray(sellerTypes) || sellerTypes.length === 0){
+            return res.status(400).json({message:"At least one seller type must be selected"})
+        }
+        for(const type of sellerTypes){
+            if(!validSellerTypes.includes(type)){
+                return res.status(400).json({message:`Invalid seller type: ${type}`})
+            }
+        }
+
+        // Validate selected categories
+        if(!Array.isArray(selectedCategories) || selectedCategories.length === 0 || selectedCategories.length > 3){
+            return res.status(400).json({message:"You must select 1-3 main categories"})
+        }
+
+        // Validate business email if provided
+        if(businessEmail && !businessEmail.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)){
+            return res.status(400).json({message:"Invalid business email format"})
+        }
+
+        // Validate business phone if provided
+        if(businessPhone && businessPhone.trim().length < 10){
+            return res.status(400).json({message:"Business phone number must be at least 10 characters long"})
         }
 
         if(!validateDocumentType(documentType)){
@@ -505,6 +547,15 @@ const sellerRegistration = async(req,res)=>{
 
         if(!validateImageUrl(documentImage)){
             return res.status(400).json({message:"Invalid image format. Please upload a valid image file"})
+        }
+
+        // Validate personal ID if provided
+        if(personalIdType && !validateDocumentType(personalIdType)){
+            return res.status(400).json({message:"Invalid personal ID document type"})
+        }
+
+        if(personalIdImage && !validateImageUrl(personalIdImage)){
+            return res.status(400).json({message:"Invalid personal ID image format"})
         }
 
         const currentUserId = req.user.id;
@@ -529,47 +580,50 @@ const sellerRegistration = async(req,res)=>{
 
         const currentuser = await UserTable.findOne({where: {id: currentUserId}});
 
-        // Get the category record to store UUID and increment usage count
-        const { ProductCategory } = require('../models');
-        let categoryRecord;
-        if (category.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
-            categoryRecord = await ProductCategory.findByPk(category);
-        } else {
-            categoryRecord = await ProductCategory.findOne({ 
-                where: { 
-                    name: category,
-                    isActive: true 
-                } 
-            });
-        }
-
-        // Increment category usage count
-        if (categoryRecord) {
-            await categoryRecord.update({ usageCount: categoryRecord.usageCount + 1 });
-        }
-
-        // Create seller record
+        // Create seller record with all new fields
         const newSeller = await SellersTable.create({
             userId: currentUserId,
             fullName: currentuser.fullName,
             businessName: businessName.trim(),
-            email: currentuser.email,
-            phoneNumber: currentuser.phoneNumber,
+            email: businessEmail || currentuser.email, // Use business email if provided
+            phoneNumber: businessPhone || currentuser.phoneNumber, // Use business phone if provided
             businessAddress: businessAddress.trim(),
-            country: currentuser.country,
+            country: country, // Use provided country
             state: currentuser.state,
-            category: categoryRecord ? categoryRecord.id : category.toLowerCase(), // Store UUID if available
+            businessDescription: businessDescription.trim(),
+            sellerType: sellerTypes[0], // Use first seller type as primary (can be updated later)
+            selectedCategories: JSON.stringify(selectedCategories), // Store as JSON
+            selectedSubcategories: JSON.stringify(selectedSubcategories || {}), // Store as JSON
+            businessEmail: businessEmail,
+            businessPhone: businessPhone,
             verificationStatus: 'pending'
         });
 
-        // Create seller document record
-        await SellerDocument.create({
+        // Create seller document records
+        const documents = [];
+        
+        // Business document
+        documents.push({
             sellerId: newSeller.id,
             documentType,
             documentNumber: documentNumber?.trim(),
             documentImage,
             status: 'pending'
         });
+        
+        // Personal ID document (if provided)
+        if(personalIdType && personalIdImage){
+            documents.push({
+                sellerId: newSeller.id,
+                documentType: personalIdType,
+                documentNumber: personalIdNumber?.trim(),
+                documentImage: personalIdImage,
+                status: 'pending'
+            });
+        }
+        
+        // Create all documents
+        await SellerDocument.bulkCreate(documents);
 
         // Update user account type to pending-seller
         await UserTable.update(
@@ -588,8 +642,14 @@ const sellerRegistration = async(req,res)=>{
             seller: {
                 id: newSeller.id,
                 businessName: newSeller.businessName,
-                category: newSeller.category,
-                verificationStatus: newSeller.verificationStatus
+                businessDescription: newSeller.businessDescription,
+                sellerType: newSeller.sellerType,
+                selectedCategories: JSON.parse(newSeller.selectedCategories),
+                selectedSubcategories: JSON.parse(newSeller.selectedSubcategories),
+                businessEmail: newSeller.businessEmail,
+                businessPhone: newSeller.businessPhone,
+                verificationStatus: newSeller.verificationStatus,
+                documentsSubmitted: documents.length
             }
         });
     } catch (error) {
