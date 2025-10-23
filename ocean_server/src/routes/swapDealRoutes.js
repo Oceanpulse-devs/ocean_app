@@ -7,12 +7,12 @@ const authMiddleware = require('../middleware/authMiddleware');
 // Apply authentication middleware to all routes
 router.use(authMiddleware);
 
-// Configure Multer for file uploads
+// Configure Multer for file uploads (for swap proposals)
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
     fileSize: 100 * 1024 * 1024, // 100MB limit (for videos)
-    files: 20 // Max 20 files (10 for each item)
+    files: 10 // Max 10 files for proposal images
   },
   fileFilter: (req, file, cb) => {
     console.log(`Processing file: ${file.fieldname} - ${file.originalname} (${file.mimetype})`);
@@ -43,15 +43,16 @@ router.post('/create', upload.any(), handleMulterError, swapDealController.creat
 router.get('/all', swapDealController.getAllSwapDeals);
 router.get('/:id', swapDealController.getSwapDealById);
 router.put('/:id', swapDealController.updateSwapDeal);
-
-// Swap Deal actions
-router.put('/:id/accept', swapDealController.acceptSwapDeal);
-router.put('/:id/reject', swapDealController.rejectSwapDeal);
 router.put('/:id/cancel', swapDealController.cancelSwapDeal);
-router.put('/:id/complete', swapDealController.completeSwapDeal);
 
-// User-specific swap deals
-router.get('/user/me', swapDealController.getUserSwapDeals);
+// Swap Proposal operations
+router.post('/:swapDealId/propose', upload.any(), handleMulterError, swapDealController.proposeSwap);
+router.put('/proposals/:proposalId/accept', swapDealController.acceptProposal);
+router.put('/proposals/:proposalId/reject', swapDealController.rejectProposal);
+
+// User-specific operations
+router.get('/user/my-deals', swapDealController.getUserSwapDeals);
+router.get('/user/my-proposals', swapDealController.getUserProposals);
 
 // Statistics
 router.get('/stats/overview', swapDealController.getSwapDealStats);

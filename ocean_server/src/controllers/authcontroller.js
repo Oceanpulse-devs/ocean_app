@@ -1,6 +1,7 @@
 const {UserTable, SellersTable, SellerDocument} = require('../../models')
 const { sendSellerApplicationNotification, sendAdminNotification } = require('./notificationController')
 const { sendEmail, emailTemplates } = require('../services/emailService')
+const CloudinaryService = require('../services/cloudinaryService')
 const bcrypt = require('bcrypt')
 const jwt = require('jsonwebtoken')
 const crypto = require('crypto')
@@ -487,15 +488,53 @@ const sellerRegistration = async(req,res)=>{
         country,
         documentType, 
         documentNumber, 
-        documentImage,
         personalIdType,
-        personalIdNumber,
-        personalIdImage
+        personalIdNumber
     } = req.body;
+
+    // Handle file uploads from multipart/form-data
+    const businessDocumentFile = req.files?.businessDocument;
+    const personalIdFile = req.files?.personalId;
+
+    // Parse JSON fields from multipart/form-data
+    let parsedSellerTypes = sellerTypes;
+    let parsedSelectedCategories = selectedCategories;
+    let parsedSelectedSubcategories = selectedSubcategories;
+
+    // Debug logging
+    console.log('Raw sellerTypes:', sellerTypes, 'Type:', typeof sellerTypes);
+    console.log('Raw selectedCategories:', selectedCategories, 'Type:', typeof selectedCategories);
+
+    // Parse sellerTypes if it's a JSON string
+    if (typeof sellerTypes === 'string') {
+        try {
+            parsedSellerTypes = JSON.parse(sellerTypes);
+        } catch (error) {
+            return res.status(400).json({message:"Invalid sellerTypes format. Must be a valid JSON array."})
+        }
+    }
+
+    // Parse selectedCategories if it's a JSON string
+    if (typeof selectedCategories === 'string') {
+        try {
+            parsedSelectedCategories = JSON.parse(selectedCategories);
+        } catch (error) {
+            return res.status(400).json({message:"Invalid selectedCategories format. Must be a valid JSON array."})
+        }
+    }
+
+    // Parse selectedSubcategories if it's a JSON string
+    if (typeof selectedSubcategories === 'string') {
+        try {
+            parsedSelectedSubcategories = JSON.parse(selectedSubcategories);
+        } catch (error) {
+            return res.status(400).json({message:"Invalid selectedSubcategories format. Must be a valid JSON object."})
+        }
+    }
 
     try {
         // Input validation
-        if(!businessName || !businessAddress || !businessDescription || !sellerTypes || !selectedCategories || !country || !documentType || !documentImage){
+        if(!businessName || !businessAddress || !businessDescription || !parsedSellerTypes || !parsedSelectedCategories || !country || !documentType || !businessDocumentFile){
             return res.status(400).json({message:"All required fields must be provided"})
         }
 
@@ -513,17 +552,17 @@ const sellerRegistration = async(req,res)=>{
 
         // Validate seller types
         const validSellerTypes = ['retailer', 'wholesaler', 'distributor', 'manufacturer'];
-        if(!Array.isArray(sellerTypes) || sellerTypes.length === 0){
-            return res.status(400).json({message:"At least one seller type must be selected"})
+        if(!Array.isArray(parsedSellerTypes) || parsedSellerTypes.length === 0){
+            return res.status(400).json({message:"Please select at least one seller type. You can select multiple types if applicable to your business."})
         }
-        for(const type of sellerTypes){
+        for(const type of parsedSellerTypes){
             if(!validSellerTypes.includes(type)){
                 return res.status(400).json({message:`Invalid seller type: ${type}`})
             }
         }
 
         // Validate selected categories
-        if(!Array.isArray(selectedCategories) || selectedCategories.length === 0 || selectedCategories.length > 3){
+        if(!Array.isArray(parsedSelectedCategories) || parsedSelectedCategories.length === 0 || parsedSelectedCategories.length > 3){
             return res.status(400).json({message:"You must select 1-3 main categories"})
         }
 
@@ -545,31 +584,71 @@ const sellerRegistration = async(req,res)=>{
             return res.status(400).json({message:"Document number must be at least 3 characters long"})
         }
 
-        if(!validateImageUrl(documentImage)){
-            return res.status(400).json({message:"Invalid image format. Please upload a valid image file"})
+        // Validate business document file
+        if(!businessDocumentFile || !businessDocumentFile[0]){
+            return res.status(400).json({message:"Business document file is required"})
         }
 
-        // Validate personal ID if provided
-        if(personalIdType && !validateDocumentType(personalIdType)){
-            return res.status(400).json({message:"Invalid personal ID document type"})
-        }
-
-        if(personalIdImage && !validateImageUrl(personalIdImage)){
-            return res.status(400).json({message:"Invalid personal ID image format"})
+        // Validate personal ID file if provided
+        if(personalIdType && (!personalIdFile || !personalIdFile[0])){
+            return res.status(400).json({message:"Personal ID file is required when personal ID type is provided"})
         }
 
         const currentUserId = req.user.id;
 
+        // Debug logging for user info
+        console.log('Current user info:', {
+            userId: currentUserId,
+            email: req.user.email,
+            accountType: req.user.accountType,
+            role: req.user.role
+        });
+
         // Check if user already has a seller account
         const existingSeller = await SellersTable.findOne({where: {userId: currentUserId}});
             if(existingSeller){
+                console.log('Existing seller found:', {
+                    id: existingSeller.id,
+                    userId: existingSeller.userId,
+                    verificationStatus: existingSeller.verificationStatus,
+                    businessName: existingSeller.businessName,
+                    createdAt: existingSeller.createdAt
+                });
+                
                 if(existingSeller.verificationStatus === 'approved'){
-                return res.status(400).json({message:"You are already an approved seller."})
+                return res.status(400).json({
+                    message:"You are already an approved seller.",
+                    sellerId: existingSeller.id,
+                    businessName: existingSeller.businessName,
+                    verificationStatus: existingSeller.verificationStatus
+                })
             }else if(existingSeller.verificationStatus === 'pending'){
-                return res.status(400).json({message:"Your seller application is currently under review."})
+                return res.status(400).json({
+                    message:"Your seller application is currently under review.",
+                    sellerId: existingSeller.id,
+                    businessName: existingSeller.businessName,
+                    verificationStatus: existingSeller.verificationStatus,
+                    submittedAt: existingSeller.createdAt
+                })
             }else if(existingSeller.verificationStatus === 'rejected'){
-                return res.status(400).json({message:"Your previous seller application was rejected. Please contact support for appeal."})
+                return res.status(400).json({
+                    message:"Your previous seller application was rejected. Please contact support for appeal.",
+                    sellerId: existingSeller.id,
+                    businessName: existingSeller.businessName,
+                    verificationStatus: existingSeller.verificationStatus,
+                    rejectionReason: existingSeller.rejectionReason
+                })
+            } else {
+                console.log('Unknown verification status:', existingSeller.verificationStatus);
+                return res.status(400).json({
+                    message:`Your seller account has an unknown status: ${existingSeller.verificationStatus}. Please contact support.`,
+                    sellerId: existingSeller.id,
+                    businessName: existingSeller.businessName,
+                    verificationStatus: existingSeller.verificationStatus
+                })
             }
+        } else {
+            console.log('No existing seller found for user:', currentUserId);
         }
 
         // Check if business name is already taken
@@ -591,39 +670,62 @@ const sellerRegistration = async(req,res)=>{
             country: country, // Use provided country
             state: currentuser.state,
             businessDescription: businessDescription.trim(),
-            sellerType: sellerTypes[0], // Use first seller type as primary (can be updated later)
-            selectedCategories: JSON.stringify(selectedCategories), // Store as JSON
-            selectedSubcategories: JSON.stringify(selectedSubcategories || {}), // Store as JSON
+            sellerType: parsedSellerTypes[0], // Use first seller type as primary (can be updated later)
+            selectedCategories: JSON.stringify(parsedSelectedCategories), // Store as JSON
+            selectedSubcategories: JSON.stringify(parsedSelectedSubcategories || {}), // Store as JSON
             businessEmail: businessEmail,
             businessPhone: businessPhone,
             verificationStatus: 'pending'
         });
 
-        // Create seller document records
+        // Upload files to Cloudinary and create document records
         const documents = [];
         
-        // Business document
-        documents.push({
-            sellerId: newSeller.id,
-            documentType,
-            documentNumber: documentNumber?.trim(),
-            documentImage,
-            status: 'pending'
-        });
-        
-        // Personal ID document (if provided)
-        if(personalIdType && personalIdImage){
+        try {
+            // Upload business document
+            const businessDocUpload = await CloudinaryService.uploadFile(
+                businessDocumentFile[0].path,
+                `seller-documents/${newSeller.id}/business-document`,
+                { folder: 'seller-documents', resource_type: 'auto' }
+            );
+            
             documents.push({
                 sellerId: newSeller.id,
-                documentType: personalIdType,
-                documentNumber: personalIdNumber?.trim(),
-                documentImage: personalIdImage,
+                documentType,
+                documentNumber: documentNumber?.trim(),
+                documentImage: businessDocUpload.secure_url,
                 status: 'pending'
             });
+            
+            // Upload personal ID document (if provided)
+            if(personalIdType && personalIdFile && personalIdFile[0]){
+                const personalIdUpload = await CloudinaryService.uploadFile(
+                    personalIdFile[0].path,
+                    `seller-documents/${newSeller.id}/personal-id`,
+                    { folder: 'seller-documents', resource_type: 'auto' }
+                );
+                
+                documents.push({
+                    sellerId: newSeller.id,
+                    documentType: personalIdType,
+                    documentNumber: personalIdNumber?.trim(),
+                    documentImage: personalIdUpload.secure_url,
+                    status: 'pending'
+                });
+            }
+            
+            // Create all documents
+            await SellerDocument.bulkCreate(documents);
+            
+        } catch (uploadError) {
+            console.error('File upload error:', uploadError);
+            // If file upload fails, delete the seller record
+            await SellersTable.destroy({ where: { id: newSeller.id } });
+            return res.status(500).json({
+                message: "File upload failed. Please try again.",
+                error: uploadError.message
+            });
         }
-        
-        // Create all documents
-        await SellerDocument.bulkCreate(documents);
 
         // Update user account type to pending-seller
         await UserTable.update(
@@ -638,9 +740,10 @@ const sellerRegistration = async(req,res)=>{
         await sendAdminNotification(businessName);
 
         res.status(201).json({
+            success: true,
             message: "Seller registration submitted successfully. Your application is under review.",
-            seller: {
-                id: newSeller.id,
+            data: {
+                sellerId: newSeller.id,
                 businessName: newSeller.businessName,
                 businessDescription: newSeller.businessDescription,
                 sellerType: newSeller.sellerType,
@@ -649,7 +752,13 @@ const sellerRegistration = async(req,res)=>{
                 businessEmail: newSeller.businessEmail,
                 businessPhone: newSeller.businessPhone,
                 verificationStatus: newSeller.verificationStatus,
-                documentsSubmitted: documents.length
+                documentsSubmitted: documents.length,
+                submittedAt: newSeller.createdAt,
+                nextSteps: [
+                    "Wait for admin review (5-7 business days)",
+                    "Check verification status regularly",
+                    "You will receive email notifications about status updates"
+                ]
             }
         });
     } catch (error) {

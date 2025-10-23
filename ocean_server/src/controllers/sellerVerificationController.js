@@ -9,24 +9,54 @@ class SellerVerificationController {
       const {
         businessName,
         businessAddress,
+        businessDescription,
+        sellerTypes, // Array of seller types from Flutter
+        selectedCategories, // Array of main categories from Flutter
+        selectedSubcategories, // Object mapping categories to subcategories from Flutter
+        businessEmail,
+        businessPhone,
         country,
-        state,
-        category,
-        sellerType,
-        phoneNumber,
         documents
       } = req.body;
 
-      // Parse documents if it's a JSON string (form-data)
-      let parsedDocuments = documents;
-      if (typeof documents === 'string') {
-        try {
-          parsedDocuments = JSON.parse(documents);
-        } catch (error) {
-          return res.status(400).json({
-            success: false,
-            message: 'Invalid documents format. Must be valid JSON array.'
-          });
+      // Handle file uploads from Flutter form
+      const businessDocumentFile = req.files?.businessDocument;
+      const personalIdFile = req.files?.personalId;
+
+      // Create documents array from Flutter form files
+      let parsedDocuments = [];
+      
+      // Add business document if provided
+      if (businessDocumentFile && businessDocumentFile[0]) {
+        parsedDocuments.push({
+          documentType: 'BusinessLicense', // Default type, can be customized
+          documentNumber: '', // Optional
+          documentImage: null // Will be set after upload
+        });
+      }
+      
+      // Add personal ID document if provided
+      if (personalIdFile && personalIdFile[0]) {
+        parsedDocuments.push({
+          documentType: 'IDCard', // Default type, can be customized
+          documentNumber: '', // Optional
+          documentImage: null // Will be set after upload
+        });
+      }
+
+      // If documents array is provided in body, use that instead
+      if (documents) {
+        if (typeof documents === 'string') {
+          try {
+            parsedDocuments = JSON.parse(documents);
+          } catch (error) {
+            return res.status(400).json({
+              success: false,
+              message: 'Invalid documents format. Must be valid JSON array.'
+            });
+          }
+        } else {
+          parsedDocuments = documents;
         }
       }
 
@@ -64,6 +94,13 @@ class SellerVerificationController {
         });
       }
 
+      if (!businessDescription) {
+        return res.status(400).json({
+          success: false,
+          message: 'Business description is required'
+        });
+      }
+
       if (!country) {
         return res.status(400).json({
           success: false,
@@ -71,66 +108,45 @@ class SellerVerificationController {
         });
       }
 
-      if (!category) {
+      // Validate seller types (array from Flutter)
+      if (!sellerTypes || !Array.isArray(sellerTypes) || sellerTypes.length === 0) {
         return res.status(400).json({
           success: false,
-          message: 'Business category is required'
+          message: 'Please select at least one seller type. You can select multiple types if applicable to your business.'
         });
       }
 
-      if (!sellerType) {
-        return res.status(400).json({
-          success: false,
-          message: 'Seller type is required'
-        });
-      }
-
-      // Validate seller type
       const validSellerTypes = ['retailer', 'wholesaler', 'distributor', 'manufacturer'];
-      if (!validSellerTypes.includes(sellerType)) {
+      for (const type of sellerTypes) {
+        if (!validSellerTypes.includes(type)) {
+          return res.status(400).json({
+            success: false,
+            message: `Invalid seller type: ${type}. Must be one of: ${validSellerTypes.join(', ')}`
+          });
+        }
+      }
+
+      // Validate selected categories (array from Flutter)
+      if (!selectedCategories || !Array.isArray(selectedCategories) || selectedCategories.length === 0 || selectedCategories.length > 3) {
         return res.status(400).json({
           success: false,
-          message: 'Invalid seller type. Must be one of: ' + validSellerTypes.join(', ')
+          message: 'You must select 1-3 main categories'
         });
       }
 
-      // Validate phone number
-      if (!phoneNumber) {
+      // Validate business email if provided
+      if (businessEmail && !businessEmail.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
         return res.status(400).json({
           success: false,
-          message: 'Phone number is required'
+          message: 'Invalid business email format'
         });
       }
 
-      // Basic phone number format validation (international format)
-      const phoneRegex = /^[\+]?[1-9][\d]{0,15}$/;
-      if (!phoneRegex.test(phoneNumber.replace(/[\s\-\(\)]/g, ''))) {
+      // Validate business phone if provided
+      if (businessPhone && businessPhone.trim().length < 10) {
         return res.status(400).json({
           success: false,
-          message: 'Invalid phone number format. Please provide a valid international phone number.'
-        });
-      }
-
-      // Validate and get category UUID
-      const { ProductCategory } = require('../../models');
-      let categoryRecord;
-      if (category.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
-        // UUID format
-        categoryRecord = await ProductCategory.findByPk(category);
-      } else {
-        // Name format - find by name
-        categoryRecord = await ProductCategory.findOne({ 
-          where: { 
-            name: category,
-            isActive: true 
-          } 
-        });
-      }
-
-      if (!categoryRecord) {
-        return res.status(400).json({
-          success: false,
-          message: 'Invalid business category. Please select a valid category from the list.'
+          message: 'Business phone number must be at least 10 characters long'
         });
       }
 
@@ -145,18 +161,26 @@ class SellerVerificationController {
       let fileIndex = 0;
       
       console.log('Documents needing images:', parsedDocuments.filter(doc => 
-        doc.documentType === 'ElectricBill' || doc.documentType === 'IDCard'
+        doc.documentType === 'BusinessLicense' || doc.documentType === 'IDCard'
       ).length);
-      console.log('Files available:', req.files ? req.files.length : 0);
+      console.log('Files available:', req.files ? Object.keys(req.files).length : 0);
 
       // Process files and add image URLs to documents
       for (let i = 0; i < parsedDocuments.length; i++) {
         const doc = parsedDocuments[i];
         
-        if (doc.documentType === 'ElectricBill' || doc.documentType === 'IDCard') {
-          if (req.files && req.files[fileIndex]) {
-            const file = req.files[fileIndex];
-            console.log(`✅ Processing file ${fileIndex} (${file.originalname}) for ${doc.documentType}`);
+        if (doc.documentType === 'BusinessLicense' || doc.documentType === 'IDCard') {
+          let file = null;
+          
+          // Get the appropriate file based on document type
+          if (doc.documentType === 'BusinessLicense' && businessDocumentFile && businessDocumentFile[0]) {
+            file = businessDocumentFile[0];
+          } else if (doc.documentType === 'IDCard' && personalIdFile && personalIdFile[0]) {
+            file = personalIdFile[0];
+          }
+          
+          if (file) {
+            console.log(`✅ Processing file (${file.originalname}) for ${doc.documentType}`);
             
             // Upload to Cloudinary
             const uploadResult = await cloudinaryService.uploadSellerDocument(
@@ -171,7 +195,6 @@ class SellerVerificationController {
             } else {
               throw new Error(`Failed to upload ${doc.documentType} document: ${uploadResult.error}`);
             }
-            fileIndex++;
           } else {
             console.log(`❌ No file available for ${doc.documentType}`);
           }
@@ -182,27 +205,19 @@ class SellerVerificationController {
       for (let i = 0; i < parsedDocuments.length; i++) {
         const doc = parsedDocuments[i];
         if (!doc.documentType) {
-        return res.status(400).json({
-          success: false,
+          return res.status(400).json({
+            success: false,
             message: `Document ${i + 1}: Document type is required`
           });
         }
 
         // Simplified validation based on document type
-        if (doc.documentType === 'NIN') {
-          // NIN only needs the number, no image required
-          if (!doc.documentNumber) {
-            return res.status(400).json({
-              success: false,
-              message: `Document ${i + 1}: NIN number is required`
-            });
-          }
-        } else if (doc.documentType === 'ElectricBill') {
-          // Electric bill only needs the image, no number required
+        if (doc.documentType === 'BusinessLicense') {
+          // Business license needs the image
           if (!doc.documentImage) {
             return res.status(400).json({
               success: false,
-              message: `Document ${i + 1}: Electric bill image is required`
+              message: `Document ${i + 1}: Business license image is required`
             });
           }
         } else if (doc.documentType === 'IDCard') {
@@ -220,7 +235,7 @@ class SellerVerificationController {
             });
           }
         } else {
-          // For other document types, require both
+          // For other document types, require image
           if (!doc.documentImage) {
             return res.status(400).json({
               success: false,
@@ -240,11 +255,14 @@ class SellerVerificationController {
         await seller.update({
           businessName,
           businessAddress,
+          businessDescription,
           country,
-          state,
-          category: categoryRecord.id, // Use UUID instead of string
-          sellerType,
-          phoneNumber: phoneNumber,
+          sellerType: sellerTypes[0], // Use first seller type as primary
+          selectedCategories: JSON.stringify(selectedCategories), // Store as JSON
+          selectedSubcategories: JSON.stringify(selectedSubcategories || {}), // Store as JSON
+          businessEmail: businessEmail,
+          businessPhone: businessPhone,
+          phoneNumber: businessPhone || req.user.phoneNumber, // Use business phone if provided
           verificationStatus: 'pending',
           documentsSubmitted: parsedDocuments.length,
           documentsApproved: 0,
@@ -254,15 +272,18 @@ class SellerVerificationController {
         // Create new seller
         seller = await db.SellersTable.create({
           userId,
-          fullName: req.user.firstName + ' ' + req.user.lastName,
+          fullName: req.user.fullName || (req.user.firstName + ' ' + req.user.lastName),
           businessName,
           businessAddress,
+          businessDescription,
           country,
-          state,
-          category: categoryRecord.id, // Use UUID instead of string
-          sellerType,
-          email: req.user.email,
-          phoneNumber: phoneNumber,
+          sellerType: sellerTypes[0], // Use first seller type as primary
+          selectedCategories: JSON.stringify(selectedCategories), // Store as JSON
+          selectedSubcategories: JSON.stringify(selectedSubcategories || {}), // Store as JSON
+          businessEmail: businessEmail,
+          businessPhone: businessPhone,
+          email: businessEmail || req.user.email, // Use business email if provided
+          phoneNumber: businessPhone || req.user.phoneNumber, // Use business phone if provided
           verificationStatus: 'pending',
           documentsSubmitted: parsedDocuments.length,
           documentsApproved: 0,

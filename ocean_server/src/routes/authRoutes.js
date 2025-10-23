@@ -136,7 +136,10 @@ router.get('/api/messaging-token', authMiddleware, (req, res) => {
 router.post('/api/forgot-password',forgotPassword)
 router.post('/api/verify-resetCode',verifyResetCode)
 router.post('/api/reset-password',resetPassword)
-router.post('/api/seller-registration', authMiddleware,sellerRegistration)
+router.post('/api/seller-registration', authMiddleware, upload.fields([
+  { name: 'businessDocument', maxCount: 1 },
+  { name: 'personalId', maxCount: 1 }
+]), sellerRegistration)
 
 
 //profile routes 

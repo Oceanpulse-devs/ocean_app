@@ -2,7 +2,7 @@
 	"info": {
 		"_postman_id": "ocean-seller-registration-collection",
 		"name": "Ocean - Seller Registration",
-		"description": "Complete collection for Ocean app seller registration with all new fields",
+		"description": "Complete collection for Ocean app seller registration with multipart/form-data file uploads and all new fields",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
 	"item": [
@@ -18,16 +18,102 @@
 								"key": "Authorization",
 								"value": "Bearer {{auth_token}}",
 								"type": "text"
-							},
-							{
-								"key": "Content-Type",
-								"value": "application/json",
-								"type": "text"
 							}
 						],
 						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"businessName\": \"TechWorld Electronics\",\n  \"businessAddress\": \"456 Tech Street, Silicon Valley, CA 94000, USA\",\n  \"businessDescription\": \"Leading electronics retailer specializing in smartphones, laptops, gaming equipment, and smart home devices. We offer competitive prices and excellent customer service with 15+ years of experience.\",\n  \"sellerTypes\": [\"retailer\", \"wholesaler\"],\n  \"selectedCategories\": [\"Electronics\", \"Home & Garden\", \"Sports & Recreation\"],\n  \"selectedSubcategories\": {\n    \"Electronics\": [\"Smartphones\", \"Laptops\", \"Gaming Equipment\", \"Smart Home\"],\n    \"Home & Garden\": [\"Home Appliances\", \"Smart Home\"],\n    \"Sports & Recreation\": [\"Electronics\", \"Gaming\"]\n  },\n  \"businessEmail\": \"sales@techworld.com\",\n  \"businessPhone\": \"+15551234567\",\n  \"country\": \"United States\",\n  \"documentType\": \"BusinessLicense\",\n  \"documentNumber\": \"BL2024001\",\n  \"documentImage\": \"https://example.com/business-license.jpg\",\n  \"personalIdType\": \"IDCard\",\n  \"personalIdNumber\": \"A123456789\",\n  \"personalIdImage\": \"https://example.com/personal-id.jpg\"\n}"
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "businessName",
+									"value": "TechWorld Electronics",
+									"type": "text",
+									"description": "Business name (required)"
+								},
+								{
+									"key": "businessAddress",
+									"value": "456 Tech Street, Silicon Valley, CA 94000, USA",
+									"type": "text",
+									"description": "Complete business address (required)"
+								},
+								{
+									"key": "businessDescription",
+									"value": "Leading electronics retailer specializing in smartphones, laptops, gaming equipment, and smart home devices. We offer competitive prices and excellent customer service with 15+ years of experience.",
+									"type": "text",
+									"description": "Detailed business description (required)"
+								},
+								{
+									"key": "sellerTypes",
+									"value": "[\"retailer\", \"wholesaler\"]",
+									"type": "text",
+									"description": "Array of seller types: retailer, wholesaler, distributor, manufacturer (required)"
+								},
+								{
+									"key": "selectedCategories",
+									"value": "[\"Electronics\", \"Home & Garden\", \"Sports & Recreation\"]",
+									"type": "text",
+									"description": "Array of main categories (1-3 categories required)"
+								},
+								{
+									"key": "selectedSubcategories",
+									"value": "{\"Electronics\": [\"Smartphones\", \"Laptops\", \"Gaming Equipment\", \"Smart Home\"], \"Home & Garden\": [\"Home Appliances\", \"Smart Home\"], \"Sports & Recreation\": [\"Electronics\", \"Gaming\"]}",
+									"type": "text",
+									"description": "JSON object mapping categories to subcategories (required)"
+								},
+								{
+									"key": "businessEmail",
+									"value": "sales@techworld.com",
+									"type": "text",
+									"description": "Business email address (optional)"
+								},
+								{
+									"key": "businessPhone",
+									"value": "+15551234567",
+									"type": "text",
+									"description": "Business phone number (optional)"
+								},
+								{
+									"key": "country",
+									"value": "United States",
+									"type": "text",
+									"description": "Country where business is located (required)"
+								},
+								{
+									"key": "documentType",
+									"value": "BusinessLicense",
+									"type": "text",
+									"description": "Type of business document (required)"
+								},
+								{
+									"key": "documentNumber",
+									"value": "BL2024001",
+									"type": "text",
+									"description": "Business document number (optional)"
+								},
+								{
+									"key": "businessDocument",
+									"type": "file",
+									"src": [],
+									"description": "Business document file upload (PDF, JPG, PNG - required)"
+								},
+								{
+									"key": "personalIdType",
+									"value": "IDCard",
+									"type": "text",
+									"description": "Type of personal ID document (optional)"
+								},
+								{
+									"key": "personalIdNumber",
+									"value": "A123456789",
+									"type": "text",
+									"description": "Personal ID document number (optional)"
+								},
+								{
+									"key": "personalId",
+									"type": "file",
+									"src": [],
+									"description": "Personal ID document file upload (PDF, JPG, PNG - optional)"
+								}
+							]
 						},
 						"url": {
 							"raw": "{{base_url}}/api/seller-registration",
@@ -39,7 +125,7 @@
 								"seller-registration"
 							]
 						},
-						"description": "Complete seller registration with all fields including business description, multiple seller types, categories, subcategories, business contact info, and both business and personal documents."
+						"description": "Complete seller registration with all fields including business description, multiple seller types, categories, subcategories, business contact info, and file uploads. Uses multipart/form-data to handle both text fields and file uploads in a single request."
 					},
 					"response": []
 				},
@@ -52,16 +138,66 @@
 								"key": "Authorization",
 								"value": "Bearer {{auth_token}}",
 								"type": "text"
-							},
-							{
-								"key": "Content-Type",
-								"value": "application/json",
-								"type": "text"
 							}
 						],
 						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"businessName\": \"Simple Store\",\n  \"businessAddress\": \"123 Main Street, City, State 12345, Country\",\n  \"businessDescription\": \"A simple store selling various products to local customers.\",\n  \"sellerTypes\": [\"retailer\"],\n  \"selectedCategories\": [\"Electronics\"],\n  \"selectedSubcategories\": {\n    \"Electronics\": [\"Smartphones\"]\n  },\n  \"country\": \"United States\",\n  \"documentType\": \"BusinessLicense\",\n  \"documentImage\": \"https://example.com/business-license.jpg\"\n}"
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "businessName",
+									"value": "Simple Store",
+									"type": "text",
+									"description": "Business name (required)"
+								},
+								{
+									"key": "businessAddress",
+									"value": "123 Main Street, City, State 12345, Country",
+									"type": "text",
+									"description": "Complete business address (required)"
+								},
+								{
+									"key": "businessDescription",
+									"value": "A simple store selling various products to local customers.",
+									"type": "text",
+									"description": "Detailed business description (required)"
+								},
+								{
+									"key": "sellerTypes",
+									"value": "[\"retailer\"]",
+									"type": "text",
+									"description": "Array of seller types (required)"
+								},
+								{
+									"key": "selectedCategories",
+									"value": "[\"Electronics\"]",
+									"type": "text",
+									"description": "Array of main categories (required)"
+								},
+								{
+									"key": "selectedSubcategories",
+									"value": "{\"Electronics\": [\"Smartphones\"]}",
+									"type": "text",
+									"description": "JSON object mapping categories to subcategories (required)"
+								},
+								{
+									"key": "country",
+									"value": "United States",
+									"type": "text",
+									"description": "Country where business is located (required)"
+								},
+								{
+									"key": "documentType",
+									"value": "BusinessLicense",
+									"type": "text",
+									"description": "Type of business document (required)"
+								},
+								{
+									"key": "businessDocument",
+									"type": "file",
+									"src": [],
+									"description": "Business document file upload (PDF, JPG, PNG - required)"
+								}
+							]
 						},
 						"url": {
 							"raw": "{{base_url}}/api/seller-registration",
@@ -73,7 +209,7 @@
 								"seller-registration"
 							]
 						},
-						"description": "Minimal seller registration with only required fields. Optional fields like businessEmail, businessPhone, personalIdType, personalIdNumber, and personalIdImage are omitted."
+						"description": "Minimal seller registration with only required fields and file upload. Uses multipart/form-data to handle both text fields and file uploads in a single request."
 					},
 					"response": []
 				},
@@ -86,16 +222,102 @@
 								"key": "Authorization",
 								"value": "Bearer {{auth_token}}",
 								"type": "text"
-							},
-							{
-								"key": "Content-Type",
-								"value": "application/json",
-								"type": "text"
 							}
 						],
 						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"businessName\": \"Innovate Manufacturing Co.\",\n  \"businessAddress\": \"789 Industrial Blvd, Manufacturing District, TX 75001, USA\",\n  \"businessDescription\": \"Leading manufacturer of electronic components and consumer electronics. We design, develop, and manufacture high-quality products for both B2B and B2C markets. ISO certified with 20+ years of manufacturing excellence.\",\n  \"sellerTypes\": [\"manufacturer\", \"distributor\"],\n  \"selectedCategories\": [\"Electronics\", \"Industrial & Scientific\"],\n  \"selectedSubcategories\": {\n    \"Electronics\": [\"Electronics Components\", \"Consumer Electronics\"],\n    \"Industrial & Scientific\": [\"Manufacturing Equipment\", \"Electronic Components\"]\n  },\n  \"businessEmail\": \"manufacturing@innovateco.com\",\n  \"businessPhone\": \"+15559876543\",\n  \"country\": \"United States\",\n  \"documentType\": \"BusinessCertificate\",\n  \"documentNumber\": \"BC2024001\",\n  \"documentImage\": \"https://example.com/business-certificate.jpg\",\n  \"personalIdType\": \"Passport\",\n  \"personalIdNumber\": \"P123456789\",\n  \"personalIdImage\": \"https://example.com/passport.jpg\"\n}"
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "businessName",
+									"value": "Innovate Manufacturing Co.",
+									"type": "text",
+									"description": "Business name (required)"
+								},
+								{
+									"key": "businessAddress",
+									"value": "789 Industrial Blvd, Manufacturing District, TX 75001, USA",
+									"type": "text",
+									"description": "Complete business address (required)"
+								},
+								{
+									"key": "businessDescription",
+									"value": "Leading manufacturer of electronic components and consumer electronics. We design, develop, and manufacture high-quality products for both B2B and B2C markets. ISO certified with 20+ years of manufacturing excellence.",
+									"type": "text",
+									"description": "Detailed business description (required)"
+								},
+								{
+									"key": "sellerTypes",
+									"value": "[\"manufacturer\", \"distributor\"]",
+									"type": "text",
+									"description": "Array of seller types (required)"
+								},
+								{
+									"key": "selectedCategories",
+									"value": "[\"Electronics\", \"Industrial & Scientific\"]",
+									"type": "text",
+									"description": "Array of main categories (required)"
+								},
+								{
+									"key": "selectedSubcategories",
+									"value": "{\"Electronics\": [\"Electronics Components\", \"Consumer Electronics\"], \"Industrial & Scientific\": [\"Manufacturing Equipment\", \"Electronic Components\"]}",
+									"type": "text",
+									"description": "JSON object mapping categories to subcategories (required)"
+								},
+								{
+									"key": "businessEmail",
+									"value": "manufacturing@innovateco.com",
+									"type": "text",
+									"description": "Business email address (optional)"
+								},
+								{
+									"key": "businessPhone",
+									"value": "+15559876543",
+									"type": "text",
+									"description": "Business phone number (optional)"
+								},
+								{
+									"key": "country",
+									"value": "United States",
+									"type": "text",
+									"description": "Country where business is located (required)"
+								},
+								{
+									"key": "documentType",
+									"value": "BusinessCertificate",
+									"type": "text",
+									"description": "Type of business document (required)"
+								},
+								{
+									"key": "documentNumber",
+									"value": "BC2024001",
+									"type": "text",
+									"description": "Business document number (optional)"
+								},
+								{
+									"key": "businessDocument",
+									"type": "file",
+									"src": [],
+									"description": "Business certificate file upload (PDF, JPG, PNG - required)"
+								},
+								{
+									"key": "personalIdType",
+									"value": "Passport",
+									"type": "text",
+									"description": "Type of personal ID document (optional)"
+								},
+								{
+									"key": "personalIdNumber",
+									"value": "P123456789",
+									"type": "text",
+									"description": "Personal ID document number (optional)"
+								},
+								{
+									"key": "personalId",
+									"type": "file",
+									"src": [],
+									"description": "Personal ID document file upload (PDF, JPG, PNG - optional)"
+								}
+							]
 						},
 						"url": {
 							"raw": "{{base_url}}/api/seller-registration",
@@ -107,7 +329,7 @@
 								"seller-registration"
 							]
 						},
-						"description": "Manufacturer registration example with manufacturer and distributor seller types, industrial categories, and business certificate document."
+						"description": "Manufacturer registration example with manufacturer and distributor seller types, industrial categories, and business certificate document. Uses multipart/form-data to handle both text fields and file uploads in a single request."
 					},
 					"response": []
 				},
@@ -120,16 +342,102 @@
 								"key": "Authorization",
 								"value": "Bearer {{auth_token}}",
 								"type": "text"
-							},
-							{
-								"key": "Content-Type",
-								"value": "application/json",
-								"type": "text"
 							}
 						],
 						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"businessName\": \"Global Fashion Hub\",\n  \"businessAddress\": \"321 Fashion Avenue, Lagos Island, Lagos 100001, Nigeria\",\n  \"businessDescription\": \"International fashion retailer specializing in African-inspired clothing, accessories, and home decor. We source authentic products from local artisans and designers across Africa.\",\n  \"sellerTypes\": [\"retailer\", \"wholesaler\"],\n  \"selectedCategories\": [\"Clothing & Fashion\", \"Art & Collectibles\"],\n  \"selectedSubcategories\": {\n    \"Clothing & Fashion\": [\"Women's Clothing\", \"Men's Clothing\", \"Accessories\"],\n    \"Art & Collectibles\": [\"Artwork\", \"Cultural Items\"]\n  },\n  \"businessEmail\": \"info@globalfashionhub.ng\",\n  \"businessPhone\": \"+2348123456789\",\n  \"country\": \"Nigeria\",\n  \"documentType\": \"TaxCertificate\",\n  \"documentNumber\": \"TC2024001\",\n  \"documentImage\": \"https://example.com/tax-certificate.jpg\",\n  \"personalIdType\": \"NIN\",\n  \"personalIdNumber\": \"12345678901\",\n  \"personalIdImage\": \"https://example.com/nin.jpg\"\n}"
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "businessName",
+									"value": "Global Fashion Hub",
+									"type": "text",
+									"description": "Business name (required)"
+								},
+								{
+									"key": "businessAddress",
+									"value": "321 Fashion Avenue, Lagos Island, Lagos 100001, Nigeria",
+									"type": "text",
+									"description": "Complete business address (required)"
+								},
+								{
+									"key": "businessDescription",
+									"value": "International fashion retailer specializing in African-inspired clothing, accessories, and home decor. We source authentic products from local artisans and designers across Africa.",
+									"type": "text",
+									"description": "Detailed business description (required)"
+								},
+								{
+									"key": "sellerTypes",
+									"value": "[\"retailer\", \"wholesaler\"]",
+									"type": "text",
+									"description": "Array of seller types (required)"
+								},
+								{
+									"key": "selectedCategories",
+									"value": "[\"Clothing & Fashion\", \"Art & Collectibles\"]",
+									"type": "text",
+									"description": "Array of main categories (required)"
+								},
+								{
+									"key": "selectedSubcategories",
+									"value": "{\"Clothing & Fashion\": [\"Women's Clothing\", \"Men's Clothing\", \"Accessories\"], \"Art & Collectibles\": [\"Artwork\", \"Cultural Items\"]}",
+									"type": "text",
+									"description": "JSON object mapping categories to subcategories (required)"
+								},
+								{
+									"key": "businessEmail",
+									"value": "info@globalfashionhub.ng",
+									"type": "text",
+									"description": "Business email address (optional)"
+								},
+								{
+									"key": "businessPhone",
+									"value": "+2348123456789",
+									"type": "text",
+									"description": "Business phone number (optional)"
+								},
+								{
+									"key": "country",
+									"value": "Nigeria",
+									"type": "text",
+									"description": "Country where business is located (required)"
+								},
+								{
+									"key": "documentType",
+									"value": "TaxCertificate",
+									"type": "text",
+									"description": "Type of business document (required)"
+								},
+								{
+									"key": "documentNumber",
+									"value": "TC2024001",
+									"type": "text",
+									"description": "Business document number (optional)"
+								},
+								{
+									"key": "businessDocument",
+									"type": "file",
+									"src": [],
+									"description": "Tax certificate file upload (PDF, JPG, PNG - required)"
+								},
+								{
+									"key": "personalIdType",
+									"value": "NIN",
+									"type": "text",
+									"description": "Type of personal ID document (optional)"
+								},
+								{
+									"key": "personalIdNumber",
+									"value": "12345678901",
+									"type": "text",
+									"description": "Personal ID document number (optional)"
+								},
+								{
+									"key": "personalId",
+									"type": "file",
+									"src": [],
+									"description": "Personal ID document file upload (PDF, JPG, PNG - optional)"
+								}
+							]
 						},
 						"url": {
 							"raw": "{{base_url}}/api/seller-registration",
@@ -141,7 +449,127 @@
 								"seller-registration"
 							]
 						},
-						"description": "International seller registration example from Nigeria with NIN document type and tax certificate."
+						"description": "International seller registration example from Nigeria with NIN document type and tax certificate. Uses multipart/form-data to handle both text fields and file uploads in a single request."
+					},
+					"response": []
+				},
+				{
+					"name": "All Seller Types Registration",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "businessName",
+									"value": "Universal Business Solutions",
+									"type": "text",
+									"description": "Business name (required)"
+								},
+								{
+									"key": "businessAddress",
+									"value": "999 Business Plaza, Downtown District, NY 10001, USA",
+									"type": "text",
+									"description": "Complete business address (required)"
+								},
+								{
+									"key": "businessDescription",
+									"value": "Comprehensive business operating as retailer, wholesaler, distributor, and manufacturer. We handle everything from product development to retail sales, serving both B2B and B2C markets with a complete supply chain solution.",
+									"type": "text",
+									"description": "Detailed business description (required)"
+								},
+								{
+									"key": "sellerTypes",
+									"value": "[\"retailer\", \"wholesaler\", \"distributor\", \"manufacturer\"]",
+									"type": "text",
+									"description": "ALL seller types selected - shows you can select multiple or all types"
+								},
+								{
+									"key": "selectedCategories",
+									"value": "[\"Electronics\", \"Clothing & Fashion\", \"Home & Garden\"]",
+									"type": "text",
+									"description": "Array of main categories (required)"
+								},
+								{
+									"key": "selectedSubcategories",
+									"value": "{\"Electronics\": [\"Smartphones\", \"Laptops\", \"Accessories\"], \"Clothing & Fashion\": [\"Men's Clothing\", \"Women's Clothing\"], \"Home & Garden\": [\"Furniture\", \"Appliances\"]}",
+									"type": "text",
+									"description": "JSON object mapping categories to subcategories (required)"
+								},
+								{
+									"key": "businessEmail",
+									"value": "info@universalbusiness.com",
+									"type": "text",
+									"description": "Business email address (optional)"
+								},
+								{
+									"key": "businessPhone",
+									"value": "+15559998888",
+									"type": "text",
+									"description": "Business phone number (optional)"
+								},
+								{
+									"key": "country",
+									"value": "United States",
+									"type": "text",
+									"description": "Country where business is located (required)"
+								},
+								{
+									"key": "documentType",
+									"value": "BusinessLicense",
+									"type": "text",
+									"description": "Type of business document (required)"
+								},
+								{
+									"key": "documentNumber",
+									"value": "UB2024001",
+									"type": "text",
+									"description": "Business document number (optional)"
+								},
+								{
+									"key": "businessDocument",
+									"type": "file",
+									"src": [],
+									"description": "Business license file upload (PDF, JPG, PNG - required)"
+								},
+								{
+									"key": "personalIdType",
+									"value": "IDCard",
+									"type": "text",
+									"description": "Type of personal ID document (optional)"
+								},
+								{
+									"key": "personalIdNumber",
+									"value": "UB123456789",
+									"type": "text",
+									"description": "Personal ID document number (optional)"
+								},
+								{
+									"key": "personalId",
+									"type": "file",
+									"src": [],
+									"description": "Personal ID document file upload (PDF, JPG, PNG - optional)"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/seller-registration",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"seller-registration"
+							]
+						},
+						"description": "Example showing ALL seller types selected (retailer, wholesaler, distributor, manufacturer). Demonstrates that users can select multiple or all seller types if applicable to their business. Uses multipart/form-data to handle both text fields and file uploads in a single request."
 					},
 					"response": []
 				}
@@ -222,3 +650,4 @@
 		}
 	]
 }
+

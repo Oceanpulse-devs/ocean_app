@@ -76,16 +76,102 @@
 								"key": "Authorization",
 								"value": "Bearer {{auth_token}}",
 								"type": "text"
-							},
-							{
-								"key": "Content-Type",
-								"value": "application/json",
-								"type": "text"
 							}
 						],
 						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"businessName\": \"John's Electronics Store\",\n  \"businessAddress\": \"123 Business St, New York, NY 10001, USA\",\n  \"businessDescription\": \"We specialize in selling high-quality electronics including smartphones, laptops, and accessories. Our store has been serving customers for over 10 years with excellent customer service.\",\n  \"sellerTypes\": [\"retailer\", \"wholesaler\"],\n  \"selectedCategories\": [\"Electronics\", \"Clothing & Fashion\"],\n  \"selectedSubcategories\": {\n    \"Electronics\": [\"Smartphones\", \"Laptops\", \"Accessories\"],\n    \"Clothing & Fashion\": [\"Men's Clothing\", \"Women's Clothing\"]\n  },\n  \"businessEmail\": \"business@johnelectronics.com\",\n  \"businessPhone\": \"+1234567890\",\n  \"country\": \"United States\",\n  \"documentType\": \"BusinessLicense\",\n  \"documentNumber\": \"BL123456\",\n  \"documentImage\": \"https://example.com/business-license.jpg\",\n  \"personalIdType\": \"IDCard\",\n  \"personalIdNumber\": \"A123456789\",\n  \"personalIdImage\": \"https://example.com/personal-id.jpg\"\n}"
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "businessName",
+									"value": "John's Electronics Store",
+									"type": "text",
+									"description": "Business name (required)"
+								},
+								{
+									"key": "businessAddress",
+									"value": "123 Business St, New York, NY 10001, USA",
+									"type": "text",
+									"description": "Complete business address (required)"
+								},
+								{
+									"key": "businessDescription",
+									"value": "We specialize in selling high-quality electronics including smartphones, laptops, and accessories. Our store has been serving customers for over 10 years with excellent customer service.",
+									"type": "text",
+									"description": "Detailed business description (required)"
+								},
+								{
+									"key": "sellerTypes",
+									"value": "[\"retailer\", \"wholesaler\"]",
+									"type": "text",
+									"description": "Array of seller types: retailer, wholesaler, distributor, manufacturer (required)"
+								},
+								{
+									"key": "selectedCategories",
+									"value": "[\"Electronics\", \"Clothing & Fashion\"]",
+									"type": "text",
+									"description": "Array of main categories (1-3 categories required)"
+								},
+								{
+									"key": "selectedSubcategories",
+									"value": "{\"Electronics\": [\"Smartphones\", \"Laptops\", \"Accessories\"], \"Clothing & Fashion\": [\"Men's Clothing\", \"Women's Clothing\"]}",
+									"type": "text",
+									"description": "JSON object mapping categories to subcategories (required)"
+								},
+								{
+									"key": "businessEmail",
+									"value": "business@johnelectronics.com",
+									"type": "text",
+									"description": "Business email address (optional)"
+								},
+								{
+									"key": "businessPhone",
+									"value": "+1234567890",
+									"type": "text",
+									"description": "Business phone number (optional)"
+								},
+								{
+									"key": "country",
+									"value": "United States",
+									"type": "text",
+									"description": "Country where business is located (required)"
+								},
+								{
+									"key": "documentType",
+									"value": "BusinessLicense",
+									"type": "text",
+									"description": "Type of business document (required)"
+								},
+								{
+									"key": "documentNumber",
+									"value": "BL123456",
+									"type": "text",
+									"description": "Business document number (optional)"
+								},
+								{
+									"key": "businessDocument",
+									"type": "file",
+									"src": [],
+									"description": "Business document file upload (PDF, JPG, PNG - required)"
+								},
+								{
+									"key": "personalIdType",
+									"value": "IDCard",
+									"type": "text",
+									"description": "Type of personal ID document (optional)"
+								},
+								{
+									"key": "personalIdNumber",
+									"value": "A123456789",
+									"type": "text",
+									"description": "Personal ID document number (optional)"
+								},
+								{
+									"key": "personalId",
+									"type": "file",
+									"src": [],
+									"description": "Personal ID document file upload (PDF, JPG, PNG - optional)"
+								}
+							]
 						},
 						"url": {
 							"raw": "{{base_url}}/api/seller-registration",
@@ -97,7 +183,7 @@
 								"seller-registration"
 							]
 						},
-						"description": "Register as a seller with complete business information. Includes business description, seller types, categories, subcategories, business contact info, and document uploads."
+						"description": "Register as a seller with complete business information and file uploads. Uses multipart/form-data to handle both text fields and file uploads in a single request. Matches Flutter frontend form structure."
 					},
 					"response": []
 				}

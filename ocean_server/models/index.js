@@ -40,6 +40,7 @@ const ShareStats = require('./ShareStats');
 const GroupBuy = require('./GroupBuy');
 const GroupBuyParticipant = require('./GroupBuyParticipant');
 const SwapDeal = require('./SwapDeal');
+const SwapProposal = require('./SwapProposal');
 const BuyerNeed = require('./BuyerNeed');
 const BuyerNeedResponse = require('./BuyerNeedResponse');
 const MarketAnalytics = require('./MarketAnalytics');
@@ -84,6 +85,7 @@ db.ShareStats = ShareStats(sequelize, Sequelize.DataTypes);
   db.GroupBuy = GroupBuy(sequelize, Sequelize.DataTypes);
   db.GroupBuyParticipant = GroupBuyParticipant(sequelize, Sequelize.DataTypes);
   db.SwapDeal = SwapDeal(sequelize, Sequelize.DataTypes);
+  db.SwapProposal = SwapProposal(sequelize, Sequelize.DataTypes);
   db.BuyerNeed = BuyerNeed(sequelize, Sequelize.DataTypes);
   db.BuyerNeedResponse = BuyerNeedResponse(sequelize, Sequelize.DataTypes);
   db.MarketAnalytics = MarketAnalytics(sequelize, Sequelize.DataTypes);
@@ -216,11 +218,13 @@ const setupAssociations = () => {
   db.GroupBuyParticipant.belongsTo(db.GroupBuy, { foreignKey: 'group_buy_id', as: 'groupBuy' });
   db.GroupBuyParticipant.belongsTo(db.UserTable, { foreignKey: 'user_id', as: 'user' });
   
-  // SwapDeal associations
-  db.SwapDeal.belongsTo(db.UserTable, { foreignKey: 'initiator_id', as: 'initiator' });
-  db.SwapDeal.belongsTo(db.UserTable, { foreignKey: 'responder_id', as: 'responder' });
-  db.SwapDeal.belongsTo(db.Product, { foreignKey: 'initiator_item_id', as: 'initiatorItem' });
-  db.SwapDeal.belongsTo(db.Product, { foreignKey: 'responder_item_id', as: 'responderItem' });
+  // SwapDeal associations (updated for simplified system)
+  db.SwapDeal.belongsTo(db.UserTable, { foreignKey: 'sellerId', as: 'seller' });
+  db.SwapDeal.hasMany(db.SwapProposal, { foreignKey: 'swapDealId', as: 'proposals' });
+
+  // SwapProposal associations
+  db.SwapProposal.belongsTo(db.SwapDeal, { foreignKey: 'swapDealId', as: 'swapDeal' });
+  db.SwapProposal.belongsTo(db.UserTable, { foreignKey: 'proposerId', as: 'proposer' });
 
   // Buyer Need associations
   db.BuyerNeed.belongsTo(db.UserTable, { foreignKey: 'buyer_id', as: 'buyer' });

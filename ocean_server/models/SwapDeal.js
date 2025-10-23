@@ -1,9 +1,57 @@
 module.exports = (sequelize, DataTypes) => {
     const SwapDeal = sequelize.define('SwapDeal', {
   id: {
-    type: DataTypes.INTEGER,
+    type: DataTypes.UUID,
     primaryKey: true,
-    autoIncrement: true
+    defaultValue: DataTypes.UUIDV4,
+    allowNull: false
+  },
+  sellerId: {
+    type: DataTypes.UUID,
+    allowNull: false,
+    field: 'seller_id',
+    comment: 'User ID who created the swap deal (seller)'
+  },
+  productToSwap: {
+    type: DataTypes.STRING(255),
+    allowNull: false,
+    field: 'product_to_swap',
+    comment: 'Name of the product being swapped'
+  },
+  categoryToSwap: {
+    type: DataTypes.STRING(100),
+    allowNull: false,
+    field: 'category_to_swap',
+    comment: 'Category of the product being swapped'
+  },
+  brandToSwap: {
+    type: DataTypes.STRING(100),
+    allowNull: true,
+    field: 'brand_to_swap',
+    comment: 'Brand of the product being swapped'
+  },
+  condition: {
+    type: DataTypes.ENUM('New', 'Like New', 'Good', 'Fair', 'Poor'),
+    defaultValue: 'Good',
+    comment: 'Condition of the product being swapped'
+  },
+  preferredSwapCategory: {
+    type: DataTypes.STRING(100),
+    allowNull: true,
+    field: 'preferred_swap_category',
+    comment: 'Category the seller wants to swap with'
+  },
+  preferredSwapSubcategories: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    field: 'preferred_swap_subcategories',
+    comment: 'JSON array of preferred subcategories'
+  },
+  swapConditions: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    field: 'swap_conditions',
+    comment: 'Swap deal conditions and preferences'
   },
   title: {
     type: DataTypes.STRING(255),
@@ -15,163 +63,110 @@ module.exports = (sequelize, DataTypes) => {
     allowNull: false,
     comment: 'Detailed description of the swap deal'
   },
-  initiator_id: {
-    type: DataTypes.UUID,
-    allowNull: false,
-    comment: 'User ID who initiated the swap offer'
+  images: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    comment: 'JSON array of image URLs for the swap deal'
   },
-  responder_id: {
-    type: DataTypes.UUID,
-    allowNull: false,
-    comment: 'User ID who received the swap offer'
-  },
-  initiator_item_id: {
-    type: DataTypes.UUID,
-    allowNull: false,
-    comment: 'Product ID of the item offered by initiator'
-  },
-  responder_item_id: {
-    type: DataTypes.UUID,
-    allowNull: false,
-    comment: 'Product ID of the item offered by responder'
-  },
-  status: {
-    type: DataTypes.ENUM('pending', 'accepted', 'rejected', 'cancelled', 'completed'),
-    defaultValue: 'pending',
-    comment: 'Current status of the swap deal'
-  },
-  initiator_approval: {
-    type: DataTypes.BOOLEAN,
-    defaultValue: false,
-    comment: 'Whether initiator has approved the swap'
-  },
-  responder_approval: {
-    type: DataTypes.BOOLEAN,
-    defaultValue: false,
-    comment: 'Whether responder has approved the swap'
-  },
-  swap_terms: {
+  swapTerms: {
     type: DataTypes.TEXT,
     allowNull: true,
+    field: 'swap_terms',
     comment: 'Additional terms or conditions for the swap'
   },
-  meeting_location: {
+  preferredItems: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    field: 'preferred_items',
+    comment: 'What the seller wants in exchange'
+  },
+  meetingLocation: {
     type: DataTypes.STRING(255),
     allowNull: true,
+    field: 'meeting_location',
     comment: 'Preferred meeting location for item exchange'
   },
-  meeting_date: {
-    type: DataTypes.DATE,
+  meetingDate: {
+    type: DataTypes.DATEONLY,
     allowNull: true,
+    field: 'meeting_date',
     comment: 'Preferred meeting date for item exchange'
   },
-  initiator_message: {
-    type: DataTypes.TEXT,
-    allowNull: true,
-    comment: 'Message from initiator explaining the swap offer'
+  status: {
+    type: DataTypes.ENUM('active', 'inactive', 'completed', 'cancelled'),
+    defaultValue: 'active',
+    comment: 'Current status of the swap deal'
   },
-  responder_message: {
-    type: DataTypes.TEXT,
-    allowNull: true,
-    comment: 'Message from responder about the swap offer'
-  },
-  is_featured: {
-    type: DataTypes.BOOLEAN,
-    defaultValue: false,
-    comment: 'Whether this swap deal is featured'
-  },
-  views_count: {
+  viewsCount: {
     type: DataTypes.INTEGER,
     defaultValue: 0,
+    field: 'views_count',
     comment: 'Number of views on this swap deal'
   },
-  expires_at: {
-    type: DataTypes.DATE,
-    allowNull: true,
-    comment: 'When the swap offer expires'
+  proposalsCount: {
+    type: DataTypes.INTEGER,
+    defaultValue: 0,
+    field: 'proposals_count',
+    comment: 'Number of swap proposals received'
   },
-  isBoosted: {
+  isFeatured: {
     type: DataTypes.BOOLEAN,
     defaultValue: false,
-    field: 'is_boosted',
-    comment: 'Whether swap deal is currently boosted'
+    field: 'is_featured',
+    comment: 'Whether this swap deal is featured'
   },
-  boostExpiresAt: {
+  expiresAt: {
     type: DataTypes.DATE,
     allowNull: true,
-    field: 'boost_expires_at',
-    comment: 'When boost expires'
-  },
-  boostId: {
-    type: DataTypes.INTEGER,
-    allowNull: true,
-    field: 'boost_id',
-    comment: 'Reference to promotional boost'
+    field: 'expires_at',
+    comment: 'When the swap offer expires'
   },
   createdAt: {
     type: DataTypes.DATE,
     defaultValue: DataTypes.NOW,
-    field: 'created_at'
+    field: 'createdAt'
   },
   updatedAt: {
     type: DataTypes.DATE,
     defaultValue: DataTypes.NOW,
-    field: 'updated_at'
+    field: 'updatedAt'
   }
 }, {
   tableName: 'swap_deals',
   timestamps: true,
-  createdAt: 'created_at',
-  updatedAt: 'updated_at',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt',
   indexes: [
     {
-      fields: ['initiator_id']
-    },
-    {
-      fields: ['responder_id']
+      fields: ['seller_id']
     },
     {
       fields: ['status']
-    },
-    {
-      fields: ['initiator_item_id']
-    },
-    {
-      fields: ['responder_item_id']
     },
     {
       fields: ['is_featured']
     },
     {
       fields: ['expires_at']
+    },
+    {
+      fields: ['createdAt']
     }
   ]
   });
 
   // Define associations
   SwapDeal.associate = function(models) {
-    // SwapDeal belongs to User (initiator)
+    // SwapDeal belongs to User (seller)
     SwapDeal.belongsTo(models.UserTable, {
-      foreignKey: 'initiator_id',
-      as: 'initiator'
+      foreignKey: 'sellerId',
+      as: 'seller'
     });
 
-    // SwapDeal belongs to User (responder)
-    SwapDeal.belongsTo(models.UserTable, {
-      foreignKey: 'responder_id',
-      as: 'responder'
-    });
-
-    // SwapDeal belongs to Product (initiator item)
-    SwapDeal.belongsTo(models.Product, {
-      foreignKey: 'initiator_item_id',
-      as: 'initiatorItem'
-    });
-
-    // SwapDeal belongs to Product (responder item)
-    SwapDeal.belongsTo(models.Product, {
-      foreignKey: 'responder_item_id',
-      as: 'responderItem'
+    // SwapDeal has many SwapProposals
+    SwapDeal.hasMany(models.SwapProposal, {
+      foreignKey: 'swapDealId',
+      as: 'proposals'
     });
   };
   

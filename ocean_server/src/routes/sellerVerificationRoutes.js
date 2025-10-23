@@ -24,7 +24,10 @@ const upload = multer({
 router.get('/requirements', sellerVerificationController.getVerificationRequirements);
 
 // Protected routes (authentication required)
-router.post('/submit', authMiddleware, upload.array('documents', 5), sellerVerificationController.submitVerification);
+router.post('/submit', authMiddleware, upload.fields([
+  { name: 'businessDocument', maxCount: 1 },
+  { name: 'personalId', maxCount: 1 }
+]), sellerVerificationController.submitVerification);
 router.get('/status', authMiddleware, sellerVerificationController.getVerificationStatus);
 
 // Admin routes (admin authentication required)

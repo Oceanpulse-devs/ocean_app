@@ -1,0 +1,590 @@
+{
+	"info": {
+		"_postman_id": "ocean-swap-deals-simplified-collection",
+		"name": "Ocean - Swap Deals (Simplified)",
+		"description": "Comprehensive swap deal system where sellers list products for swap with complete details (condition, preferred swap category, subcategories, swap conditions) and buyers propose swaps. Only swap deal creation is subscription-gated, proposals are unlimited. Matches Flutter frontend form fields exactly.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Swap Deal Management (Sellers)",
+			"item": [
+				{
+					"name": "Create Swap Deal",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "productToSwap",
+									"value": "iPhone 12 Pro",
+									"type": "text",
+									"description": "Name of the product you want to swap"
+								},
+								{
+									"key": "categoryToSwap",
+									"value": "Mobile Phones & Tablets",
+									"type": "text",
+									"description": "Category of your product (from Flutter dropdown)"
+								},
+								{
+									"key": "brandToSwap",
+									"value": "Apple",
+									"type": "text",
+									"description": "Brand of your product (optional)"
+								},
+								{
+									"key": "condition",
+									"value": "Good",
+									"type": "text",
+									"description": "Condition: New, Like New, Good, Fair, Poor"
+								},
+								{
+									"key": "description",
+									"value": "Looking to swap my iPhone 12 Pro. Minor scratches on the back, otherwise in good condition. Battery health at 85%.",
+									"type": "text",
+									"description": "Detailed description of your product"
+								},
+								{
+									"key": "preferredSwapCategory",
+									"value": "Electronics",
+									"type": "text",
+									"description": "What category do you want to swap with?"
+								},
+								{
+									"key": "preferredSwapSubcategories",
+									"value": "[\"Computers & Laptops\", \"Audio & Music\"]",
+									"type": "text",
+									"description": "JSON array of preferred subcategories"
+								},
+								{
+									"key": "swapConditions",
+									"value": "Looking for MacBook Pro or high-end laptop. Must be in good condition with original charger. Open to negotiation on model year.",
+									"type": "text",
+									"description": "Your swap conditions and preferences"
+								},
+								{
+									"key": "images",
+									"type": "file",
+									"src": [],
+									"description": "Upload 2-4 images of the product you want to swap (required)"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/swap-deals/create",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"swap-deals",
+								"create"
+							]
+						},
+						"description": "Create a new swap deal listing with image uploads (subscription gated). Sellers provide complete product details including condition, preferred swap category, subcategories, and swap conditions. Images are uploaded to Cloudinary and stored as JSON array.\n\n**Required Fields:**\n- productToSwap: Name of product\n- categoryToSwap: Product category\n- condition: New, Like New, Good, Fair, Poor\n- description: Product description\n- preferredSwapCategory: What category to swap with\n- swapConditions: Swap preferences\n- images: 2-4 product images\n\n**Optional Fields:**\n- brandToSwap: Product brand\n- preferredSwapSubcategories: JSON array of subcategories"
+					},
+					"response": [
+						{
+							"name": "Success Response",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{auth_token}}",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "formdata",
+									"formdata": [
+										{
+											"key": "productToSwap",
+											"value": "iPhone 12 Pro",
+											"type": "text"
+										},
+										{
+											"key": "categoryToSwap",
+											"value": "Mobile Phones & Tablets",
+											"type": "text"
+										},
+										{
+											"key": "condition",
+											"value": "Good",
+											"type": "text"
+										},
+										{
+											"key": "description",
+											"value": "Looking to swap my iPhone 12 Pro...",
+											"type": "text"
+										},
+										{
+											"key": "preferredSwapCategory",
+											"value": "Electronics",
+											"type": "text"
+										},
+										{
+											"key": "swapConditions",
+											"value": "Looking for MacBook Pro...",
+											"type": "text"
+										}
+									]
+								},
+								"url": {
+									"raw": "{{base_url}}/api/swap-deals/create",
+									"host": ["{{base_url}}"],
+									"path": ["api", "swap-deals", "create"]
+								}
+							},
+							"status": "Created",
+							"code": 201,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n  \"success\": true,\n  \"message\": \"Swap deal created successfully\",\n  \"data\": {\n    \"swapDeal\": {\n      \"id\": \"swap-deal-uuid\",\n      \"sellerId\": \"seller-uuid\",\n      \"productToSwap\": \"iPhone 12 Pro\",\n      \"categoryToSwap\": \"Mobile Phones & Tablets\",\n      \"brandToSwap\": \"Apple\",\n      \"description\": \"Looking to swap my iPhone 12 Pro. Minor scratches on the back, otherwise in good condition. Battery health at 85%.\",\n      \"condition\": \"Good\",\n      \"preferredSwapCategory\": \"Electronics\",\n      \"preferredSwapSubcategories\": [\"Computers & Laptops\", \"Audio & Music\"],\n      \"swapConditions\": \"Looking for MacBook Pro or high-end laptop. Must be in good condition with original charger. Open to negotiation on model year.\",\n      \"title\": \"iPhone 12 Pro - Swap Deal\",\n      \"swapTerms\": \"Looking to swap iPhone 12 Pro (Apple) in Mobile Phones & Tablets category\",\n      \"preferredItems\": \"Mobile Phones & Tablets items, preferably Apple\",\n      \"status\": \"active\",\n      \"viewsCount\": 0,\n      \"proposalsCount\": 0,\n      \"images\": [\"https://cloudinary.com/image1.jpg\", \"https://cloudinary.com/image2.jpg\"],\n      \"createdAt\": \"2024-01-15T10:30:00.000Z\",\n      \"expiresAt\": \"2024-02-14T10:30:00.000Z\"\n    }\n  }\n}"
+						}
+					]
+				},
+				{
+					"name": "Get My Swap Deals",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/swap-deals/user/my-deals?page=1&limit=20",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"swap-deals",
+								"user",
+								"my-deals"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1",
+									"description": "Page number"
+								},
+								{
+									"key": "limit",
+									"value": "20",
+									"description": "Items per page"
+								}
+							]
+						},
+						"description": "Get all swap deals created by the current user (seller)"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Swap Deal",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"Updated: iPhone 12 Pro for MacBook Air Swap\",\n  \"description\": \"Updated description with more details about the iPhone condition\",\n  \"swapTerms\": \"Updated terms: Both parties must inspect items. Cash top-up of $200 may be required.\",\n  \"preferredItems\": \"MacBook Air M1, MacBook Pro, or similar laptop (preferably 13-inch)\",\n  \"meetingLocation\": \"Updated meeting location: Starbucks on Main Street\",\n  \"meetingDate\": \"2024-03-20\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/swap-deals/{{swapDealId}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"swap-deals",
+								"{{swapDealId}}"
+							]
+						},
+						"description": "Update swap deal details (only owner can update)"
+					},
+					"response": []
+				},
+				{
+					"name": "Cancel Swap Deal",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/swap-deals/{{swapDealId}}/cancel",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"swap-deals",
+								"{{swapDealId}}",
+								"cancel"
+							]
+						},
+						"description": "Cancel a swap deal (only owner can cancel). This will mark all pending proposals as expired."
+					},
+					"response": []
+				}
+			],
+			"description": "Operations for sellers managing their swap deals"
+		},
+		{
+			"name": "Swap Proposals (Buyers)",
+			"item": [
+				{
+					"name": "Propose Swap",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "proposerItemName",
+									"value": "MacBook Air M1 13-inch",
+									"type": "text"
+								},
+								{
+									"key": "proposerItemDescription",
+									"value": "MacBook Air M1 13-inch in excellent condition. 8GB RAM, 256GB SSD. Comes with original charger and box.",
+									"type": "text"
+								},
+								{
+									"key": "proposerItemCondition",
+									"value": "like_new",
+									"type": "text"
+								},
+								{
+									"key": "proposerMessage",
+									"value": "Hi! I'm interested in swapping my MacBook Air M1 for your iPhone 12 Pro. The laptop is in excellent condition with no scratches or issues.",
+									"type": "text"
+								},
+								{
+									"key": "proposerItemImage1",
+									"description": "Upload photo of MacBook Air (front view)",
+									"type": "file"
+								},
+								{
+									"key": "proposerItemImage2",
+									"description": "Upload photo of MacBook Air (back view)",
+									"type": "file"
+								},
+								{
+									"key": "proposerItemImage3",
+									"description": "Upload photo showing condition",
+									"type": "file"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/swap-deals/{{swapDealId}}/propose",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"swap-deals",
+								"{{swapDealId}}",
+								"propose"
+							]
+						},
+						"description": "Propose a swap for a swap deal (unlimited - no subscription gating). Upload images of your item."
+					},
+					"response": []
+				},
+				{
+					"name": "Get My Proposals",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/swap-deals/user/my-proposals?page=1&limit=20",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"swap-deals",
+								"user",
+								"my-proposals"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1",
+									"description": "Page number"
+								},
+								{
+									"key": "limit",
+									"value": "20",
+									"description": "Items per page"
+								}
+							]
+						},
+						"description": "Get all swap proposals made by the current user (buyer)"
+					},
+					"response": []
+				}
+			],
+			"description": "Operations for buyers proposing swaps"
+		},
+		{
+			"name": "Browse & View Swap Deals",
+			"item": [
+				{
+					"name": "Get All Swap Deals",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/swap-deals/all?page=1&limit=20&category=electronics&location=Lagos&search=iPhone",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"swap-deals",
+								"all"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1",
+									"description": "Page number"
+								},
+								{
+									"key": "limit",
+									"value": "20",
+									"description": "Items per page"
+								},
+								{
+									"key": "category",
+									"value": "electronics",
+									"description": "Filter by product category"
+								},
+								{
+									"key": "location",
+									"value": "Lagos",
+									"description": "Filter by location"
+								},
+								{
+									"key": "search",
+									"value": "iPhone",
+									"description": "Search in title, description, or product name"
+								}
+							]
+						},
+						"description": "Browse all active swap deals with filtering options"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Swap Deal Details",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/swap-deals/{{swapDealId}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"swap-deals",
+								"{{swapDealId}}"
+							]
+						},
+						"description": "Get detailed information about a specific swap deal including all proposals (only visible to seller)"
+					},
+					"response": []
+				}
+			],
+			"description": "Browse and view swap deals"
+		},
+		{
+			"name": "Proposal Management (Sellers)",
+			"item": [
+				{
+					"name": "Accept Swap Proposal",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/swap-deals/proposals/{{proposalId}}/accept",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"swap-deals",
+								"proposals",
+								"{{proposalId}}",
+								"accept"
+							]
+						},
+						"description": "Accept a swap proposal (only swap deal owner can accept). This will mark the swap deal as completed."
+					},
+					"response": []
+				},
+				{
+					"name": "Reject Swap Proposal",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/swap-deals/proposals/{{proposalId}}/reject",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"swap-deals",
+								"proposals",
+								"{{proposalId}}",
+								"reject"
+							]
+						},
+						"description": "Reject a swap proposal (only swap deal owner can reject)"
+					},
+					"response": []
+				}
+			],
+			"description": "Manage swap proposals (for sellers)"
+		},
+		{
+			"name": "Statistics & Analytics",
+			"item": [
+				{
+					"name": "Get Swap Deal Statistics",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/swap-deals/stats/overview",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"swap-deals",
+								"stats",
+								"overview"
+							]
+						},
+						"description": "Get comprehensive swap deal statistics for the current user"
+					},
+					"response": []
+				}
+			],
+			"description": "Statistics and analytics for swap deals"
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "https://mainserver-production-7ad9.up.railway.app",
+			"type": "string"
+		},
+		{
+			"key": "auth_token",
+			"value": "",
+			"type": "string",
+			"description": "JWT token from login endpoint"
+		},
+		{
+			"key": "swapDealId",
+			"value": "",
+			"type": "string",
+			"description": "Swap deal ID from create swap deal response"
+		},
+		{
+			"key": "proposalId",
+			"value": "",
+			"type": "string",
+			"description": "Proposal ID from propose swap response"
+		},
+		{
+			"key": "product_id",
+			"value": "",
+			"type": "string",
+			"description": "Product ID that you own and want to list for swap"
+		}
+	]
+}

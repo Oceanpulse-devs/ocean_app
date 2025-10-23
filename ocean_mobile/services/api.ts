@@ -290,6 +290,17 @@ class ApiService {
     return this.get(`/api/saved-posts?${params.toString()}`);
   }
 
+  async getSavedItems(page: number = 1, limit: number = 20, category?: string) {
+    const params = new URLSearchParams({
+      page: page.toString(),
+      limit: limit.toString(),
+    });
+    if (category && category !== 'All') {
+      params.append('category', category);
+    }
+    return this.get(`/api/saved-items?${params.toString()}`);
+  }
+
   // Share functionality (placeholder - backend not implemented yet)
   async sharePost(postId: string) {
     // TODO: Implement when backend share endpoint is available

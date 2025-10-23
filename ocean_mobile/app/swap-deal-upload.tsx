@@ -60,8 +60,7 @@ export default function SwapDealUploadScreen() {
         productToSwap: productToSwap.trim(),
         categoryToSwap,
         brandToSwap: brandToSwap.trim(),
-        description: description.trim(),
-        userId: user?.id
+        description: description.trim()
       };
 
       const response = await apiService.post('/api/swap-deals/create', swapDealData);

@@ -35,13 +35,7 @@ export default function SavedScreen() {
   const fetchSavedItems = async () => {
     try {
       setIsLoading(true);
-      const response = await apiService.get('/api/saved-items', {
-        params: { 
-          page: 1, 
-          limit: 20, 
-          category: selectedCategory === 'All' ? undefined : selectedCategory 
-        }
-      });
+      const response = await apiService.getSavedItems(1, 20, selectedCategory);
       console.log('Saved items response:', response);
       setSavedItems(response.data.savedItems || []);
     } catch (error) {
@@ -75,7 +69,7 @@ export default function SavedScreen() {
   const handleRemoveSaved = async (itemId: string, itemType: string) => {
     try {
       if (itemType === 'product') {
-        await apiService.post(`/api/products/${itemId}/save`);
+        await apiService.toggleSaveProduct(itemId);
       } else if (itemType === 'feed-post') {
         await apiService.toggleSave(itemId);
       }
