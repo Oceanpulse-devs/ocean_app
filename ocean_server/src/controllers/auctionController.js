@@ -220,31 +220,78 @@ const getAuctions = async (req, res) => {
       sortOrder = 'ASC'
     } = req.query;
 
-    const currentUserId = req.user?.id;
+    console.log('🔍 GET AUCTIONS: Fetching auctions...');
+    console.log('   Status:', status);
+    console.log('   Category:', category);
+    console.log('   Page:', page);
+    console.log('   Limit:', limit);
 
-    // Use subscription-aware search service
-    const searchResults = await SubscriptionAwareSearchService.searchAuctions({
-      query: search,
-      category,
-      minPrice: minPrice ? parseFloat(minPrice) : undefined,
-      maxPrice: maxPrice ? parseFloat(maxPrice) : undefined,
-      condition,
-      location,
-      status,
-      page: parseInt(page),
+    // Build where clause
+    const whereClause = { status };
+    
+    if (search) {
+      whereClause[Op.or] = [
+        { title: { [Op.like]: `%${search}%` } },
+        { description: { [Op.like]: `%${search}%` } }
+      ];
+    }
+    
+    if (category) whereClause.category = category;
+    if (condition) whereClause.condition = condition;
+    if (location) whereClause.location = { [Op.like]: `%${location}%` };
+    if (minPrice) whereClause.currentPrice = { [Op.gte]: parseFloat(minPrice) };
+    if (maxPrice) {
+      whereClause.currentPrice = { 
+        ...whereClause.currentPrice, 
+        [Op.lte]: parseFloat(maxPrice) 
+      };
+    }
+
+    const offset = (parseInt(page) - 1) * parseInt(limit);
+
+    // Build order clause
+    const orderClause = [];
+    if (sortBy === 'endTime') {
+      orderClause.push(['endTime', sortOrder.toUpperCase()]);
+    } else if (sortBy === 'currentPrice') {
+      orderClause.push(['currentPrice', sortOrder.toUpperCase()]);
+    } else if (sortBy === 'createdAt') {
+      orderClause.push(['createdAt', sortOrder.toUpperCase()]);
+    } else {
+      orderClause.push(['endTime', 'ASC']); // Default
+    }
+
+    console.log('   Where clause:', JSON.stringify(whereClause, null, 2));
+    console.log('   Order clause:', orderClause);
+
+    // Simple query without complex associations for now
+    const { count, rows: auctions } = await Auction.findAndCountAll({
+      where: whereClause,
+      order: orderClause,
       limit: parseInt(limit),
-      sortBy
-    }, currentUserId);
+      offset: offset
+    });
+
+    console.log('✅ GET AUCTIONS: Found', count, 'auctions');
 
     res.status(200).json({
       success: true,
-      data: searchResults.auctions,
-      pagination: searchResults.pagination
+      data: auctions,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total: count,
+        pages: Math.ceil(count / parseInt(limit))
+      }
     });
 
   } catch (error) {
     console.error('Get auctions error:', error);
-    res.status(500).json({ message: "Error retrieving auctions", error: error.message });
+    res.status(500).json({ 
+      success: false,
+      message: "Error retrieving auctions", 
+      error: error.message 
+    });
   }
 };
 

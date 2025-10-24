@@ -168,7 +168,7 @@ const setupAssociations = () => {
 
   
   // Auction associations
-  db.Auction.belongsTo(db.UserTable, { foreignKey: 'sellerId', as: 'seller' });
+  db.Auction.belongsTo(db.SellersTable, { foreignKey: 'sellerId', as: 'seller' });
   db.Auction.hasMany(db.AuctionBid, { foreignKey: 'auctionId', as: 'bids' });
   db.Auction.hasMany(db.AuctionWatcher, { foreignKey: 'auctionId', as: 'watchers' });
   
