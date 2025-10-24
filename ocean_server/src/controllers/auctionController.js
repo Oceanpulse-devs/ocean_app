@@ -136,9 +136,14 @@ const createAuction = async (req, res) => {
       });
     }
 
-    if (new Date(startTime) <= new Date()) {
+    // Allow auctions to start immediately (within 1 minute tolerance)
+    const now = new Date();
+    const startTimeDate = new Date(startTime);
+    const timeDiff = startTimeDate.getTime() - now.getTime();
+    
+    if (timeDiff < -60000) { // More than 1 minute in the past
       return res.status(400).json({
-        message: 'Start time must be in the future'
+        message: 'Start time cannot be more than 1 minute in the past'
       });
     }
 
@@ -258,12 +263,25 @@ const getAuctions = async (req, res) => {
     console.log('   Where clause:', JSON.stringify(whereClause, null, 2));
     console.log('   Order clause:', orderClause);
 
-    // Simple query without complex associations for now
+    // Simple query with seller information included
     const { count, rows: auctions } = await Auction.findAndCountAll({
       where: whereClause,
       order: orderClause,
       limit: parseInt(limit),
-      offset: offset
+      offset: offset,
+      include: [
+        {
+          model: SellersTable,
+          as: 'seller',
+          include: [
+            {
+              model: UserTable,
+              as: 'user',
+              attributes: ['id', 'username', 'fullName', 'email', 'profilePicture']
+            }
+          ]
+        }
+      ]
     });
 
     console.log('✅ GET AUCTIONS: Found', count, 'auctions');
@@ -297,6 +315,17 @@ const getAuction = async (req, res) => {
 
     const auction = await Auction.findByPk(auctionId, {
       include: [
+        {
+          model: SellersTable,
+          as: 'seller',
+          include: [
+            {
+              model: UserTable,
+              as: 'user',
+              attributes: ['id', 'username', 'fullName', 'email', 'profilePicture']
+            }
+          ]
+        },
         {
           model: AuctionBid,
           as: 'bids',
