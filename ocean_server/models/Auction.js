@@ -58,7 +58,7 @@ module.exports = (sequelize) => {
     status: {
       type: DataTypes.ENUM('draft', 'active', 'paused', 'ended', 'cancelled', 'sold'),
       allowNull: false,
-      defaultValue: 'draft'
+      defaultValue: 'active'
     },
     category: {
       type: DataTypes.STRING(100),

@@ -229,14 +229,14 @@ const getAuctions = async (req, res) => {
     // Build where clause
     const whereClause = {};
     
-    // Handle status filter - default to show both draft and active auctions
+    // Handle status filter - default to show active auctions (drafts are now rare)
     if (status === 'active') {
-      whereClause.status = { [Op.in]: ['draft', 'active'] };
+      whereClause.status = 'active';
     } else if (status) {
       whereClause.status = status;
     } else {
-      // Default: show draft and active auctions
-      whereClause.status = { [Op.in]: ['draft', 'active'] };
+      // Default: show active auctions (new auctions are created as active)
+      whereClause.status = 'active';
     }
     
     if (search) {
