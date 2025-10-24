@@ -227,7 +227,17 @@ const getAuctions = async (req, res) => {
     console.log('   Limit:', limit);
 
     // Build where clause
-    const whereClause = { status };
+    const whereClause = {};
+    
+    // Handle status filter - default to show both draft and active auctions
+    if (status === 'active') {
+      whereClause.status = { [Op.in]: ['draft', 'active'] };
+    } else if (status) {
+      whereClause.status = status;
+    } else {
+      // Default: show draft and active auctions
+      whereClause.status = { [Op.in]: ['draft', 'active'] };
+    }
     
     if (search) {
       whereClause[Op.or] = [
