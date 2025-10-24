@@ -1,4 +1,4 @@
-const { Auction, AuctionBid, AuctionWatcher, SellersTable, UserTable, Notification, ProductCategory } = require('../../models');
+const { Auction, AuctionBid, AuctionWatcher, SellersTable, UserTable, Notification } = require('../../models');
 const { Op, Sequelize } = require('sequelize');
 const { checkSubscriptionLimit, incrementUsage, checkFeatureAccess } = require('../middleware/subscriptionMiddleware');
 const { auctionCreationMiddleware } = require('../middleware/featureMiddleware');
@@ -121,24 +121,8 @@ const createAuction = async (req, res) => {
     // Use uploaded images or fallback to provided images
     const finalImages = imageUrls.length > 0 ? imageUrls : (images || []);
 
-    // Validate category
-    let categoryRecord;
-    // Try to find by UUID first
-    if (category.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
-      categoryRecord = await ProductCategory.findByPk(category);
-    } else {
-      // Try to find by name (for backward compatibility)
-      categoryRecord = await ProductCategory.findOne({ where: { name: category } });
-    }
-    
-    if (!categoryRecord) {
-      return res.status(400).json({
-        message: 'Invalid category. Please select a valid category from the list.'
-      });
-    }
-    
-    // Update category usage count
-    await categoryRecord.update({ usageCount: categoryRecord.usageCount + 1 });
+    // Store category as provided by user (no validation needed)
+    console.log('📝 Category provided by user:', category);
 
     if (parseFloat(startingPrice) <= 0) {
       return res.status(400).json({
