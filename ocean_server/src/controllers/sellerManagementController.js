@@ -180,6 +180,17 @@ class SellerManagementController {
         ]
       });
 
+      console.log('🔍 ADMIN APPROVAL DEBUG:');
+      console.log('   Seller ID:', id);
+      console.log('   Found Seller:', seller ? 'YES' : 'NO');
+      if (seller) {
+        console.log('   Business Name:', seller.businessName);
+        console.log('   Full Name:', seller.fullName);
+        console.log('   User ID:', seller.userId);
+        console.log('   Verification Status:', seller.verificationStatus);
+        console.log('   Created At:', seller.createdAt);
+      }
+
       if (!seller) {
         return res.status(404).json({
           success: false,
@@ -210,10 +221,21 @@ class SellerManagementController {
         { where: { id: seller.userId } }
       );
 
+      // Reload seller with updated data and associations
+      const updatedSeller = await db.SellersTable.findByPk(id, {
+        include: [
+          {
+            model: db.UserTable,
+            as: 'user',
+            attributes: ['id', 'username', 'email', 'accountType', 'accountStatus']
+          }
+        ]
+      });
+
       res.json({
         success: true,
         message: 'Seller approved successfully',
-        data: seller
+        data: updatedSeller
       });
 
     } catch (error) {

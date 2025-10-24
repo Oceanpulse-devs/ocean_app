@@ -107,8 +107,8 @@ const currentUserprofile = async(req,res)=>{
      profileInfo.businessAddress = alsoSeller.businessAddress;
      profileInfo.businessDescription = alsoSeller.businessDescription;
      profileInfo.sellerType = alsoSeller.sellerType;
-     profileInfo.selectedCategories = alsoSeller.selectedCategories ? JSON.parse(alsoSeller.selectedCategories) : [];
-     profileInfo.selectedSubcategories = alsoSeller.selectedSubcategories ? JSON.parse(alsoSeller.selectedSubcategories) : {};
+    profileInfo.selectedCategories = alsoSeller.selectedCategories || [];
+    profileInfo.selectedSubcategories = alsoSeller.selectedSubcategories || {};
      profileInfo.businessEmail = alsoSeller.businessEmail;
      profileInfo.businessPhone = alsoSeller.businessPhone;
      profileInfo.category = alsoSeller.category;
@@ -181,8 +181,8 @@ const getUserProfileById = async(req, res) => {
       profileInfo.businessAddress = alsoSeller.businessAddress;
       profileInfo.businessDescription = alsoSeller.businessDescription;
       profileInfo.sellerType = alsoSeller.sellerType;
-      profileInfo.selectedCategories = alsoSeller.selectedCategories ? JSON.parse(alsoSeller.selectedCategories) : [];
-      profileInfo.selectedSubcategories = alsoSeller.selectedSubcategories ? JSON.parse(alsoSeller.selectedSubcategories) : {};
+    profileInfo.selectedCategories = alsoSeller.selectedCategories || [];
+    profileInfo.selectedSubcategories = alsoSeller.selectedSubcategories || {};
       profileInfo.businessEmail = alsoSeller.businessEmail;
       profileInfo.businessPhone = alsoSeller.businessPhone;
       profileInfo.category = alsoSeller.category;

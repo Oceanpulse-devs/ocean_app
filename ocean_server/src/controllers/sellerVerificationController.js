@@ -258,11 +258,11 @@ class SellerVerificationController {
           businessDescription,
           country,
           sellerType: sellerTypes[0], // Use first seller type as primary
-          selectedCategories: JSON.stringify(selectedCategories), // Store as JSON
-          selectedSubcategories: JSON.stringify(selectedSubcategories || {}), // Store as JSON
+          selectedCategories: selectedCategories, // Store as JSON array
+          selectedSubcategories: selectedSubcategories || {}, // Store as JSON object
           businessEmail: businessEmail,
           businessPhone: businessPhone,
-          phoneNumber: businessPhone || req.user.phoneNumber, // Use business phone if provided
+          phoneNumber: businessPhone || '', // Use business phone if provided, otherwise empty string
           verificationStatus: 'pending',
           documentsSubmitted: parsedDocuments.length,
           documentsApproved: 0,
@@ -272,18 +272,18 @@ class SellerVerificationController {
         // Create new seller
         seller = await db.SellersTable.create({
           userId,
-          fullName: req.user.fullName || (req.user.firstName + ' ' + req.user.lastName),
+          fullName: req.user.fullName || 'Unknown User',
           businessName,
           businessAddress,
           businessDescription,
           country,
           sellerType: sellerTypes[0], // Use first seller type as primary
-          selectedCategories: JSON.stringify(selectedCategories), // Store as JSON
-          selectedSubcategories: JSON.stringify(selectedSubcategories || {}), // Store as JSON
+          selectedCategories: selectedCategories, // Store as JSON array
+          selectedSubcategories: selectedSubcategories || {}, // Store as JSON object
           businessEmail: businessEmail,
           businessPhone: businessPhone,
           email: businessEmail || req.user.email, // Use business email if provided
-          phoneNumber: businessPhone || req.user.phoneNumber, // Use business phone if provided
+          phoneNumber: businessPhone || '', // Use business phone if provided, otherwise empty string
           verificationStatus: 'pending',
           documentsSubmitted: parsedDocuments.length,
           documentsApproved: 0,

@@ -502,8 +502,13 @@ const sellerRegistration = async(req,res)=>{
     let parsedSelectedSubcategories = selectedSubcategories;
 
     // Debug logging
-    console.log('Raw sellerTypes:', sellerTypes, 'Type:', typeof sellerTypes);
-    console.log('Raw selectedCategories:', selectedCategories, 'Type:', typeof selectedCategories);
+    console.log('🔍 SELLER REGISTRATION DEBUG:');
+    console.log('   Business Name:', businessName);
+    console.log('   Business Address:', businessAddress);
+    console.log('   Business Description:', businessDescription);
+    console.log('   Country:', country);
+    console.log('   Raw sellerTypes:', sellerTypes, 'Type:', typeof sellerTypes);
+    console.log('   Raw selectedCategories:', selectedCategories, 'Type:', typeof selectedCategories);
 
     // Parse sellerTypes if it's a JSON string
     if (typeof sellerTypes === 'string') {
@@ -658,21 +663,33 @@ const sellerRegistration = async(req,res)=>{
         }
 
         const currentuser = await UserTable.findOne({where: {id: currentUserId}});
+        
+        // Check if user exists
+        if (!currentuser) {
+            return res.status(404).json({message: "User not found. Please log in again."});
+        }
 
         // Create seller record with all new fields
+        console.log('💾 CREATING SELLER RECORD:');
+        console.log('   User ID:', currentUserId);
+        console.log('   Full Name:', currentuser.fullName);
+        console.log('   Business Name:', businessName.trim());
+        console.log('   Business Address:', businessAddress.trim());
+        console.log('   Country:', country);
+        
         const newSeller = await SellersTable.create({
             userId: currentUserId,
             fullName: currentuser.fullName,
             businessName: businessName.trim(),
             email: businessEmail || currentuser.email, // Use business email if provided
-            phoneNumber: businessPhone || currentuser.phoneNumber, // Use business phone if provided
+            phoneNumber: businessPhone || '', // Use business phone if provided, otherwise empty string
             businessAddress: businessAddress.trim(),
             country: country, // Use provided country
-            state: currentuser.state,
+            state: '', // State not available in user table
             businessDescription: businessDescription.trim(),
             sellerType: parsedSellerTypes[0], // Use first seller type as primary (can be updated later)
-            selectedCategories: JSON.stringify(parsedSelectedCategories), // Store as JSON
-            selectedSubcategories: JSON.stringify(parsedSelectedSubcategories || {}), // Store as JSON
+            selectedCategories: parsedSelectedCategories, // Store as JSON array
+            selectedSubcategories: parsedSelectedSubcategories || {}, // Store as JSON object
             businessEmail: businessEmail,
             businessPhone: businessPhone,
             verificationStatus: 'pending'
@@ -682,11 +699,15 @@ const sellerRegistration = async(req,res)=>{
         const documents = [];
         
         try {
-            // Upload business document
+            // Upload business document (from multipart/form-data buffer)
             const businessDocUpload = await CloudinaryService.uploadFile(
-                businessDocumentFile[0].path,
+                businessDocumentFile[0].buffer,
                 `seller-documents/${newSeller.id}/business-document`,
-                { folder: 'seller-documents', resource_type: 'auto' }
+                { 
+                    folder: 'seller-documents', 
+                    resource_type: 'auto',
+                    public_id: `business-doc-${newSeller.id}`
+                }
             );
             
             documents.push({
@@ -700,9 +721,13 @@ const sellerRegistration = async(req,res)=>{
             // Upload personal ID document (if provided)
             if(personalIdType && personalIdFile && personalIdFile[0]){
                 const personalIdUpload = await CloudinaryService.uploadFile(
-                    personalIdFile[0].path,
+                    personalIdFile[0].buffer,
                     `seller-documents/${newSeller.id}/personal-id`,
-                    { folder: 'seller-documents', resource_type: 'auto' }
+                    { 
+                        folder: 'seller-documents', 
+                        resource_type: 'auto',
+                        public_id: `personal-id-${newSeller.id}`
+                    }
                 );
                 
                 documents.push({
@@ -747,8 +772,8 @@ const sellerRegistration = async(req,res)=>{
                 businessName: newSeller.businessName,
                 businessDescription: newSeller.businessDescription,
                 sellerType: newSeller.sellerType,
-                selectedCategories: JSON.parse(newSeller.selectedCategories),
-                selectedSubcategories: JSON.parse(newSeller.selectedSubcategories),
+                selectedCategories: newSeller.selectedCategories,
+                selectedSubcategories: newSeller.selectedSubcategories,
                 businessEmail: newSeller.businessEmail,
                 businessPhone: newSeller.businessPhone,
                 verificationStatus: newSeller.verificationStatus,

@@ -34,6 +34,32 @@ module.exports = (sequelize) => {
       type: DataTypes.TEXT,
       allowNull: false,
     },
+    businessDescription: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      comment: 'Detailed business description'
+    },
+    selectedCategories: {
+      type: DataTypes.JSON,
+      allowNull: true,
+      comment: 'Array of selected main categories'
+    },
+    selectedSubcategories: {
+      type: DataTypes.JSON,
+      allowNull: true,
+      comment: 'Object mapping categories to subcategories'
+    },
+    businessEmail: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      validate: { isEmail: true },
+      comment: 'Business-specific email address'
+    },
+    businessPhone: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      comment: 'Business-specific phone number'
+    },
     country: {
       type: DataTypes.STRING,
       allowNull: false,
