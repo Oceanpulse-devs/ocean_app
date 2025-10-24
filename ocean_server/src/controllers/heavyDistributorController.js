@@ -171,7 +171,7 @@ class HeavyDistributorController {
     }
   }
 
-  // Get all distributors with advanced search and filtering
+  // Get all distributors with advanced search and filtering - DIRECT SEARCH FROM SELLERS TABLE
   async getAllDistributors(req, res) {
     try {
       const {
@@ -188,85 +188,112 @@ class HeavyDistributorController {
         searchQuery
       } = req.query;
 
+      console.log('🔍 GET ALL DISTRIBUTORS - Direct Sellers Table Search:');
+      console.log('   Business Type:', businessType);
+      console.log('   Product Category:', productCategory);
+      console.log('   Location:', location);
+      console.log('   Min Rating:', minRating);
+
       const offset = (page - 1) * limit;
 
-      // Build filter conditions
+      // Build filter conditions for SellersTable
       const whereClause = {
-        status: 'active',
-        isActive: true
-      };
-
-      if (businessType) {
-        whereClause.businessType = businessType;
-      }
-
-      if (isVerified !== undefined) {
-        whereClause.isVerified = isVerified === 'true';
-      }
-
-      // Filter by seller type from verification (only show manufacturers, wholesalers, distributors)
-      const sellerTypeFilter = {
+        verificationStatus: 'approved', // Only approved sellers
         sellerType: {
-          [Op.in]: ['manufacturer', 'wholesaler', 'distributor']
-        },
-        verificationStatus: 'approved'
+          [Op.in]: ['manufacturer', 'wholesaler', 'distributor'] // Only distributor types
+        }
       };
 
+      // Add business type filter if provided
+      if (businessType) {
+        let mappedSellerType = businessType.toLowerCase();
+        if (mappedSellerType === 'heavy distributor') {
+          mappedSellerType = 'distributor';
+        }
+        whereClause.sellerType = mappedSellerType;
+      }
+
+      // Add location filter if provided
+      if (location) {
+        whereClause.country = {
+          [Op.like]: `%${location}%`
+        };
+      }
+
+      // Add rating filter if provided
       if (minRating) {
         whereClause.rating = {
           [Op.gte]: parseFloat(minRating)
         };
       }
 
-      if (location) {
-        whereClause.coverageAreas = {
-          [Op.like]: `%${location}%`
+      // Add product category filter if provided
+      if (productCategory) {
+        whereClause.selectedCategories = {
+          [Op.like]: `%${productCategory}%`
         };
       }
 
-      // Build search conditions
-      let searchConditions = [];
+      // Add search query filter if provided
       if (searchQuery) {
-        searchConditions = [
+        whereClause[Op.or] = [
           { businessName: { [Op.like]: `%${searchQuery}%` } },
           { businessAddress: { [Op.like]: `%${searchQuery}%` } },
-          { productCategories: { [Op.like]: `%${searchQuery}%` } },
-          { productBrands: { [Op.like]: `%${searchQuery}%` } }
+          { selectedCategories: { [Op.like]: `%${searchQuery}%` } }
         ];
       }
 
-      if (productCategory) {
-        searchConditions.push({
-          productCategories: { [Op.like]: `%${productCategory}%` }
-        });
-      }
+      console.log('   Where Clause:', JSON.stringify(whereClause, null, 2));
 
-      if (productBrand) {
-        searchConditions.push({
-          productBrands: { [Op.like]: `%${productBrand}%` }
-        });
-      }
-
-      if (searchConditions.length > 0) {
-        whereClause[Op.or] = searchConditions;
-      }
-
-      // Get distributors with pagination and sorting
-      const { count, rows: distributors } = await db.HeavyDistributor.findAndCountAll({
+      // Get sellers with pagination and sorting
+      const { count, rows: sellers } = await db.SellersTable.findAndCountAll({
         where: whereClause,
-        include: [
-          {
-            model: db.SellersTable,
-            as: 'supplier',
-            where: sellerTypeFilter, // Filter by seller type from verification
-            attributes: ['id', 'businessName', 'verificationStatus', 'businessAddress', 'sellerType'],
-            required: true // Inner join to only include distributors with approved seller profiles
-          }
+        attributes: [
+          'id',
+          'userId',
+          'businessName',
+          'businessAddress',
+          'country',
+          'sellerType',
+          'selectedCategories',
+          'selectedSubcategories',
+          'businessEmail',
+          'businessPhone',
+          'rating',
+          'totalSales',
+          'verificationStatus',
+          'createdAt',
+          'updatedAt'
         ],
         order: [[sortBy, sortOrder]],
         limit: parseInt(limit),
         offset: parseInt(offset)
       });
+
+      console.log('✅ Found', sellers.length, 'sellers matching criteria');
+
+      // Transform sellers data to match HeavyDistributor format
+      const distributors = sellers.map(seller => ({
+        id: seller.id,
+        supplierId: seller.userId,
+        businessName: seller.businessName,
+        businessType: seller.sellerType,
+        productCategories: seller.selectedCategories || [],
+        productBrands: [], // Not available in sellers table
+        coverageAreas: [seller.country], // Use country as coverage area
+        businessAddress: seller.businessAddress,
+        contactInfo: {
+          email: seller.businessEmail,
+          phone: seller.businessPhone
+        },
+        isVerified: seller.verificationStatus === 'approved',
+        rating: seller.rating || 0,
+        reviewCount: 0, // Not available in sellers table
+        status: 'active',
+        createdAt: seller.createdAt,
+        updatedAt: seller.updatedAt,
+        lastActivity: seller.updatedAt
+      }));
 
       // Calculate total pages
       const totalPages = Math.ceil(count / limit);
@@ -647,7 +674,7 @@ class HeavyDistributorController {
     }
   }
 
-  // Search distributors by location and product
+  // Search distributors by location and product - DIRECT SEARCH FROM SELLERS TABLE
   async searchDistributors(req, res) {
     try {
       const {
@@ -659,74 +686,105 @@ class HeavyDistributorController {
         maxDistance = 100
       } = req.query;
 
-      // Location is optional for search - if not provided, search all locations
+      console.log('🔍 SEARCH DISTRIBUTORS - Direct Sellers Table Search:');
+      console.log('   Location:', location);
+      console.log('   Product Category:', productCategory);
+      console.log('   Business Type:', businessType);
+      console.log('   Min Rating:', minRating);
 
-      // Build search conditions
+      // Build search conditions for SellersTable
       const whereClause = {
-        status: 'active',
-        isActive: true,
-        rating: {
-          [Op.gte]: parseFloat(minRating)
+        verificationStatus: 'approved', // Only approved sellers
+        sellerType: {
+          [Op.in]: ['manufacturer', 'wholesaler', 'distributor'] // Only distributor types
         }
       };
 
+      // Add business type filter if provided
       if (businessType) {
-        whereClause.businessType = businessType;
+        // Map frontend business types to backend seller types
+        let mappedSellerType = businessType.toLowerCase();
+        if (mappedSellerType === 'heavy distributor') {
+          mappedSellerType = 'distributor';
+        }
+        whereClause.sellerType = mappedSellerType;
       }
 
-      // Filter by seller type from verification (only show manufacturers, wholesalers, distributors)
-      const sellerTypeFilter = {
-        sellerType: {
-          [Op.in]: ['manufacturer', 'wholesaler', 'distributor']
-        },
-        verificationStatus: 'approved'
-      };
-
-      // Location-based search (only if location is provided)
+      // Add location filter if provided
       if (location) {
-        whereClause.coverageAreas = {
+        whereClause.country = {
           [Op.like]: `%${location}%`
         };
       }
 
-      // Product-based search
-      if (productCategory || productBrand) {
-        let productConditions = [];
-        
-        if (productCategory) {
-          productConditions.push({
-            productCategories: { [Op.like]: `%${productCategory}%` }
-          });
-        }
-        
-        if (productBrand) {
-          productConditions.push({
-            productBrands: { [Op.like]: `%${productBrand}%` }
-          });
-        }
-        
-        whereClause[Op.or] = productConditions;
+      // Add rating filter if provided
+      if (minRating > 0) {
+        whereClause.rating = {
+          [Op.gte]: parseFloat(minRating)
+        };
       }
 
-      // Get matching distributors
-      const distributors = await db.HeavyDistributor.findAll({
+      // Add product category filter if provided
+      if (productCategory) {
+        whereClause.selectedCategories = {
+          [Op.like]: `%${productCategory}%`
+        };
+      }
+
+      console.log('   Where Clause:', JSON.stringify(whereClause, null, 2));
+
+      // Search directly from SellersTable
+      const sellers = await db.SellersTable.findAll({
         where: whereClause,
-        include: [
-          {
-            model: db.SellersTable,
-            as: 'supplier',
-            where: sellerTypeFilter, // Filter by seller type from verification
-            attributes: ['id', 'businessName', 'verificationStatus', 'businessAddress', 'sellerType'],
-            required: true // Inner join to only include distributors with approved seller profiles
-          }
+        attributes: [
+          'id',
+          'userId',
+          'businessName',
+          'businessAddress',
+          'country',
+          'sellerType',
+          'selectedCategories',
+          'selectedSubcategories',
+          'businessEmail',
+          'businessPhone',
+          'rating',
+          'totalSales',
+          'verificationStatus',
+          'createdAt',
+          'updatedAt'
         ],
         order: [
-          ['isVerified', 'DESC'],
           ['rating', 'DESC'],
-          ['reviewCount', 'DESC']
+          ['totalSales', 'DESC'],
+          ['createdAt', 'DESC']
         ],
         limit: 50
       });
+
+      console.log('✅ Found', sellers.length, 'sellers matching criteria');
+
+      // Transform sellers data to match HeavyDistributor format for frontend compatibility
+      const distributors = sellers.map(seller => ({
+        id: seller.id,
+        supplierId: seller.userId,
+        businessName: seller.businessName,
+        businessType: seller.sellerType,
+        productCategories: seller.selectedCategories || [],
+        productBrands: [], // Not available in sellers table
+        coverageAreas: [seller.country], // Use country as coverage area
+        businessAddress: seller.businessAddress,
+        contactInfo: {
+          email: seller.businessEmail,
+          phone: seller.businessPhone
+        },
+        isVerified: seller.verificationStatus === 'approved',
+        rating: seller.rating || 0,
+        reviewCount: 0, // Not available in sellers table
+        status: 'active',
+        createdAt: seller.createdAt,
+        updatedAt: seller.updatedAt,
+        lastActivity: seller.updatedAt
+      }));
 
       res.json({
         success: true,
