@@ -1,4 +1,5 @@
 const { UserTable, Notification } = require('../../models');
+const { mapArrayFields } = require('../../utils/fieldMapper');
 
 // Create and send notification
 const createNotification = async (userId, title, message, type = 'info', category = 'system', metadata = null) => {
@@ -110,16 +111,19 @@ const getUserNotifications = async (req, res) => {
       // Format time
       const timeAgo = getTimeAgo(notificationData.createdAt);
 
+      // Map field names to match frontend expectations
       return {
         id: notificationData.id,
         type: frontendType,
-        isRead: notificationData.isRead,
+        isRead: notificationData.isRead, // Keep isRead (frontend expects this)
+        body: notificationData.message, // Map message → body
+        data: metadata, // Map metadata → data
         user: {
           name: notificationData.user?.fullName || 'System',
           avatar: notificationData.user?.profilePicture || '🌊',
           verified: notificationData.user?.accountStatus === 'verified'
         },
-        content: notificationData.message,
+        title: notificationData.title,
         comment: metadata.comment || null,
         message: metadata.message || null,
         offer: metadata.offer || null,

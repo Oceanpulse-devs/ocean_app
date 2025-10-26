@@ -27,7 +27,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"title\": \"Looking for Vintage Guitar\",\n  \"description\": \"I'm looking for a vintage Fender Stratocaster from the 1960s in good condition\",\n  \"category_id\": \"{{tech_category_id}}\",\n  \"budget\": {\n    \"min\": 1000,\n    \"max\": 3000,\n    \"currency\": \"USD\"\n  },\n  \"location\": {\n    \"city\": \"Los Angeles\",\n    \"state\": \"CA\",\n    \"country\": \"USA\",\n    \"radius\": 50\n  },\n  \"urgency\": \"medium\",\n  \"preferredCondition\": \"good\",\n  \"images\": [\"https://example.com/reference-guitar.jpg\"],\n  \"tags\": [\"vintage\", \"guitar\", \"fender\", \"stratocaster\"],\n  \"expiryDate\": \"2024-03-15T23:59:59Z\",\n  \"reach_limit\": 5,\n  \"contact_preference\": \"message\"\n}"
+							"raw": "{\n  \"title\": \"Looking for Vintage Guitar\",\n  \"caption\": \"Looking for Vintage Guitar\",\n  \"description\": \"I'm looking for a vintage Fender Stratocaster from the 1960s in good condition\",\n  \"category_id\": \"{{tech_category_id}}\",\n  \"budget\": {\n    \"min\": 1000,\n    \"max\": 3000,\n    \"currency\": \"USD\"\n  },\n  \"location\": {\n    \"city\": \"Los Angeles\",\n    \"state\": \"CA\",\n    \"country\": \"USA\",\n    \"radius\": 50\n  },\n  \"urgency\": \"medium\",\n  \"preferredCondition\": \"good\",\n  \"images\": [\"https://example.com/reference-guitar.jpg\"],\n  \"tags\": [\"vintage\", \"guitar\", \"fender\", \"stratocaster\"],\n  \"expiryDate\": \"2024-03-15T23:59:59Z\",\n  \"reach_limit\": 5,\n  \"contact_preference\": \"message\"\n}"
 						},
 						"url": {
 							"raw": "{{base_url}}/api/buyer-needs/create",

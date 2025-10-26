@@ -8,6 +8,7 @@ const crypto = require('crypto')
 const { where } = require('sequelize')
 const JWT_SECRET = process.env.JWT_SECRET
 const redisClient = require('../config/redisdb')
+const { mapRequestFields, mapResponseFields } = require('../../utils/fieldMapper')
 
 // Account lockout configuration
 const MAX_LOGIN_ATTEMPTS = 5;
@@ -274,16 +275,24 @@ const login = async(req,res)=>{
         maxAge: 7 * 24 * 60 * 60 * 1000 //7days
     });
 
+    // Build user object with all fields frontend expects
+    const userResponse = {
+        id: existingUser.id,
+        fullName: existingUser.fullName,
+        email: existingUser.email,
+        role: existingUser.accountType, // Current role for permissions
+        accountType: existingUser.accountType, // Account classification
+        accountStatus: existingUser.accountStatus,
+        profilePicture: existingUser.profilePicture || null,
+        username: existingUser.username || null,
+        bio: existingUser.bio || null,
+        location: existingUser.location || null,
+        emailVerified: existingUser.emailVerified || false
+    };
+
     res.status(200).json({
         message:"User successfully signed in.",
-        user:{
-            id: existingUser.id,
-            fullName: existingUser.fullName,
-            email: existingUser.email,
-            role: existingUser.accountType, // Current role for permissions
-            accountType: existingUser.accountType, // Account classification
-            accountStatus: existingUser.accountStatus
-        },
+        user: userResponse,
         token: token // Include token in response for Flutter Web
     })
    }catch(error){
@@ -339,7 +348,11 @@ const forgotPassword = async(req,res)=>{
 
 //verify reset code
 const verifyResetCode = async(req,res)=>{
-    const {email, resetCode} = req.body;
+    // Accept both 'otp' and 'resetCode' field names for frontend compatibility
+    const {email, resetCode: resetCodeFromBody, otp} = req.body;
+    
+    // Use whichever field is provided
+    const resetCode = resetCodeFromBody || otp;
 
     if(!email || !resetCode){
         return res.status(400).json({message:"Email and reset code are required."})

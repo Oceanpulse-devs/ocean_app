@@ -1,6 +1,7 @@
 const { Post, PostMedia, PostLike, PostComment, PostShare, SavedPost, UserTable, UserFollows, ProductCategory, Notification, BuyerNeed } = require('../../models');
 const { Op, Sequelize } = require('sequelize');
 const cloudinaryService = require('../services/cloudinaryService');
+const { mapNestedFields } = require('../../utils/fieldMapper');
 
 // Helper function to create notifications
 const createNotification = async (userId, title, message, type = 'info', category = 'system', metadata = null) => {
@@ -201,10 +202,10 @@ const getHomeFeed = async (req, res) => {
                         commentList: []
                     };
                 } else {
-                    // General post format (default)
+                    // General post format (default) - Map to frontend field names
                     formattedPost = {
                         id: postData.id,
-                        type: 'general',
+                        category: postData.contentType || 'general',  // type → category
                         contentType: postData.contentType || 'post',
                         user: {
                             name: postData.user.fullName,
@@ -212,8 +213,13 @@ const getHomeFeed = async (req, res) => {
                             verified: postData.user.accountStatus === 'verified',
                             location: postData.user.location
                         },
-                        content: postData.content,
-                        images: postData.media?.map(m => m.mediaUrl) || [],
+                        caption: postData.content,  // content → caption
+                        media: postData.media?.map((m, index) => ({
+                            id: m.id || `media_${Date.now()}_${index}`,
+                            type: m.mediaType || 'image',
+                            url: m.mediaUrl,
+                            thumbnailUrl: m.thumbnailUrl || m.mediaUrl
+                        })) || [],  // images → media with structure
                         likes: postData.likesCount || 0,
                         comments: postData.commentsCount || 0,
                         shares: postData.sharesCount || 0,
@@ -244,18 +250,27 @@ const getHomeFeed = async (req, res) => {
             })
         );
 
+        // Map pagination fields to match frontend expectations
+        const pagination = {
+            currentPage: parseInt(page),
+            totalPages: Math.ceil(posts.count / limit),
+            totalPosts: posts.count,
+            hasNextPage: offset + limit < posts.count,
+            hasPrevPage: page > 1
+        };
+        
+        const frontendPagination = mapNestedFields(pagination, {
+            currentPage: 'page',
+            totalPosts: 'totalCount',
+            hasPrevPage: 'hasPreviousPage'
+        });
+
         res.status(200).json({
             message: "Home feed retrieved successfully",
             data: {
                 stories: formattedStories,
                 posts: formattedPosts,
-                pagination: {
-                    currentPage: parseInt(page),
-                    totalPages: Math.ceil(posts.count / limit),
-                    totalPosts: posts.count,
-                    hasNextPage: offset + limit < posts.count,
-                    hasPrevPage: page > 1
-                }
+                pagination: frontendPagination
             }
         });
 
@@ -405,17 +420,26 @@ const getFeed = async (req, res) => {
             })
         );
 
+        // Map pagination fields to match frontend expectations
+        const pagination = {
+            currentPage: parseInt(page),
+            totalPages: Math.ceil(posts.count / limit),
+            totalPosts: posts.count,
+            hasNextPage: offset + limit < posts.count,
+            hasPrevPage: page > 1
+        };
+        
+        const frontendPagination = mapNestedFields(pagination, {
+            currentPage: 'page',
+            totalPosts: 'totalCount',
+            hasPrevPage: 'hasPreviousPage'
+        });
+
         res.status(200).json({
             message: "Feed retrieved successfully",
             data: {
                 posts: postsWithEngagement,
-                pagination: {
-                    currentPage: parseInt(page),
-                    totalPages: Math.ceil(posts.count / limit),
-                    totalPosts: posts.count,
-                    hasNextPage: offset + limit < posts.count,
-                    hasPrevPage: page > 1
-                }
+                pagination: frontendPagination
             }
         });
 

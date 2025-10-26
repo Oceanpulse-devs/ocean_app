@@ -1,5 +1,6 @@
 const { where, Op } = require('sequelize');
-const {UserTable, SellersTable, UserFollows, Product} = require('../../models')
+const {UserTable, SellersTable, UserFollows, Product} = require('../../models');
+const { mapRequestFields, mapResponseFields } = require('../../utils/fieldMapper')
 
 const currentUserprofile = async(req,res)=>{
   try {
@@ -98,7 +99,11 @@ const currentUserprofile = async(req,res)=>{
      coverPicture: currentUser.coverPicture || "/default-cover.jpg",
      bio: currentUser.bio || (role === "seller" ? "Professional seller on Ocean App" : "Ocean App user"),
      location: currentUser.location || "Not specified",
-     website: currentUser.website || null
+     website: currentUser.website || null,
+     // Add missing fields that frontend expects
+     emailVerified: currentUser.emailVerified || false,
+     phoneNumber: currentUser.phoneNumber || null,
+     updatedAt: currentUser.updatedAt
    }
 
    // Add seller-specific info if user is a seller
@@ -119,9 +124,10 @@ const currentUserprofile = async(req,res)=>{
      profileInfo.bio = alsoSeller.businessDescription || "Professional seller on Ocean App";
    }
    
+   // Profile response structure matches frontend expectations
    return res.status(200).json({
      message: "Profile retrieved successfully",
-     user: profileInfo
+     user: profileInfo // Frontend expects 'user' key (middleware will add 'success' flag)
    })
    
   } catch (error) {

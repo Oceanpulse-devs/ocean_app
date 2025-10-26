@@ -24,10 +24,18 @@
 							"mode": "formdata",
 							"formdata": [
 								{
+									"key": "myProductName",
+									"value": "iPhone 12 Pro",
+									"type": "text",
+									"description": "Frontend field name - Name of the product you want to swap",
+									"disabled": false
+								},
+								{
 									"key": "productToSwap",
 									"value": "iPhone 12 Pro",
 									"type": "text",
-									"description": "Name of the product you want to swap"
+									"description": "Backend field name (also accepted for compatibility)",
+									"disabled": true
 								},
 								{
 									"key": "categoryToSwap",
@@ -155,7 +163,7 @@
 								}
 							],
 							"cookie": [],
-							"body": "{\n  \"success\": true,\n  \"message\": \"Swap deal created successfully\",\n  \"data\": {\n    \"swapDeal\": {\n      \"id\": \"swap-deal-uuid\",\n      \"sellerId\": \"seller-uuid\",\n      \"productToSwap\": \"iPhone 12 Pro\",\n      \"categoryToSwap\": \"Mobile Phones & Tablets\",\n      \"brandToSwap\": \"Apple\",\n      \"description\": \"Looking to swap my iPhone 12 Pro. Minor scratches on the back, otherwise in good condition. Battery health at 85%.\",\n      \"condition\": \"Good\",\n      \"preferredSwapCategory\": \"Electronics\",\n      \"preferredSwapSubcategories\": [\"Computers & Laptops\", \"Audio & Music\"],\n      \"swapConditions\": \"Looking for MacBook Pro or high-end laptop. Must be in good condition with original charger. Open to negotiation on model year.\",\n      \"title\": \"iPhone 12 Pro - Swap Deal\",\n      \"swapTerms\": \"Looking to swap iPhone 12 Pro (Apple) in Mobile Phones & Tablets category\",\n      \"preferredItems\": \"Mobile Phones & Tablets items, preferably Apple\",\n      \"status\": \"active\",\n      \"viewsCount\": 0,\n      \"proposalsCount\": 0,\n      \"images\": [\"https://cloudinary.com/image1.jpg\", \"https://cloudinary.com/image2.jpg\"],\n      \"createdAt\": \"2024-01-15T10:30:00.000Z\",\n      \"expiresAt\": \"2024-02-14T10:30:00.000Z\"\n    }\n  }\n}"
+							"body": "{\n  \"success\": true,\n  \"message\": \"Swap deal created successfully\",\n  \"data\": {\n    \"swapDeal\": {\n      \"id\": \"swap-deal-uuid\",\n      \"sellerId\": \"seller-uuid\",\n      \"myProductName\": \"iPhone 12 Pro\",\n      \"productToSwap\": \"iPhone 12 Pro\",\n      \"lookingForName\": \"Mobile Phones & Tablets items, preferably Apple\",\n      \"categoryToSwap\": \"Mobile Phones & Tablets\",\n      \"brandToSwap\": \"Apple\",\n      \"description\": \"Looking to swap my iPhone 12 Pro. Minor scratches on the back, otherwise in good condition. Battery health at 85%.\",\n      \"condition\": \"Good\",\n      \"preferredSwapCategory\": \"Electronics\",\n      \"preferredSwapSubcategories\": [\"Computers & Laptops\", \"Audio & Music\"],\n      \"swapConditions\": \"Looking for MacBook Pro or high-end laptop. Must be in good condition with original charger. Open to negotiation on model year.\",\n      \"title\": \"iPhone 12 Pro - Swap Deal\",\n      \"swapTerms\": \"Looking to swap iPhone 12 Pro (Apple) in Mobile Phones & Tablets category\",\n      \"preferredItems\": \"Mobile Phones & Tablets items, preferably Apple\",\n      \"status\": \"active\",\n      \"viewsCount\": 0,\n      \"proposalsCount\": 0,\n      \"images\": [\"https://cloudinary.com/image1.jpg\", \"https://cloudinary.com/image2.jpg\"],\n      \"createdAt\": \"2024-01-15T10:30:00.000Z\",\n      \"expiresAt\": \"2024-02-14T10:30:00.000Z\"\n    }\n  }\n}"
 						}
 					]
 				},

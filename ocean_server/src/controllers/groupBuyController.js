@@ -4,6 +4,16 @@ const { checkSubscriptionLimit, incrementUsage, checkFeatureAccess } = require('
 const { groupBuyCreationMiddleware } = require('../middleware/featureMiddleware');
 const SubscriptionAwareSearchService = require('../services/subscriptionAwareSearchService');
 
+// Helper function to map group buy field names for frontend
+const mapGroupBuyResponse = (groupBuy) => {
+  const mapped = groupBuy.toJSON ? groupBuy.toJSON() : { ...groupBuy };
+  return {
+    ...mapped,
+    pricePerUnit: mapped.group_price,
+    endDate: mapped.deadline
+  };
+};
+
 // Helper function to create notifications
 const createNotification = async (userId, title, message, type = 'info', category = 'system', metadata = null) => {
   try {
@@ -34,13 +44,19 @@ class GroupBuyController {
         product_image,
         original_price,
         group_price,
+        pricePerUnit,  // Accept frontend field name
         min_buyers,
         max_buyers,
         location,
         deadline,
+        endDate,  // Accept frontend field name
         terms_conditions,
         tags
       } = req.body;
+
+      // Transform frontend field names to backend field names
+      const finalGroupPrice = pricePerUnit || group_price;
+      const finalDeadline = endDate || deadline;
 
       const creator_id = req.user.id;
 
@@ -69,7 +85,7 @@ class GroupBuyController {
       }
 
       // Validate required fields
-      if (!title || !description || !category_id || !product_name || !original_price || !group_price || !min_buyers || !deadline) {
+      if (!title || !description || !category_id || !product_name || !original_price || !finalGroupPrice || !min_buyers || !finalDeadline) {
         return res.status(400).json({
           success: false,
           message: 'Missing required fields'
@@ -77,7 +93,7 @@ class GroupBuyController {
       }
 
       // Validate prices
-      if (group_price >= original_price) {
+      if (finalGroupPrice >= original_price) {
         return res.status(400).json({
           success: false,
           message: 'Group price must be less than original price'
@@ -85,7 +101,7 @@ class GroupBuyController {
       }
 
       // Validate deadline (must be in the future)
-      if (new Date(deadline) <= new Date()) {
+      if (new Date(finalDeadline) <= new Date()) {
         return res.status(400).json({
           success: false,
           message: 'Deadline must be in the future'
@@ -116,12 +132,12 @@ class GroupBuyController {
         product_name,
         product_image,
         original_price,
-        group_price,
+        group_price: finalGroupPrice,  // Use transformed value
         min_buyers,
         max_buyers,
         creator_id,
         location,
-        deadline,
+        deadline: finalDeadline,  // Use transformed value
         terms_conditions,
         tags: tags ? (typeof tags === 'string' ? JSON.parse(tags) : tags) : null,
         status: 'pending'
@@ -226,9 +242,12 @@ class GroupBuyController {
         limit: parseInt(limit)
       }, currentUserId);
 
+      // Map group buy field names for frontend compatibility
+      const mappedGroupBuys = searchResults.groupBuys.map(mapGroupBuyResponse);
+
       res.status(200).json({
         success: true,
-        data: searchResults.groupBuys,
+        data: mappedGroupBuys,
         pagination: searchResults.pagination
       });
 

@@ -3,6 +3,17 @@ const { Op, Sequelize } = require('sequelize');
 const { checkSubscriptionLimit, incrementUsage, checkFeatureAccess } = require('../middleware/subscriptionMiddleware');
 const { auctionCreationMiddleware } = require('../middleware/featureMiddleware');
 const SubscriptionAwareSearchService = require('../services/subscriptionAwareSearchService');
+const { mapResponseFields, mapArrayFields } = require('../../utils/fieldMapper');
+
+// Helper function to map auction field names for frontend
+const mapAuctionResponse = (auction) => {
+  const mapped = auction.toJSON ? auction.toJSON() : { ...auction };
+  return {
+    ...mapped,
+    startingBid: mapped.startingPrice,
+    currentBid: mapped.currentPrice
+  };
+};
 
 // Simple notification function to avoid circular dependency
 const createAuctionNotification = async (userId, title, message, type = 'auction', category = 'system') => {
@@ -66,6 +77,7 @@ const createAuction = async (req, res) => {
       title,
       description,
       startingPrice,
+      startingBid,  // Accept frontend field name
       reservePrice,
       minimumBidIncrement,
       startTime,
@@ -82,8 +94,11 @@ const createAuction = async (req, res) => {
       returnPolicy
     } = req.body;
 
+    // Use frontend field name if provided, otherwise use backend field name
+    const finalStartingPrice = startingBid || startingPrice;
+
     // Validation
-    if (!title || !description || !startingPrice || !startTime || !endTime || !category || !condition || !location) {
+    if (!title || !description || !finalStartingPrice || !startTime || !endTime || !category || !condition || !location) {
       return res.status(400).json({
         message: 'Missing required fields'
       });
@@ -124,13 +139,13 @@ const createAuction = async (req, res) => {
     // Store category as provided by user (no validation needed)
     console.log('📝 Category provided by user:', category);
 
-    if (parseFloat(startingPrice) <= 0) {
+    if (parseFloat(finalStartingPrice) <= 0) {
       return res.status(400).json({
         message: 'Starting price must be greater than 0'
       });
     }
 
-    if (reservePrice && parseFloat(reservePrice) <= parseFloat(startingPrice)) {
+    if (reservePrice && parseFloat(reservePrice) <= parseFloat(finalStartingPrice)) {
       return res.status(400).json({
         message: 'Reserve price must be greater than starting price'
       });
@@ -157,8 +172,8 @@ const createAuction = async (req, res) => {
       sellerId: seller.id,
       title,
       description,
-      startingPrice,
-      currentPrice: startingPrice,
+      startingPrice: finalStartingPrice,  // Use transformed value
+      currentPrice: finalStartingPrice,
       reservePrice,
       minimumBidIncrement: minimumBidIncrement || 1.00,
       startTime,
@@ -286,9 +301,12 @@ const getAuctions = async (req, res) => {
 
     console.log('✅ GET AUCTIONS: Found', count, 'auctions');
 
+    // Map auction field names for frontend compatibility
+    const mappedAuctions = auctions.map(mapAuctionResponse);
+
     res.status(200).json({
       success: true,
-      data: auctions,
+      data: mappedAuctions,
       pagination: {
         page: parseInt(page),
         limit: parseInt(limit),
@@ -369,8 +387,11 @@ const getAuction = async (req, res) => {
       });
     }
 
+    // Map auction field names for frontend compatibility
+    const mappedAuction = mapAuctionResponse(auction);
+
     res.json({
-      auction,
+      auction: mappedAuction,
       isWatching,
       userBid
     });

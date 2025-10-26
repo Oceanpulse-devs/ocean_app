@@ -9,6 +9,8 @@ const redisClient = require('./src/config/redisdb')
 const db = require('./models')
 const pool = require('./src/config/database')
 const cookieParser = require('cookie-parser')
+const responseWrapper = require('./src/middleware/responseWrapper')
+
 // Initialize OAuth services only if environment variables are available
 if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
     require('./src/services/googleAuth'); // Initialize Google Auth service
@@ -79,6 +81,9 @@ app.use(session({
 // Initialize Passport middleware
 app.use(passport.initialize());
 app.use(passport.session());
+
+// Apply response wrapper middleware to all routes
+app.use(responseWrapper);
 
 // Health check endpoint for Railway
 app.get('/health', (req, res) => {

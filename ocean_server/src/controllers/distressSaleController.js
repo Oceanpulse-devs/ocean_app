@@ -2,12 +2,22 @@ const db = require('../../models');
 const { Op } = require('sequelize');
 const { checkSubscriptionLimit, incrementUsage, checkFeatureAccess } = require('../middleware/subscriptionMiddleware');
 
+// Helper function to map distress sale field names for frontend
+const mapDistressSaleResponse = (distressSale) => {
+  const mapped = distressSale.toJSON ? distressSale.toJSON() : { ...distressSale };
+  return {
+    ...mapped,
+    productName: mapped.title
+  };
+};
+
 class DistressSaleController {
   // Create a distress sale product
   async createDistressSale(req, res) {
     try {
       const {
         title,
+        productName,  // Accept frontend field name
         description,
         price,
         originalPrice,
@@ -22,6 +32,9 @@ class DistressSaleController {
         location,
         images
       } = req.body;
+
+      // Transform frontend field name to backend field name
+      const finalTitle = productName || title;
 
       const sellerId = req.user.id;
 
@@ -147,7 +160,7 @@ class DistressSaleController {
       // Create the distress sale product
       const distressProduct = await db.Product.create({
         sellerId: seller.id,
-        title,
+        title: finalTitle,  // Use transformed value
         description,
         price: calculatedPrice,
         originalPrice,
@@ -168,10 +181,13 @@ class DistressSaleController {
       // Track subscription usage for distress sale creation
       await incrementUsage(sellerId, 'distress_sales');
 
+      // Map distress sale field names for frontend compatibility
+      const mappedDistressProduct = mapDistressSaleResponse(distressProduct);
+
       res.status(201).json({
         success: true,
         message: 'Distress sale product created successfully',
-        data: distressProduct
+        data: mappedDistressProduct
       });
     } catch (error) {
       console.error('Error creating distress sale:', error);

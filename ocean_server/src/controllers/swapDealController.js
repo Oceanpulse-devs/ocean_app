@@ -4,6 +4,16 @@ const cloudinaryService = require('../services/cloudinaryService');
 const { checkSubscriptionLimit, incrementUsage, checkFeatureAccess } = require('../middleware/subscriptionMiddleware');
 const SubscriptionAwareSearchService = require('../services/subscriptionAwareSearchService');
 
+// Helper function to map swap deal field names for frontend
+const mapSwapDealResponse = (swapDeal) => {
+  const mapped = swapDeal.toJSON ? swapDeal.toJSON() : { ...swapDeal };
+  return {
+    ...mapped,
+    myProductName: mapped.productToSwap,  // Map productToSwap → myProductName
+    lookingForName: mapped.preferredItems || mapped.lookingFor || null  // Add lookingForName
+  };
+};
+
 // Helper function to create notifications
 const createNotification = async (userId, title, message, type = 'info', category = 'system', metadata = null) => {
   try {
@@ -92,7 +102,7 @@ class SwapDealController {
 
       // Process uploaded images for the swap deal
       let swapDealImages = [];
-      if (req.files && req.files.length > 0) {
+        if (req.files && req.files.length > 0) {
         console.log(`📸 Processing ${req.files.length} images for swap deal`);
         
         for (const file of req.files) {
@@ -150,31 +160,36 @@ class SwapDealController {
         'swap'
       );
 
+      // Map swap deal field names for frontend compatibility
+      const swapDealObj = {
+        id: swapDeal.id,
+        sellerId: swapDeal.sellerId,
+        productToSwap: swapDeal.productToSwap,
+        categoryToSwap: swapDeal.categoryToSwap,
+        brandToSwap: swapDeal.brandToSwap,
+        description: swapDeal.description,
+        condition: swapDeal.condition,
+        preferredSwapCategory: swapDeal.preferredSwapCategory,
+        preferredSwapSubcategories: JSON.parse(swapDeal.preferredSwapSubcategories || '[]'),
+        swapConditions: swapDeal.swapConditions,
+        title: swapDeal.title,
+        swapTerms: swapDeal.swapTerms,
+        preferredItems: swapDeal.preferredItems,
+        status: swapDeal.status,
+        viewsCount: swapDeal.viewsCount,
+        proposalsCount: swapDeal.proposalsCount,
+        images: JSON.parse(swapDeal.images || '[]'),
+        createdAt: swapDeal.createdAt,
+        expiresAt: swapDeal.expiresAt
+      };
+
+      const mappedSwapDeal = mapSwapDealResponse(swapDealObj);
+
       res.status(201).json({
         success: true,
         message: 'Swap deal created successfully',
         data: {
-          swapDeal: {
-            id: swapDeal.id,
-            sellerId: swapDeal.sellerId,
-            productToSwap: swapDeal.productToSwap,
-            categoryToSwap: swapDeal.categoryToSwap,
-            brandToSwap: swapDeal.brandToSwap,
-            description: swapDeal.description,
-            condition: swapDeal.condition,
-            preferredSwapCategory: swapDeal.preferredSwapCategory,
-            preferredSwapSubcategories: JSON.parse(swapDeal.preferredSwapSubcategories || '[]'),
-            swapConditions: swapDeal.swapConditions,
-            title: swapDeal.title,
-            swapTerms: swapDeal.swapTerms,
-            preferredItems: swapDeal.preferredItems,
-            status: swapDeal.status,
-            viewsCount: swapDeal.viewsCount,
-            proposalsCount: swapDeal.proposalsCount,
-            images: JSON.parse(swapDeal.images || '[]'),
-            createdAt: swapDeal.createdAt,
-            expiresAt: swapDeal.expiresAt
-          }
+          swapDeal: mappedSwapDeal
         }
       });
 
@@ -225,10 +240,13 @@ class SwapDealController {
         offset: parseInt(offset)
       });
 
+      // Map swap deal field names for frontend compatibility
+      const mappedSwapDeals = swapDeals.rows.map(mapSwapDealResponse);
+
       res.json({
         success: true,
         data: {
-          swapDeals: swapDeals.rows,
+          swapDeals: mappedSwapDeals,
           pagination: {
             currentPage: parseInt(page),
             totalPages: Math.ceil(swapDeals.count / limit),
@@ -286,9 +304,12 @@ class SwapDealController {
       // Increment view count
       await swapDeal.increment('viewsCount');
 
+      // Map swap deal field names for frontend compatibility
+      const mappedSwapDeal = mapSwapDealResponse(swapDeal);
+
       res.json({
         success: true,
-        data: { swapDeal }
+        data: { swapDeal: mappedSwapDeal }
       });
 
     } catch (error) {
@@ -341,7 +362,7 @@ class SwapDealController {
 
       if (existingProposal) {
         return res.status(400).json({
-          success: false,
+        success: false,
           message: 'You have already proposed a swap for this deal'
         });
       }
@@ -587,8 +608,8 @@ class SwapDealController {
             model: db.SwapDeal,
             as: 'swapDeal',
             include: [
-              {
-                model: db.UserTable,
+          {
+            model: db.UserTable,
                 as: 'seller',
                 attributes: ['id', 'fullName', 'username', 'profilePicture']
               }

@@ -160,7 +160,15 @@
 								{
 									"key": "startingPrice",
 									"value": "500.00",
-									"type": "text"
+									"type": "text",
+									"description": "Backend field name (also accepts 'startingBid' from frontend)"
+								},
+								{
+									"key": "startingBid",
+									"value": "500.00",
+									"type": "text",
+									"disabled": true,
+									"description": "✅ Frontend field name - backend accepts both field names"
 								},
 								{
 									"key": "reservePrice",

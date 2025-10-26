@@ -1,12 +1,22 @@
 const db = require('../../models');
 const { Op } = require('sequelize');
 
+// Helper function to map buyer need field names for frontend
+const mapBuyerNeedResponse = (buyerNeed) => {
+  const mapped = buyerNeed.toJSON ? buyerNeed.toJSON() : { ...buyerNeed };
+  return {
+    ...mapped,
+    caption: mapped.title
+  };
+};
+
 class BuyerNeedController {
   // Create a new buyer need
   async createBuyerNeed(req, res) {
     try {
       const {
         title,
+        caption,  // Accept frontend field name
         description,
         category_id,
         budget,
@@ -21,6 +31,9 @@ class BuyerNeedController {
         additional_requirements
       } = req.body;
 
+      // Transform frontend field name to backend field name
+      const finalTitle = caption || title;
+
       // Extract budget values from nested object or direct fields
       const finalBudgetMin = budget?.min || budget_min;
       const finalBudgetMax = budget?.max || budget_max;
@@ -29,10 +42,10 @@ class BuyerNeedController {
       const buyer_id = req.user.id;
 
       // Validate required fields
-      if (!title || !description) {
+      if (!finalTitle || !description) {
         return res.status(400).json({
           success: false,
-          message: 'Title and description are required'
+          message: 'Title/Caption and description are required'
         });
       }
 
@@ -78,7 +91,7 @@ class BuyerNeedController {
       const expirationDate = expires_at ? new Date(expires_at) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
       const buyerNeed = await db.BuyerNeed.create({
-        title,
+        title: finalTitle,  // Use transformed value
         description,
         buyer_id,
         category_id,
@@ -94,10 +107,13 @@ class BuyerNeedController {
         status: 'active'
       });
 
+      // Map buyer need field names for frontend compatibility
+      const mappedBuyerNeed = mapBuyerNeedResponse(buyerNeed);
+
       res.status(201).json({
         success: true,
         message: 'Buyer need created successfully',
-        data: buyerNeed
+        data: mappedBuyerNeed
       });
 
     } catch (error) {
@@ -191,13 +207,19 @@ class BuyerNeedController {
         offset: parseInt(offset)
       });
 
-      res.json({
-        success: true,
-        data: rows.map(buyerNeed => ({
-          ...buyerNeed.toJSON(),
+      // Map buyer need field names for frontend compatibility
+      const mappedBuyerNeeds = rows.map(buyerNeed => {
+        const need = mapBuyerNeedResponse(buyerNeed);
+        return {
+          ...need,
           canContact: !buyerNeed.reach_exceeded && buyerNeed.current_reach < buyerNeed.reach_limit,
           reachStatus: `${buyerNeed.current_reach}/${buyerNeed.reach_limit}`
-        })),
+        };
+      });
+
+      res.json({
+        success: true,
+        data: mappedBuyerNeeds,
         pagination: {
           current_page: parseInt(page),
           total_pages: Math.ceil(count / limit),

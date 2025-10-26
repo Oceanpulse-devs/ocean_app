@@ -121,7 +121,15 @@
 								{
 									"key": "title",
 									"value": "URGENT: Electronics Liquidation Sale",
-									"type": "text"
+									"type": "text",
+									"description": "Backend field name (also accepts 'productName' from frontend)"
+								},
+								{
+									"key": "productName",
+									"value": "URGENT: Electronics Liquidation Sale",
+									"type": "text",
+									"disabled": true,
+									"description": "✅ Frontend field name - backend accepts both field names"
 								},
 								{
 									"key": "description",

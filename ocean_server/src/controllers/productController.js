@@ -4,6 +4,16 @@ const cloudinaryService = require('../services/cloudinaryService');
 const { checkSubscriptionLimit, incrementUsage } = require('../middleware/subscriptionMiddleware');
 const { productListingMiddleware } = require('../middleware/featureMiddleware');
 const SubscriptionAwareSearchService = require('../services/subscriptionAwareSearchService');
+const { mapFullResponse, wrapProductsList } = require('../../utils/fieldMapper');
+
+// Helper function to map product field names for frontend
+const mapProductResponse = (product) => {
+  const mapped = product.toJSON ? product.toJSON() : { ...product };
+  return {
+    ...mapped,
+    name: mapped.title  // Map title → name for frontend
+  };
+};
 
 // Helper function to create notifications
 const createNotification = async (userId, title, message, type = 'info', category = 'system', metadata = null) => {
@@ -59,12 +69,18 @@ const getProducts = async (req, res) => {
             sortBy
         }, currentUserId);
 
-        res.status(200).json({
+        // Map product field names for frontend (title → name)
+        const mappedProducts = searchResults.products.map(mapProductResponse);
+
+        // Wrap products in proper structure {data: {products: [...], pagination: {...}}}
+        const response = wrapProductsList({
             success: true,
-            data: searchResults.products,
+            data: mappedProducts,
             pagination: searchResults.pagination,
             searchInfo: searchResults.searchInfo
         });
+        
+        res.status(200).json(response);
 
     } catch (error) {
         console.error('Get products error:', error);
@@ -146,9 +162,12 @@ const getProduct = async (req, res) => {
             productData.isFollowing = !!userFollow;
         }
 
+        // Map product field names for frontend (title → name)
+        const mappedProductData = mapProductResponse(productData);
+
         res.status(200).json({
             message: "Product retrieved successfully",
-            data: productData
+            data: mappedProductData
         });
 
     } catch (error) {
@@ -160,8 +179,10 @@ const getProduct = async (req, res) => {
 // Create new product (SELLERS ONLY)
 const createProduct = async (req, res) => {
     try {
+        // Accept both 'name' (frontend) and 'title' (backend) for backward compatibility
         const {
             title,
+            name,
             description,
             price,
             currency = 'USD',
@@ -172,6 +193,9 @@ const createProduct = async (req, res) => {
             location,
             images
         } = req.body;
+
+        // Use 'title' or 'name' field (frontend sends 'name', backend expects 'title')
+        const productTitle = title || name;
 
         const userId = req.user.id;
 
@@ -201,9 +225,9 @@ const createProduct = async (req, res) => {
         }
 
         // Validate required fields
-        if (!title || !description || !price || !category || !location) {
+        if (!productTitle || !description || !price || !category || !location) {
             return res.status(400).json({
-                message: "Title, description, price, category, and location are required"
+                message: "Title/Name, description, price, category, and location are required"
             });
         }
 
@@ -236,7 +260,7 @@ const createProduct = async (req, res) => {
         // Create product first
         const product = await Product.create({
             sellerId: seller.id,
-            title: title.trim(),
+            title: productTitle.trim(),
             description: description.trim(),
             price: parseFloat(price),
             currency,
