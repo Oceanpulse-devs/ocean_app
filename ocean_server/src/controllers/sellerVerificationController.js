@@ -259,6 +259,10 @@ class SellerVerificationController {
         }
       }
 
+      // Get user's full name from UserTable
+      const user = await db.UserTable.findByPk(userId);
+      const userFullName = user?.fullName || 'Unknown User';
+
       // Check if seller already exists
       let seller = await db.SellersTable.findOne({
         where: { userId }
@@ -267,6 +271,7 @@ class SellerVerificationController {
       if (seller) {
         // Update existing seller
         await seller.update({
+          fullName: userFullName, // Update full name from UserTable
           businessName,
           businessAddress,
           businessDescription,
@@ -286,7 +291,7 @@ class SellerVerificationController {
         // Create new seller
         seller = await db.SellersTable.create({
           userId,
-          fullName: req.user.fullName || 'Unknown User',
+          fullName: userFullName,
           businessName,
           businessAddress,
           businessDescription,
