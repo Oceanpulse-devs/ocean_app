@@ -9,6 +9,25 @@ const syncUserFromMainServer = async (userId) => {
     const existingUser = await UserReference.findByPk(userId);
     if (existingUser) {
       console.log('✅ User already exists in messaging system:', userId);
+      
+      // If businessName is missing but user is a seller, try to fetch and update it
+      if (!existingUser.businessName && existingUser.accountType === 'seller') {
+        console.log('🔄 Seller missing businessName, attempting to fetch...');
+        try {
+          const response = await axios.get(`${mainServerUrl}/api/user/${userId}`, {
+            timeout: 5000,
+            headers: { 'User-Agent': 'MessagingServer/1.0' }
+          });
+          
+          if (response.data && response.data.data && response.data.data.businessName) {
+            await existingUser.update({ businessName: response.data.data.businessName });
+            console.log(`✅ Updated businessName: ${response.data.data.businessName}`);
+          }
+        } catch (error) {
+          console.log('⚠️ Could not fetch businessName:', error.message);
+        }
+      }
+      
       return existingUser;
     }
 
