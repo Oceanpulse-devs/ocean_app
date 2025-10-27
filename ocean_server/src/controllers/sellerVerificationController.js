@@ -72,10 +72,24 @@ class SellerVerificationController {
         });
       }
 
+      // Parse selectedSubcategories if it's a JSON string
+      let parsedSubcategories = selectedSubcategories;
+      if (typeof selectedSubcategories === 'string') {
+        try {
+          parsedSubcategories = JSON.parse(selectedSubcategories);
+        } catch (error) {
+          console.error('Error parsing selectedSubcategories:', error);
+          parsedSubcategories = {};
+        }
+      }
+
       // Debug logging
       console.log('Received documents:', documents);
       console.log('Parsed documents:', parsedDocuments);
       console.log('Files received:', req.files ? req.files.length : 0);
+      console.log('📋 Selected Categories:', selectedCategories);
+      console.log('📋 Selected Subcategories (raw):', selectedSubcategories);
+      console.log('📋 Selected Subcategories (parsed):', JSON.stringify(parsedSubcategories, null, 2));
 
       const userId = req.user.id;
 
@@ -259,7 +273,7 @@ class SellerVerificationController {
           country,
           sellerType: sellerTypes[0], // Use first seller type as primary
           selectedCategories: selectedCategories, // Store as JSON array
-          selectedSubcategories: selectedSubcategories || {}, // Store as JSON object
+          selectedSubcategories: parsedSubcategories || {}, // Store as JSON object (parsed)
           businessEmail: businessEmail,
           businessPhone: businessPhone,
           phoneNumber: businessPhone || '', // Use business phone if provided, otherwise empty string
@@ -279,7 +293,7 @@ class SellerVerificationController {
           country,
           sellerType: sellerTypes[0], // Use first seller type as primary
           selectedCategories: selectedCategories, // Store as JSON array
-          selectedSubcategories: selectedSubcategories || {}, // Store as JSON object
+          selectedSubcategories: parsedSubcategories || {}, // Store as JSON object (parsed)
           businessEmail: businessEmail,
           businessPhone: businessPhone,
           email: businessEmail || req.user.email, // Use business email if provided

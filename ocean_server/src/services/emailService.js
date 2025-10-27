@@ -280,7 +280,7 @@ const emailTemplates = {
             <li>You can start using Ocean App</li>
           </ul>
         </div>
-        <p><strong>Note:</strong> This link will expire in 24 hours for security reasons.</p>
+        <p><strong>Note:</strong> This link will expire in 15 minutes for security reasons.</p>
         <p>If you didn't create an account with Ocean App, please ignore this email.</p>
         <p>Best regards,<br>The Ocean App Team</p>
       </div>
