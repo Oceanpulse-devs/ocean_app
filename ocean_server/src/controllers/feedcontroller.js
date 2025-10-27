@@ -133,7 +133,7 @@ const getHomeFeed = async (req, res) => {
                             price: postData.price ? `₦${parseInt(postData.price).toLocaleString()}` : 'Price not specified',
                             brand: postData.brand,
                             description: postData.content,
-                            images: postData.media?.map(m => m.mediaUrl) || [],
+                            images: postData.media?.map(m => m.mediaUrl) || postData.feedMetadata?.images || [],
                             metadata: postData.feedMetadata
                         },
                         likes: postData.likesCount || 0,
