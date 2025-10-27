@@ -62,6 +62,7 @@ const getHomeFeed = async (req, res) => {
         }));
 
         // Get mixed feed posts (seller and buyer posts)
+        const { SellersTable } = require('../../models');
         const posts = await Post.findAndCountAll({
             where: {
                 status: 'active'
@@ -70,7 +71,13 @@ const getHomeFeed = async (req, res) => {
                 {
                     model: UserTable,
                     as: 'user',
-                    attributes: ['id', 'fullName', 'profilePicture', 'accountStatus', 'location']
+                    attributes: ['id', 'fullName', 'profilePicture', 'accountStatus', 'location'],
+                    include: [{
+                        model: SellersTable,
+                        as: 'seller',
+                        attributes: ['businessName', 'verificationStatus'],
+                        required: false
+                    }]
                 },
                 {
                     model: PostMedia,
@@ -138,13 +145,16 @@ const getHomeFeed = async (req, res) => {
                         }
                     }
                     
+                    // Get business name if user is a seller, otherwise use personal name
+                    const displayName = postData.user.seller?.businessName || postData.user.fullName;
+                    
                     // Product post format
                     formattedPost = {
                         id: postData.id,
                         type: 'product',
                         contentType: postData.contentType,
                         user: {
-                            name: postData.user.fullName,
+                            name: displayName,
                             avatar: postData.user.profilePicture || '👤',
                             verified: postData.user.accountStatus === 'verified',
                             location: postData.user.location
