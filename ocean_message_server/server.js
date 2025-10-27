@@ -35,8 +35,8 @@ const io = socketIo(server, {
     credentials: true,
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
   },
-  pingTimeout: process.env.WS_HEARTBEAT_TIMEOUT || 5000,
-  pingInterval: process.env.WS_HEARTBEAT_INTERVAL || 25000
+  pingTimeout: parseInt(process.env.WS_HEARTBEAT_TIMEOUT) || 5000,
+  pingInterval: parseInt(process.env.WS_HEARTBEAT_INTERVAL) || 25000
 });
 
 const PORT = process.env.PORT || 5001;
