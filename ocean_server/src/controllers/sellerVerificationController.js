@@ -263,6 +263,11 @@ class SellerVerificationController {
       const user = await db.UserTable.findByPk(userId);
       const userFullName = user?.fullName || 'Unknown User';
 
+      // Update user's businessName in UserTable
+      await user.update({
+        businessName: businessName
+      });
+
       // Check if seller already exists
       let seller = await db.SellersTable.findOne({
         where: { userId }

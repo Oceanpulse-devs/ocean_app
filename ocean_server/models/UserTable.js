@@ -126,6 +126,14 @@ module.exports = (sequelize, DataTypes) =>{
                 notEmpty:true,
             }
         },
+        // Seller business information (for sellers)
+        businessName:{
+            type:DataTypes.STRING,
+            allowNull: true,
+            validate:{
+                notEmpty:false,
+            }
+        },
         // Email verification fields
         emailVerified:{
             type:DataTypes.BOOLEAN,

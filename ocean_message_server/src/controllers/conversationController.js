@@ -5,6 +5,8 @@ const axios = require('axios');
 // Helper function to sync user from main server
 const syncUserFromMainServer = async (userId) => {
   try {
+    const mainServerUrl = process.env.MAIN_SERVER_URL || 'https://mainserver-production-7ad9.up.railway.app';
+    
     // Check if user already exists in messaging system
     const existingUser = await UserReference.findByPk(userId);
     if (existingUser) {
@@ -31,10 +33,6 @@ const syncUserFromMainServer = async (userId) => {
       return existingUser;
     }
 
-    console.log('🔄 Syncing user from main server:', userId);
-    
-    // Fetch user data from main server
-    const mainServerUrl = process.env.MAIN_SERVER_URL || 'https://mainserver-production-7ad9.up.railway.app';
     console.log(`🔄 Fetching user ${userId} from: ${mainServerUrl}/api/user/${userId}`);
     
     let userData = null;

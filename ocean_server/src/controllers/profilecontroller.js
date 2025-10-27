@@ -183,7 +183,7 @@ const getUserProfileById = async(req, res) => {
 
     // Add seller-specific info if user is a seller
     if(role === "seller" && alsoSeller){
-      profileInfo.businessName = alsoSeller.businessName || fullName;
+      profileInfo.businessName = user.businessName || alsoSeller.businessName || fullName;
       profileInfo.businessAddress = alsoSeller.businessAddress;
       profileInfo.businessDescription = alsoSeller.businessDescription;
       profileInfo.sellerType = alsoSeller.sellerType;
