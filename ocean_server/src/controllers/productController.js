@@ -231,24 +231,9 @@ const createProduct = async (req, res) => {
             });
         }
 
-        // Validate category
-        let categoryRecord;
-        // Try to find by UUID first
-        if (category.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
-            categoryRecord = await ProductCategory.findByPk(category);
-        } else {
-            // Try to find by name (for backward compatibility)
-            categoryRecord = await ProductCategory.findOne({ where: { name: category } });
-        }
-        
-        if (!categoryRecord) {
-            return res.status(400).json({
-                message: 'Invalid category. Please select a valid category from the list.'
-            });
-        }
-        
-        // Update category usage count
-        await categoryRecord.update({ usageCount: categoryRecord.usageCount + 1 });
+        // Accept any category from frontend without validation
+        // Category is stored as-is from the seller's selected categories
+        console.log('Product category from frontend:', category);
 
         // Validate images/files
         if (!req.files || req.files.length === 0) {
