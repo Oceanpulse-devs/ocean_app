@@ -35,10 +35,10 @@ const syncUserFromMainServer = async (userId) => {
       if (response.data && response.data.data) {
         const data = response.data.data;
         userData = data;
-        // Extract businessName from seller info if available
-        if (data.sellerInfo && data.sellerInfo.businessName) {
-          console.log(`🏪 Found business name: ${data.sellerInfo.businessName}`);
-          userData.businessName = data.sellerInfo.businessName;
+        
+        // Extract businessName if available (getUserProfileById returns it directly for sellers)
+        if (data.businessName) {
+          console.log(`🏪 Found business name: ${data.businessName}`);
         }
       }
     } catch (userError) {
