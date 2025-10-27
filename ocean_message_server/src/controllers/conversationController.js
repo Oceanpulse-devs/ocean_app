@@ -8,6 +8,7 @@ const syncUserFromMainServer = async (userId) => {
     // Check if user already exists in messaging system
     const existingUser = await UserReference.findByPk(userId);
     if (existingUser) {
+      console.log('✅ User already exists in messaging system:', userId);
       return existingUser;
     }
 
@@ -17,24 +18,60 @@ const syncUserFromMainServer = async (userId) => {
     const mainServerUrl = process.env.MAIN_SERVER_URL || 'https://mainserver-production-7ad9.up.railway.app';
     console.log(`🔄 Fetching user ${userId} from: ${mainServerUrl}/api/user/${userId}`);
     
-    const response = await axios.get(`${mainServerUrl}/api/user/${userId}`, {
-      timeout: 5000,
-      headers: {
-        'User-Agent': 'MessagingServer/1.0'
-      }
-    });
+    let userData = null;
     
-    console.log(`✅ User fetch response status: ${response.status}`);
-    console.log(`📋 User data received:`, response.data);
-
-    if (response.data && response.data.data) {
-      const userData = response.data.data;
+    // Try to fetch from user endpoint first
+    try {
+      const response = await axios.get(`${mainServerUrl}/api/user/${userId}`, {
+        timeout: 5000,
+        headers: {
+          'User-Agent': 'MessagingServer/1.0'
+        }
+      });
       
-      // Create user in messaging system
+      console.log(`✅ User fetch response status: ${response.status}`);
+      console.log(`📋 User data received:`, response.data);
+
+      if (response.data && response.data.data) {
+        userData = response.data.data;
+      }
+    } catch (userError) {
+      console.log(`⚠️ User not found in users table, trying seller endpoint...`);
+      
+      // Try to fetch from seller endpoint
+      try {
+        const sellerResponse = await axios.get(`${mainServerUrl}/api/sellers/${userId}`, {
+          timeout: 5000,
+          headers: {
+            'User-Agent': 'MessagingServer/1.0'
+          }
+        });
+        
+        console.log(`✅ Seller fetch response status: ${sellerResponse.status}`);
+        console.log(`📋 Seller data received:`, sellerResponse.data);
+
+        if (sellerResponse.data && sellerResponse.data.data) {
+          const sellerData = sellerResponse.data.data;
+          userData = {
+            id: sellerData.sellerId || sellerData.id,
+            fullName: sellerData.businessName || sellerData.fullName || 'Unknown Seller',
+            email: `${userId}@temp.com`,
+            profilePicture: null,
+            role: 'seller',
+            accountStatus: 'active'
+          };
+        }
+      } catch (sellerError) {
+        console.log(`❌ Seller not found either`);
+      }
+    }
+
+    // If we have user data, create the user record
+    if (userData) {
       const newUser = await UserReference.create({
         id: userData.id,
-        fullName: userData.fullName || 'Unknown User',
-        email: userData.email || `${userData.id}@temp.com`,
+        fullName: userData.fullName || `User ${userId.substring(0, 8)}`,
+        email: userData.email || `${userId}@temp.com`,
         password: 'temp_password', // Required field
         profilePicture: userData.profilePicture || null,
         accountType: userData.role || 'buyer',
@@ -49,22 +86,35 @@ const syncUserFromMainServer = async (userId) => {
       console.log('✅ User synced successfully:', newUser.id);
       return newUser;
     }
+    
+    // If no user data found, create a minimal user record as fallback
+    console.log('⚠️ No user data found, creating minimal user record');
+    const fallbackUser = await UserReference.create({
+      id: userId,
+      fullName: `User ${userId.substring(0, 8)}`,
+      email: `${userId}@temp.com`,
+      password: 'temp_password', // Required field
+      profilePicture: null,
+      accountType: 'buyer',
+      accountStatus: 'active',
+      username: null,
+      bio: null,
+      location: null,
+      website: null,
+      emailVerified: false
+    });
+    
+    console.log('⚠️ Created fallback user:', fallbackUser.id);
+    return fallbackUser;
+    
   } catch (error) {
     console.error('❌ Error syncing user from main server:', error.message);
-    
-    // Handle 404 error - user doesn't exist in main server
-    if (error.response && error.response.status === 404) {
-      console.log('⚠️ User not found in main server, creating minimal user record');
-      console.log(`❌ User ${userId} not found in main server at ${mainServerUrl}/api/user/${userId}`);
-    } else {
-      console.log(`❌ Error fetching user ${userId}:`, error.message);
-    }
     
     // Create a minimal user record as fallback
     try {
       const fallbackUser = await UserReference.create({
         id: userId,
-        fullName: `User ${userId.substring(0, 8)}`, // Use part of user ID instead of "Unknown User"
+        fullName: `User ${userId.substring(0, 8)}`,
         email: `${userId}@temp.com`,
         password: 'temp_password', // Required field
         profilePicture: null,
@@ -307,9 +357,13 @@ const createConversation = async (req, res) => {
 
     // Sync all participants to ensure they exist in the messaging system
     console.log('🔄 Syncing participants before adding to conversation...');
+    console.log('📋 Total participants to sync:', participants.length);
+    console.log('📋 Participant IDs:', participants);
+    
     const syncedParticipants = [];
     
     for (const participantId of participants) {
+      console.log(`🔄 Attempting to sync participant: ${participantId}`);
       try {
         const syncedUser = await syncUserFromMainServer(participantId);
         syncedParticipants.push(participantId);
@@ -320,8 +374,11 @@ const createConversation = async (req, res) => {
       }
     }
 
+    console.log('📊 Summary: Successfully synced ${syncedParticipants.length} out of ${participants.length} participants');
+    
     // Only add participants that were successfully synced
     if (syncedParticipants.length === 0) {
+      console.error('❌ No participants could be synced, aborting conversation creation');
       return res.status(400).json({
         message: 'No participants could be synced'
       });
