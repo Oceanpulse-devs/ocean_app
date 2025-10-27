@@ -58,6 +58,11 @@ module.exports = (sequelize) => {
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: false
+    },
+    businessName: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      comment: 'Business name for sellers'
     }
   }, {
     tableName: 'users',

@@ -20,7 +20,7 @@ const syncUserFromMainServer = async (userId) => {
     
     let userData = null;
     
-    // Try to fetch from user endpoint first
+    // Try to fetch from user endpoint first (returns businessName for sellers)
     try {
       const response = await axios.get(`${mainServerUrl}/api/user/${userId}`, {
         timeout: 5000,
@@ -33,14 +33,21 @@ const syncUserFromMainServer = async (userId) => {
       console.log(`📋 User data received:`, response.data);
 
       if (response.data && response.data.data) {
-        userData = response.data.data;
+        const data = response.data.data;
+        userData = data;
+        // Extract businessName from seller info if available
+        if (data.sellerInfo && data.sellerInfo.businessName) {
+          console.log(`🏪 Found business name: ${data.sellerInfo.businessName}`);
+          userData.businessName = data.sellerInfo.businessName;
+        }
       }
     } catch (userError) {
       console.log(`⚠️ User not found in users table, trying seller endpoint...`);
       
       // Try to fetch from seller endpoint
       try {
-        const sellerResponse = await axios.get(`${mainServerUrl}/api/sellers/${userId}`, {
+        // First try /api/admin/sellers/:id
+        const sellerResponse = await axios.get(`${mainServerUrl}/api/admin/sellers/${userId}`, {
           timeout: 5000,
           headers: {
             'User-Agent': 'MessagingServer/1.0'
@@ -53,16 +60,17 @@ const syncUserFromMainServer = async (userId) => {
         if (sellerResponse.data && sellerResponse.data.data) {
           const sellerData = sellerResponse.data.data;
           userData = {
-            id: sellerData.sellerId || sellerData.id,
+            id: sellerData.sellerId || sellerData.id || userId,
             fullName: sellerData.businessName || sellerData.fullName || 'Unknown Seller',
-            email: `${userId}@temp.com`,
-            profilePicture: null,
+            email: sellerData.businessEmail || `${userId}@temp.com`,
+            profilePicture: sellerData.businessLogo || null,
             role: 'seller',
             accountStatus: 'active'
           };
         }
       } catch (sellerError) {
-        console.log(`❌ Seller not found either`);
+        console.log(`❌ Seller not found at /api/admin/sellers/${userId}`);
+        console.log(`   Error: ${sellerError.message}`);
       }
     }
 
@@ -80,7 +88,8 @@ const syncUserFromMainServer = async (userId) => {
         bio: userData.bio || null,
         location: userData.location || null,
         website: userData.website || null,
-        emailVerified: userData.emailVerified || false
+        emailVerified: userData.emailVerified || false,
+        businessName: userData.businessName || null // Store business name for sellers
       });
 
       console.log('✅ User synced successfully:', newUser.id);
@@ -101,7 +110,8 @@ const syncUserFromMainServer = async (userId) => {
       bio: null,
       location: null,
       website: null,
-      emailVerified: false
+      emailVerified: false,
+      businessName: null
     });
     
     console.log('⚠️ Created fallback user:', fallbackUser.id);
@@ -140,9 +150,12 @@ const syncUserFromMainServer = async (userId) => {
 const getConversations = async (req, res) => {
   try {
     const userId = req.user.id;
+    console.log('🔍 Fetching conversations for user:', userId);
     const { page = 1, limit = 20 } = req.query;
 
     const offset = (page - 1) * limit;
+
+    console.log('📥 Query params: page=' + page + ', limit=' + limit + ', offset=' + offset);
 
     const participants = await ConversationParticipant.findAndCountAll({
       where: { userId, isActive: true },
@@ -169,7 +182,7 @@ const getConversations = async (req, res) => {
                 {
                   model: UserReference,
                   as: 'user',
-                  attributes: ['id', 'fullName', 'profilePicture']
+                  attributes: ['id', 'fullName', 'profilePicture', 'businessName', 'accountType']
                 }
               ]
             }
@@ -180,6 +193,9 @@ const getConversations = async (req, res) => {
       limit: parseInt(limit),
       offset: parseInt(offset)
     });
+
+    console.log('📊 Found ' + participants.count + ' conversations for user ' + userId);
+    console.log('📋 Returning ' + participants.rows.length + ' conversations');
 
     res.json({
       conversations: participants.rows.map(p => ({
@@ -226,9 +242,9 @@ const getConversation = async (req, res) => {
           as: 'participants',
           include: [
             {
-              model: UserReference,
-              as: 'user',
-              attributes: ['id', 'fullName', 'profilePicture']
+                  model: UserReference,
+                  as: 'user',
+                  attributes: ['id', 'fullName', 'profilePicture', 'businessName', 'accountType']
             }
           ]
         },
@@ -403,9 +419,9 @@ const createConversation = async (req, res) => {
           as: 'participants',
           include: [
             {
-              model: UserReference,
-              as: 'user',
-              attributes: ['id', 'fullName', 'profilePicture']
+                  model: UserReference,
+                  as: 'user',
+                  attributes: ['id', 'fullName', 'profilePicture', 'businessName', 'accountType']
             }
           ]
         },
@@ -586,6 +602,52 @@ const updateConversation = async (req, res) => {
     console.error('Error updating conversation:', error);
     res.status(500).json({
       message: 'Error updating conversation',
+      error: error.message
+    });
+  }
+};
+
+// Update participant nickname
+const updateParticipantNickname = async (req, res) => {
+  try {
+    const { conversationId } = req.params;
+    const { userId, nickname } = req.body;
+    const currentUserId = req.user.id;
+
+    // Check if user is participant
+    const participant = await ConversationParticipant.findOne({
+      where: { conversationId, userId: currentUserId, isActive: true }
+    });
+
+    if (!participant) {
+      return res.status(403).json({
+        message: 'You are not a participant in this conversation'
+      });
+    }
+
+    // Find the participant to update nickname for
+    const targetParticipant = await ConversationParticipant.findOne({
+      where: { conversationId, userId, isActive: true }
+    });
+
+    if (!targetParticipant) {
+      return res.status(404).json({
+        message: 'Participant not found'
+      });
+    }
+
+    // Update nickname
+    await targetParticipant.update({ nickname });
+
+    res.json({
+      message: 'Nickname updated successfully',
+      data: targetParticipant
+    });
+
+  } catch (error) {
+    console.error('Error updating nickname:', error);
+    res.status(500).json({
+      message: 'Error updating nickname',
       error: error.message
     });
   }
