@@ -30,13 +30,10 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIo(server, {
   cors: {
-    origin: [
-      process.env.CLIENT_URL || "http://localhost:5173",
-      "http://localhost:3000",
-      "http://localhost:5173"
-    ],
-    methods: ["GET", "POST"],
-    credentials: true
+    origin: true, // Allow all origins for development
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    credentials: true,
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
   },
   pingTimeout: process.env.WS_HEARTBEAT_TIMEOUT || 5000,
   pingInterval: process.env.WS_HEARTBEAT_INTERVAL || 25000
@@ -77,18 +74,12 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
-// CORS configuration
+// CORS configuration - Allow all origins
 app.use(cors({
-  origin: [
-    process.env.CLIENT_URL || "http://localhost:5173",
-    "http://localhost:3000",
-    "http://localhost:5173",
-    "https://mainserver-production-7ad9.up.railway.app", // Main server
-    "*" // Allow all origins for mobile app
-  ],
+  origin: true, // Allow all origins for development and production
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept']
 }));
 
 // Body parsing middleware
