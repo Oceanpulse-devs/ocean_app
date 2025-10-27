@@ -153,7 +153,7 @@ const getHomeFeed = async (req, res) => {
                             title: postData.productName || 'Product',
                             price: postData.price ? `₦${parseInt(postData.price).toLocaleString()}` : 'Price not specified',
                             brand: postData.brand,
-                            description: postData.content,
+                            description: postData.content.replace(/^New Product: /, '').trim() || postData.productName || 'Product',
                             images: productImages,
                             metadata: postData.feedMetadata
                         },

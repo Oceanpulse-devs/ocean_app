@@ -33,7 +33,7 @@ BEGIN
         END;
     ELSE
         SET content_type_var = 'product';
-        SET post_content_var = CONCAT(NEW.title, ' - ', COALESCE(NEW.description, ''));
+        SET post_content_var = COALESCE(NEW.description, NEW.title);
         SET feed_priority_var = CASE 
             WHEN COALESCE(NEW.is_boosted, FALSE) = TRUE THEN 100
             ELSE 0
