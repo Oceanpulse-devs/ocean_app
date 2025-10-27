@@ -117,6 +117,27 @@ const getHomeFeed = async (req, res) => {
                 
                 // Format based on content type for unified feed
                 if (postData.contentType === 'product') {
+                    // Try to get images from product table if available
+                    let productImages = postData.media?.map(m => m.mediaUrl) || [];
+                    
+                    // If no images from media, try to get from feed metadata
+                    if (productImages.length === 0 && postData.feedMetadata?.images) {
+                        productImages = postData.feedMetadata.images;
+                    }
+                    
+                    // If still no images, try to query the actual product
+                    if (productImages.length === 0 && postData.sourceId) {
+                        const { Product } = require('../../models');
+                        try {
+                            const actualProduct = await Product.findByPk(postData.sourceId);
+                            if (actualProduct && actualProduct.images) {
+                                productImages = actualProduct.images;
+                            }
+                        } catch (err) {
+                            console.error('Error fetching product images:', err);
+                        }
+                    }
+                    
                     // Product post format
                     formattedPost = {
                         id: postData.id,
@@ -133,7 +154,7 @@ const getHomeFeed = async (req, res) => {
                             price: postData.price ? `₦${parseInt(postData.price).toLocaleString()}` : 'Price not specified',
                             brand: postData.brand,
                             description: postData.content,
-                            images: postData.media?.map(m => m.mediaUrl) || postData.feedMetadata?.images || [],
+                            images: productImages,
                             metadata: postData.feedMetadata
                         },
                         likes: postData.likesCount || 0,
