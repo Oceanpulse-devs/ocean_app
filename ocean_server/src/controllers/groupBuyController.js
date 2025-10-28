@@ -122,21 +122,26 @@ class GroupBuyController {
       }
 
       // Check if category exists (support both UUID and name)
+      console.log('🔍 Looking for category:', category_id);
       let category;
       if (category_id.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
         // UUID format
+        console.log('Searching by UUID');
         category = await db.ProductCategory.findByPk(category_id);
       } else {
         // Try to find by name
+        console.log('Searching by name');
         category = await db.ProductCategory.findOne({ where: { name: category_id } });
       }
       
       if (!category) {
+        console.log('❌ Category not found:', category_id);
         return res.status(400).json({
           success: false,
-          message: 'Invalid category'
+          message: `Invalid category: ${category_id}`
         });
       }
+      console.log('✅ Category found:', category.name, category.id);
 
       const groupBuy = await db.GroupBuy.create({
         title,
