@@ -203,7 +203,7 @@ class GroupBuyController {
             model: db.Product,
             as: 'product',
             attributes: ['category'],
-            where: { category: category.name }
+            where: { category: category_id }
           },
           {
             model: db.UserTable,
@@ -220,7 +220,7 @@ class GroupBuyController {
           await createNotification(
             savedProduct.user.id,
             'New Group Buy Created!',
-            `${creator.fullName || creator.username} created a new group buy "${title}" in ${category.name}`,
+            `${creator.fullName || creator.username} created a new group buy "${title}" in ${category_id}`,
             'info',
             'group_buy',
             { 
@@ -229,7 +229,7 @@ class GroupBuyController {
               creatorId: creator_id,
               creatorName: creator.fullName || creator.username,
               creatorUsername: creator.username,
-              category: category.name,
+              category: category_id,
               productName: product_name,
               originalPrice: original_price,
               groupPrice: group_price,
