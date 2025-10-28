@@ -4,6 +4,7 @@ const { checkSubscriptionLimit, incrementUsage, checkFeatureAccess } = require('
 const { groupBuyCreationMiddleware } = require('../middleware/featureMiddleware');
 const SubscriptionAwareSearchService = require('../services/subscriptionAwareSearchService');
 const cloudinaryService = require('../services/cloudinaryService');
+const axios = require('axios');
 
 // Helper function to map group buy field names for frontend
 const mapGroupBuyResponse = (groupBuy) => {
@@ -30,6 +31,85 @@ const createNotification = async (userId, title, message, type = 'info', categor
     return notification;
   } catch (error) {
     console.error('Error creating group buy notification:', error);
+  }
+};
+
+// Helper function to create group conversation in messaging server
+const createGroupConversation = async (groupBuy, creatorId) => {
+  try {
+    const messageServerUrl = process.env.MESSAGE_SERVER_URL || 'https://messageserver-production-cd76.up.railway.app';
+    
+    // Get creator info
+    const creator = await db.UserTable.findByPk(creatorId, {
+      include: [{
+        model: db.SellersTable,
+        as: 'seller',
+        attributes: ['businessName']
+      }]
+    });
+    
+    if (!creator) {
+      throw new Error('Creator not found');
+    }
+    
+    // Get business name for sellers, otherwise use fullName
+    const businessName = creator.seller?.businessName || creator.fullName;
+    const groupName = `[GroupBuy] ${businessName} - ${groupBuy.product_name}`;
+    
+    console.log(`🗨️ Creating group conversation: ${groupName}`);
+    
+    // Create group conversation via messaging server API
+    const response = await axios.post(
+      `${messageServerUrl}/api/conversations`,
+      {
+        type: 'group',
+        name: groupName,
+        description: groupBuy.description.substring(0, 200), // Limit description length
+        participants: [creatorId] // Creator is automatically added
+      },
+      {
+        headers: {
+          'Authorization': `Bearer ${process.env.INTERNAL_API_TOKEN || 'internal-token'}` // Internal service token
+        },
+        timeout: 10000
+      }
+    );
+    
+    const conversationId = response.data.data?.id;
+    console.log(`✅ Group conversation created with ID: ${conversationId}`);
+    
+    return conversationId;
+  } catch (error) {
+    console.error('❌ Error creating group conversation:', error.message);
+    // Don't throw - group buy can still be created without conversation
+    return null;
+  }
+};
+
+// Helper function to add participant to group conversation
+const addParticipantToGroupChat = async (conversationId, userId) => {
+  try {
+    const messageServerUrl = process.env.MESSAGE_SERVER_URL || 'https://messageserver-production-cd76.up.railway.app';
+    
+    console.log(`👤 Adding user ${userId} to conversation ${conversationId}`);
+    
+    const response = await axios.post(
+      `${messageServerUrl}/api/conversations/${conversationId}/participants`,
+      { userId },
+      {
+        headers: {
+          'Authorization': `Bearer ${process.env.INTERNAL_API_TOKEN || 'internal-token'}`
+        },
+        timeout: 10000
+      }
+    );
+    
+    console.log(`✅ User added to group conversation`);
+    return true;
+  } catch (error) {
+    console.error('❌ Error adding participant to group chat:', error.message);
+    // Don't throw - group buy join can still succeed without chat
+    return false;
   }
 };
 
@@ -185,6 +265,13 @@ class GroupBuyController {
         if (imageUrl) {
           await groupBuy.update({ product_image: imageUrl });
         }
+      }
+
+      // Create group conversation for this group buy
+      const conversationId = await createGroupConversation(groupBuy, creator_id);
+      if (conversationId) {
+        await groupBuy.update({ conversation_id: conversationId });
+        console.log(`✅ Group buy ${groupBuy.id} linked to conversation ${conversationId}`);
       }
 
       // Track subscription usage for group buy creation
@@ -559,6 +646,11 @@ class GroupBuyController {
       // Update current buyers count
       await groupBuy.increment('current_buyers');
 
+      // Add buyer to group conversation if it exists
+      if (groupBuy.conversation_id) {
+        await addParticipantToGroupChat(groupBuy.conversation_id, user_id);
+      }
+
       // Get joiner info for notifications
       const joiner = await db.UserTable.findByPk(user_id, {
         attributes: ['id', 'fullName', 'username', 'profilePicture']
@@ -636,11 +728,59 @@ class GroupBuyController {
       res.status(201).json({
         success: true,
         message: 'Successfully joined group buy',
-        data: participant
+        data: {
+          participant: participant,
+          conversationId: groupBuy.conversation_id // Include conversation ID for navigation
+        }
       });
 
     } catch (error) {
       console.error('Error joining group buy:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error',
+        error: error.message
+      });
+    }
+  }
+
+  // Get participants of a group buy
+  async getParticipants(req, res) {
+    try {
+      const { id } = req.params;
+
+      const groupBuy = await db.GroupBuy.findByPk(id);
+      if (!groupBuy) {
+        return res.status(404).json({
+          success: false,
+          message: 'Group buy not found'
+        });
+      }
+
+      const participants = await db.GroupBuyParticipant.findAll({
+        where: { group_buy_id: id },
+        include: [
+          {
+            model: db.UserTable,
+            as: 'user',
+            attributes: ['id', 'fullName', 'username', 'profilePicture']
+          }
+        ],
+        order: [['joined_at', 'ASC']] // Order by join date
+      });
+
+      res.json({
+        success: true,
+        data: {
+          participants: participants,
+          total: participants.length,
+          current_buyers: groupBuy.current_buyers,
+          max_buyers: groupBuy.max_buyers
+        }
+      });
+
+    } catch (error) {
+      console.error('Error fetching participants:', error);
       res.status(500).json({
         success: false,
         message: 'Internal server error',

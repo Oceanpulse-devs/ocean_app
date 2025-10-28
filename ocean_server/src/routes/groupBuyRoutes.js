@@ -30,6 +30,7 @@ router.delete('/:id', groupBuyController.deleteGroupBuy);
 // Group Buy participation
 router.post('/:id/join', groupBuyController.joinGroupBuy);
 router.delete('/:id/leave', groupBuyController.leaveGroupBuy);
+router.get('/:id/participants', groupBuyController.getParticipants);
 
 // User-specific group buys
 router.get('/user/me', groupBuyController.getUserGroupBuys);
