@@ -157,7 +157,7 @@ class GroupBuyController {
         location,
         deadline: finalDeadline,  // Use transformed value
         terms_conditions,
-        tags: tags ? (typeof tags === 'string' ? JSON.parse(tags) : tags) : null,
+        tags: tags ? (typeof tags === 'string' ? (tags.startsWith('[') ? JSON.parse(tags) : tags.split(',').map(t => t.trim())) : tags) : null,
         status: 'pending'
       });
 
