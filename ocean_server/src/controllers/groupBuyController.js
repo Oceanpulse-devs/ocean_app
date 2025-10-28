@@ -94,8 +94,11 @@ class GroupBuyController {
         });
       }
 
-      // Validate prices
-      if (finalGroupPrice >= original_price) {
+      // Validate prices (convert to numbers for comparison)
+      const numOriginalPrice = parseFloat(original_price);
+      const numGroupPrice = parseFloat(finalGroupPrice);
+      
+      if (numGroupPrice >= numOriginalPrice) {
         return res.status(400).json({
           success: false,
           message: 'Group price must be less than original price'
@@ -142,8 +145,8 @@ class GroupBuyController {
         subcategory: subcategory || null,
         product_name,
         product_image: '', // Will be updated with first uploaded image URL
-        original_price,
-        group_price: finalGroupPrice,  // Use transformed value
+        original_price: numOriginalPrice,
+        group_price: numGroupPrice,  // Use parsed numeric value
         min_buyers,
         max_buyers,
         creator_id,
