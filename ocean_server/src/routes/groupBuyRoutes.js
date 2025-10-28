@@ -17,11 +17,11 @@ const upload = multer({
   }
 });
 
-// Apply authentication middleware to all routes
-router.use(authMiddleware);
+// Group Buy CRUD operations (auth middleware applied individually)
+router.post('/create', authMiddleware, upload.array('images', 10), groupBuyController.createGroupBuy);
 
-// Group Buy CRUD operations
-router.post('/create', upload.array('images', 10), groupBuyController.createGroupBuy);
+// Apply authentication middleware to remaining routes
+router.use(authMiddleware);
 router.get('/all', groupBuyController.getAllGroupBuys);
 router.get('/:id', groupBuyController.getGroupBuyById);
 router.put('/:id', groupBuyController.updateGroupBuy);
