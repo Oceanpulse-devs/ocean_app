@@ -167,6 +167,18 @@ const getUserProfileById = async(req, res) => {
       where: { userId: userId }
     });
     
+    // Check if current user is following this profile
+    let isFollowing = false;
+    if (req.user && req.user.id) {
+      const followStatus = await UserFollows.findOne({
+        where: {
+          userId: req.user.id,
+          followsUserId: userId
+        }
+      });
+      isFollowing = !!followStatus;
+    }
+    
     // Get products count and featured products only if user is a seller
     let productsCount = 0;
     
@@ -195,6 +207,7 @@ const getUserProfileById = async(req, res) => {
       followersCount,
       followingCount,
       productsCount,
+      isFollowing,
       // Use actual database values with fallbacks
       profilePicture: user.profilePicture || "/default-avatar.jpg",
       coverPicture: user.coverPicture || "/default-cover.jpg",
