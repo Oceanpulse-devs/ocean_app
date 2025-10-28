@@ -158,6 +158,25 @@ const getUserProfileById = async(req, res) => {
     const createdAt = user.createdAt;
     let verificationStatus = alsoSeller ? alsoSeller.verificationStatus : null;
     
+    // Get follow statistics
+    const followersCount = await UserFollows.count({
+      where: { followsUserId: userId }
+    });
+    
+    const followingCount = await UserFollows.count({
+      where: { userId: userId }
+    });
+    
+    // Get products count and featured products only if user is a seller
+    let productsCount = 0;
+    
+    if (alsoSeller) {
+      // Use seller's business ID, not user ID
+      productsCount = await Product.count({
+        where: { sellerId: alsoSeller.id }
+      });
+    }
+    
     // Format join date
     const joinDate = `Joined ${new Date(createdAt).toLocaleDateString('en-US', { 
       month: 'long', 
@@ -173,6 +192,9 @@ const getUserProfileById = async(req, res) => {
       createdAt,
       joinDate,
       verificationStatus,
+      followersCount,
+      followingCount,
+      productsCount,
       // Use actual database values with fallbacks
       profilePicture: user.profilePicture || "/default-avatar.jpg",
       coverPicture: user.coverPicture || "/default-cover.jpg",
