@@ -121,32 +121,31 @@ class GroupBuyController {
         });
       }
 
-      // Check if category exists (support both UUID and name)
-      console.log('🔍 Looking for category:', category_id);
-      let category;
-      if (category_id.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
-        // UUID format
-        console.log('Searching by UUID');
-        category = await db.ProductCategory.findByPk(category_id);
-      } else {
-        // Try to find by name
-        console.log('Searching by name');
-        category = await db.ProductCategory.findOne({ where: { name: category_id } });
-      }
+      // Accept category from seller's registration (no strict validation)
+      console.log('📋 Category received:', category_id);
       
-      if (!category) {
-        console.log('❌ Category not found:', category_id);
-        return res.status(400).json({
-          success: false,
-          message: `Invalid category: ${category_id}`
-        });
+      // Try to find category in database, but don't require it
+      let categoryId = category_id;
+      if (category_id.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
+        // Already a UUID
+        console.log('Category is UUID format');
+      } else {
+        // Try to find by name in database
+        const category = await db.ProductCategory.findOne({ where: { name: category_id } });
+        if (category) {
+          console.log('✅ Found category in database:', category.name, category.id);
+          categoryId = category.id;
+        } else {
+          console.log('⚠️ Category not in database, using as-is:', category_id);
+          // Accept the category string as-is from seller's selection
+          categoryId = category_id;
+        }
       }
-      console.log('✅ Category found:', category.name, category.id);
 
       const groupBuy = await db.GroupBuy.create({
         title,
         description,
-        category_id: category.id, // Use the actual category ID from the lookup
+        category_id: categoryId, // Use resolved category ID or name
         subcategory: subcategory || null,
         product_name,
         product_image: '', // Will be updated with first uploaded image URL
