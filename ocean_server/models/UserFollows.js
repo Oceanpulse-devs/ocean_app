@@ -20,11 +20,11 @@ module.exports = (sequelize, DataTypes) => {
   }, {
     tableName: 'user_follows',
     timestamps: true,
-    underscored: true,
+    underscored: false,
     indexes: [
       {
         unique: true,
-        fields: ['user_id', 'follows_user_id']
+        fields: ['userId', 'followsUserId']
       }
     ]
   });
