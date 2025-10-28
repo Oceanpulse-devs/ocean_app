@@ -20,6 +20,11 @@ module.exports = (sequelize, DataTypes) => {
     allowNull: false,
     comment: 'Product category for the group buy'
   },
+  subcategory: {
+    type: DataTypes.STRING(255),
+    allowNull: true,
+    comment: 'Subcategory for the group buy product'
+  },
   product_name: {
     type: DataTypes.STRING(255),
     allowNull: false,

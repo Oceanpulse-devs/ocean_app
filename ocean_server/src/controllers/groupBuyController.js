@@ -3,6 +3,7 @@ const { Op } = require('sequelize');
 const { checkSubscriptionLimit, incrementUsage, checkFeatureAccess } = require('../middleware/subscriptionMiddleware');
 const { groupBuyCreationMiddleware } = require('../middleware/featureMiddleware');
 const SubscriptionAwareSearchService = require('../services/subscriptionAwareSearchService');
+const cloudinaryService = require('../services/cloudinaryService');
 
 // Helper function to map group buy field names for frontend
 const mapGroupBuyResponse = (groupBuy) => {
@@ -40,6 +41,7 @@ class GroupBuyController {
         title,
         description,
         category_id,
+        subcategory,
         product_name,
         product_image,
         original_price,
@@ -116,8 +118,16 @@ class GroupBuyController {
         });
       }
 
-      // Check if category exists
-      const category = await db.ProductCategory.findByPk(category_id);
+      // Check if category exists (support both UUID and name)
+      let category;
+      if (category_id.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
+        // UUID format
+        category = await db.ProductCategory.findByPk(category_id);
+      } else {
+        // Try to find by name
+        category = await db.ProductCategory.findOne({ where: { name: category_id } });
+      }
+      
       if (!category) {
         return res.status(400).json({
           success: false,
@@ -128,9 +138,10 @@ class GroupBuyController {
       const groupBuy = await db.GroupBuy.create({
         title,
         description,
-        category_id,
+        category_id: category.id, // Use the actual category ID from the lookup
+        subcategory: subcategory || null,
         product_name,
-        product_image,
+        product_image: '', // Will be updated with first uploaded image URL
         original_price,
         group_price: finalGroupPrice,  // Use transformed value
         min_buyers,
@@ -142,6 +153,32 @@ class GroupBuyController {
         tags: tags ? (typeof tags === 'string' ? JSON.parse(tags) : tags) : null,
         status: 'pending'
       });
+
+      // Handle image uploads to Cloudinary
+      let imageUrl = '';
+      if (req.files && req.files.length > 0) {
+        console.log(`Uploading ${req.files.length} image(s) to Cloudinary for group buy ${groupBuy.id}`);
+        
+        // Upload first image as the main product image
+        const firstFile = req.files[0];
+        try {
+          const uploadResult = await cloudinaryService.uploadProductImage(firstFile.buffer, `groupbuy-${groupBuy.id}`);
+          
+          if (uploadResult.success) {
+            imageUrl = uploadResult.url;
+            console.log(`Main product image uploaded successfully: ${imageUrl}`);
+          } else {
+            console.error('Cloudinary upload failed:', uploadResult.error);
+          }
+        } catch (uploadError) {
+          console.error(`Error uploading product image: ${uploadError.message}`);
+        }
+        
+        // Update group buy with the main image URL
+        if (imageUrl) {
+          await groupBuy.update({ product_image: imageUrl });
+        }
+      }
 
       // Track subscription usage for group buy creation
       await incrementUsage(creator_id, 'group_buys');
