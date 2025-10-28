@@ -214,13 +214,36 @@ const getConversations = async (req, res) => {
     console.log('📊 Found ' + participants.count + ' conversations for user ' + userId);
     console.log('📋 Returning ' + participants.rows.length + ' conversations');
 
-    res.json({
-      conversations: participants.rows.map(p => ({
+    // Calculate actual unread count for each conversation
+    const conversationsWithUnread = await Promise.all(participants.rows.map(async (p) => {
+      let unreadCount = 0;
+      
+      if (p.lastReadMessageId) {
+        // Count messages after last read
+        unreadCount = await Message.count({
+          where: {
+            conversationId: p.conversationId,
+            createdAt: { [Op.gt]: p.lastReadAt || new Date(0) }
+          }
+        });
+      } else if (p.conversation.lastMessageId) {
+        // User hasn't read any messages, count all messages
+        unreadCount = await Message.count({
+          where: {
+            conversationId: p.conversationId,
+            isDeleted: false
+          }
+        });
+      }
+      
+      return {
         ...p.conversation.toJSON(),
-        unreadCount: p.lastReadMessageId ? 
-          (p.conversation.lastMessageId === p.lastReadMessageId ? 0 : 1) : 
-          (p.conversation.lastMessageId ? 1 : 0)
-      })),
+        unreadCount
+      };
+    }));
+
+    res.json({
+      conversations: conversationsWithUnread,
       total: participants.count,
       currentPage: parseInt(page),
       totalPages: Math.ceil(participants.count / limit)
