@@ -146,10 +146,15 @@ class DistressSaleController {
         });
       }
 
-      // Handle location field (convert object to string if needed)
+      // Handle location field (convert object to string if needed) and provide default
       let finalLocation = location;
       if (location && typeof location === 'object') {
-        finalLocation = `${location.city || ''}, ${location.state || ''}, ${location.country || ''}`.trim().replace(/^,\s*|,\s*$/g, '');
+        finalLocation = `${location.city || ''}, ${location.state || ''}, ${location.country || ''}`
+          .trim()
+          .replace(/^,\s*|,\s*$/g, '');
+      }
+      if (!finalLocation || (typeof finalLocation === 'string' && finalLocation.trim() === '')) {
+        finalLocation = 'Not specified';
       }
 
       // Accept any category string from frontend; no validation against ProductCategory
