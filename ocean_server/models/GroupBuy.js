@@ -31,9 +31,9 @@ module.exports = (sequelize, DataTypes) => {
     comment: 'Name of the product being purchased'
   },
   product_image: {
-    type: DataTypes.STRING(500),
+    type: DataTypes.JSON,
     allowNull: true,
-    comment: 'URL to product image'
+    comment: 'Array of product image URLs'
   },
   original_price: {
     type: DataTypes.DECIMAL(10, 2),

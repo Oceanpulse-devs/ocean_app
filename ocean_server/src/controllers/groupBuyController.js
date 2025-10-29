@@ -35,7 +35,7 @@ const createNotification = async (userId, title, message, type = 'info', categor
 };
 
 // Helper function to create group conversation in messaging server
-const createGroupConversation = async (groupBuy, creatorId) => {
+const createGroupConversation = async (groupBuy, creatorId, authToken) => {
   try {
     const messageServerUrl = process.env.MESSAGE_SERVER_URL || 'https://messageserver-production-cd76.up.railway.app';
     
@@ -57,6 +57,8 @@ const createGroupConversation = async (groupBuy, creatorId) => {
     const groupName = `[GroupBuy] ${businessName} - ${groupBuy.product_name}`;
     
     console.log(`🗨️ Creating group conversation: ${groupName}`);
+    console.log(`🔗 Message Server URL: ${messageServerUrl}`);
+    console.log(`🔑 Auth token available: ${authToken ? 'Yes' : 'No'}`);
     
     // Create group conversation via messaging server API
     const response = await axios.post(
@@ -69,18 +71,24 @@ const createGroupConversation = async (groupBuy, creatorId) => {
       },
       {
         headers: {
-          'Authorization': `Bearer ${process.env.INTERNAL_API_TOKEN || 'internal-token'}` // Internal service token
+          'Authorization': `Bearer ${authToken || process.env.INTERNAL_API_TOKEN || 'internal-token'}`
         },
         timeout: 10000
       }
     );
+    
+    console.log(`📡 Response status: ${response.status}`);
+    console.log(`📦 Response data:`, JSON.stringify(response.data, null, 2));
     
     const conversationId = response.data.data?.id;
     console.log(`✅ Group conversation created with ID: ${conversationId}`);
     
     return conversationId;
   } catch (error) {
-    console.error('❌ Error creating group conversation:', error.message);
+    console.error('❌ Error creating group conversation:');
+    console.error('   Message:', error.message);
+    console.error('   Status:', error.response?.status);
+    console.error('   Data:', error.response?.data);
     // Don't throw - group buy can still be created without conversation
     return null;
   }
@@ -242,36 +250,46 @@ class GroupBuyController {
       });
 
       // Handle image uploads to Cloudinary
-      let imageUrl = '';
+      const imageUrls = [];
       if (req.files && req.files.length > 0) {
         console.log(`Uploading ${req.files.length} image(s) to Cloudinary for group buy ${groupBuy.id}`);
         
-        // Upload first image as the main product image
-        const firstFile = req.files[0];
-        try {
-          const uploadResult = await cloudinaryService.uploadProductImage(firstFile.buffer, `groupbuy-${groupBuy.id}`);
-          
-          if (uploadResult.success) {
-            imageUrl = uploadResult.url;
-            console.log(`Main product image uploaded successfully: ${imageUrl}`);
-          } else {
-            console.error('Cloudinary upload failed:', uploadResult.error);
+        // Upload all images
+        for (let i = 0; i < req.files.length; i++) {
+          const file = req.files[i];
+          try {
+            const uploadResult = await cloudinaryService.uploadProductImage(
+              file.buffer, 
+              `groupbuy-${groupBuy.id}/image-${i + 1}`
+            );
+            
+            if (uploadResult.success) {
+              imageUrls.push(uploadResult.url);
+              console.log(`Image ${i + 1}/${req.files.length} uploaded successfully: ${uploadResult.url}`);
+            } else {
+              console.error(`Cloudinary upload failed for image ${i + 1}:`, uploadResult.error);
+            }
+          } catch (uploadError) {
+            console.error(`Error uploading image ${i + 1}:`, uploadError.message);
           }
-        } catch (uploadError) {
-          console.error(`Error uploading product image: ${uploadError.message}`);
         }
         
-        // Update group buy with the main image URL
-        if (imageUrl) {
-          await groupBuy.update({ product_image: imageUrl });
+        // Update group buy with all image URLs
+        if (imageUrls.length > 0) {
+          await groupBuy.update({ product_image: imageUrls });
+          console.log(`✅ Group buy ${groupBuy.id} updated with ${imageUrls.length} image(s)`);
         }
       }
 
       // Create group conversation for this group buy
-      const conversationId = await createGroupConversation(groupBuy, creator_id);
+      // Get auth token from request headers
+      const authToken = req.headers.authorization?.replace('Bearer ', '') || null;
+      const conversationId = await createGroupConversation(groupBuy, creator_id, authToken);
       if (conversationId) {
         await groupBuy.update({ conversation_id: conversationId });
         console.log(`✅ Group buy ${groupBuy.id} linked to conversation ${conversationId}`);
+      } else {
+        console.log(`⚠️ Group buy ${groupBuy.id} created but no conversation was created`);
       }
 
       // Track subscription usage for group buy creation
