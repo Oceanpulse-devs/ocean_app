@@ -427,7 +427,13 @@ class GroupBuyController {
           {
             model: db.UserTable,
             as: 'creator',
-            attributes: ['id', 'username', 'profilePicture', 'email']
+            attributes: ['id', 'username', 'fullName', 'profilePicture', 'email', 'businessName'],
+            include: [{
+              model: db.SellersTable,
+              as: 'seller',
+              attributes: ['businessName'],
+              required: false
+            }]
           },
           {
             model: db.ProductCategory,
