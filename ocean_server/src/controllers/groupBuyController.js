@@ -56,7 +56,7 @@ const createGroupConversation = async (groupBuy, creatorId, authToken) => {
     
     // Get business name for sellers, otherwise use fullName
     const businessName = creator.seller?.businessName || creator.fullName;
-    const groupName = `[GroupBuy] ${businessName} - ${groupBuy.product_name}`;
+    const groupName = `BP ${businessName} - ${groupBuy.product_name}`;
     
     console.log(`🗨️ Creating group conversation: ${groupName}`);
     console.log(`🔗 Message Server URL: ${messageServerUrl}`);
