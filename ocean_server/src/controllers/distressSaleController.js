@@ -79,6 +79,18 @@ class DistressSaleController {
         });
       }
 
+      // Parse prices to numbers to avoid string comparison issues
+      const parsedOriginalPrice = parseFloat(originalPrice);
+      const parsedDiscountPercentage = parseFloat(discountPercentage);
+      const parsedPrice = price !== undefined && price !== null && price !== '' ? parseFloat(price) : null;
+
+      if (isNaN(parsedOriginalPrice) || isNaN(parsedDiscountPercentage)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid price or discount percentage format'
+        });
+      }
+
       // Process uploaded images
       let imageUrls = [];
       if (req.files && req.files.length > 0) {
@@ -113,16 +125,21 @@ class DistressSaleController {
       const finalImages = imageUrls.length > 0 ? imageUrls : (images || []);
 
       // Calculate the distress price if not provided
-      const calculatedPrice = price || (originalPrice * (1 - discountPercentage / 100));
+      // Use provided price if available, otherwise calculate from discount percentage
+      const calculatedPrice = parsedPrice !== null && !isNaN(parsedPrice) 
+        ? parsedPrice 
+        : (parsedOriginalPrice * (1 - parsedDiscountPercentage / 100));
 
-      if (discountPercentage < 0 || discountPercentage > 100) {
+      if (parsedDiscountPercentage < 0 || parsedDiscountPercentage > 100) {
         return res.status(400).json({
           success: false,
           message: 'Discount percentage must be between 0 and 100'
         });
       }
 
-      if (originalPrice <= calculatedPrice) {
+      console.log(`💰 Price validation: Original=${parsedOriginalPrice}, Calculated=${calculatedPrice}, Discount=${parsedDiscountPercentage}%`);
+
+      if (parsedOriginalPrice <= calculatedPrice) {
         return res.status(400).json({
           success: false,
           message: 'Original price must be greater than current price for distress sales'
@@ -163,8 +180,8 @@ class DistressSaleController {
         title: finalTitle,  // Use transformed value
         description,
         price: calculatedPrice,
-        originalPrice,
-        discountPercentage,
+        originalPrice: parsedOriginalPrice,
+        discountPercentage: parsedDiscountPercentage,
         urgencyLevel: urgencyLevel || 'medium',
         distressReason,
         distressExpiryDate,
