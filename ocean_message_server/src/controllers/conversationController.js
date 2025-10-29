@@ -39,17 +39,17 @@ const syncUserFromMainServer = async (userId) => {
     
     // Try to fetch from user endpoint first (returns businessName for sellers)
     try {
-      const response = await axios.get(`${mainServerUrl}/api/user/${userId}`, {
-        timeout: 5000,
-        headers: {
-          'User-Agent': 'MessagingServer/1.0'
-        }
-      });
-      
-      console.log(`✅ User fetch response status: ${response.status}`);
-      console.log(`📋 User data received:`, response.data);
+    const response = await axios.get(`${mainServerUrl}/api/user/${userId}`, {
+      timeout: 5000,
+      headers: {
+        'User-Agent': 'MessagingServer/1.0'
+      }
+    });
+    
+    console.log(`✅ User fetch response status: ${response.status}`);
+    console.log(`📋 User data received:`, response.data);
 
-      if (response.data && response.data.data) {
+    if (response.data && response.data.data) {
         const data = response.data.data;
         userData = data;
         
@@ -282,8 +282,8 @@ const getConversation = async (req, res) => {
           as: 'participants',
           include: [
             {
-                  model: UserReference,
-                  as: 'user',
+              model: UserReference,
+              as: 'user',
                   attributes: ['id', 'fullName', 'profilePicture', 'businessName', 'accountType']
             }
           ]
@@ -431,7 +431,7 @@ const createConversation = async (req, res) => {
     }
 
     console.log('📊 Summary: Successfully synced ${syncedParticipants.length} out of ${participants.length} participants');
-    
+
     // Only add participants that were successfully synced
     if (syncedParticipants.length === 0) {
       console.error('❌ No participants could be synced, aborting conversation creation');
@@ -459,8 +459,8 @@ const createConversation = async (req, res) => {
           as: 'participants',
           include: [
             {
-                  model: UserReference,
-                  as: 'user',
+              model: UserReference,
+              as: 'user',
                   attributes: ['id', 'fullName', 'profilePicture', 'businessName', 'accountType']
             }
           ]

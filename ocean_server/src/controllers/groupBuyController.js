@@ -37,7 +37,7 @@ const createNotification = async (userId, title, message, type = 'info', categor
 // Helper function to create group conversation in messaging server
 const createGroupConversation = async (groupBuy, creatorId, authToken) => {
   try {
-    const messageServerUrl = process.env.MESSAGE_SERVER_URL || 'https://messageserver-production-cd76.up.railway.app';
+    const messageServerUrl = process.env.MESSAGE_SERVER_URL || 'https://messageserver-production-88ba.up.railway.app';
     
     // Get creator info
     const creator = await db.UserTable.findByPk(creatorId, {
@@ -97,7 +97,7 @@ const createGroupConversation = async (groupBuy, creatorId, authToken) => {
 // Helper function to add participant to group conversation
 const addParticipantToGroupChat = async (conversationId, userId) => {
   try {
-    const messageServerUrl = process.env.MESSAGE_SERVER_URL || 'https://messageserver-production-cd76.up.railway.app';
+    const messageServerUrl = process.env.MESSAGE_SERVER_URL || 'https://messageserver-production-88ba.up.railway.app';
     
     console.log(`👤 Adding user ${userId} to conversation ${conversationId}`);
     
