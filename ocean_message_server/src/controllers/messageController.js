@@ -54,17 +54,17 @@ const getMessages = async (req, res) => {
         {
           model: UserReference,
           as: 'sender',
-          attributes: ['id', 'fullName', 'profilePicture']
+          attributes: ['id', 'fullName', 'profilePicture', 'businessName', 'accountType']
         },
         {
           model: Message,
           as: 'replyTo',
           include: [
-            {
-              model: UserReference,
-              as: 'sender',
-              attributes: ['id', 'fullName']
-            }
+        {
+          model: UserReference,
+          as: 'sender',
+          attributes: ['id', 'fullName', 'businessName', 'accountType']
+        }
           ]
         },
         {
@@ -233,7 +233,7 @@ const sendMessage = async (req, res) => {
 
     // Get sender info for notifications
     const sender = await UserReference.findByPk(userId, {
-      attributes: ['id', 'fullName', 'profilePicture']
+      attributes: ['id', 'fullName', 'profilePicture', 'businessName', 'accountType']
     });
 
     // Send notification to each participant
@@ -242,7 +242,7 @@ const sendMessage = async (req, res) => {
         conversationId: conversationId,
         messageId: message.id,
         senderId: userId,
-        senderName: sender.fullName,
+        senderName: sender.businessName || sender.fullName,
         messagePreview: content ? content.substring(0, 100) : 'Media message',
         messageType: type
       };
@@ -266,7 +266,7 @@ const sendMessage = async (req, res) => {
       await createNotification(
         participant.userId,
         'New Message Received',
-        `${sender.fullName}: ${content ? content.substring(0, 50) + (content.length > 50 ? '...' : '') : 'Sent a media message'}`,
+        `${sender.businessName || sender.fullName}: ${content ? content.substring(0, 50) + (content.length > 50 ? '...' : '') : 'Sent a media message'}`,
         'info',
         'message',
         notificationMetadata
@@ -279,17 +279,17 @@ const sendMessage = async (req, res) => {
         {
           model: UserReference,
           as: 'sender',
-          attributes: ['id', 'fullName', 'profilePicture']
+          attributes: ['id', 'fullName', 'profilePicture', 'businessName', 'accountType']
         },
         {
           model: Message,
           as: 'replyTo',
           include: [
-            {
-              model: UserReference,
-              as: 'sender',
-              attributes: ['id', 'fullName']
-            }
+        {
+          model: UserReference,
+          as: 'sender',
+          attributes: ['id', 'fullName', 'businessName', 'accountType']
+        }
           ]
         }
       ]
