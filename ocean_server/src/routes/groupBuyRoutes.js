@@ -23,6 +23,7 @@ router.post('/create', authMiddleware, upload.array('images', 10), groupBuyContr
 // Apply authentication middleware to remaining routes
 router.use(authMiddleware);
 router.get('/all', groupBuyController.getAllGroupBuys);
+router.get('/by-conversation/:conversationId', groupBuyController.getGroupBuyByConversationId);
 router.get('/:id', groupBuyController.getGroupBuyById);
 router.put('/:id', groupBuyController.updateGroupBuy);
 router.delete('/:id', groupBuyController.deleteGroupBuy);

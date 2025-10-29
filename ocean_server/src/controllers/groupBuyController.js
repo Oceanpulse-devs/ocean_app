@@ -417,6 +417,52 @@ class GroupBuyController {
     }
   }
 
+  // Get group buy by conversation ID
+  async getGroupBuyByConversationId(req, res) {
+    try {
+      const { conversationId } = req.params;
+
+      const groupBuy = await db.GroupBuy.findOne({
+        where: { conversation_id: conversationId },
+        include: [
+          {
+            model: db.UserTable,
+            as: 'creator',
+            attributes: ['id', 'username', 'fullName', 'profilePicture', 'email', 'businessName'],
+            include: [{
+              model: db.SellersTable,
+              as: 'seller',
+              attributes: ['businessName'],
+              required: false
+            }]
+          }
+        ]
+      });
+
+      if (!groupBuy) {
+        return res.status(404).json({
+          success: false,
+          message: 'Group buy not found for this conversation'
+        });
+      }
+
+      const groupBuyJson = groupBuy.toJSON ? groupBuy.toJSON() : groupBuy;
+
+      res.json({
+        success: true,
+        data: groupBuyJson
+      });
+
+    } catch (error) {
+      console.error('Error fetching group buy by conversation ID:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error',
+        error: error.message
+      });
+    }
+  }
+
   // Get a specific group buy by ID
   async getGroupBuyById(req, res) {
     try {
