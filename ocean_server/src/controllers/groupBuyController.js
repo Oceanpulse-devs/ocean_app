@@ -464,9 +464,15 @@ class GroupBuyController {
       // Increment view count
       await groupBuy.increment('views_count');
 
+      // Convert to JSON to ensure nested relationships are serialized
+      const groupBuyJson = groupBuy.toJSON ? groupBuy.toJSON() : groupBuy;
+      
+      console.log('📦 Group Buy Creator:', JSON.stringify(groupBuyJson.creator, null, 2));
+      console.log('🏪 Creator Seller:', JSON.stringify(groupBuyJson.creator?.seller, null, 2));
+
       res.json({
         success: true,
-        data: groupBuy
+        data: groupBuyJson
       });
 
     } catch (error) {
