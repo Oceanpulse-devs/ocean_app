@@ -492,17 +492,25 @@ const addParticipant = async (req, res) => {
   try {
     const { conversationId } = req.params;
     const { userId, role = 'member' } = req.body;
-    const currentUserId = req.user.id;
+    const currentUserId = req.user?.id;
 
-    // Check if current user is admin
-    const currentParticipant = await ConversationParticipant.findOne({
-      where: { conversationId, userId: currentUserId, isActive: true }
-    });
+    // Check if this is an internal service call (using internal API token)
+    const authHeader = req.headers.authorization;
+    const token = authHeader?.substring(7); // Remove 'Bearer ' prefix
+    const isInternalCall = token === process.env.INTERNAL_API_TOKEN;
 
-    if (!currentParticipant || currentParticipant.role !== 'admin') {
-      return res.status(403).json({
-        message: 'Only admins can add participants'
+    // If internal call, skip admin check (for automatic group buy joins)
+    if (!isInternalCall) {
+      // Check if current user is admin
+      const currentParticipant = await ConversationParticipant.findOne({
+        where: { conversationId, userId: currentUserId, isActive: true }
       });
+
+      if (!currentParticipant || currentParticipant.role !== 'admin') {
+        return res.status(403).json({
+          message: 'Only admins can add participants'
+        });
+      }
     }
 
     // Check if user is already a participant

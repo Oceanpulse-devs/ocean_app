@@ -13,7 +13,17 @@ const authMiddleware = async (req, res, next) => {
 
     const token = authHeader.substring(7); // Remove 'Bearer ' prefix
 
-    // Verify token
+    // Check if this is an internal service token (for service-to-service calls)
+    if (token === process.env.INTERNAL_API_TOKEN) {
+      // Set a special flag for internal calls
+      req.user = {
+        id: null, // Not a real user, internal service call
+        isInternal: true
+      };
+      return next();
+    }
+
+    // Verify token as JWT
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
     // Check if user exists and is active
