@@ -619,8 +619,8 @@ class GroupBuyController {
         });
       }
 
-      // Check if group buy is still open
-      if (groupBuy.status !== 'pending') {
+      // Check if group buy is still open (accept both 'active' and 'pending' statuses)
+      if (groupBuy.status !== 'active' && groupBuy.status !== 'pending') {
         return res.status(400).json({
           success: false,
           message: 'Group buy is not open for joining'
