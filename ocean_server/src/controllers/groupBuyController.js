@@ -515,10 +515,17 @@ class GroupBuyController {
       
       console.log('📦 Group Buy Creator:', JSON.stringify(groupBuyJson.creator, null, 2));
       console.log('🏪 Creator Seller:', JSON.stringify(groupBuyJson.creator?.seller, null, 2));
+      console.log('💬 Conversation ID:', groupBuyJson.conversation_id);
+
+      // Ensure conversation_id is included in response (also as conversationId for frontend compatibility)
+      const responseData = {
+        ...groupBuyJson,
+        conversationId: groupBuyJson.conversation_id || groupBuyJson.conversationId
+      };
 
       res.json({
         success: true,
-        data: groupBuyJson
+        data: responseData
       });
 
     } catch (error) {
