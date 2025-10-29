@@ -1,5 +1,5 @@
 const db = require('../../models');
-const { Op } = require('sequelize');
+const { Op, fn, col } = require('sequelize');
 const { checkSubscriptionLimit, incrementUsage, checkFeatureAccess } = require('../middleware/subscriptionMiddleware');
 
 // Helper function to map distress sale field names for frontend
@@ -152,27 +152,9 @@ class DistressSaleController {
         finalLocation = `${location.city || ''}, ${location.state || ''}, ${location.country || ''}`.trim().replace(/^,\s*|,\s*$/g, '');
       }
 
-      // Validate category if provided
-      if (category) {
-        let categoryRecord;
-        // Try to find by UUID first
-        if (category.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
-          categoryRecord = await db.ProductCategory.findByPk(category);
-        } else {
-          // Try to find by name (for backward compatibility)
-          categoryRecord = await db.ProductCategory.findOne({ where: { name: category } });
-        }
-        
-        if (!categoryRecord) {
-          return res.status(400).json({
-            success: false,
-            message: 'Invalid category. Please select a valid category from the list.'
-          });
-        }
-        
-        // Update category usage count
-        await categoryRecord.update({ usageCount: categoryRecord.usageCount + 1 });
-      }
+      // Accept any category string from frontend; no validation against ProductCategory
+      const finalCategory = (category ?? '').toString().trim();
+      const finalSubcategory = (subcategory ?? '').toString().trim();
 
       // Create the distress sale product
       const distressProduct = await db.Product.create({
@@ -185,8 +167,8 @@ class DistressSaleController {
         urgencyLevel: urgencyLevel || 'medium',
         distressReason,
         distressExpiryDate,
-        category,
-        subcategory,
+        category: finalCategory || null,
+        subcategory: finalSubcategory || null,
         brand,
         condition: condition || 'good',
         location: finalLocation,
