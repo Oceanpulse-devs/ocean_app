@@ -77,9 +77,9 @@ module.exports = (sequelize, DataTypes) => {
     comment: 'Seller Detailed ID if a specific seller is involved'
   },
   conversation_id: {
-    type: DataTypes.INTEGER,
+    type: DataTypes.STRING(36), // UUID from messaging server
     allowNull: true,
-    comment: 'Reference to group conversation in messaging system'
+    comment: 'Reference to group conversation in messaging system (UUID)'
   },
   location: {
     type: DataTypes.STRING(255),
