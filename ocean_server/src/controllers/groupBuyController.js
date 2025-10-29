@@ -246,7 +246,7 @@ class GroupBuyController {
         deadline: finalDeadline,  // Use transformed value
         terms_conditions,
         tags: tags ? (typeof tags === 'string' ? (tags.startsWith('[') ? JSON.parse(tags) : tags.split(',').map(t => t.trim())) : tags) : null,
-        status: 'pending'
+        status: 'active'
       });
 
       // Handle image uploads to Cloudinary
@@ -284,12 +284,15 @@ class GroupBuyController {
       // Create group conversation for this group buy
       // Get auth token from request headers
       const authToken = req.headers.authorization?.replace('Bearer ', '') || null;
+      console.log(`🔑 Extracted auth token: ${authToken ? 'Yes (length: ' + authToken.length + ')' : 'No'}`);
+      
       const conversationId = await createGroupConversation(groupBuy, creator_id, authToken);
       if (conversationId) {
         await groupBuy.update({ conversation_id: conversationId });
         console.log(`✅ Group buy ${groupBuy.id} linked to conversation ${conversationId}`);
       } else {
         console.log(`⚠️ Group buy ${groupBuy.id} created but no conversation was created`);
+        console.log(`⚠️ Check backend logs above for detailed error messages`);
       }
 
       // Track subscription usage for group buy creation
