@@ -183,7 +183,30 @@ class SwapDealController {
         expiresAt: swapDeal.expiresAt
       };
 
-      const mappedSwapDeal = mapSwapDealResponse(swapDealObj);
+      // Attach seller info to response
+      const seller = await db.UserTable.findOne({
+        where: { id: sellerId },
+        include: [
+          {
+            model: db.SellersTable,
+            as: 'seller',
+            attributes: ['id', 'businessName', 'businessAddress', 'country', 'state', 'verificationStatus']
+          }
+        ],
+        attributes: ['id', 'fullName', 'email', 'profilePicture', 'username']
+      });
+
+      const mappedSwapDeal = {
+        ...mapSwapDealResponse(swapDealObj),
+        seller: seller ? {
+          id: seller.id,
+          fullName: seller.fullName,
+          email: seller.email,
+          profilePicture: seller.profilePicture,
+          username: seller.username,
+          businessName: seller.seller?.businessName
+        } : undefined
+      };
 
       res.status(201).json({
         success: true,
