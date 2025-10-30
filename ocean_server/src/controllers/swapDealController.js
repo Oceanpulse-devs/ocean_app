@@ -255,7 +255,14 @@ class SwapDealController {
           {
             model: db.UserTable,
             as: 'seller',
-            attributes: ['id', 'fullName', 'username', 'profilePicture']
+            attributes: ['id', 'fullName', 'username', 'profilePicture', 'email'],
+            include: [
+              {
+                model: db.SellersTable,
+                as: 'seller',
+                attributes: ['id', 'businessName', 'businessEmail', 'businessPhone', 'businessAddress', 'verificationStatus']
+              }
+            ]
           }
         ],
         order: [['createdAt', 'DESC']],
@@ -263,8 +270,25 @@ class SwapDealController {
         offset: parseInt(offset)
       });
 
-      // Map swap deal field names for frontend compatibility
-      const mappedSwapDeals = swapDeals.rows.map(mapSwapDealResponse);
+      // Map swap deal field names for frontend compatibility and enrich seller business info
+      const mappedSwapDeals = swapDeals.rows.map((row) => {
+        const base = mapSwapDealResponse(row);
+        if (row.seller) {
+          base.seller = {
+            id: row.seller.id,
+            fullName: row.seller.fullName,
+            username: row.seller.username,
+            email: row.seller.email,
+            profilePicture: row.seller.profilePicture,
+            businessName: row.seller.seller?.businessName,
+            businessEmail: row.seller.seller?.businessEmail,
+            businessPhone: row.seller.seller?.businessPhone,
+            businessAddress: row.seller.seller?.businessAddress,
+            verificationStatus: row.seller.seller?.verificationStatus,
+          };
+        }
+        return base;
+      });
 
       res.json({
         success: true,
@@ -300,7 +324,14 @@ class SwapDealController {
           {
             model: db.UserTable,
             as: 'seller',
-            attributes: ['id', 'fullName', 'username', 'profilePicture']
+            attributes: ['id', 'fullName', 'username', 'profilePicture', 'email'],
+            include: [
+              {
+                model: db.SellersTable,
+                as: 'seller',
+                attributes: ['id', 'businessName', 'businessEmail', 'businessPhone', 'businessAddress', 'verificationStatus']
+              }
+            ]
           },
           {
             model: db.SwapProposal,
@@ -327,8 +358,22 @@ class SwapDealController {
       // Increment view count
       await swapDeal.increment('viewsCount');
 
-      // Map swap deal field names for frontend compatibility
+      // Map swap deal field names for frontend compatibility and enrich seller business info
       const mappedSwapDeal = mapSwapDealResponse(swapDeal);
+      if (swapDeal.seller) {
+        mappedSwapDeal.seller = {
+          id: swapDeal.seller.id,
+          fullName: swapDeal.seller.fullName,
+          username: swapDeal.seller.username,
+          email: swapDeal.seller.email,
+          profilePicture: swapDeal.seller.profilePicture,
+          businessName: swapDeal.seller.seller?.businessName,
+          businessEmail: swapDeal.seller.seller?.businessEmail,
+          businessPhone: swapDeal.seller.seller?.businessPhone,
+          businessAddress: swapDeal.seller.seller?.businessAddress,
+          verificationStatus: swapDeal.seller.seller?.verificationStatus,
+        };
+      }
 
       res.json({
         success: true,
