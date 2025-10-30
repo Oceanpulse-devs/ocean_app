@@ -178,12 +178,13 @@ const getHomeFeed = async (req, res) => {
                     };
                 } else if (postData.contentType === 'auction') {
                     // Auction post format
+                    const displayName = postData.user?.seller?.businessName || postData.user?.fullName;
                     formattedPost = {
                         id: postData.id,
                         type: 'auction',
                         contentType: postData.contentType,
                         user: {
-                            name: postData.user.fullName,
+                            name: displayName,
                             avatar: postData.user.profilePicture || '👤',
                             verified: postData.user.accountStatus === 'verified',
                             location: postData.user.location
@@ -234,12 +235,13 @@ const getHomeFeed = async (req, res) => {
                     };
                 } else {
                     // General post format (default) - Map to frontend field names
+                    const displayName = postData.user?.seller?.businessName || postData.user?.fullName;
                     formattedPost = {
                         id: postData.id,
                         category: postData.contentType || 'general',  // type → category
                         contentType: postData.contentType || 'post',
                         user: {
-                            name: postData.user.fullName,
+                            name: displayName,
                             avatar: postData.user.profilePicture || '👤',
                             verified: postData.user.accountStatus === 'verified',
                             location: postData.user.location
@@ -400,7 +402,14 @@ const getFeed = async (req, res) => {
                 {
                     model: UserTable,
                     as: 'user',
-                    attributes: ['id', 'fullName', 'email', 'profilePicture', 'accountType', 'accountStatus']
+                    attributes: ['id', 'fullName', 'email', 'profilePicture', 'accountType', 'accountStatus', 'location'],
+                    include: [
+                        {
+                            model: SellersTable,
+                            as: 'seller',
+                            attributes: ['businessName']
+                        }
+                    ]
                 },
                 {
                     model: PostMedia,
