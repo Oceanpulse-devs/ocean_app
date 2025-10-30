@@ -352,12 +352,13 @@ const subscriptionRoutes = require('./src/routes/subscriptionRoutes');
 const storyRoutes = require('./src/routes/storyRoutes');
 const StoryCleanupService = require('./src/services/storyCleanupService');
 
+// Register auctionRoutes BEFORE authRoutes to avoid route conflict with /api/user/:userId
+app.use('/', auctionRoutes);
 app.use('/', authRoutes);
 app.use('/', notificationRoutes);
 app.use('/', followRoutes);
 app.use('/', feedRoutes);
 app.use('/', productRoutes);
-app.use('/', auctionRoutes);
 app.use('/api/group-buy', groupBuyRoutes);
 app.use('/api/swap-deals', swapDealRoutes);
 app.use('/api/buyer-needs', buyerNeedRoutes);

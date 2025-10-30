@@ -29,7 +29,7 @@ router.post('/api/auction/:auctionId/watch', authMiddleware, auctionController.t
 router.put('/api/auction/:auctionId', authMiddleware, upload.array('images', 10), auctionController.updateAuction);
 router.delete('/api/auction/:auctionId', authMiddleware, auctionController.cancelAuction);
 
-// User-specific routes
+// User-specific routes (must be before /api/user/:userId route in authRoutes)
 router.get('/api/user/auctions', authMiddleware, auctionController.getUserAuctions);
 router.get('/api/user/bids', authMiddleware, auctionController.getUserBids);
 
