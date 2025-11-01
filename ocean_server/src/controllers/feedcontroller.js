@@ -945,6 +945,78 @@ const toggleSave = async (req, res) => {
     }
 };
 
+// Share a post
+const toggleShare = async (req, res) => {
+    try {
+        const { postId } = req.params;
+        const userId = req.user.id;
+
+        // Check if post exists
+        const post = await Post.findByPk(postId);
+        if (!post) {
+            return res.status(404).json({ message: "Post not found" });
+        }
+
+        // Check if already shared (to prevent duplicate shares)
+        const existingShare = await PostShare.findOne({
+            where: { postId, userId }
+        });
+
+        if (existingShare) {
+            // Already shared - optionally remove the share record or just return success
+            // For share functionality, we typically don't "unshare", so we just return
+            res.status(200).json({
+                message: "Post already shared",
+                data: { 
+                    isShared: true,
+                    sharesCount: post.sharesCount || 0
+                }
+            });
+        } else {
+            // Share the post
+            await PostShare.create({ postId, userId });
+            await post.increment('sharesCount');
+            
+            // Get updated share count
+            await post.reload();
+            const updatedSharesCount = post.sharesCount || 0;
+            
+            // Send notification to post owner (if not sharing own post)
+            if (post.userId !== userId) {
+                const user = await UserTable.findByPk(userId, {
+                    attributes: ['id', 'fullName', 'email', 'profilePicture']
+                });
+                
+                await createNotification(
+                    post.userId,
+                    'Your Post Was Shared',
+                    `${user.fullName} shared your post`,
+                    'info',
+                    'share',
+                    { 
+                        postId: post.id, 
+                        sharerId: userId,
+                        sharerName: user.fullName,
+                        postPreview: post.content ? post.content.substring(0, 100) : 'Your post'
+                    }
+                );
+            }
+            
+            res.status(200).json({
+                message: "Post shared successfully",
+                data: { 
+                    isShared: true,
+                    sharesCount: updatedSharesCount
+                }
+            });
+        }
+
+    } catch (error) {
+        console.error('Toggle share error:', error);
+        res.status(500).json({ message: "Error sharing post", error: error.message });
+    }
+};
+
 // Get user's saved posts
 const getSavedPosts = async (req, res) => {
     try {
@@ -1524,6 +1596,7 @@ module.exports = {
     getPost,
     toggleLike,
     toggleSave,
+    toggleShare,
     getSavedPosts,
     searchPosts,
     createComment,
