@@ -153,13 +153,18 @@ const getHomeFeed = async (req, res) => {
                         id: postData.id,
                         type: 'product',
                         contentType: postData.contentType,
+                        createdAt: postData.createdAt,
+                        updatedAt: postData.updatedAt,
+                        productId: postData.sourceId || postData.feedMetadata?.product_id || null,
                         user: {
+                            id: postData.user.id,
                             name: displayName,
                             avatar: postData.user.profilePicture || '👤',
                             verified: postData.user.accountStatus === 'verified',
                             location: postData.user.location
                         },
                         product: {
+                            id: postData.sourceId || postData.feedMetadata?.product_id || null,
                             title: postData.productName || 'Product',
                             price: postData.price ? `₦${parseInt(postData.price).toLocaleString()}` : 'Price not specified',
                             brand: postData.brand,
@@ -170,6 +175,7 @@ const getHomeFeed = async (req, res) => {
                         likes: postData.likesCount || 0,
                         comments: postData.commentsCount || 0,
                         shares: postData.sharesCount || 0,
+                        saves: postData.savedCount || 0,
                         timeAgo: getTimeAgo(postData.createdAt),
                         isLiked: false, // Will be set below
                         isSaved: false, // Will be set below
@@ -183,7 +189,10 @@ const getHomeFeed = async (req, res) => {
                         id: postData.id,
                         type: 'auction',
                         contentType: postData.contentType,
+                        createdAt: postData.createdAt,
+                        updatedAt: postData.updatedAt,
                         user: {
+                            id: postData.user.id,
                             name: displayName,
                             avatar: postData.user.profilePicture || '👤',
                             verified: postData.user.accountStatus === 'verified',
@@ -199,6 +208,7 @@ const getHomeFeed = async (req, res) => {
                         likes: postData.likesCount || 0,
                         comments: postData.commentsCount || 0,
                         shares: postData.sharesCount || 0,
+                        saves: postData.savedCount || 0,
                         timeAgo: getTimeAgo(postData.createdAt),
                         isLiked: false,
                         isSaved: false,
@@ -211,7 +221,10 @@ const getHomeFeed = async (req, res) => {
                         id: postData.id,
                         type: 'group_buy',
                         contentType: postData.contentType,
+                        createdAt: postData.createdAt,
+                        updatedAt: postData.updatedAt,
                         user: {
+                            id: postData.user.id,
                             name: postData.user.fullName,
                             avatar: postData.user.profilePicture || '👤',
                             verified: postData.user.accountStatus === 'verified',
@@ -227,6 +240,7 @@ const getHomeFeed = async (req, res) => {
                         likes: postData.likesCount || 0,
                         comments: postData.commentsCount || 0,
                         shares: postData.sharesCount || 0,
+                        saves: postData.savedCount || 0,
                         timeAgo: getTimeAgo(postData.createdAt),
                         isLiked: false,
                         isSaved: false,
@@ -236,11 +250,22 @@ const getHomeFeed = async (req, res) => {
                 } else {
                     // General post format (default) - Map to frontend field names
                     const displayName = postData.user?.seller?.businessName || postData.user?.fullName;
+                    
+                    // Check if this is a distress sale post
+                    const isDistressSale = postData.contentType === 'distress_sale' || 
+                                          postData.contentType === 'distressSale' ||
+                                          postData.sourceTable === 'distress_sales' ||
+                                          postData.feedMetadata?.distressSaleId;
+                    
                     formattedPost = {
                         id: postData.id,
                         category: postData.contentType || 'general',  // type → category
                         contentType: postData.contentType || 'post',
+                        createdAt: postData.createdAt,
+                        updatedAt: postData.updatedAt,
+                        distressSaleId: isDistressSale ? (postData.sourceId || postData.feedMetadata?.distressSaleId || null) : null,
                         user: {
+                            id: postData.user.id,
                             name: displayName,
                             avatar: postData.user.profilePicture || '👤',
                             verified: postData.user.accountStatus === 'verified',
@@ -256,6 +281,7 @@ const getHomeFeed = async (req, res) => {
                         likes: postData.likesCount || 0,
                         comments: postData.commentsCount || 0,
                         shares: postData.sharesCount || 0,
+                        saves: postData.savedCount || 0,
                         timeAgo: getTimeAgo(postData.createdAt),
                         isLiked: false,
                         isSaved: false,
