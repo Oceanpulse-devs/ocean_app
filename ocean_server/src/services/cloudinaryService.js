@@ -121,6 +121,30 @@ class CloudinaryService {
     }
 
     /**
+     * Upload buyer need media with specific optimizations
+     * @param {Buffer|string} file - File to upload
+     * @param {string} buyerNeedId - Buyer Need ID for organization
+     * @returns {Promise<Object>} Upload result
+     */
+    async uploadBuyerNeedMedia(file, buyerNeedId) {
+        const folder = `ocean-app/buyer-needs/${buyerNeedId}`;
+        
+        const options = {
+            transformation: [
+                { quality: 'auto:good', fetch_format: 'auto' },
+                { width: 1200, height: 1200, crop: 'limit' }
+            ],
+            eager: [
+                { width: 800, height: 600, crop: 'fill', quality: 'auto:good' },
+                { width: 400, height: 300, crop: 'fill', quality: 'auto:good' }
+            ],
+            eager_async: true
+        };
+
+        return await this.uploadFile(file, folder, options);
+    }
+
+    /**
      * Upload product images with e-commerce optimizations
      * @param {Buffer|string} file - File to upload
      * @param {string} productId - Product ID for organization

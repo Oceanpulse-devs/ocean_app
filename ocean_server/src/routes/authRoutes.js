@@ -1,7 +1,7 @@
 const express = require('express')
 const router = express.Router()
 const multer = require('multer')
-const {signup,login,forgotPassword,verifyResetCode,resetPassword,sellerRegistration,verifyEmail,resendVerificationEmail} = require('../controllers/authcontroller')
+const {signup,login,forgotPassword,verifyResetCode,resetPassword,sellerRegistration,verifyEmail,resendVerificationEmail,googleMobileAuth} = require('../controllers/authcontroller')
 const authMiddleware = require('../middleware/authMiddleware')
 const updateRoleBasedOnVerification = require('../middleware/sellerVerficationstatusWare')
 const updateVerificationStatusBasedOnDocuments = require('../middleware/sellerdocstatusWare')
@@ -55,6 +55,9 @@ router.get('/api/auth/google/callback', passport.authenticate('google', { failur
     router.get('/api/auth/google/failure', (req, res) => {
         res.redirect(`${process.env.CLIENT_URL}/auth/failure?provider=google`);
     });
+    
+    // Google Mobile Authentication - for mobile apps using Google Sign-In SDK
+    router.post('/api/auth/google/mobile', googleMobileAuth);
 }
 
 

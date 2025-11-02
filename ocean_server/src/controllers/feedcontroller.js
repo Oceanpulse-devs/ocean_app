@@ -1,4 +1,4 @@
-const { Post, PostMedia, PostLike, PostComment, PostShare, SavedPost, UserTable, UserFollows, ProductCategory, Notification, BuyerNeed } = require('../../models');
+const { Post, PostMedia, PostLike, PostComment, PostShare, SavedPost, UserTable, UserFollows, ProductCategory, Notification } = require('../../models');
 const { Op, Sequelize } = require('sequelize');
 const cloudinaryService = require('../services/cloudinaryService');
 const { mapNestedFields } = require('../../utils/fieldMapper');
@@ -543,6 +543,15 @@ const createPost = async (req, res) => {
             category_id  // Changed from 'category' to 'category_id' for proper UUID reference
         } = formData;
         const userId = req.user.id;
+        const userAccountType = req.user.accountType;
+
+        // Block buyers from creating posts - they should use buyer needs instead
+        if (userAccountType === 'buyer' || userAccountType === 'pending-seller') {
+            return res.status(403).json({ 
+                message: "Buyers cannot create posts. Please use the Buyer Needs feature instead.",
+                redirectTo: "/buyer-needs/create"
+            });
+        }
 
         // Validate required fields - only content is required now
         if (!content || content.trim().length === 0) {
@@ -730,42 +739,9 @@ const createPost = async (req, res) => {
             ]
         });
 
-        // Auto-create buyer need for every post
-        console.log('Creating buyer need for post...');
-        try {
-            const buyerNeedData = {
-                title: content.trim().substring(0, 100) || 'General Post',
-                description: content.trim(),
-                buyer_id: userId,
-                category_id: validatedCategoryId, // Use validated category_id
-                budget_min: null, // Not provided by frontend
-                budget_max: null, // Not provided by frontend
-                currency: 'NGN', // Default currency
-                location: user.location || 'Lagos, Nigeria',
-                urgency: 'medium', // Default urgency
-                status: 'active',
-                reach_limit: parsedReachLimit, // Use the validated reach limit
-                current_reach: 0,
-                reach_exceeded: false,
-                contact_preference: 'message',
-                tags: generateTagsFromContent(content)
-            };
-
-            const buyerNeed = await BuyerNeed.create(buyerNeedData);
-            console.log('Buyer need created:', buyerNeed.id);
-
-            // Link post to buyer need
-            await post.update({
-                sourceId: buyerNeed.id.toString(),
-                sourceTable: 'buyer_needs',
-                contentType: 'buyer_need'
-            });
-
-            console.log('Post linked to buyer need');
-        } catch (buyerNeedError) {
-            console.error('Error creating buyer need:', buyerNeedError);
-            // Don't fail the post creation if buyer need creation fails
-        }
+        // Note: Auto-creating buyer needs from posts has been removed
+        // Buyers should now create buyer needs directly instead of posts
+        // Only sellers can create posts, and posts are for products/announcements
 
         console.log('Sending response:', { message: "Post created successfully", data: createdPost });
         res.status(201).json({

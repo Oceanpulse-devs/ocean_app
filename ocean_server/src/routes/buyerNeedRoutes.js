@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const multer = require('multer');
 const buyerNeedController = require('../controllers/buyerNeedController');
 const buyerNeedResponseController = require('../controllers/buyerNeedResponseController');
 const authMiddleware = require('../middleware/authMiddleware');
@@ -7,8 +8,25 @@ const authMiddleware = require('../middleware/authMiddleware');
 // Apply authentication middleware to all routes
 router.use(authMiddleware);
 
+// Configure multer for file uploads (same as posts)
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 100 * 1024 * 1024, // 100MB limit (for videos)
+    files: 10 // Max 10 files
+  },
+  fileFilter: (req, file, cb) => {
+    // Accept images and videos
+    if (file.mimetype.startsWith('image/') || file.mimetype.startsWith('video/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image and video files are allowed!'), false);
+    }
+  }
+});
+
 // Buyer Need CRUD operations
-router.post('/create', buyerNeedController.createBuyerNeed);
+router.post('/create', upload.array('media', 10), buyerNeedController.createBuyerNeed);
 router.get('/all', buyerNeedController.getAllBuyerNeeds);
 router.get('/:id', buyerNeedController.getBuyerNeedById);
 router.put('/:id', buyerNeedController.updateBuyerNeed);
@@ -23,6 +41,10 @@ router.get('/user/me', buyerNeedController.getUserBuyerNeeds);
 
 // Buyer Need statistics
 router.get('/stats/overview', buyerNeedController.getBuyerNeedStats);
+
+// Buyer Search Insights routes
+router.post('/search-insight/track', buyerNeedController.trackFailedSearch);
+router.get('/search-insights', buyerNeedController.getBuyerSearchInsights);
 
 // Reach management routes
 router.post('/:id/increment-reach', buyerNeedController.incrementReach);

@@ -25,32 +25,6 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: true,
       comment: 'Product category for the buyer need (optional)'
     },
-    budget_min: {
-      type: DataTypes.DECIMAL(10, 2),
-      allowNull: true,
-      comment: 'Minimum budget range'
-    },
-    budget_max: {
-      type: DataTypes.DECIMAL(10, 2),
-      allowNull: true,
-      comment: 'Maximum budget range'
-    },
-    currency: {
-      type: DataTypes.STRING(3),
-      defaultValue: 'USD',
-      allowNull: false,
-      comment: 'Currency for budget amounts'
-    },
-    location: {
-      type: DataTypes.STRING(255),
-      allowNull: true,
-      comment: 'Preferred location for pickup/delivery'
-    },
-    urgency: {
-      type: DataTypes.ENUM('low', 'medium', 'high', 'urgent'),
-      defaultValue: 'medium',
-      comment: 'How urgently the buyer needs this item'
-    },
     status: {
       type: DataTypes.ENUM('active', 'in_progress', 'fulfilled', 'expired', 'cancelled'),
       defaultValue: 'active',
@@ -75,21 +49,6 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.DATE,
       allowNull: true,
       comment: 'When this buyer need expires'
-    },
-    tags: {
-      type: DataTypes.JSON,
-      allowNull: true,
-      comment: 'Array of tags for categorization and search'
-    },
-    contact_preference: {
-      type: DataTypes.ENUM('message', 'email', 'phone', 'any'),
-      defaultValue: 'message',
-      comment: 'Preferred contact method for sellers'
-    },
-    additional_requirements: {
-      type: DataTypes.TEXT,
-      allowNull: true,
-      comment: 'Any additional requirements or preferences'
     },
     reach_limit: {
       type: DataTypes.INTEGER,
@@ -131,9 +90,6 @@ module.exports = (sequelize, DataTypes) => {
       },
       {
         fields: ['status']
-      },
-      {
-        fields: ['urgency']
       },
       {
         fields: ['is_featured']

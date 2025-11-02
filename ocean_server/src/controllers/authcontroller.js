@@ -9,6 +9,7 @@ const { where } = require('sequelize')
 const JWT_SECRET = process.env.JWT_SECRET
 const redisClient = require('../config/redisdb')
 const { mapRequestFields, mapResponseFields } = require('../../utils/fieldMapper')
+const axios = require('axios')
 
 // Account lockout configuration
 const MAX_LOGIN_ATTEMPTS = 5;
@@ -1009,6 +1010,160 @@ const resendVerificationEmail = async (req, res) => {
     }
 };
 
+// Google Mobile Authentication - for mobile apps using Google Sign-In SDK
+const googleMobileAuth = async (req, res) => {
+    const { idToken } = req.body;
+
+    try {
+        // Validate input
+        if (!idToken) {
+            return res.status(400).json({ 
+                message: "Google ID token is required" 
+            });
+        }
+
+        // Verify the Google ID token with Google's tokeninfo API
+        const tokenInfoUrl = `https://www.googleapis.com/oauth2/v3/tokeninfo?id_token=${idToken}`;
+        
+        let googleUserInfo;
+        try {
+            const response = await axios.get(tokenInfoUrl);
+            googleUserInfo = response.data;
+
+            // Verify the token was issued for our app
+            if (googleUserInfo.aud !== process.env.GOOGLE_CLIENT_ID) {
+                return res.status(401).json({ 
+                    message: "Invalid token: token was not issued for this application" 
+                });
+            }
+        } catch (verifyError) {
+            console.error('Google token verification error:', verifyError);
+            return res.status(401).json({ 
+                message: "Invalid or expired Google ID token",
+                error: verifyError.response?.data?.error_description || verifyError.message
+            });
+        }
+
+        // Extract user information from verified token
+        const googleId = googleUserInfo.sub;
+        const email = googleUserInfo.email;
+        const fullName = googleUserInfo.name || email.split('@')[0];
+        const profilePicture = googleUserInfo.picture || null;
+
+        if (!email) {
+            return res.status(400).json({ 
+                message: "Email not provided in Google token" 
+            });
+        }
+
+        // Generate unique username helper function (reuse from signup)
+        const generateUsername = async (fullName) => {
+            const baseName = fullName.toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 8);
+            const randomSuffix = crypto.randomBytes(4).toString('hex');
+            let username = `@${baseName}_${randomSuffix}`;
+            
+            // Ensure username is unique
+            let counter = 1;
+            while (await UserTable.findOne({ where: { username } })) {
+                username = `@${baseName}_${randomSuffix}${counter}`;
+                counter++;
+            }
+            
+            return username;
+        };
+
+        // Check if user already exists with this Google ID
+        let user = await UserTable.findOne({ where: { google_Id: googleId } });
+        
+        if (user) {
+            // User already exists with Google ID
+            console.log('✅ Existing Google user found:', user.email);
+        } else {
+            // Check if user exists with this email (from regular signup)
+            const existingUser = await UserTable.findOne({ 
+                where: { email: email.toLowerCase().trim() } 
+            });
+            
+            if (existingUser) {
+                // User exists with this email, link Google ID to existing account
+                await existingUser.update({
+                    google_Id: googleId,
+                    profilePicture: profilePicture || existingUser.profilePicture,
+                    accountStatus: 'active' // Ensure account is active
+                });
+                user = existingUser;
+                console.log('✅ Linked Google account to existing user:', user.email);
+            } else {
+                // Create a new user
+                const randomPassword = Math.random().toString(36).slice(-8);
+                const hashedPassword = await bcrypt.hash(randomPassword, 10);
+                const username = await generateUsername(fullName);
+                
+                user = await UserTable.create({
+                    google_Id: googleId,
+                    fullName: fullName.trim(),
+                    username: username,
+                    email: email.toLowerCase().trim(),
+                    password: hashedPassword, // Required field
+                    profilePicture: profilePicture,
+                    agreeTerms: true, // OAuth users agree to terms
+                    accountType: 'buyer', // Default account type
+                    accountStatus: 'active',
+                    emailVerified: true // Google emails are pre-verified
+                });
+                console.log('✅ New Google user created:', user.email);
+            }
+        }
+
+        // Generate unique session ID for this login
+        const sessionId = crypto.randomBytes(32).toString('hex');
+
+        // Generate JWT token
+        const token = jwt.sign(
+            {
+                id: user.id,
+                email: user.email,
+                role: user.accountType,
+                sessionId: sessionId
+            },
+            JWT_SECRET,
+            { expiresIn: '7d' }
+        );
+
+        // Store session in Redis for logout from all devices functionality
+        await redisClient.set(`session:${user.id}:${sessionId}`, 'active', { EX: 7 * 24 * 60 * 60 });
+
+        // Build user object with all fields frontend expects
+        const userResponse = {
+            id: user.id,
+            fullName: user.fullName,
+            email: user.email,
+            role: user.accountType,
+            accountType: user.accountType,
+            accountStatus: user.accountStatus,
+            profilePicture: user.profilePicture || null,
+            username: user.username || null,
+            bio: user.bio || null,
+            location: user.location || null,
+            emailVerified: user.emailVerified || false
+        };
+
+        // Return token in response (mobile apps don't use cookies)
+        res.status(200).json({
+            message: "Google authentication successful",
+            user: userResponse,
+            token: token
+        });
+
+    } catch (error) {
+        console.error('Google mobile auth error:', error);
+        res.status(500).json({ 
+            message: "Error authenticating with Google", 
+            error: error.message 
+        });
+    }
+};
+
 module.exports = {
     signup,
     login,
@@ -1017,5 +1172,6 @@ module.exports = {
     resetPassword,
     sellerRegistration,
     verifyEmail,
-    resendVerificationEmail
+    resendVerificationEmail,
+    googleMobileAuth
 };

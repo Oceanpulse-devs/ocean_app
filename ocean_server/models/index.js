@@ -43,6 +43,8 @@ const SwapDeal = require('./SwapDeal');
 const SwapProposal = require('./SwapProposal');
 const BuyerNeed = require('./BuyerNeed');
 const BuyerNeedResponse = require('./BuyerNeedResponse');
+const BuyerNeedMedia = require('./BuyerNeedMedia');
+const BuyerSearchInsight = require('./BuyerSearchInsight');
 const MarketAnalytics = require('./MarketAnalytics');
 const SearchAnalytics = require('./SearchAnalytics');
 const UserBehaviorAnalytics = require('./UserBehaviorAnalytics');
@@ -88,6 +90,8 @@ db.ShareStats = ShareStats(sequelize, Sequelize.DataTypes);
   db.SwapProposal = SwapProposal(sequelize, Sequelize.DataTypes);
   db.BuyerNeed = BuyerNeed(sequelize, Sequelize.DataTypes);
   db.BuyerNeedResponse = BuyerNeedResponse(sequelize, Sequelize.DataTypes);
+  db.BuyerNeedMedia = BuyerNeedMedia(sequelize, Sequelize.DataTypes);
+  db.BuyerSearchInsight = BuyerSearchInsight(sequelize, Sequelize.DataTypes);
   db.MarketAnalytics = MarketAnalytics(sequelize, Sequelize.DataTypes);
   db.SearchAnalytics = SearchAnalytics(sequelize, Sequelize.DataTypes);
   db.UserBehaviorAnalytics = UserBehaviorAnalytics(sequelize, Sequelize.DataTypes);
@@ -230,6 +234,10 @@ const setupAssociations = () => {
   db.BuyerNeed.belongsTo(db.UserTable, { foreignKey: 'buyer_id', as: 'buyer' });
   db.BuyerNeed.belongsTo(db.ProductCategory, { foreignKey: 'category_id', as: 'category' });
   db.BuyerNeed.hasMany(db.BuyerNeedResponse, { foreignKey: 'buyer_need_id', as: 'responses' });
+  db.BuyerNeed.hasMany(db.BuyerNeedMedia, { foreignKey: 'buyerNeedId', as: 'media' });
+  
+  // Buyer Need Media associations
+  db.BuyerNeedMedia.belongsTo(db.BuyerNeed, { foreignKey: 'buyerNeedId', as: 'buyerNeed' });
   
   // Buyer Need Response associations
   db.BuyerNeedResponse.belongsTo(db.BuyerNeed, { foreignKey: 'buyer_need_id', as: 'buyerNeed' });
@@ -241,6 +249,12 @@ const setupAssociations = () => {
   
   // ProductCategory associations for buyer needs
   db.ProductCategory.hasMany(db.BuyerNeed, { foreignKey: 'category_id', as: 'buyerNeeds' });
+
+  // Buyer Search Insight associations
+  db.BuyerSearchInsight.belongsTo(db.UserTable, { foreignKey: 'user_id', as: 'user' });
+  db.BuyerSearchInsight.belongsTo(db.ProductCategory, { foreignKey: 'category_id', as: 'category' });
+  db.UserTable.hasMany(db.BuyerSearchInsight, { foreignKey: 'user_id', as: 'searchInsights' });
+  db.ProductCategory.hasMany(db.BuyerSearchInsight, { foreignKey: 'category_id', as: 'searchInsights' });
 
   // Market Analytics associations
   db.MarketAnalytics.belongsTo(db.ProductCategory, { foreignKey: 'category_id', as: 'category' });
