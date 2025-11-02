@@ -2,6 +2,24 @@ const db = require('../../models');
 const { Op } = require('sequelize');
 const cloudinaryService = require('../services/cloudinaryService');
 
+// Helper function to create notifications
+const createNotification = async (userId, title, message, type = 'info', category = 'system', metadata = null) => {
+  try {
+    const notification = await db.Notification.create({
+      userId,
+      title,
+      message,
+      type,
+      category,
+      metadata
+    });
+    console.log(`📧 Notification created for user ${userId}: ${title}`);
+    return notification;
+  } catch (error) {
+    console.error('Error creating notification:', error);
+  }
+};
+
 // Helper function to map buyer need response to match post structure
 const mapBuyerNeedResponse = (buyerNeed) => {
   const mapped = buyerNeed.toJSON ? buyerNeed.toJSON() : { ...buyerNeed };
@@ -11,7 +29,7 @@ const mapBuyerNeedResponse = (buyerNeed) => {
     id: mapped.id,
     caption: mapped.description || mapped.title,  // Use caption only (matches post structure)
     reach_limit: mapped.reach_limit || 5,
-    category_id: mapped.category_id,
+    category: mapped.category || null,  // Store category as string name directly
     user: mapped.buyer ? {
       id: mapped.buyer.id,
       fullName: mapped.buyer.fullName,
@@ -20,10 +38,6 @@ const mapBuyerNeedResponse = (buyerNeed) => {
       accountStatus: mapped.buyer.accountStatus
     } : null,
     media: mapped.media || [],
-    category: mapped.category ? {
-      id: mapped.category.id,
-      name: mapped.category.name
-    } : null,
     responses_count: mapped.responses_count || 0,
     createdAt: mapped.created_at || mapped.createdAt,
     updatedAt: mapped.updated_at || mapped.updatedAt
@@ -31,7 +45,7 @@ const mapBuyerNeedResponse = (buyerNeed) => {
 };
 
 class BuyerNeedController {
-  // Create a new buyer need (matches post structure - accepts content/caption, reach_limit, category_id, images)
+  // Create a new buyer need (matches post structure - accepts content/caption, reach_limit, category (string), images)
   async createBuyerNeed(req, res) {
     try {
       console.log('Create buyer need request body:', req.body);
@@ -43,7 +57,7 @@ class BuyerNeedController {
         console.log('Files not parsed by multer, handling manually');
         // Parse the _parts array to extract form data
         req.body._parts.forEach(part => {
-          if (part[0] !== 'media') {
+          if (part[0] !== 'images') {  // Changed from 'media' to 'images'
             formData[part[0]] = part[1];
           }
         });
@@ -52,12 +66,12 @@ class BuyerNeedController {
         formData = req.body;
       }
       
-      // Extract only the fields the frontend actually uses (same as posts)
+      // Extract only the fields the frontend actually uses
       const { 
         content, 
         caption,  // Accept caption as alternative to content
         reach_limit, 
-        category_id
+        category  // Accept category as string name (not category_id)
       } = formData;
       
       const buyer_id = req.user.id;
@@ -71,7 +85,7 @@ class BuyerNeedController {
         });
       }
 
-      // Validate reach_limit if provided (same as posts)
+      // Validate reach_limit if provided
       let parsedReachLimit = 5; // Default value
       if (reach_limit !== undefined && reach_limit !== null && reach_limit !== '') {
         parsedReachLimit = parseInt(reach_limit);
@@ -83,30 +97,25 @@ class BuyerNeedController {
         }
       }
 
-      // Validate category_id if provided (should be a valid UUID) - same as posts
-      let validatedCategoryId = null;
-      if (category_id !== undefined && category_id !== null && category_id !== '') {
-        // Basic UUID validation
-        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-        if (!uuidRegex.test(category_id)) {
-          return res.status(400).json({
-            success: false,
-            message: 'Category ID must be a valid UUID'
+      // Store category as string (accept category name directly)
+      const categoryName = category ? category.trim() : null;
+
+      // Optionally map category name to category_id internally for seller matching
+      let mappedCategoryId = null;
+      if (categoryName) {
+        try {
+          // Try to find category by name for internal mapping
+          const categoryRecord = await db.ProductCategory.findOne({
+            where: { name: { [Op.like]: categoryName } }
           });
+          if (categoryRecord) {
+            mappedCategoryId = categoryRecord.id;
+            // Update category usage count
+            await categoryRecord.update({ usageCount: categoryRecord.usageCount + 1 });
+          }
+        } catch (error) {
+          console.log('Category mapping not found, storing as string only:', error.message);
         }
-        
-        // Verify category exists in database
-        const category = await db.ProductCategory.findByPk(category_id);
-        if (!category) {
-          return res.status(400).json({
-            success: false,
-            message: 'Category not found'
-          });
-        }
-        validatedCategoryId = category_id;
-        
-        // Update category usage count
-        await category.update({ usageCount: category.usageCount + 1 });
       }
 
       // Set default expiration (30 days from now)
@@ -117,7 +126,8 @@ class BuyerNeedController {
         title: finalContent.trim(),  // Store content as title
         description: finalContent.trim(),  // Also store as description for backward compatibility
         buyer_id,
-        category_id: validatedCategoryId,
+        category: categoryName,  // Store category as string name directly
+        category_id: mappedCategoryId,  // Store mapped ID for internal use (optional)
         reach_limit: parsedReachLimit,
         expires_at: expirationDate,
         status: 'active',
@@ -125,9 +135,9 @@ class BuyerNeedController {
         reach_exceeded: false
       });
 
-      // Add media if provided (optional - same as posts)
+      // Add images if provided (optional - field name changed from media to images)
       if (req.files && req.files.length > 0) {
-        console.log(`Processing ${req.files.length} media files for buyer need ${buyerNeed.id}`);
+        console.log(`Processing ${req.files.length} image files for buyer need ${buyerNeed.id}`);
         const mediaPromises = req.files.map(async (file, index) => {
           try {
             // Determine media type from file mimetype
@@ -179,18 +189,20 @@ class BuyerNeedController {
             as: 'media',
             attributes: ['id', 'mediaType', 'mediaUrl', 'thumbnailUrl', 'mediaOrder'],
             order: [['mediaOrder', 'ASC']]
-          },
-          {
-            model: db.ProductCategory,
-            as: 'category',
-            attributes: ['id', 'name'],
-            required: false
           }
         ]
       });
 
       // Map buyer need response to match post structure
       const mappedBuyerNeed = mapBuyerNeedResponse(createdBuyerNeed);
+
+      // Notify matching sellers about the new buyer need
+      try {
+        await this.notifyMatchingSellers(buyerNeed, categoryName);
+      } catch (notifyError) {
+        console.error('Error notifying matching sellers:', notifyError);
+        // Don't fail the request if notification fails
+      }
 
       res.status(201).json({
         success: true,
@@ -208,14 +220,14 @@ class BuyerNeedController {
     }
   }
 
-  // Get all buyer needs with filters
+      // Get all buyer needs with filters
   async getAllBuyerNeeds(req, res) {
     try {
       const {
         page = 1,
         limit = 10,
         status,
-        category_id,
+        category,  // Changed from category_id to category (string)
         featured,
         search,
         sort_by = 'created_at',
@@ -227,7 +239,7 @@ class BuyerNeedController {
 
       // Apply filters
       if (status) whereClause.status = status;
-      if (category_id) whereClause.category_id = category_id;
+      if (category) whereClause.category = { [Op.like]: `%${category}%` };  // Filter by category string
       if (featured === 'true') whereClause.is_featured = true;
 
       // Search filter
@@ -256,11 +268,6 @@ class BuyerNeedController {
             model: db.UserTable,
             as: 'buyer',
             attributes: ['id', 'fullName', 'profilePicture', 'accountType', 'accountStatus']
-          },
-          {
-            model: db.ProductCategory,
-            as: 'category',
-            attributes: ['id', 'name']
           },
           {
             model: db.BuyerNeedMedia,
@@ -310,11 +317,6 @@ class BuyerNeedController {
             model: db.UserTable,
             as: 'buyer',
             attributes: ['id', 'fullName', 'profilePicture', 'accountType', 'accountStatus']
-          },
-          {
-            model: db.ProductCategory,
-            as: 'category',
-            attributes: ['id', 'name']
           },
           {
             model: db.BuyerNeedMedia,
@@ -406,9 +408,9 @@ class BuyerNeedController {
         });
       }
 
-      // Only allow updating fields that exist in the model (title, description, reach_limit, category_id, status, expires_at)
+      // Only allow updating fields that exist in the model (title, description, reach_limit, category (string), status, expires_at)
       // Remove any deleted fields from updateData
-      const allowedFields = ['title', 'description', 'reach_limit', 'category_id', 'status', 'expires_at'];
+      const allowedFields = ['title', 'description', 'reach_limit', 'category', 'status', 'expires_at'];
       Object.keys(updateData).forEach(key => {
         if (!allowedFields.includes(key)) {
           delete updateData[key];
@@ -422,6 +424,25 @@ class BuyerNeedController {
         updateData.description = finalContent.trim();
         delete updateData.content;
         delete updateData.caption;
+      }
+
+      // Handle category field - store as string, optionally map to category_id internally
+      if (updateData.category) {
+        const categoryName = updateData.category.trim();
+        updateData.category = categoryName;
+        
+        // Optionally map to category_id internally
+        try {
+          const categoryRecord = await db.ProductCategory.findOne({
+            where: { name: { [Op.like]: categoryName } }
+          });
+          if (categoryRecord) {
+            // Store category_id internally but don't expose in response
+            updateData.category_id = categoryRecord.id;
+          }
+        } catch (error) {
+          console.log('Category mapping not found for update:', error.message);
+        }
       }
 
       // Validate expiration date if updating
@@ -447,12 +468,6 @@ class BuyerNeedController {
             as: 'media',
             attributes: ['id', 'mediaType', 'mediaUrl', 'thumbnailUrl', 'mediaOrder'],
             order: [['mediaOrder', 'ASC']],
-            required: false
-          },
-          {
-            model: db.ProductCategory,
-            as: 'category',
-            attributes: ['id', 'name'],
             required: false
           }
         ]
@@ -1141,6 +1156,68 @@ class BuyerNeedController {
         message: 'Internal server error',
         error: error.message
       });
+    }
+  }
+
+  // Helper method to notify matching sellers about new buyer need
+  async notifyMatchingSellers(buyerNeed, categoryName) {
+    if (!categoryName) {
+      console.log('No category provided, skipping seller notifications');
+      return;
+    }
+
+    try {
+      // Find all active sellers with matching category in their selectedCategories
+      const matchingSellers = await db.SellersTable.findAll({
+        where: {
+          verificationStatus: { [Op.in]: ['approved', 'active'] },
+          // Check if selectedCategories JSON array contains the category name
+          [Op.or]: [
+            db.sequelize.literal(`JSON_CONTAINS(selectedCategories, JSON_QUOTE('${categoryName}'))`),
+            // Also check if category matches directly (case-insensitive search in JSON)
+            db.sequelize.literal(`selectedCategories LIKE '%${categoryName}%'`)
+          ]
+        },
+        include: [
+          {
+            model: db.UserTable,
+            as: 'user',
+            attributes: ['id', 'email', 'accountStatus']
+          }
+        ],
+        limit: 100 // Limit to avoid too many notifications
+      });
+
+      console.log(`Found ${matchingSellers.length} matching sellers for category: ${categoryName}`);
+
+      // Send notification to each matching seller
+      const notificationPromises = matchingSellers.map(async (seller) => {
+        try {
+          await createNotification(
+            seller.userId,
+            'New Buyer Demand Available',
+            `A buyer is looking for "${buyerNeed.title}" in ${categoryName}. Tap to view and respond.`,
+            'info',
+            'buyer_need',
+            {
+              buyerNeedId: buyerNeed.id,
+              buyerNeedTitle: buyerNeed.title,
+              category: categoryName,
+              buyerId: buyerNeed.buyer_id,
+              createdAt: buyerNeed.created_at
+            }
+          );
+          console.log(`✅ Notification sent to seller ${seller.userId} (${seller.businessName})`);
+        } catch (notifyError) {
+          console.error(`Error sending notification to seller ${seller.userId}:`, notifyError);
+        }
+      });
+
+      await Promise.all(notificationPromises);
+      console.log(`✅ Completed sending ${matchingSellers.length} notifications to matching sellers`);
+    } catch (error) {
+      console.error('Error in notifyMatchingSellers:', error);
+      throw error;
     }
   }
 }

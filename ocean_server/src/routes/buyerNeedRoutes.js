@@ -26,7 +26,7 @@ const upload = multer({
 });
 
 // Buyer Need CRUD operations
-router.post('/create', upload.array('media', 10), buyerNeedController.createBuyerNeed);
+router.post('/create', upload.array('images', 10), buyerNeedController.createBuyerNeed);
 router.get('/all', buyerNeedController.getAllBuyerNeeds);
 router.get('/:id', buyerNeedController.getBuyerNeedById);
 router.put('/:id', buyerNeedController.updateBuyerNeed);

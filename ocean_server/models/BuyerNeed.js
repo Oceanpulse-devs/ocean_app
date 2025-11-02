@@ -23,7 +23,12 @@ module.exports = (sequelize, DataTypes) => {
     category_id: {
       type: DataTypes.UUID,
       allowNull: true,
-      comment: 'Product category for the buyer need (optional)'
+      comment: 'Product category for the buyer need (optional) - kept for backward compatibility'
+    },
+    category: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+      comment: 'Category name (string) - stored directly, not using ProductCategory table anymore'
     },
     status: {
       type: DataTypes.ENUM('active', 'in_progress', 'fulfilled', 'expired', 'cancelled'),

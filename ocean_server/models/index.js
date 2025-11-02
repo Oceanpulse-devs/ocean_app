@@ -232,7 +232,8 @@ const setupAssociations = () => {
 
   // Buyer Need associations
   db.BuyerNeed.belongsTo(db.UserTable, { foreignKey: 'buyer_id', as: 'buyer' });
-  db.BuyerNeed.belongsTo(db.ProductCategory, { foreignKey: 'category_id', as: 'category' });
+  // Removed ProductCategory association - now using category (string) field directly
+  // db.BuyerNeed.belongsTo(db.ProductCategory, { foreignKey: 'category_id', as: 'category' });
   db.BuyerNeed.hasMany(db.BuyerNeedResponse, { foreignKey: 'buyer_need_id', as: 'responses' });
   db.BuyerNeed.hasMany(db.BuyerNeedMedia, { foreignKey: 'buyerNeedId', as: 'media' });
   
