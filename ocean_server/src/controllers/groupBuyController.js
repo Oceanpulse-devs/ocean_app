@@ -125,6 +125,38 @@ const addParticipantToGroupChat = async (conversationId, userId) => {
   }
 };
 
+// Helper function to calculate remaining units for a group buy
+const calculateRemainingUnits = async (groupBuyId) => {
+  try {
+    const groupBuy = await db.GroupBuy.findByPk(groupBuyId);
+    
+    // If quantity_unit is not set, return null
+    if (!groupBuy || groupBuy.quantity_unit === null || groupBuy.quantity_unit === undefined) {
+      return null;
+    }
+    
+    // Get all active participants (exclude cancelled ones)
+    const participants = await db.GroupBuyParticipant.findAll({
+      where: { 
+        group_buy_id: groupBuyId,
+        status: { [Op.ne]: 'cancelled' }
+      }
+    });
+    
+    // Sum all participant quantities
+    const totalReservedUnits = participants.reduce((sum, p) => sum + (p.quantity || 0), 0);
+    
+    // Calculate remaining units
+    const remainingUnits = groupBuy.quantity_unit - totalReservedUnits;
+    
+    // Ensure it doesn't go negative (shouldn't happen if validation is correct, but safety check)
+    return Math.max(0, remainingUnits);
+  } catch (error) {
+    console.error('Error calculating remaining units:', error);
+    return null;
+  }
+};
+
 class GroupBuyController {
   // Create a new group buy
   async createGroupBuy(req, res) {
@@ -141,6 +173,7 @@ class GroupBuyController {
         pricePerUnit,  // Accept frontend field name
         min_buyers,
         max_buyers,
+        quantity_unit,
         location,
         deadline,
         endDate,  // Accept frontend field name
@@ -213,6 +246,16 @@ class GroupBuyController {
         });
       }
 
+      // Validate quantity_unit if provided
+      if (quantity_unit !== undefined && quantity_unit !== null) {
+        if (quantity_unit <= 0 || !Number.isInteger(quantity_unit)) {
+          return res.status(400).json({
+            success: false,
+            message: 'Quantity unit must be a positive integer'
+          });
+        }
+      }
+
       // Accept category from seller's registration (no strict validation)
       console.log('📋 Category received:', category_id);
       
@@ -245,6 +288,8 @@ class GroupBuyController {
         group_price: numGroupPrice,  // Use parsed numeric value
         min_buyers,
         max_buyers,
+        quantity_unit: quantity_unit || null,
+        remaining_units: quantity_unit || null, // Initialize remaining units to total
         creator_id,
         location,
         deadline: finalDeadline,  // Use transformed value
@@ -510,6 +555,16 @@ class GroupBuyController {
       // Increment view count
       await groupBuy.increment('views_count');
 
+      // Calculate and update remaining units if quantity_unit is set
+      if (groupBuy.quantity_unit !== null && groupBuy.quantity_unit !== undefined) {
+        const remainingUnits = await calculateRemainingUnits(id);
+        if (remainingUnits !== null) {
+          await groupBuy.update({ remaining_units: remainingUnits });
+          // Reload to get updated remaining_units
+          await groupBuy.reload();
+        }
+      }
+
       // Convert to JSON to ensure nested relationships are serialized
       const groupBuyJson = groupBuy.toJSON ? groupBuy.toJSON() : groupBuy;
       
@@ -720,6 +775,33 @@ class GroupBuyController {
         });
       }
 
+      // Validate quantity if provided
+      if (!quantity || quantity <= 0 || !Number.isInteger(quantity)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Quantity must be a positive integer'
+        });
+      }
+
+      // Check if quantity_unit is set and validate remaining units
+      if (groupBuy.quantity_unit !== null && groupBuy.quantity_unit !== undefined) {
+        // Calculate remaining units
+        const remainingUnits = await calculateRemainingUnits(id);
+        
+        if (remainingUnits === null) {
+          // This shouldn't happen, but handle gracefully
+          console.error('Error calculating remaining units for group buy:', id);
+        } else {
+          // Check if requested quantity exceeds available units
+          if (quantity > remainingUnits) {
+            return res.status(400).json({
+              success: false,
+              message: `Not enough units available. Only ${remainingUnits} unit(s) remaining.`
+            });
+          }
+        }
+      }
+
       // Calculate total amount
       const total_amount = quantity * groupBuy.group_price;
 
@@ -735,6 +817,14 @@ class GroupBuyController {
 
       // Update current buyers count
       await groupBuy.increment('current_buyers');
+
+      // Update remaining units if quantity_unit is set
+      if (groupBuy.quantity_unit !== null && groupBuy.quantity_unit !== undefined) {
+        const updatedRemainingUnits = await calculateRemainingUnits(id);
+        if (updatedRemainingUnits !== null) {
+          await groupBuy.update({ remaining_units: updatedRemainingUnits });
+        }
+      }
 
       // Add buyer to group conversation if it exists
       if (groupBuy.conversation_id) {
@@ -905,10 +995,20 @@ class GroupBuyController {
         });
       }
 
+      const participantQuantity = participant.quantity || 0;
+
       await participant.destroy();
 
       // Update current buyers count
       await groupBuy.decrement('current_buyers');
+
+      // Recalculate remaining units if quantity_unit is set
+      if (groupBuy.quantity_unit !== null && groupBuy.quantity_unit !== undefined) {
+        const updatedRemainingUnits = await calculateRemainingUnits(id);
+        if (updatedRemainingUnits !== null) {
+          await groupBuy.update({ remaining_units: updatedRemainingUnits });
+        }
+      }
 
       // Check if we need to revert to pending status
       if (groupBuy.current_buyers < groupBuy.min_buyers) {

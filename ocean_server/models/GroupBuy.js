@@ -56,6 +56,16 @@ module.exports = (sequelize, DataTypes) => {
     allowNull: true,
     comment: 'Maximum number of buyers allowed (optional)'
   },
+  quantity_unit: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: 'Total quantity of units available from seller'
+  },
+  remaining_units: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: 'Remaining quantity of units available (computed dynamically)'
+  },
   current_buyers: {
     type: DataTypes.INTEGER,
     defaultValue: 0,
