@@ -23,6 +23,7 @@ const PostMedia = require('./PostMedia');
 const PostShare = require('./PostShare');
 const Product = require('./Product');
 const ProductCategory = require('./ProductCategory');
+const ProductLike = require('./ProductLike');
 const SavedProduct = require('./SavedProduct');
 const SavedPost = require('./SavedPost');
 const UserFollows = require('./UserFollows');
@@ -70,6 +71,7 @@ db.PostMedia = PostMedia(sequelize, Sequelize.DataTypes);
 db.PostShare = PostShare(sequelize, Sequelize.DataTypes);
 db.Product = Product(sequelize, Sequelize.DataTypes);
 db.ProductCategory = ProductCategory(sequelize, Sequelize.DataTypes);
+db.ProductLike = ProductLike(sequelize, Sequelize.DataTypes);
 db.SavedProduct = SavedProduct(sequelize, Sequelize.DataTypes);
 db.SavedPost = SavedPost(sequelize, Sequelize.DataTypes);
 db.UserFollows = UserFollows(sequelize, Sequelize.DataTypes);
@@ -149,6 +151,12 @@ const setupAssociations = () => {
   // Product associations
   db.Product.belongsTo(db.SellersTable, { foreignKey: 'sellerId', as: 'seller' });
   db.SellersTable.hasMany(db.Product, { foreignKey: 'sellerId', as: 'products' });
+  db.Product.hasMany(db.ProductLike, { foreignKey: 'productId', as: 'productLikes' });
+  
+  // ProductLike associations
+  db.ProductLike.belongsTo(db.Product, { foreignKey: 'productId', as: 'product' });
+  db.ProductLike.belongsTo(db.UserTable, { foreignKey: 'userId', as: 'user' });
+  db.UserTable.hasMany(db.ProductLike, { foreignKey: 'userId', as: 'productLikes' });
   
   // ProductCategory associations
   db.ProductCategory.hasMany(db.GroupBuy, { foreignKey: 'category_id', as: 'groupBuys' });

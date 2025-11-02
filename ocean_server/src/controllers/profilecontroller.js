@@ -1,6 +1,6 @@
 const { where, Op, Sequelize } = require('sequelize');
 const db = require('../../models');
-const {UserTable, SellersTable, UserFollows, Product, Post, Auction, GroupBuy, SwapDeal, PostLike} = require('../../models');
+const {UserTable, SellersTable, UserFollows, Product, Post, Auction, GroupBuy, SwapDeal, PostLike, ProductLike} = require('../../models');
 const { mapRequestFields, mapResponseFields } = require('../../utils/fieldMapper')
 
 const currentUserprofile = async(req,res)=>{
@@ -104,10 +104,16 @@ const currentUserprofile = async(req,res)=>{
                    parseInt(swapDealViews?.total || 0));
      
      // Calculate total likes from all seller items
-     const [productLikes] = await db.sequelize.query(
-       `SELECT COALESCE(SUM(likes), 0) as total FROM products WHERE sellerId = :sellerId`,
-       { replacements: { sellerId: alsoSeller.id }, type: Sequelize.QueryTypes.SELECT }
-     );
+     // Count ProductLike records (not SUM of likes field)
+     const productLikesCount = await ProductLike.count({
+       include: [{
+         model: Product,
+         as: 'product',
+         where: { sellerId: alsoSeller.id },
+         required: true
+       }]
+     });
+     
      const [postLikes] = await db.sequelize.query(
        `SELECT COUNT(*) as total FROM postlikes pl 
         INNER JOIN posts p ON pl.postId = p.id 
@@ -115,7 +121,7 @@ const currentUserprofile = async(req,res)=>{
        { replacements: { userId: id }, type: Sequelize.QueryTypes.SELECT }
      );
      
-     totalLikes = (parseInt(productLikes?.total || 0) + parseInt(postLikes?.total || 0));
+     totalLikes = productLikesCount + parseInt(postLikes?.total || 0);
    }
    
    const fullName = currentUser.fullName
@@ -329,10 +335,16 @@ const getUserProfileById = async(req, res) => {
                     parseInt(swapDealViews?.total || 0));
       
       // Calculate total likes from all seller items
-      const [productLikes] = await db.sequelize.query(
-        `SELECT COALESCE(SUM(likes), 0) as total FROM products WHERE sellerId = :sellerId`,
-        { replacements: { sellerId: alsoSeller.id }, type: Sequelize.QueryTypes.SELECT }
-      );
+      // Count ProductLike records (not SUM of likes field)
+      const productLikesCount = await ProductLike.count({
+        include: [{
+          model: Product,
+          as: 'product',
+          where: { sellerId: alsoSeller.id },
+          required: true
+        }]
+      });
+      
       const [postLikes] = await db.sequelize.query(
         `SELECT COUNT(*) as total FROM postlikes pl 
          INNER JOIN posts p ON pl.postId = p.id 
@@ -340,7 +352,7 @@ const getUserProfileById = async(req, res) => {
         { replacements: { userId: userId }, type: Sequelize.QueryTypes.SELECT }
       );
       
-      totalLikes = (parseInt(productLikes?.total || 0) + parseInt(postLikes?.total || 0));
+      totalLikes = productLikesCount + parseInt(postLikes?.total || 0);
     }
     
     // Format join date

@@ -34,6 +34,7 @@ router.get('/api/categories/system', (req, res) => {
 router.post('/api/products', authMiddleware, upload.array('images', 10), productController.createProduct);
 router.put('/api/products/:productId', authMiddleware, productController.updateProduct);
 router.delete('/api/products/:productId', authMiddleware, productController.deleteProduct);
+router.post('/api/products/:productId/like', authMiddleware, productController.toggleLikeProduct);
 router.post('/api/products/:productId/save', authMiddleware, productController.toggleSaveProduct);
 router.get('/api/saved-products', authMiddleware, productController.getSavedProducts);
 router.get('/api/saved-items', authMiddleware, productController.getAllSavedItems);

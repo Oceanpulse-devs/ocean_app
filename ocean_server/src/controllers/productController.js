@@ -1,4 +1,4 @@
-const { Product, ProductCategory, SavedProduct, SavedPost, Post, PostMedia, UserTable, SellersTable, UserFollows, Notification } = require('../../models');
+const { Product, ProductCategory, SavedProduct, SavedPost, Post, PostMedia, UserTable, SellersTable, UserFollows, Notification, ProductLike } = require('../../models');
 const { Op, Sequelize } = require('sequelize');
 const cloudinaryService = require('../services/cloudinaryService');
 const { checkSubscriptionLimit, incrementUsage } = require('../middleware/subscriptionMiddleware');
@@ -185,18 +185,20 @@ const getProduct = async (req, res) => {
 
         // Add engagement status for current user
         if (currentUserId) {
-            const [userSaved, userFollow] = await Promise.all([
+            const [userSaved, userFollow, userLiked] = await Promise.all([
                 SavedProduct.findOne({ where: { productId, userId: currentUserId } }),
                 UserFollows.findOne({ 
                     where: { 
                         userId: currentUserId, 
-                        followsUserId: product.sellerId 
+                        followsUserId: product.seller.userId 
                     } 
-                })
+                }),
+                ProductLike.findOne({ where: { productId, userId: currentUserId } })
             ]);
 
             productData.isSaved = !!userSaved;
             productData.isFollowing = !!userFollow;
+            productData.isLiked = !!userLiked;
         }
 
         // Map product field names for frontend (title → name)
@@ -484,6 +486,79 @@ const deleteProduct = async (req, res) => {
     } catch (error) {
         console.error('Delete product error:', error);
         res.status(500).json({ message: "Error deleting product", error: error.message });
+    }
+};
+
+// Toggle like/unlike product
+const toggleLikeProduct = async (req, res) => {
+    try {
+        const { productId } = req.params;
+        const userId = req.user.id;
+
+        // Check if product exists
+        const product = await Product.findByPk(productId);
+        if (!product) {
+            return res.status(404).json({ message: "Product not found" });
+        }
+
+        // Check if already liked
+        const existingLike = await ProductLike.findOne({
+            where: { productId, userId }
+        });
+
+        if (existingLike) {
+            // Unlike
+            await existingLike.destroy();
+            await product.decrement('likes');
+            
+            res.status(200).json({
+                message: "Product unliked successfully",
+                data: { isLiked: false }
+            });
+        } else {
+            // Like
+            await ProductLike.create({ productId, userId });
+            await product.increment('likes');
+            
+            // Send notification to seller that their product was liked (if not liking own product)
+            // Get seller user ID
+            const seller = await SellersTable.findByPk(product.sellerId, {
+                attributes: ['userId']
+            });
+            
+            if (seller && seller.userId !== userId) {
+                const liker = await UserTable.findByPk(userId, {
+                    attributes: ['id', 'fullName', 'username', 'profilePicture']
+                });
+
+                await createNotification(
+                    seller.userId,
+                    'Product Liked',
+                    `${liker.fullName || liker.username} liked your product "${product.title}"`,
+                    'info',
+                    'product_like',
+                    { 
+                        productId: product.id,
+                        title: product.title,
+                        likerId: userId,
+                        likerName: liker.fullName || liker.username,
+                        likerUsername: liker.username,
+                        productPrice: product.price,
+                        productCategory: product.category,
+                        likesCount: product.likes + 1
+                    }
+                );
+            }
+            
+            res.status(200).json({
+                message: "Product liked successfully",
+                data: { isLiked: true }
+            });
+        }
+
+    } catch (error) {
+        console.error('Toggle like product error:', error);
+        res.status(500).json({ message: "Error toggling like", error: error.message });
     }
 };
 
@@ -1622,6 +1697,7 @@ module.exports = {
     createProduct,
     updateProduct,
     deleteProduct,
+    toggleLikeProduct,
     toggleSaveProduct,
     getSavedProducts,
     getCategories,
