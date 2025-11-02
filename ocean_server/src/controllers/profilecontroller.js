@@ -1,5 +1,6 @@
-const { where, Op } = require('sequelize');
-const {UserTable, SellersTable, UserFollows, Product} = require('../../models');
+const { where, Op, Sequelize } = require('sequelize');
+const db = require('../../models');
+const {UserTable, SellersTable, UserFollows, Product, Post, Auction, GroupBuy, SwapDeal, PostLike} = require('../../models');
 const { mapRequestFields, mapResponseFields } = require('../../utils/fieldMapper')
 
 const currentUserprofile = async(req,res)=>{
@@ -22,9 +23,20 @@ const currentUserprofile = async(req,res)=>{
      where: { userId: id }
    });
    
+   // Get posts count for all users
+   const postsCount = await Post.count({
+     where: { userId: id }
+   });
+   
    // Get products count and featured products only if user is a seller
    let productsCount = 0;
    let featuredProducts = [];
+   let auctionsCount = 0;
+   let bulkPurchaseCount = 0;
+   let distressSalesCount = 0;
+   let swapDealsCount = 0;
+   let totalViews = 0;
+   let totalLikes = 0;
    
    if (alsoSeller) {
      // Use seller's business ID, not user ID
@@ -43,6 +55,67 @@ const currentUserprofile = async(req,res)=>{
        limit: 3,
        attributes: ['id', 'title', 'price', 'currency', 'brand', 'location', 'images', 'condition']
      });
+     
+     // Get auctions count
+     auctionsCount = await Auction.count({
+       where: { sellerId: alsoSeller.id }
+     });
+     
+     // Get group buys count (bulk purchase)
+     bulkPurchaseCount = await GroupBuy.count({
+       where: { creator_id: id }
+     });
+     
+     // Get distress sales count (products with isDistressSale: true)
+     distressSalesCount = await Product.count({
+       where: { 
+         sellerId: alsoSeller.id,
+         isDistressSale: true,
+         status: 'active'
+       }
+     });
+     
+     // Get swap deals count
+     swapDealsCount = await SwapDeal.count({
+       where: { sellerId: id }
+     });
+     
+     // Calculate total views from all seller items
+     const [productViews] = await db.sequelize.query(
+       `SELECT COALESCE(SUM(views), 0) as total FROM products WHERE sellerId = :sellerId`,
+       { replacements: { sellerId: alsoSeller.id }, type: Sequelize.QueryTypes.SELECT }
+     );
+     const [auctionViews] = await db.sequelize.query(
+       `SELECT COALESCE(SUM(views), 0) as total FROM auctions WHERE sellerId = :sellerId`,
+       { replacements: { sellerId: alsoSeller.id }, type: Sequelize.QueryTypes.SELECT }
+     );
+     const [groupBuyViews] = await db.sequelize.query(
+       `SELECT COALESCE(SUM(views_count), 0) as total FROM group_buys WHERE creator_id = :creatorId`,
+       { replacements: { creatorId: id }, type: Sequelize.QueryTypes.SELECT }
+     );
+     const [swapDealViews] = await db.sequelize.query(
+       `SELECT COALESCE(SUM(views_count), 0) as total FROM swap_deals WHERE seller_id = :sellerId`,
+       { replacements: { sellerId: id }, type: Sequelize.QueryTypes.SELECT }
+     );
+     
+     totalViews = (parseInt(productViews?.total || 0) + 
+                   parseInt(auctionViews?.total || 0) + 
+                   parseInt(groupBuyViews?.total || 0) + 
+                   parseInt(swapDealViews?.total || 0));
+     
+     // Calculate total likes from all seller items
+     const [productLikes] = await db.sequelize.query(
+       `SELECT COALESCE(SUM(likes), 0) as total FROM products WHERE sellerId = :sellerId`,
+       { replacements: { sellerId: alsoSeller.id }, type: Sequelize.QueryTypes.SELECT }
+     );
+     const [postLikes] = await db.sequelize.query(
+       `SELECT COUNT(*) as total FROM postlikes pl 
+        INNER JOIN posts p ON pl.postId = p.id 
+        WHERE p.userId = :userId`,
+       { replacements: { userId: id }, type: Sequelize.QueryTypes.SELECT }
+     );
+     
+     totalLikes = (parseInt(productLikes?.total || 0) + parseInt(postLikes?.total || 0));
    }
    
    const fullName = currentUser.fullName
@@ -92,6 +165,7 @@ const currentUserprofile = async(req,res)=>{
      // Social stats
      followersCount,
      followingCount,
+     postsCount, // NEW: Count of posts created by user (all users)
      productsCount,
      featuredProducts,
      // Use actual database values with fallbacks
@@ -112,8 +186,8 @@ const currentUserprofile = async(req,res)=>{
      profileInfo.businessAddress = alsoSeller.businessAddress;
      profileInfo.businessDescription = alsoSeller.businessDescription;
      profileInfo.sellerType = alsoSeller.sellerType;
-    profileInfo.selectedCategories = alsoSeller.selectedCategories || [];
-    profileInfo.selectedSubcategories = alsoSeller.selectedSubcategories || {};
+     profileInfo.selectedCategories = alsoSeller.selectedCategories || [];
+     profileInfo.selectedSubcategories = alsoSeller.selectedSubcategories || {};
      profileInfo.businessEmail = alsoSeller.businessEmail;
      profileInfo.businessPhone = alsoSeller.businessPhone;
      profileInfo.category = alsoSeller.category;
@@ -122,6 +196,14 @@ const currentUserprofile = async(req,res)=>{
      profileInfo.rating = alsoSeller.rating || 0;
      profileInfo.totalSales = alsoSeller.totalSales || 0;
      profileInfo.bio = alsoSeller.businessDescription || "Professional seller on Ocean App";
+     
+     // NEW: Add seller-specific tab counts
+     profileInfo.auctionsCount = auctionsCount;
+     profileInfo.bulkPurchaseCount = bulkPurchaseCount;
+     profileInfo.distressSalesCount = distressSalesCount;
+     profileInfo.swapDealsCount = swapDealsCount;
+     profileInfo.totalViews = totalViews;
+     profileInfo.totalLikes = totalLikes;
    }
    
    // Profile response structure matches frontend expectations
@@ -179,14 +261,86 @@ const getUserProfileById = async(req, res) => {
       isFollowing = !!followStatus;
     }
     
-    // Get products count and featured products only if user is a seller
+    // Get posts count for all users
+    const postsCount = await Post.count({
+      where: { userId: userId }
+    });
+    
+    // Get products count and seller-specific counts only if user is a seller
     let productsCount = 0;
+    let auctionsCount = 0;
+    let bulkPurchaseCount = 0;
+    let distressSalesCount = 0;
+    let swapDealsCount = 0;
+    let totalViews = 0;
+    let totalLikes = 0;
     
     if (alsoSeller) {
       // Use seller's business ID, not user ID
       productsCount = await Product.count({
         where: { sellerId: alsoSeller.id }
       });
+      
+      // Get auctions count
+      auctionsCount = await Auction.count({
+        where: { sellerId: alsoSeller.id }
+      });
+      
+      // Get group buys count (bulk purchase)
+      bulkPurchaseCount = await GroupBuy.count({
+        where: { creator_id: userId }
+      });
+      
+      // Get distress sales count (products with isDistressSale: true)
+      distressSalesCount = await Product.count({
+        where: { 
+          sellerId: alsoSeller.id,
+          isDistressSale: true,
+          status: 'active'
+        }
+      });
+      
+      // Get swap deals count
+      swapDealsCount = await SwapDeal.count({
+        where: { sellerId: userId }
+      });
+      
+      // Calculate total views from all seller items
+      const [productViews] = await db.sequelize.query(
+        `SELECT COALESCE(SUM(views), 0) as total FROM products WHERE sellerId = :sellerId`,
+        { replacements: { sellerId: alsoSeller.id }, type: Sequelize.QueryTypes.SELECT }
+      );
+      const [auctionViews] = await db.sequelize.query(
+        `SELECT COALESCE(SUM(views), 0) as total FROM auctions WHERE sellerId = :sellerId`,
+        { replacements: { sellerId: alsoSeller.id }, type: Sequelize.QueryTypes.SELECT }
+      );
+      const [groupBuyViews] = await db.sequelize.query(
+        `SELECT COALESCE(SUM(views_count), 0) as total FROM group_buys WHERE creator_id = :creatorId`,
+        { replacements: { creatorId: userId }, type: Sequelize.QueryTypes.SELECT }
+      );
+      const [swapDealViews] = await db.sequelize.query(
+        `SELECT COALESCE(SUM(views_count), 0) as total FROM swap_deals WHERE seller_id = :sellerId`,
+        { replacements: { sellerId: userId }, type: Sequelize.QueryTypes.SELECT }
+      );
+      
+      totalViews = (parseInt(productViews?.total || 0) + 
+                    parseInt(auctionViews?.total || 0) + 
+                    parseInt(groupBuyViews?.total || 0) + 
+                    parseInt(swapDealViews?.total || 0));
+      
+      // Calculate total likes from all seller items
+      const [productLikes] = await db.sequelize.query(
+        `SELECT COALESCE(SUM(likes), 0) as total FROM products WHERE sellerId = :sellerId`,
+        { replacements: { sellerId: alsoSeller.id }, type: Sequelize.QueryTypes.SELECT }
+      );
+      const [postLikes] = await db.sequelize.query(
+        `SELECT COUNT(*) as total FROM postlikes pl 
+         INNER JOIN posts p ON pl.postId = p.id 
+         WHERE p.userId = :userId`,
+        { replacements: { userId: userId }, type: Sequelize.QueryTypes.SELECT }
+      );
+      
+      totalLikes = (parseInt(productLikes?.total || 0) + parseInt(postLikes?.total || 0));
     }
     
     // Format join date
@@ -206,6 +360,7 @@ const getUserProfileById = async(req, res) => {
       verificationStatus,
       followersCount,
       followingCount,
+      postsCount, // NEW: Count of posts created by user (all users)
       productsCount,
       isFollowing,
       // Use actual database values with fallbacks
@@ -222,8 +377,8 @@ const getUserProfileById = async(req, res) => {
       profileInfo.businessAddress = alsoSeller.businessAddress;
       profileInfo.businessDescription = alsoSeller.businessDescription;
       profileInfo.sellerType = alsoSeller.sellerType;
-    profileInfo.selectedCategories = alsoSeller.selectedCategories || [];
-    profileInfo.selectedSubcategories = alsoSeller.selectedSubcategories || {};
+      profileInfo.selectedCategories = alsoSeller.selectedCategories || [];
+      profileInfo.selectedSubcategories = alsoSeller.selectedSubcategories || {};
       profileInfo.businessEmail = alsoSeller.businessEmail;
       profileInfo.businessPhone = alsoSeller.businessPhone;
       profileInfo.category = alsoSeller.category;
@@ -232,6 +387,14 @@ const getUserProfileById = async(req, res) => {
       profileInfo.rating = alsoSeller.rating || 0;
       profileInfo.totalSales = alsoSeller.totalSales || 0;
       profileInfo.bio = alsoSeller.businessDescription || "Professional seller on Ocean App";
+      
+      // NEW: Add seller-specific tab counts
+      profileInfo.auctionsCount = auctionsCount;
+      profileInfo.bulkPurchaseCount = bulkPurchaseCount;
+      profileInfo.distressSalesCount = distressSalesCount;
+      profileInfo.swapDealsCount = swapDealsCount;
+      profileInfo.totalViews = totalViews;
+      profileInfo.totalLikes = totalLikes;
     }
     
     return res.status(200).json({ 
