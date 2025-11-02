@@ -597,7 +597,7 @@ class GroupBuyController {
   async updateGroupBuy(req, res) {
     try {
       const { id } = req.params;
-      const updateData = req.body;
+      const updateData = { ...req.body };
       const user_id = req.user.id;
 
       const groupBuy = await db.GroupBuy.findByPk(id);
@@ -624,9 +624,22 @@ class GroupBuyController {
         });
       }
 
+      // Handle frontend field name transformations
+      // pricePerUnit → group_price
+      if (updateData.pricePerUnit !== undefined) {
+        updateData.group_price = updateData.pricePerUnit;
+        delete updateData.pricePerUnit;
+      }
+      
+      // endDate → deadline
+      if (updateData.endDate !== undefined) {
+        updateData.deadline = updateData.endDate;
+        delete updateData.endDate;
+      }
+
       // Validate prices if updating
       if (updateData.group_price && updateData.original_price) {
-        if (updateData.group_price >= updateData.original_price) {
+        if (parseFloat(updateData.group_price) >= parseFloat(updateData.original_price)) {
           return res.status(400).json({
             success: false,
             message: 'Group price must be less than original price'
@@ -642,12 +655,34 @@ class GroupBuyController {
         });
       }
 
+      // Validate quantity_unit if provided
+      if (updateData.quantity_unit !== undefined && updateData.quantity_unit !== null) {
+        if (updateData.quantity_unit <= 0 || !Number.isInteger(parseFloat(updateData.quantity_unit))) {
+          return res.status(400).json({
+            success: false,
+            message: 'Quantity unit must be a positive integer'
+          });
+        }
+      }
+
+      // Update the group buy
       await groupBuy.update(updateData);
+
+      // Recalculate remaining_units if quantity_unit was updated
+      if (updateData.quantity_unit !== undefined) {
+        const remainingUnits = await calculateRemainingUnits(groupBuy.id);
+        if (remainingUnits !== null) {
+          await groupBuy.update({ remaining_units: remainingUnits });
+        }
+      }
+
+      // Reload the group buy to get updated data
+      const updatedGroupBuy = await db.GroupBuy.findByPk(groupBuy.id);
 
       res.json({
         success: true,
         message: 'Group buy updated successfully',
-        data: groupBuy
+        data: updatedGroupBuy
       });
 
     } catch (error) {

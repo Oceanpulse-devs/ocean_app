@@ -364,7 +364,7 @@ class DistressSaleController {
   async updateDistressSale(req, res) {
     try {
       const { id } = req.params;
-      const updateData = req.body;
+      const updateData = { ...req.body };
       const userId = req.user.id;
 
       // Find the seller record
@@ -399,9 +399,16 @@ class DistressSaleController {
         });
       }
 
+      // Handle frontend field name transformation
+      // productName → title (for backward compatibility)
+      if (updateData.productName !== undefined && !updateData.title) {
+        updateData.title = updateData.productName;
+        delete updateData.productName;
+      }
+
       // Validate discount data if being updated
       if (updateData.originalPrice && updateData.price) {
-        if (updateData.originalPrice <= updateData.price) {
+        if (parseFloat(updateData.originalPrice) <= parseFloat(updateData.price)) {
           return res.status(400).json({
             success: false,
             message: 'Original price must be greater than current price for distress sales'

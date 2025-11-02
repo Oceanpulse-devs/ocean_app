@@ -355,7 +355,7 @@ const updateProduct = async (req, res) => {
     try {
         const { productId } = req.params;
         const userId = req.user.id;
-        const updateData = req.body;
+        const updateData = { ...req.body };
 
         // Check if user is a seller
         const seller = await SellersTable.findOne({
@@ -377,6 +377,41 @@ const updateProduct = async (req, res) => {
             return res.status(404).json({ 
                 message: "Product not found or you don't have permission to update it" 
             });
+        }
+
+        // Handle frontend field name transformation
+        // name → title (for backward compatibility)
+        if (updateData.name !== undefined && !updateData.title) {
+            updateData.title = updateData.name;
+            delete updateData.name;
+        }
+
+        // Process uploaded images if any
+        if (req.files && req.files.length > 0) {
+            const cloudinaryService = require('../services/cloudinaryService');
+            const imageUrls = [];
+            
+            for (let i = 0; i < req.files.length; i++) {
+                const file = req.files[i];
+                try {
+                    const uploadResult = await cloudinaryService.uploadProductImage(file.buffer, product.id);
+                    
+                    if (!uploadResult.success) {
+                        console.error('Cloudinary upload failed:', uploadResult.error);
+                        throw new Error(`Failed to upload ${file.originalname}: ${uploadResult.error}`);
+                    }
+                    
+                    imageUrls.push(uploadResult.url);
+                } catch (error) {
+                    console.error(`Error processing file ${file.originalname}:`, error);
+                    throw error;
+                }
+            }
+            
+            // Update images if new ones were uploaded
+            if (imageUrls.length > 0) {
+                updateData.images = imageUrls;
+            }
         }
 
         // Update product

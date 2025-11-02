@@ -711,7 +711,7 @@ const updateAuction = async (req, res) => {
   try {
     const { auctionId } = req.params;
     const userId = req.user.id;
-    const updateData = req.body;
+    const updateData = { ...req.body };
 
     const seller = await SellersTable.findOne({
       where: { userId: userId, verificationStatus: 'approved' }
@@ -738,6 +738,13 @@ const updateAuction = async (req, res) => {
       return res.status(400).json({
         message: 'Cannot update auction that has bids'
       });
+    }
+
+    // Handle frontend field name transformation
+    // startingBid → startingPrice
+    if (updateData.startingBid !== undefined) {
+      updateData.startingPrice = updateData.startingBid;
+      delete updateData.startingBid;
     }
 
     // Process uploaded images if any

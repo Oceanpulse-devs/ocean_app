@@ -1387,7 +1387,7 @@ const updatePost = async (req, res) => {
             return res.status(403).json({ message: "You can only update your own posts" });
         }
 
-        // Update post fields
+        // Update post fields (reach_limit and category are validated but not stored - matching createPost behavior)
         const allowedFields = ['content', 'productName', 'brand', 'price', 'location', 'tags'];
         allowedFields.forEach(field => {
             if (updateData[field] !== undefined) {
@@ -1408,33 +1408,84 @@ const updatePost = async (req, res) => {
             }
         }
 
+        // Validate reach_limit if provided (but don't store - matching createPost behavior)
+        if (updateData.reach_limit !== undefined && updateData.reach_limit !== null && updateData.reach_limit !== '') {
+            const parsedReachLimit = parseInt(updateData.reach_limit);
+            if (isNaN(parsedReachLimit) || parsedReachLimit < 1 || parsedReachLimit > 50) {
+                return res.status(400).json({ 
+                    message: "Reach limit must be a number between 1 and 50" 
+                });
+            }
+            // Note: reach_limit is validated but not stored in Post model (matching createPost behavior)
+        }
+
+        // Validate category (string, not category_id) if provided (but don't store - matching createPost behavior)
+        if (updateData.category !== undefined && updateData.category !== null && updateData.category !== '') {
+            // Accept category as string directly (no UUID validation, matching user's requirement)
+            // Note: category is validated but not stored in Post model (matching createPost behavior)
+        }
+
         // Save updated post
         await post.save();
 
         // Handle new media files if provided
         if (req.files && req.files.length > 0) {
+            const cloudinaryService = require('../services/cloudinaryService');
+            
             // Delete existing media
             await PostMedia.destroy({ where: { postId: post.id } });
             
-            // Add new media
-            const mediaPromises = req.files.map((file, index) => {
-                const mediaType = file.mimetype.startsWith('image/') ? 'image' : 'video';
-                
-                return PostMedia.create({
-                    postId: post.id,
-                    mediaType: mediaType,
-                    mediaUrl: `/uploads/${file.filename}`,
-                    thumbnailUrl: mediaType === 'image' ? `/uploads/${file.filename}` : null,
-                    mediaOrder: index,
-                    altText: file.originalname
-                });
+            // Upload new media to Cloudinary
+            const mediaPromises = req.files.map(async (file, index) => {
+                try {
+                    const mediaType = file.mimetype.startsWith('image/') ? 'image' : 'video';
+                    
+                    // Upload to Cloudinary
+                    const uploadResult = await cloudinaryService.uploadPostMedia(file.buffer, post.id);
+                    
+                    if (!uploadResult.success) {
+                        console.error('Cloudinary upload failed:', uploadResult.error);
+                        throw new Error(`Failed to upload ${file.originalname}: ${uploadResult.error}`);
+                    }
+                    
+                    // Create PostMedia record with Cloudinary URLs
+                    return await PostMedia.create({
+                        postId: post.id,
+                        mediaType: mediaType,
+                        mediaUrl: uploadResult.url,
+                        thumbnailUrl: uploadResult.thumbnailUrl,
+                        mediaOrder: index,
+                        altText: file.originalname
+                    });
+                } catch (error) {
+                    console.error(`Error processing file ${file.originalname}:`, error);
+                    throw error;
+                }
             });
+            
             await Promise.all(mediaPromises);
         }
 
+        // Get updated post with associations
+        const updatedPost = await Post.findByPk(post.id, {
+            include: [
+                {
+                    model: UserTable,
+                    as: 'user',
+                    attributes: ['id', 'fullName', 'email', 'profilePicture', 'accountType', 'accountStatus']
+                },
+                {
+                    model: PostMedia,
+                    as: 'media',
+                    attributes: ['id', 'mediaType', 'mediaUrl', 'thumbnailUrl', 'mediaOrder'],
+                    order: [['mediaOrder', 'ASC']]
+                }
+            ]
+        });
+
         res.status(200).json({
             message: "Post updated successfully",
-            data: post
+            data: updatedPost
         });
 
     } catch (error) {
