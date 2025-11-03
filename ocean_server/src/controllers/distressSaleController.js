@@ -757,6 +757,148 @@ class DistressSaleController {
       });
     }
   }
+
+  // Get distress sales for a specific user (for profile tabs)
+  async getUserDistressSalesById(req, res) {
+    try {
+      const { userId } = req.params;
+      const { page = 1, limit = 10 } = req.query;
+      const offset = (page - 1) * limit;
+      const currentUserId = req.user?.id;
+
+      // Try to find user by userId first
+      let actualUserId = userId;
+      let seller = await db.SellersTable.findOne({
+        where: { userId: userId },
+        include: [{
+          model: db.UserTable,
+          as: 'user',
+          attributes: ['id', 'fullName', 'email', 'profilePicture', 'accountType', 'accountStatus']
+        }]
+      });
+
+      // If not found by userId, try as Seller Table ID
+      if (!seller) {
+        seller = await db.SellersTable.findByPk(userId, {
+          include: [{
+            model: db.UserTable,
+            as: 'user',
+            attributes: ['id', 'fullName', 'email', 'profilePicture', 'accountType', 'accountStatus']
+          }]
+        });
+        if (seller) {
+          actualUserId = seller.userId;
+        }
+      }
+
+      if (!seller) {
+        return res.status(404).json({
+          success: false,
+          message: 'User is not a seller or not found'
+        });
+      }
+
+      // Get distress sales (products with isDistressSale: true)
+      const distressSales = await db.Product.findAndCountAll({
+        where: {
+          sellerId: seller.id,
+          isDistressSale: true,
+          status: 'active',
+          isAvailable: true
+        },
+        include: [
+          {
+            model: db.SellersTable,
+            as: 'seller',
+            attributes: ['id', 'userId', 'businessName', 'businessAddress', 'country', 'state', 'category', 'verificationStatus'],
+            include: [{
+              model: db.UserTable,
+              as: 'user',
+              attributes: ['id', 'fullName', 'email', 'profilePicture', 'accountType', 'accountStatus']
+            }]
+          }
+        ],
+        order: [['createdAt', 'DESC']],
+        limit: parseInt(limit),
+        offset: parseInt(offset)
+      });
+
+      // Add engagement status for current user
+      const distressSalesWithEngagement = await Promise.all(
+        distressSales.rows.map(async (distressSale) => {
+          const saleData = distressSale.toJSON();
+          
+          if (currentUserId) {
+            const [userSaved, userLike] = await Promise.all([
+              db.SavedProduct.findOne({ where: { productId: distressSale.id, userId: currentUserId } }),
+              db.ProductLike.findOne({ where: { productId: distressSale.id, userId: currentUserId } })
+            ]);
+
+            saleData.isSaved = !!userSaved;
+            saleData.isLiked = !!userLike;
+          } else {
+            saleData.isSaved = false;
+            saleData.isLiked = false;
+          }
+
+          // Map to distress sale format
+          return {
+            ...mapDistressSaleResponse(saleData),
+            productName: saleData.title,
+            currentPrice: saleData.price,
+            originalPrice: saleData.originalPrice,
+            discountPercentage: saleData.discountPercentage,
+            urgencyLevel: saleData.urgencyLevel,
+            distressReason: saleData.distressReason,
+            expiryDate: saleData.distressExpiryDate,
+            timeLeft: saleData.distressExpiryDate 
+              ? this.calculateTimeLeft(saleData.distressExpiryDate)
+              : null
+          };
+        })
+      );
+
+      res.status(200).json({
+        success: true,
+        message: 'User distress sales retrieved successfully',
+        data: {
+          distressSales: distressSalesWithEngagement,
+          pagination: {
+            currentPage: parseInt(page),
+            totalPages: Math.ceil(distressSales.count / limit),
+            totalItems: distressSales.count,
+            itemsPerPage: parseInt(limit),
+            hasNextPage: offset + limit < distressSales.count,
+            hasPrevPage: page > 1
+          }
+        }
+      });
+    } catch (error) {
+      console.error('Get user distress sales error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error retrieving user distress sales',
+        error: error.message
+      });
+    }
+  }
+
+  // Helper method to calculate time left
+  calculateTimeLeft(expiryDate) {
+    const now = new Date();
+    const expiry = new Date(expiryDate);
+    const diff = expiry - now;
+
+    if (diff <= 0) return 'Expired';
+
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+
+    if (days > 0) return `${days} days ${hours} hours`;
+    if (hours > 0) return `${hours} hours ${minutes} minutes`;
+    return `${minutes} minutes`;
+  }
 }
 
 module.exports = new DistressSaleController();

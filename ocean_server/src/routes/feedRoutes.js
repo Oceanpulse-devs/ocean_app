@@ -79,4 +79,8 @@ router.get('/api/users/:userId/group-buys', (req, res) => groupBuyController.get
 const swapDealController = require('../controllers/swapDealController');
 router.get('/api/users/:userId/swaps', (req, res) => swapDealController.getUserSwapDealsById(req, res));
 
+// Import distress sale controller for user distress sales endpoint
+const distressSaleController = require('../controllers/distressSaleController');
+router.get('/api/users/:userId/distress-sales', (req, res) => distressSaleController.getUserDistressSalesById(req, res));
+
 module.exports = router; 
