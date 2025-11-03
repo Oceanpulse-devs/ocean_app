@@ -810,7 +810,7 @@ class DistressSaleController {
           {
             model: db.SellersTable,
             as: 'seller',
-            attributes: ['id', 'userId', 'businessName', 'businessAddress', 'country', 'state', 'category', 'verificationStatus'],
+            attributes: ['id', 'userId', 'businessName', 'businessEmail', 'businessAddress', 'country', 'state', 'category', 'verificationStatus'],
             include: [{
               model: db.UserTable,
               as: 'user',
@@ -842,7 +842,7 @@ class DistressSaleController {
           }
 
           // Map to distress sale format
-          return {
+          const mappedSale = {
             ...mapDistressSaleResponse(saleData),
             productName: saleData.title,
             currentPrice: saleData.price,
@@ -855,19 +855,29 @@ class DistressSaleController {
               ? this.calculateTimeLeft(saleData.distressExpiryDate)
               : null
           };
+
+          // Add sellerEntityId and sellerMeta for consistency with other endpoints
+          if (mappedSale?.seller?.id) {
+            mappedSale.sellerEntityId = mappedSale.seller.id;
+            mappedSale.sellerMeta = {
+              businessName: mappedSale.seller.businessName || null,
+              profilePicture: mappedSale.seller.user?.profilePicture || null,
+              businessEmail: mappedSale.seller.businessEmail || null
+            };
+          }
+
+          return mappedSale;
         })
       );
 
       res.status(200).json({
         success: true,
-        message: 'User distress sales retrieved successfully',
         data: {
           distressSales: distressSalesWithEngagement,
           pagination: {
             currentPage: parseInt(page),
             totalPages: Math.ceil(distressSales.count / limit),
-            totalItems: distressSales.count,
-            itemsPerPage: parseInt(limit),
+            totalDistressSales: distressSales.count,
             hasNextPage: offset + limit < distressSales.count,
             hasPrevPage: page > 1
           }
