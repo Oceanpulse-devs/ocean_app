@@ -25,8 +25,9 @@ module.exports = (sequelize) => {
       defaultValue: 'info',
     },
     category: {
-      type: DataTypes.ENUM('seller_application', 'account_status', 'password_reset', 'admin_action', 'system'),
+      type: DataTypes.STRING(50),
       allowNull: false,
+      defaultValue: 'system'
     },
     isRead: {
       type: DataTypes.BOOLEAN,

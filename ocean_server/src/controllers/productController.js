@@ -168,13 +168,13 @@ const getProduct = async (req, res) => {
         }
 
         // Send notification to seller that their product was viewed (if not viewing own product)
-        if (currentUserId && currentUserId !== product.sellerId) {
+        if (currentUserId && product.seller && product.seller.userId !== currentUserId) {
             const viewer = await UserTable.findByPk(currentUserId, {
                 attributes: ['id', 'fullName', 'username', 'profilePicture']
             });
 
             await createNotification(
-                product.sellerId,
+                product.seller.userId,  // Use User ID, not Seller Table ID
                 'Product Viewed',
                 `${viewer.fullName || viewer.username} viewed your product "${product.title}"`,
                 'info',
@@ -634,13 +634,18 @@ const toggleSaveProduct = async (req, res) => {
             await product.increment('saves');
             
             // Send notification to seller that their product was saved (if not saving own product)
-            if (userId !== product.sellerId) {
+            // Get seller user ID
+            const seller = await SellersTable.findByPk(product.sellerId, {
+                attributes: ['userId']
+            });
+            
+            if (seller && seller.userId !== userId) {
                 const saver = await UserTable.findByPk(userId, {
                     attributes: ['id', 'fullName', 'username', 'profilePicture']
                 });
 
                 await createNotification(
-                    product.sellerId,
+                    seller.userId,  // Use User ID, not Seller Table ID
                     'Product Saved',
                     `${saver.fullName || saver.username} saved your product "${product.title}"`,
                     'info',
