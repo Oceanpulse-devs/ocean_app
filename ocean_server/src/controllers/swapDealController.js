@@ -362,8 +362,19 @@ class SwapDealController {
         });
       }
 
-      // Increment view count
-      await swapDeal.increment('viewsCount');
+      // Increment view count (deduplicated for logged-in users)
+      if (req.user && req.user.id) {
+        const currentUserId = req.user.id;
+        const [view, created] = await db.SwapDealView.findOrCreate({
+          where: { swapDealId: swapDeal.id, viewerId: currentUserId },
+          defaults: { viewedAt: new Date() }
+        });
+        if (created) {
+          await swapDeal.increment('viewsCount');
+        }
+      } else {
+        await swapDeal.increment('viewsCount');
+      }
 
       // Map swap deal field names for frontend compatibility and enrich seller business info
       const mappedSwapDeal = mapSwapDealResponse(swapDeal);

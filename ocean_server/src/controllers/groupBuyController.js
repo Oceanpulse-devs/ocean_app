@@ -601,8 +601,19 @@ class GroupBuyController {
         });
       }
 
-      // Increment view count
-      await groupBuy.increment('views_count');
+      // Increment view count (deduplicated for logged-in users)
+      if (req.user && req.user.id) {
+        const currentUserId = req.user.id;
+        const [view, created] = await db.GroupBuyView.findOrCreate({
+          where: { groupBuyId: groupBuy.id, viewerId: currentUserId },
+          defaults: { viewedAt: new Date() }
+        });
+        if (created) {
+          await groupBuy.increment('views_count');
+        }
+      } else {
+        await groupBuy.increment('views_count');
+      }
 
       // Calculate and update remaining units if quantity_unit is set
       if (groupBuy.quantity_unit !== null && groupBuy.quantity_unit !== undefined) {

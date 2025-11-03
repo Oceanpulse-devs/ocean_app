@@ -153,8 +153,19 @@ const getProduct = async (req, res) => {
             return res.status(404).json({ message: "Product not found" });
         }
 
-        // Increment view count
-        await product.increment('views');
+        // Increment view count (deduplicated for logged-in users)
+        if (currentUserId && currentUserId !== product.sellerId) {
+            const [view, created] = await db.ProductView.findOrCreate({
+                where: { productId: product.id, viewerId: currentUserId },
+                defaults: { viewedAt: new Date() }
+            });
+            if (created) {
+                await product.increment('views');
+            }
+        } else if (!currentUserId) {
+            // Anonymous users - cannot dedupe
+            await product.increment('views');
+        }
 
         // Send notification to seller that their product was viewed (if not viewing own product)
         if (currentUserId && currentUserId !== product.sellerId) {

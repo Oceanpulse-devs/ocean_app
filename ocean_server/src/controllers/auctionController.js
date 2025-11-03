@@ -395,8 +395,18 @@ const getAuction = async (req, res) => {
       });
     }
 
-    // Increment views
-    await auction.increment('views');
+    // Increment views (deduplicated for logged-in users)
+    if (userId && userId !== auction.seller?.userId) {
+      const [view, created] = await db.AuctionView.findOrCreate({
+        where: { auctionId: auction.id, viewerId: userId },
+        defaults: { viewedAt: new Date() }
+      });
+      if (created) {
+        await auction.increment('views');
+      }
+    } else if (!userId) {
+      await auction.increment('views');
+    }
 
     // Check if user is watching this auction
     let isWatching = false;

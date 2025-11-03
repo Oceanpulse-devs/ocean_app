@@ -365,8 +365,23 @@ class DistressSaleController {
         });
       }
 
-      // Increment view count
-      await distressSale.increment('views');
+      // Increment view count (deduplicated for logged-in users)
+      // Distress sales use Product model, so use ProductView for tracking
+      if (req.user && req.user.id) {
+        const currentUserId = req.user.id;
+        const seller = await db.SellersTable.findOne({ where: { id: distressSale.sellerId } });
+        if (seller && currentUserId !== seller.userId) {
+          const [view, created] = await db.ProductView.findOrCreate({
+            where: { productId: distressSale.id, viewerId: currentUserId },
+            defaults: { viewedAt: new Date() }
+          });
+          if (created) {
+            await distressSale.increment('views');
+          }
+        }
+      } else {
+        await distressSale.increment('views');
+      }
 
       // Attach canonical sellerEntityId
       const distressSaleData = distressSale.toJSON ? distressSale.toJSON() : distressSale;

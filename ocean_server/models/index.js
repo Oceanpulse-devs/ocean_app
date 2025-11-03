@@ -61,6 +61,10 @@ const SubscriptionUsage = require('./SubscriptionUsage');
 const PromotionalBoost = require('./PromotionalBoost');
 const Story = require('./Story');
 const StoryView = require('./StoryView');
+const ProductView = require('./ProductView');
+const AuctionView = require('./AuctionView');
+const GroupBuyView = require('./GroupBuyView');
+const SwapDealView = require('./SwapDealView');
 
 // Initialize all models
 db.UserTable = UserTable(sequelize, Sequelize.DataTypes);
@@ -109,6 +113,10 @@ db.ShareStats = ShareStats(sequelize, Sequelize.DataTypes);
   db.PromotionalBoost = PromotionalBoost(sequelize, Sequelize.DataTypes);
   db.Story = Story(sequelize, Sequelize.DataTypes);
   db.StoryView = StoryView(sequelize, Sequelize.DataTypes);
+  db.ProductView = ProductView(sequelize, Sequelize.DataTypes);
+  db.AuctionView = AuctionView(sequelize, Sequelize.DataTypes);
+  db.GroupBuyView = GroupBuyView(sequelize, Sequelize.DataTypes);
+  db.SwapDealView = SwapDealView(sequelize, Sequelize.DataTypes);
 
 // Set up associations
 const setupAssociations = () => {
@@ -337,6 +345,31 @@ const setupAssociations = () => {
   // UserTable story associations
   db.UserTable.hasMany(db.Story, { foreignKey: 'user_id', as: 'stories' });
   db.UserTable.hasMany(db.StoryView, { foreignKey: 'viewer_id', as: 'storyViews' });
+
+  // View tracking associations
+  // ProductView associations
+  db.Product.hasMany(db.ProductView, { foreignKey: 'product_id', as: 'productViews' });
+  db.ProductView.belongsTo(db.Product, { foreignKey: 'product_id', as: 'product' });
+  db.ProductView.belongsTo(db.UserTable, { foreignKey: 'viewer_id', as: 'viewer' });
+  db.UserTable.hasMany(db.ProductView, { foreignKey: 'viewer_id', as: 'productViews' });
+
+  // AuctionView associations
+  db.Auction.hasMany(db.AuctionView, { foreignKey: 'auction_id', as: 'auctionViews' });
+  db.AuctionView.belongsTo(db.Auction, { foreignKey: 'auction_id', as: 'auction' });
+  db.AuctionView.belongsTo(db.UserTable, { foreignKey: 'viewer_id', as: 'viewer' });
+  db.UserTable.hasMany(db.AuctionView, { foreignKey: 'viewer_id', as: 'auctionViews' });
+
+  // GroupBuyView associations
+  db.GroupBuy.hasMany(db.GroupBuyView, { foreignKey: 'group_buy_id', as: 'groupBuyViews' });
+  db.GroupBuyView.belongsTo(db.GroupBuy, { foreignKey: 'group_buy_id', as: 'groupBuy' });
+  db.GroupBuyView.belongsTo(db.UserTable, { foreignKey: 'viewer_id', as: 'viewer' });
+  db.UserTable.hasMany(db.GroupBuyView, { foreignKey: 'viewer_id', as: 'groupBuyViews' });
+
+  // SwapDealView associations
+  db.SwapDeal.hasMany(db.SwapDealView, { foreignKey: 'swap_deal_id', as: 'swapDealViews' });
+  db.SwapDealView.belongsTo(db.SwapDeal, { foreignKey: 'swap_deal_id', as: 'swapDeal' });
+  db.SwapDealView.belongsTo(db.UserTable, { foreignKey: 'viewer_id', as: 'viewer' });
+  db.UserTable.hasMany(db.SwapDealView, { foreignKey: 'viewer_id', as: 'swapDealViews' });
 };
 
 // Setup associations
