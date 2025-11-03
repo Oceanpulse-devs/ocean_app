@@ -664,6 +664,94 @@ class SwapDealController {
     }
   }
 
+  // Get swap deals by user ID or seller ID (for visiting profiles)
+  async getUserSwapDealsById(req, res) {
+    try {
+      const { userId } = req.params;
+      const { page = 1, limit = 20 } = req.query;
+      const offset = (page - 1) * limit;
+
+      // Try to find user by userId first
+      let actualUserId = userId;
+      let user = await db.UserTable.findOne({ where: { id: userId } });
+
+      // If not found as User ID, try as Seller Table ID
+      if (!user) {
+        const seller = await db.SellersTable.findByPk(userId);
+        if (seller) {
+          actualUserId = seller.userId;
+        } else {
+          return res.status(404).json({
+            success: false,
+            message: 'User or seller not found'
+          });
+        }
+      }
+
+      const swapDeals = await db.SwapDeal.findAndCountAll({
+        where: { sellerId: actualUserId, status: 'active' },
+        include: [
+          {
+            model: db.UserTable,
+            as: 'seller',
+            attributes: ['id', 'fullName', 'username', 'profilePicture', 'email'],
+            include: [{
+              model: db.SellersTable,
+              as: 'seller',
+              attributes: ['id', 'businessName', 'businessEmail', 'businessPhone', 'businessAddress', 'verificationStatus']
+            }]
+          }
+        ],
+        order: [['createdAt', 'DESC']],
+        limit: parseInt(limit),
+        offset: parseInt(offset)
+      });
+
+      // Map swap deal field names for frontend (similar to getAllSwapDeals)
+      const mappedSwapDeals = swapDeals.rows.map(swapDeal => {
+        const mapped = mapSwapDealResponse(swapDeal);
+        if (swapDeal.seller) {
+          mapped.seller = {
+            id: swapDeal.seller.id,
+            fullName: swapDeal.seller.fullName,
+            username: swapDeal.seller.username,
+            email: swapDeal.seller.email,
+            profilePicture: swapDeal.seller.profilePicture,
+            sellerEntityId: swapDeal.seller.seller?.id,
+            businessName: swapDeal.seller.seller?.businessName,
+            businessEmail: swapDeal.seller.seller?.businessEmail,
+            businessPhone: swapDeal.seller.seller?.businessPhone,
+            businessAddress: swapDeal.seller.seller?.businessAddress,
+            verificationStatus: swapDeal.seller.seller?.verificationStatus,
+          };
+        }
+        return mapped;
+      });
+
+      res.json({
+        success: true,
+        data: {
+          swapDeals: mappedSwapDeals,
+          pagination: {
+            currentPage: parseInt(page),
+            totalPages: Math.ceil(swapDeals.count / limit),
+            totalSwapDeals: swapDeals.count,
+            hasNextPage: offset + limit < swapDeals.count,
+            hasPrevPage: page > 1
+          }
+        }
+      });
+
+    } catch (error) {
+      console.error('Error fetching user swap deals:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to fetch user swap deals',
+        error: error.message
+      });
+    }
+  }
+
   // Get user's swap proposals (buyer's perspective)
   async getUserProposals(req, res) {
     try {

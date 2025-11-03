@@ -20,6 +20,7 @@ const upload = multer({
 // Public routes (no authentication required)
 router.get('/api/auctions', auctionController.getAuctions);
 router.get('/api/auctions/categories', auctionController.getAuctionCategories);
+router.get('/api/users/:userId/auctions', auctionController.getUserAuctionsById);
 router.get('/api/auction/:auctionId', auctionController.getAuction);
 
 // Protected routes (authentication required)

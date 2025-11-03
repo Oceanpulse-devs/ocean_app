@@ -224,35 +224,48 @@ const currentUserprofile = async(req,res)=>{
   }
 };
 
-// Get any user's profile by ID
+// Get any user's profile by ID (accepts both User ID and Seller Table ID)
 const getUserProfileById = async(req, res) => {
   try {
     const { userId } = req.params;
     
     if (!userId) {
-      return res.status(400).json({ message: "User ID is required" });
+      return res.status(400).json({ message: "User ID or Seller ID is required" });
     }
     
-    const user = await UserTable.findOne({ where: { id: userId } });
+    // Try to find user by User ID first
+    let user = await UserTable.findOne({ where: { id: userId } });
+    let actualUserId = userId; // Will be set to User ID
     
+    // If not found as User ID, try as Seller Table ID
     if (!user) {
-      return res.status(404).json({ message: "User not found" });
+      const seller = await SellersTable.findByPk(userId);
+      if (seller) {
+        actualUserId = seller.userId; // Get User ID from seller record
+        user = await UserTable.findOne({ where: { id: actualUserId } });
+        if (!user) {
+          return res.status(404).json({ message: "User associated with seller not found" });
+        }
+      } else {
+        return res.status(404).json({ message: "User or seller not found" });
+      }
     }
     
-    const alsoSeller = await SellersTable.findOne({ where: { userId: userId } });
+    // Use actualUserId for all subsequent queries
+    const alsoSeller = await SellersTable.findOne({ where: { userId: actualUserId } });
     const fullName = user.fullName;
     const role = user.accountType;
     const accountStatus = user.accountStatus;
     const createdAt = user.createdAt;
     let verificationStatus = alsoSeller ? alsoSeller.verificationStatus : null;
     
-    // Get follow statistics
+    // Get follow statistics (use actualUserId)
     const followersCount = await UserFollows.count({
-      where: { followsUserId: userId }
+      where: { followsUserId: actualUserId }
     });
     
     const followingCount = await UserFollows.count({
-      where: { userId: userId }
+      where: { userId: actualUserId }
     });
     
     // Check if current user is following this profile
@@ -261,15 +274,15 @@ const getUserProfileById = async(req, res) => {
       const followStatus = await UserFollows.findOne({
         where: {
           userId: req.user.id,
-          followsUserId: userId
+          followsUserId: actualUserId
         }
       });
       isFollowing = !!followStatus;
     }
     
-    // Get posts count for all users
+    // Get posts count for all users (use actualUserId)
     const postsCount = await Post.count({
-      where: { userId: userId }
+      where: { userId: actualUserId }
     });
     
     // Get products count and seller-specific counts only if user is a seller
@@ -292,9 +305,9 @@ const getUserProfileById = async(req, res) => {
         where: { sellerId: alsoSeller.id }
       });
       
-      // Get group buys count (bulk purchase)
+      // Get group buys count (bulk purchase) - use actualUserId
       bulkPurchaseCount = await GroupBuy.count({
-        where: { creator_id: userId }
+        where: { creator_id: actualUserId }
       });
       
       // Get distress sales count (products with isDistressSale: true)
@@ -306,9 +319,9 @@ const getUserProfileById = async(req, res) => {
         }
       });
       
-      // Get swap deals count
+      // Get swap deals count - use actualUserId
       swapDealsCount = await SwapDeal.count({
-        where: { sellerId: userId }
+        where: { sellerId: actualUserId }
       });
       
       // Calculate total views from all seller items
@@ -322,11 +335,11 @@ const getUserProfileById = async(req, res) => {
       );
       const [groupBuyViews] = await db.sequelize.query(
         `SELECT COALESCE(SUM(views_count), 0) as total FROM group_buys WHERE creator_id = :creatorId`,
-        { replacements: { creatorId: userId }, type: Sequelize.QueryTypes.SELECT }
+        { replacements: { creatorId: actualUserId }, type: Sequelize.QueryTypes.SELECT }
       );
       const [swapDealViews] = await db.sequelize.query(
         `SELECT COALESCE(SUM(views_count), 0) as total FROM swap_deals WHERE seller_id = :sellerId`,
-        { replacements: { sellerId: userId }, type: Sequelize.QueryTypes.SELECT }
+        { replacements: { sellerId: actualUserId }, type: Sequelize.QueryTypes.SELECT }
       );
       
       totalViews = (parseInt(productViews?.total || 0) + 
@@ -349,7 +362,7 @@ const getUserProfileById = async(req, res) => {
         `SELECT COUNT(*) as total FROM postlikes pl 
          INNER JOIN posts p ON pl.postId = p.id 
          WHERE p.userId = :userId`,
-        { replacements: { userId: userId }, type: Sequelize.QueryTypes.SELECT }
+        { replacements: { userId: actualUserId }, type: Sequelize.QueryTypes.SELECT }
       );
       
       totalLikes = productLikesCount + parseInt(postLikes?.total || 0);

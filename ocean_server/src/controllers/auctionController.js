@@ -663,6 +663,88 @@ const getUserBids = async (req, res) => {
   }
 };
 
+// Get auctions by user ID or seller ID (for visiting profiles)
+const getUserAuctionsById = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { status, page = 1, limit = 20 } = req.query;
+    const offset = (page - 1) * limit;
+
+    // Try to find seller by userId first
+    let seller = await SellersTable.findOne({
+      where: { userId: userId }
+    });
+
+    // If not found, try as Seller Table ID
+    if (!seller) {
+      seller = await SellersTable.findByPk(userId);
+    }
+
+    if (!seller) {
+      return res.status(404).json({
+        success: false,
+        message: 'User is not a seller or not found'
+      });
+    }
+
+    const whereClause = { sellerId: seller.id };
+    if (status) {
+      whereClause.status = status;
+    }
+
+    const auctions = await Auction.findAndCountAll({
+      where: whereClause,
+      include: [
+        {
+          model: SellersTable,
+          as: 'seller',
+          attributes: ['id', 'businessName', 'verificationStatus'],
+          include: [{
+            model: UserTable,
+            as: 'user',
+            attributes: ['id', 'fullName', 'profilePicture']
+          }]
+        },
+        {
+          model: AuctionBid,
+          as: 'bids',
+          attributes: ['id', 'bidAmount', 'createdAt'],
+          order: [['bidAmount', 'DESC']],
+          limit: 1
+        }
+      ],
+      order: [['createdAt', 'DESC']],
+      limit: parseInt(limit),
+      offset: offset
+    });
+
+    // Map auction field names for frontend
+    const mappedAuctions = auctions.rows.map(auction => mapAuctionResponse(auction));
+
+    res.json({
+      success: true,
+      data: {
+        auctions: mappedAuctions,
+        pagination: {
+          currentPage: parseInt(page),
+          totalPages: Math.ceil(auctions.count / limit),
+          totalAuctions: auctions.count,
+          hasNextPage: offset + limit < auctions.count,
+          hasPrevPage: page > 1
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('Error retrieving user auctions:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error retrieving user auctions',
+      error: error.message
+    });
+  }
+};
+
 // Watch/Unwatch an auction
 const toggleWatchAuction = async (req, res) => {
   try {
@@ -948,5 +1030,6 @@ module.exports = {
   toggleWatchAuction,
   updateAuction,
   cancelAuction,
-  getAuctionCategories
+  getAuctionCategories,
+  getUserAuctionsById
 }; 

@@ -71,4 +71,12 @@ router.delete('/api/comments/:commentId', authMiddleware, feedController.deleteC
 // User posts route
 router.get('/api/users/:userId/posts', feedController.getUserPosts);
 
+// Import group buy controller for user group buys endpoint
+const groupBuyController = require('../controllers/groupBuyController');
+router.get('/api/users/:userId/group-buys', (req, res) => groupBuyController.getUserGroupBuysById(req, res));
+
+// Import swap deal controller for user swaps endpoint
+const swapDealController = require('../controllers/swapDealController');
+router.get('/api/users/:userId/swaps', (req, res) => swapDealController.getUserSwapDealsById(req, res));
+
 module.exports = router; 

@@ -581,6 +581,43 @@ class GroupBuyController {
       // Convert to JSON to ensure nested relationships are serialized
       const groupBuyJson = groupBuy.toJSON ? groupBuy.toJSON() : groupBuy;
       
+      // Calculate follow statistics for creator
+      if (groupBuyJson.creator && groupBuyJson.creator.id) {
+        try {
+          const [followersCount, followingCount] = await Promise.all([
+            db.UserFollows.count({
+              where: { followsUserId: groupBuyJson.creator.id }
+            }),
+            db.UserFollows.count({
+              where: { userId: groupBuyJson.creator.id }
+            })
+          ]);
+
+          groupBuyJson.creator.followersCount = followersCount || 0;
+          groupBuyJson.creator.followingCount = followingCount || 0;
+
+          // Check if current user is following creator (if logged in)
+          if (req.user && req.user.id && req.user.id !== groupBuyJson.creator.id) {
+            const isFollowing = await db.UserFollows.findOne({
+              where: {
+                userId: req.user.id,
+                followsUserId: groupBuyJson.creator.id
+              }
+            });
+            groupBuyJson.creator.isFollowing = !!isFollowing;
+          } else {
+            // Not logged in or viewing own profile
+            groupBuyJson.creator.isFollowing = false;
+          }
+        } catch (error) {
+          console.error('Error calculating follow statistics:', error);
+          // Set defaults if there's an error
+          groupBuyJson.creator.followersCount = 0;
+          groupBuyJson.creator.followingCount = 0;
+          groupBuyJson.creator.isFollowing = false;
+        }
+      }
+      
       // Add sellerEntityId alias for consistency with swap deals
       if (groupBuyJson.creator && groupBuyJson.creator.seller) {
         groupBuyJson.creator.seller.sellerEntityId = groupBuyJson.creator.seller.id;
@@ -1141,6 +1178,94 @@ class GroupBuyController {
       res.json({
         success: true,
         data: groupBuys
+      });
+
+    } catch (error) {
+      console.error('Error fetching user group buys:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error',
+        error: error.message
+      });
+    }
+  }
+
+  // Get group buys by user ID or seller ID (for visiting profiles)
+  async getUserGroupBuysById(req, res) {
+    try {
+      const { userId } = req.params;
+      const { page = 1, limit = 20 } = req.query;
+      const offset = (page - 1) * limit;
+
+      // Try to find user by userId first
+      let actualUserId = userId;
+      let user = await db.UserTable.findOne({ where: { id: userId } });
+
+      // If not found as User ID, try as Seller Table ID
+      if (!user) {
+        const seller = await db.SellersTable.findByPk(userId);
+        if (seller) {
+          actualUserId = seller.userId;
+        } else {
+          return res.status(404).json({
+            success: false,
+            message: 'User or seller not found'
+          });
+        }
+      }
+
+      const groupBuys = await db.GroupBuy.findAndCountAll({
+        where: { creator_id: actualUserId },
+        include: [
+          {
+            model: db.UserTable,
+            as: 'creator',
+            attributes: ['id', 'username', 'fullName', 'profilePicture', 'email'],
+            include: [{
+              model: db.SellersTable,
+              as: 'seller',
+              attributes: ['id', 'businessName', 'verificationStatus'],
+              required: false
+            }]
+          },
+          {
+            model: db.ProductCategory,
+            as: 'groupBuyCategory',
+            attributes: ['id', 'name']
+          },
+          {
+            model: db.GroupBuyParticipant,
+            as: 'participants',
+            include: [{
+              model: db.UserTable,
+              as: 'user',
+              attributes: ['id', 'username', 'profilePicture']
+            }]
+          }
+        ],
+        order: [['createdAt', 'DESC']],
+        limit: parseInt(limit),
+        offset: parseInt(offset)
+      });
+
+      // Map group buy field names for frontend
+      const mappedGroupBuys = groupBuys.rows.map(groupBuy => {
+        const mapped = mapGroupBuyResponse(groupBuy);
+        return mapped;
+      });
+
+      res.json({
+        success: true,
+        data: {
+          groupBuys: mappedGroupBuys,
+          pagination: {
+            currentPage: parseInt(page),
+            totalPages: Math.ceil(groupBuys.count / limit),
+            totalGroupBuys: groupBuys.count,
+            hasNextPage: offset + limit < groupBuys.count,
+            hasPrevPage: page > 1
+          }
+        }
       });
 
     } catch (error) {

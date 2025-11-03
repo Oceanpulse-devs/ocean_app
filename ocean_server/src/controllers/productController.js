@@ -1371,6 +1371,104 @@ const getSellerProducts = async (req, res) => {
     }
 };
 
+// Get products by user ID or seller ID (for visiting profiles)
+const getUserProducts = async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const { page = 1, limit = 10 } = req.query;
+        const offset = (page - 1) * limit;
+        const currentUserId = req.user?.id;
+
+        let actualUserId = userId; // Will be set to User ID if sellerId is provided
+        let seller = await SellersTable.findOne({
+            where: { userId: userId },
+            include: [{
+                model: UserTable,
+                as: 'user',
+                attributes: ['id', 'fullName', 'email', 'profilePicture', 'accountType', 'accountStatus']
+            }]
+        });
+
+        // If not found by userId, try as Seller Table ID
+        if (!seller) {
+            seller = await SellersTable.findByPk(userId, {
+                include: [{
+                    model: UserTable,
+                    as: 'user',
+                    attributes: ['id', 'fullName', 'email', 'profilePicture', 'accountType', 'accountStatus']
+                }]
+            });
+            if (seller) {
+                actualUserId = seller.userId;
+            }
+        }
+
+        if (!seller) {
+            return res.status(404).json({ message: "User is not a seller or not found" });
+        }
+
+        const products = await Product.findAndCountAll({
+            where: { 
+                sellerId: seller.id, 
+                status: 'active', 
+                isAvailable: true 
+            },
+            include: [
+                {
+                    model: SellersTable,
+                    as: 'seller',
+                    attributes: ['id', 'userId', 'businessName', 'businessAddress', 'country', 'state', 'category', 'verificationStatus'],
+                    include: [{
+                        model: UserTable,
+                        as: 'user',
+                        attributes: ['id', 'fullName', 'email', 'profilePicture', 'accountType', 'accountStatus']
+                    }]
+                }
+            ],
+            order: [['createdAt', 'DESC']],
+            limit: parseInt(limit),
+            offset: parseInt(offset)
+        });
+
+        // Add engagement status for current user
+        const productsWithEngagement = await Promise.all(
+            products.rows.map(async (product) => {
+                const productData = product.toJSON();
+                
+                if (currentUserId) {
+                    const [userSaved, userLike] = await Promise.all([
+                        SavedProduct.findOne({ where: { productId: product.id, userId: currentUserId } }),
+                        ProductLike.findOne({ where: { productId: product.id, userId: currentUserId } })
+                    ]);
+
+                    productData.isSaved = !!userSaved;
+                    productData.isLiked = !!userLike;
+                }
+
+                return productData;
+            })
+        );
+
+        res.status(200).json({
+            message: "User products retrieved successfully",
+            data: {
+                products: productsWithEngagement,
+                pagination: {
+                    currentPage: parseInt(page),
+                    totalPages: Math.ceil(products.count / limit),
+                    totalProducts: products.count,
+                    hasNextPage: offset + limit < products.count,
+                    hasPrevPage: page > 1
+                }
+            }
+        });
+
+    } catch (error) {
+        console.error('Get user products error:', error);
+        res.status(500).json({ message: "Error retrieving user products", error: error.message });
+    }
+};
+
 // Get current user's products
 const getMyProducts = async (req, res) => {
     try {
@@ -1709,6 +1807,7 @@ module.exports = {
     getCategoryAnalytics,
     getTrendingCategories,
     getSellerProducts,
+    getUserProducts,
     getMyProducts,
     getAllSavedItems
 }; 

@@ -1,4 +1,4 @@
-const { Post, PostMedia, PostLike, PostComment, PostShare, SavedPost, UserTable, UserFollows, ProductCategory, Notification } = require('../../models');
+const { Post, PostMedia, PostLike, PostComment, PostShare, SavedPost, UserTable, SellersTable, UserFollows, ProductCategory, Notification } = require('../../models');
 const { Op, Sequelize } = require('sequelize');
 const cloudinaryService = require('../services/cloudinaryService');
 const { mapNestedFields } = require('../../utils/fieldMapper');
@@ -1533,7 +1533,7 @@ const deletePost = async (req, res) => {
     }
 };
 
-// Get posts by a specific user
+// Get posts by a specific user (accepts both User ID and Seller Table ID)
 const getUserPosts = async (req, res) => {
     try {
         const { userId } = req.params;
@@ -1541,10 +1541,27 @@ const getUserPosts = async (req, res) => {
         const offset = (page - 1) * limit;
         const currentUserId = req.user?.id;
 
-        // Get posts for the specified user
+        // Try to find user by userId first
+        let actualUserId = userId;
+        let user = await UserTable.findOne({ where: { id: userId } });
+
+        // If not found as User ID, try as Seller Table ID
+        if (!user) {
+            const seller = await SellersTable.findByPk(userId);
+            if (seller) {
+                actualUserId = seller.userId;
+            } else {
+                return res.status(404).json({ 
+                    message: "User or seller not found",
+                    data: { posts: [], totalPosts: 0, currentPage: 1, totalPages: 0 }
+                });
+            }
+        }
+
+        // Get posts for the specified user (use actualUserId)
         const posts = await Post.findAndCountAll({
             where: {
-                userId: userId,
+                userId: actualUserId,
                 status: 'active'
             },
             include: [
