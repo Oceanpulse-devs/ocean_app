@@ -399,10 +399,46 @@ class GroupBuyController {
         }
       }
 
+      // Fetch group buy with creator and seller associations for complete response
+      const createdGroupBuy = await db.GroupBuy.findByPk(groupBuy.id, {
+        include: [
+          {
+            model: db.UserTable,
+            as: 'creator',
+            attributes: ['id', 'fullName', 'username', 'profilePicture', 'email'],
+            include: [
+              {
+                model: db.SellersTable,
+                as: 'seller',
+                attributes: ['id', 'userId', 'businessName', 'businessEmail']
+              }
+            ]
+          },
+          {
+            model: db.ProductCategory,
+            as: 'groupBuyCategory',
+            attributes: ['id', 'name']
+          }
+        ]
+      });
+
+      // Map group buy response
+      const groupBuyJson = createdGroupBuy.toJSON ? createdGroupBuy.toJSON() : createdGroupBuy;
+      
+      // Add sellerEntityId and sellerMeta to creator
+      if (groupBuyJson.creator && groupBuyJson.creator.seller) {
+        groupBuyJson.creator.sellerEntityId = groupBuyJson.creator.seller.id;
+        groupBuyJson.creator.sellerMeta = {
+          businessName: groupBuyJson.creator.seller.businessName || null,
+          profilePicture: groupBuyJson.creator.profilePicture || null,
+          businessEmail: groupBuyJson.creator.seller.businessEmail || null
+        };
+      }
+
       res.status(201).json({
         success: true,
         message: 'Group buy created successfully',
-        data: groupBuy
+        data: groupBuyJson
       });
 
     } catch (error) {
@@ -621,6 +657,8 @@ class GroupBuyController {
       // Add sellerEntityId alias for consistency with swap deals
       if (groupBuyJson.creator && groupBuyJson.creator.seller) {
         groupBuyJson.creator.seller.sellerEntityId = groupBuyJson.creator.seller.id;
+        // Mirror for flat access when needed by frontend
+        groupBuyJson.creator.sellerEntityId = groupBuyJson.creator.seller.id;
       }
       
       console.log('📦 Group Buy Creator:', JSON.stringify(groupBuyJson.creator, null, 2));

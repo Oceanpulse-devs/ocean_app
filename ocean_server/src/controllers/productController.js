@@ -204,6 +204,11 @@ const getProduct = async (req, res) => {
         // Map product field names for frontend (title → name)
         const mappedProductData = mapProductResponse(productData);
 
+        // Attach canonical sellerEntityId for frontend convenience
+        if (mappedProductData?.seller?.id) {
+            mappedProductData.sellerEntityId = mappedProductData.seller.id;
+        }
+
         res.status(200).json({
             message: "Product retrieved successfully",
             data: mappedProductData
@@ -329,7 +334,7 @@ const createProduct = async (req, res) => {
                 {
                     model: SellersTable,
                     as: 'seller',
-                    attributes: ['id', 'userId', 'businessName', 'businessAddress', 'country', 'state', 'category', 'verificationStatus'],
+                    attributes: ['id', 'userId', 'businessName', 'businessAddress', 'businessEmail', 'country', 'state', 'category', 'verificationStatus'],
                     include: [
                         {
                             model: UserTable,
@@ -341,9 +346,22 @@ const createProduct = async (req, res) => {
             ]
         });
 
+        // Map product for frontend and add sellerEntityId/sellerMeta
+        const mappedProduct = mapProductResponse(createdProduct.toJSON());
+        
+        // Attach sellerEntityId and sellerMeta
+        if (mappedProduct?.seller?.id) {
+            mappedProduct.sellerEntityId = mappedProduct.seller.id;
+            mappedProduct.sellerMeta = {
+                businessName: mappedProduct.seller.businessName || null,
+                profilePicture: mappedProduct.seller.user?.profilePicture || null,
+                businessEmail: mappedProduct.seller.businessEmail || null
+            };
+        }
+
         res.status(201).json({
             message: "Product created successfully",
-            data: createdProduct
+            data: mappedProduct
         });
 
     } catch (error) {

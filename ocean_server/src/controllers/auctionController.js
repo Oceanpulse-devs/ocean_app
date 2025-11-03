@@ -193,9 +193,38 @@ const createAuction = async (req, res) => {
     // Track subscription usage for auction creation
     await incrementUsage(userId, 'auctions');
 
+    // Fetch auction with seller associations for complete response
+    const createdAuction = await Auction.findByPk(auction.id, {
+      include: [
+        {
+          model: SellersTable,
+          as: 'seller',
+          attributes: ['id', 'userId', 'businessName', 'businessEmail'],
+          include: [
+            {
+              model: UserTable,
+              as: 'user',
+              attributes: ['id', 'fullName', 'email', 'profilePicture']
+            }
+          ]
+        }
+      ]
+    });
+
+    // Map auction response and add sellerEntityId/sellerMeta
+    const mappedAuction = mapAuctionResponse(createdAuction);
+    if (mappedAuction?.seller?.id) {
+      mappedAuction.sellerEntityId = mappedAuction.seller.id;
+      mappedAuction.sellerMeta = {
+        businessName: mappedAuction.seller.businessName || null,
+        profilePicture: mappedAuction.seller.user?.profilePicture || null,
+        businessEmail: mappedAuction.seller.businessEmail || null
+      };
+    }
+
     res.status(201).json({
       message: 'Auction created successfully',
-      auction
+      auction: mappedAuction
     });
 
   } catch (error) {
@@ -389,6 +418,11 @@ const getAuction = async (req, res) => {
 
     // Map auction field names for frontend compatibility
     const mappedAuction = mapAuctionResponse(auction);
+
+    // Attach canonical sellerEntityId for frontend convenience
+    if (auction?.seller?.id) {
+      mappedAuction.sellerEntityId = auction.seller.id;
+    }
 
     res.json({
       auction: mappedAuction,

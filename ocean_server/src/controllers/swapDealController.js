@@ -190,7 +190,7 @@ class SwapDealController {
           {
             model: db.SellersTable,
             as: 'seller',
-            attributes: ['id', 'businessName', 'businessAddress', 'country', 'state', 'verificationStatus']
+            attributes: ['id', 'businessName', 'businessEmail', 'businessAddress', 'country', 'state', 'verificationStatus']
           }
         ],
         attributes: ['id', 'fullName', 'email', 'profilePicture', 'username']
@@ -204,7 +204,13 @@ class SwapDealController {
           email: seller.email,
           profilePicture: seller.profilePicture,
           username: seller.username,
-          businessName: seller.seller?.businessName
+          businessName: seller.seller?.businessName,
+          sellerEntityId: seller.seller?.id || null,
+          sellerMeta: seller.seller ? {
+            businessName: seller.seller.businessName || null,
+            profilePicture: seller.profilePicture || null,
+            businessEmail: seller.seller.businessEmail || null
+          } : null
         } : undefined
       };
 

@@ -185,8 +185,36 @@ class DistressSaleController {
       // Track subscription usage for distress sale creation
       await incrementUsage(sellerId, 'distress_sales');
 
+      // Fetch distress sale with seller associations for complete response
+      const createdDistressSale = await db.Product.findByPk(distressProduct.id, {
+        include: [
+          {
+            model: db.SellersTable,
+            as: 'seller',
+            attributes: ['id', 'userId', 'businessName', 'businessEmail'],
+            include: [
+              {
+                model: db.UserTable,
+                as: 'user',
+                attributes: ['id', 'fullName', 'email', 'profilePicture']
+              }
+            ]
+          }
+        ]
+      });
+
       // Map distress sale field names for frontend compatibility
-      const mappedDistressProduct = mapDistressSaleResponse(distressProduct);
+      const mappedDistressProduct = mapDistressSaleResponse(createdDistressSale);
+      
+      // Attach sellerEntityId and sellerMeta
+      if (mappedDistressProduct?.seller?.id) {
+        mappedDistressProduct.sellerEntityId = mappedDistressProduct.seller.id;
+        mappedDistressProduct.sellerMeta = {
+          businessName: mappedDistressProduct.seller.businessName || null,
+          profilePicture: mappedDistressProduct.seller.user?.profilePicture || null,
+          businessEmail: mappedDistressProduct.seller.businessEmail || null
+        };
+      }
 
       res.status(201).json({
         success: true,
@@ -340,9 +368,15 @@ class DistressSaleController {
       // Increment view count
       await distressSale.increment('views');
 
+      // Attach canonical sellerEntityId
+      const distressSaleData = distressSale.toJSON ? distressSale.toJSON() : distressSale;
+      if (distressSaleData?.seller?.id) {
+        distressSaleData.sellerEntityId = distressSaleData.seller.id;
+      }
+
       res.json({
         success: true,
-        data: distressSale
+        data: distressSaleData
       });
     } catch (error) {
       console.error('Error fetching distress sale:', error);
