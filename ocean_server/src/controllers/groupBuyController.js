@@ -522,7 +522,20 @@ class GroupBuyController {
             include: [{
               model: db.SellersTable,
               as: 'seller',
-              attributes: ['businessName'],
+              attributes: [
+                'id',                    // ✅ CRITICAL: Seller Table ID
+                'userId',                // User ID (for profile navigation)
+                'businessName',
+                'businessEmail',
+                'businessPhone',
+                'businessAddress',
+                'businessDescription',
+                'verificationStatus',
+                'category',              // Business category (UUID)
+                'sellerType',            // retailer, wholesaler, manufacturer, distributor
+                'selectedCategories',    // Array of selected main categories
+                'selectedSubcategories' // Object mapping categories to subcategories
+              ],
               required: false
             }]
           },
@@ -567,6 +580,11 @@ class GroupBuyController {
 
       // Convert to JSON to ensure nested relationships are serialized
       const groupBuyJson = groupBuy.toJSON ? groupBuy.toJSON() : groupBuy;
+      
+      // Add sellerEntityId alias for consistency with swap deals
+      if (groupBuyJson.creator && groupBuyJson.creator.seller) {
+        groupBuyJson.creator.seller.sellerEntityId = groupBuyJson.creator.seller.id;
+      }
       
       console.log('📦 Group Buy Creator:', JSON.stringify(groupBuyJson.creator, null, 2));
       console.log('🏪 Creator Seller:', JSON.stringify(groupBuyJson.creator?.seller, null, 2));
