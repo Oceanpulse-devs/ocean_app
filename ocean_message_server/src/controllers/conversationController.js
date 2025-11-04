@@ -2,6 +2,30 @@ const { Conversation, ConversationParticipant, UserReference, Message } = requir
 const { Op } = require('sequelize');
 const axios = require('axios');
 
+// Helper function to format participant with both userId and sellerId
+const formatParticipant = (participant) => {
+  const user = participant.user || participant;
+  const userData = user.toJSON ? user.toJSON() : user;
+  
+  const formatted = {
+    userId: userData.id,  // User Table ID
+    sellerId: userData.sellerId || null,  // Seller Table ID (if seller)
+    fullName: userData.fullName,
+    profilePicture: userData.profilePicture || null,
+    accountType: userData.accountType || 'buyer',
+    businessName: userData.businessName || null,
+    isOnline: false, // TODO: Add online status tracking if available
+    user: {
+      id: userData.id,
+      fullName: userData.fullName,
+      profilePicture: userData.profilePicture || null,
+      sellerId: userData.sellerId || null  // Also in nested object
+    }
+  };
+  
+  return formatted;
+};
+
 // Helper function to sync user from main server
 const syncUserFromMainServer = async (userId) => {
   try {
@@ -12,21 +36,35 @@ const syncUserFromMainServer = async (userId) => {
     if (existingUser) {
       console.log('✅ User already exists in messaging system:', userId);
       
-      // If businessName is missing but user is a seller, try to fetch and update it
-      if (!existingUser.businessName && existingUser.accountType === 'seller') {
-        console.log('🔄 Seller missing businessName, attempting to fetch...');
+      // If businessName or sellerId is missing but user is a seller, try to fetch and update it
+      if (existingUser.accountType === 'seller' && (!existingUser.businessName || !existingUser.sellerId)) {
+        console.log('🔄 Seller missing businessName or sellerId, attempting to fetch...');
         try {
           const response = await axios.get(`${mainServerUrl}/api/user/${userId}`, {
             timeout: 5000,
             headers: { 'User-Agent': 'MessagingServer/1.0' }
           });
           
-          if (response.data && response.data.data && response.data.data.businessName) {
-            await existingUser.update({ businessName: response.data.data.businessName });
-            console.log(`✅ Updated businessName: ${response.data.data.businessName}`);
+          if (response.data && response.data.data) {
+            const data = response.data.data;
+            const updateData = {};
+            
+            if (data.businessName && !existingUser.businessName) {
+              updateData.businessName = data.businessName;
+              console.log(`✅ Updated businessName: ${data.businessName}`);
+            }
+            
+            if (data.sellerId && !existingUser.sellerId) {
+              updateData.sellerId = data.sellerId;
+              console.log(`✅ Updated sellerId: ${data.sellerId}`);
+            }
+            
+            if (Object.keys(updateData).length > 0) {
+              await existingUser.update(updateData);
+            }
           }
         } catch (error) {
-          console.log('⚠️ Could not fetch businessName:', error.message);
+          console.log('⚠️ Could not fetch seller data:', error.message);
         }
       }
       
@@ -57,6 +95,12 @@ const syncUserFromMainServer = async (userId) => {
         if (data.businessName) {
           console.log(`🏪 Found business name: ${data.businessName}`);
         }
+        
+        // Extract sellerId if user is a seller
+        if ((data.accountType === 'seller' || data.role === 'seller') && data.sellerId) {
+          userData.sellerId = data.sellerId;
+          console.log(`🏪 Found sellerId: ${userData.sellerId}`);
+        }
       }
     } catch (userError) {
       console.log(`⚠️ User not found in users table, trying seller endpoint...`);
@@ -77,12 +121,13 @@ const syncUserFromMainServer = async (userId) => {
         if (sellerResponse.data && sellerResponse.data.data) {
           const sellerData = sellerResponse.data.data;
           userData = {
-            id: sellerData.sellerId || sellerData.id || userId,
+            id: sellerData.userId || sellerData.id || userId,
             fullName: sellerData.businessName || sellerData.fullName || 'Unknown Seller',
             email: sellerData.businessEmail || `${userId}@temp.com`,
             profilePicture: sellerData.businessLogo || null,
             role: 'seller',
-            accountStatus: 'active'
+            accountStatus: 'active',
+            sellerId: sellerData.id || sellerData.sellerId || null // Store Seller Table ID
           };
         }
       } catch (sellerError) {
@@ -106,7 +151,8 @@ const syncUserFromMainServer = async (userId) => {
         location: userData.location || null,
         website: userData.website || null,
         emailVerified: userData.emailVerified || false,
-        businessName: userData.businessName || null // Store business name for sellers
+        businessName: userData.businessName || null, // Store business name for sellers
+        sellerId: userData.sellerId || null // Store Seller Table ID if seller
       });
 
       console.log('✅ User synced successfully:', newUser.id);
@@ -128,7 +174,8 @@ const syncUserFromMainServer = async (userId) => {
       location: null,
       website: null,
       emailVerified: false,
-      businessName: null
+      businessName: null,
+      sellerId: null
     });
     
     console.log('⚠️ Created fallback user:', fallbackUser.id);
@@ -151,7 +198,8 @@ const syncUserFromMainServer = async (userId) => {
         bio: null,
         location: null,
         website: null,
-        emailVerified: false
+        emailVerified: false,
+        sellerId: null
       });
       
       console.log('⚠️ Created fallback user:', fallbackUser.id);
@@ -199,7 +247,7 @@ const getConversations = async (req, res) => {
                 {
                   model: UserReference,
                   as: 'user',
-                  attributes: ['id', 'fullName', 'profilePicture', 'businessName', 'accountType']
+                  attributes: ['id', 'fullName', 'profilePicture', 'businessName', 'accountType', 'sellerId']
                 }
               ]
             }
@@ -214,7 +262,7 @@ const getConversations = async (req, res) => {
     console.log('📊 Found ' + participants.count + ' conversations for user ' + userId);
     console.log('📋 Returning ' + participants.rows.length + ' conversations');
 
-    // Calculate actual unread count for each conversation
+    // Calculate actual unread count for each conversation and format participants
     const conversationsWithUnread = await Promise.all(participants.rows.map(async (p) => {
       let unreadCount = 0;
       
@@ -236,8 +284,14 @@ const getConversations = async (req, res) => {
         });
       }
       
+      // Format participants with both userId and sellerId
+      const formattedParticipants = p.conversation.participants 
+        ? p.conversation.participants.map(participant => formatParticipant(participant))
+        : [];
+      
       return {
         ...p.conversation.toJSON(),
+        participants: formattedParticipants,
         unreadCount
       };
     }));
@@ -284,7 +338,7 @@ const getConversation = async (req, res) => {
             {
               model: UserReference,
               as: 'user',
-                  attributes: ['id', 'fullName', 'profilePicture', 'businessName', 'accountType']
+              attributes: ['id', 'fullName', 'profilePicture', 'businessName', 'accountType', 'sellerId']
             }
           ]
         },
@@ -313,8 +367,16 @@ const getConversation = async (req, res) => {
       });
     }
 
+    // Format participants with both userId and sellerId
+    const formattedParticipants = conversation.participants 
+      ? conversation.participants.map(p => formatParticipant(p))
+      : [];
+
     res.json({
-      conversation,
+      conversation: {
+        ...conversation.toJSON(),
+        participants: formattedParticipants
+      },
       unreadCount: participant.lastReadMessageId ? 
         (conversation.lastMessageId === participant.lastReadMessageId ? 0 : 1) : 
         (conversation.lastMessageId ? 1 : 0)
@@ -461,7 +523,7 @@ const createConversation = async (req, res) => {
             {
               model: UserReference,
               as: 'user',
-                  attributes: ['id', 'fullName', 'profilePicture', 'businessName', 'accountType']
+              attributes: ['id', 'fullName', 'profilePicture', 'businessName', 'accountType', 'sellerId']
             }
           ]
         },
@@ -473,9 +535,17 @@ const createConversation = async (req, res) => {
       ]
     });
 
+    // Format participants with both userId and sellerId
+    const formattedParticipants = conversationWithParticipants.participants 
+      ? conversationWithParticipants.participants.map(p => formatParticipant(p))
+      : [];
+
     res.status(201).json({
       message: 'Conversation created successfully',
-      data: conversationWithParticipants
+      data: {
+        ...conversationWithParticipants.toJSON(),
+        participants: formattedParticipants
+      }
     });
 
   } catch (error) {

@@ -14,14 +14,28 @@ const getOnlineUsers = async (req, res) => {
         id: { [Op.ne]: userId }, // Exclude current user
         accountStatus: 'active'
       },
-      attributes: ['id', 'fullName', 'profilePicture', 'accountType'],
+      attributes: ['id', 'fullName', 'profilePicture', 'accountType', 'sellerId', 'businessName'],
       order: [['fullName', 'ASC']],
       limit: parseInt(limit),
       offset: parseInt(offset)
     });
 
+    // Format users with both userId and sellerId
+    const formattedUsers = users.rows.map(user => {
+      const userData = user.toJSON ? user.toJSON() : user;
+      return {
+        id: userData.id,
+        userId: userData.id,
+        sellerId: userData.sellerId || null,
+        fullName: userData.fullName,
+        profilePicture: userData.profilePicture,
+        accountType: userData.accountType,
+        businessName: userData.businessName || null
+      };
+    });
+
     res.json({
-      users: users.rows,
+      users: formattedUsers,
       total: users.count,
       currentPage: parseInt(page),
       totalPages: Math.ceil(users.count / limit)
@@ -59,14 +73,28 @@ const searchUsers = async (req, res) => {
           { email: { [Op.like]: `%${q}%` } }
         ]
       },
-      attributes: ['id', 'fullName', 'profilePicture', 'accountType'],
+      attributes: ['id', 'fullName', 'profilePicture', 'accountType', 'sellerId', 'businessName'],
       order: [['fullName', 'ASC']],
       limit: parseInt(limit),
       offset: parseInt(offset)
     });
 
+    // Format users with both userId and sellerId
+    const formattedUsers = users.rows.map(user => {
+      const userData = user.toJSON ? user.toJSON() : user;
+      return {
+        id: userData.id,
+        userId: userData.id,
+        sellerId: userData.sellerId || null,
+        fullName: userData.fullName,
+        profilePicture: userData.profilePicture,
+        accountType: userData.accountType,
+        businessName: userData.businessName || null
+      };
+    });
+
     res.json({
-      users: users.rows,
+      users: formattedUsers,
       total: users.count,
       currentPage: parseInt(page),
       totalPages: Math.ceil(users.count / limit)
@@ -88,7 +116,7 @@ const getUserProfile = async (req, res) => {
     const currentUserId = req.user.id;
 
     const user = await UserReference.findByPk(userId, {
-      attributes: ['id', 'fullName', 'profilePicture', 'accountType'],
+      attributes: ['id', 'fullName', 'profilePicture', 'accountType', 'sellerId', 'businessName'],
       include: [
         {
           model: ConversationParticipant,
@@ -122,12 +150,16 @@ const getUserProfile = async (req, res) => {
       p.conversation && p.conversation.participants.length > 0
     );
 
+    const userData = user.toJSON ? user.toJSON() : user;
     res.json({
       user: {
-        id: user.id,
-        fullName: user.fullName,
-        profilePicture: user.profilePicture,
-        accountType: user.accountType
+        id: userData.id,
+        userId: userData.id,
+        sellerId: userData.sellerId || null,
+        fullName: userData.fullName,
+        profilePicture: userData.profilePicture,
+        accountType: userData.accountType,
+        businessName: userData.businessName || null
       },
       existingConversationId: existingConversation ? existingConversation.conversation.id : null
     });
@@ -166,7 +198,7 @@ const getRecentContacts = async (req, res) => {
                 {
                   model: UserReference,
                   as: 'user',
-                  attributes: ['id', 'fullName', 'profilePicture']
+                  attributes: ['id', 'fullName', 'profilePicture', 'sellerId', 'businessName', 'accountType']
                 }
               ]
             }
@@ -178,7 +210,21 @@ const getRecentContacts = async (req, res) => {
     });
 
     const contacts = recentParticipants
-      .map(p => p.conversation.participants[0]?.user)
+      .map(p => {
+        const user = p.conversation.participants[0]?.user;
+        if (!user) return null;
+        
+        const userData = user.toJSON ? user.toJSON() : user;
+        return {
+          id: userData.id,
+          userId: userData.id,
+          sellerId: userData.sellerId || null,
+          fullName: userData.fullName,
+          profilePicture: userData.profilePicture,
+          accountType: userData.accountType,
+          businessName: userData.businessName || null
+        };
+      })
       .filter(Boolean);
 
     res.json({

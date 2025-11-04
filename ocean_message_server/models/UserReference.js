@@ -63,6 +63,11 @@ module.exports = (sequelize) => {
       type: DataTypes.STRING,
       allowNull: true,
       comment: 'Business name for sellers'
+    },
+    sellerId: {
+      type: DataTypes.UUID,
+      allowNull: true,
+      comment: 'Seller Table ID (Sellers table) - only for sellers'
     }
   }, {
     tableName: 'users',
