@@ -863,15 +863,12 @@ class BuyerNeedController {
     }
   }
 
-  // Get buyer search insights (aggregated unmet searches)
+  // Get buyer search insights (user-centric: shows users with their failed searches)
   async getBuyerSearchInsights(req, res) {
     try {
       const {
-        timeframe = 'week',
-        category = 'all',
         page = 1,
-        limit = 20,
-        sort_by = 'search_count'
+        limit = 20
       } = req.query;
 
       // Only sellers and admins can access buyer search insights
@@ -883,49 +880,27 @@ class BuyerNeedController {
         });
       }
 
-      // Calculate date range based on timeframe
+      // Always filter to last 7 days
       const now = new Date();
-      let startDate;
-      let previousStartDate;
+      const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
-      switch (timeframe) {
-        case 'day':
-          startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-          previousStartDate = new Date(startDate.getTime() - 24 * 60 * 60 * 1000);
-          break;
-        case 'week':
-          startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-          previousStartDate = new Date(startDate.getTime() - 7 * 24 * 60 * 60 * 1000);
-          break;
-        case 'month':
-          startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-          previousStartDate = new Date(startDate.getTime() - 30 * 24 * 60 * 60 * 1000);
-          break;
-        case 'quarter':
-          startDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
-          previousStartDate = new Date(startDate.getTime() - 90 * 24 * 60 * 60 * 1000);
-          break;
-        default:
-          startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-          previousStartDate = new Date(startDate.getTime() - 7 * 24 * 60 * 60 * 1000);
-      }
-
-      // Build base where clause
-      const whereClause = {
-        created_at: {
-          [Op.gte]: startDate
-        }
-      };
-
-      // Filter by category if provided
-      if (category !== 'all' && category) {
-        whereClause.category_id = category;
-      }
-
-      // Get all insights for current period
-      const currentInsights = await db.BuyerSearchInsight.findAll({
-        where: whereClause,
+      // Get all insights with user info (only logged-in users)
+      const insights = await db.BuyerSearchInsight.findAll({
+        where: {
+          created_at: {
+            [Op.gte]: sevenDaysAgo
+          },
+          user_id: {
+            [Op.ne]: null // Only logged-in users
+          }
+        },
         include: [
+          {
+            model: db.UserTable,
+            as: 'user',
+            attributes: ['id', 'fullName', 'email', 'profilePicture', 'location', 'accountType'],
+            required: true // Only include users who exist
+          },
           {
             model: db.ProductCategory,
             as: 'category',
@@ -933,219 +908,104 @@ class BuyerNeedController {
             required: false
           }
         ],
-        order: [['created_at', 'DESC']]
+        order: [['created_at', 'DESC']] // Newest searches first
       });
 
-      // Get insights for previous period for trend calculation
-      const previousWhereClause = {
-        created_at: {
-          [Op.gte]: previousStartDate,
-          [Op.lt]: startDate
-        }
-      };
-      if (category !== 'all' && category) {
-        previousWhereClause.category_id = category;
-      }
-
-      const previousInsights = await db.BuyerSearchInsight.findAll({
-        where: previousWhereClause,
-        attributes: ['search_term', 'category_id']
-      });
-
-      // Aggregate by search_term
-      const aggregated = {};
-      
-      // Aggregate current period
-      currentInsights.forEach(insight => {
-        const term = insight.search_term.toLowerCase().trim();
-        if (!aggregated[term]) {
-          aggregated[term] = {
-            searchTerm: insight.search_term,
-            searchCount: 0,
-            locations: new Set(),
-            categories: new Map(),
-            lastSearched: insight.created_at,
-            search_filters: []
-          };
-        }
-        aggregated[term].searchCount++;
-        if (insight.location) {
-          aggregated[term].locations.add(insight.location);
-        }
-        if (insight.category_id) {
-          const categoryName = insight.category?.name || 'Unknown';
-          aggregated[term].categories.set(
-            categoryName, 
-            (aggregated[term].categories.get(categoryName) || 0) + 1
-          );
-        }
-        if (insight.created_at > aggregated[term].lastSearched) {
-          aggregated[term].lastSearched = insight.created_at;
-        }
-        if (insight.search_filters) {
-          aggregated[term].search_filters.push(insight.search_filters);
-        }
-      });
-
-      // Count previous period for trends
-      const previousCounts = {};
-      previousInsights.forEach(insight => {
-        const term = insight.search_term.toLowerCase().trim();
-        previousCounts[term] = (previousCounts[term] || 0) + 1;
-      });
-
-      // Convert to array and calculate trends
-      let insightsArray = Object.values(aggregated).map(item => {
-        const term = item.searchTerm.toLowerCase().trim();
-        const previousCount = previousCounts[term] || 0;
-        const currentCount = item.searchCount;
-        
-        let trend = 'stable';
-        let trendPercentage = 0;
-        
-        if (previousCount === 0 && currentCount > 0) {
-          trend = 'up';
-          trendPercentage = 100;
-        } else if (currentCount > previousCount) {
-          trend = 'up';
-          trendPercentage = Math.round(((currentCount - previousCount) / previousCount) * 100);
-        } else if (currentCount < previousCount) {
-          trend = 'down';
-          trendPercentage = Math.round(((previousCount - currentCount) / previousCount) * 100);
-        }
-
-        // Get most common category
-        let mostCommonCategory = 'All';
-        let maxCategoryCount = 0;
-        item.categories.forEach((count, categoryName) => {
-          if (count > maxCategoryCount) {
-            maxCategoryCount = count;
-            mostCommonCategory = categoryName;
-          }
-        });
-
-        // Calculate average budget from search filters if available
-        let avgBudget = null;
-        if (item.search_filters.length > 0) {
-          const budgets = item.search_filters
-            .filter(f => f.minPrice || f.maxPrice)
-            .map(f => {
-              if (f.minPrice && f.maxPrice) {
-                return (parseFloat(f.minPrice) + parseFloat(f.maxPrice)) / 2;
-              }
-              return f.minPrice ? parseFloat(f.minPrice) : parseFloat(f.maxPrice);
-            });
-          
-          if (budgets.length > 0) {
-            const sum = budgets.reduce((a, b) => a + b, 0);
-            avgBudget = Math.round(sum / budgets.length);
-          }
-        }
-
-        // Generate tags from search term (simple keyword extraction)
-        const tags = item.searchTerm
-          .split(' ')
-          .filter(word => word.length > 3)
-          .slice(0, 3)
-          .map(word => word.charAt(0).toUpperCase() + word.slice(1));
-
-        // Calculate time ago
-        const timeDiff = now - new Date(item.lastSearched);
+      // Helper function to calculate time ago
+      const getTimeAgo = (timestamp) => {
+        const timeDiff = now - new Date(timestamp);
         const hoursAgo = Math.floor(timeDiff / (1000 * 60 * 60));
         const daysAgo = Math.floor(hoursAgo / 24);
-        let lastSearched = '';
+        
         if (daysAgo > 0) {
-          lastSearched = `${daysAgo} day${daysAgo > 1 ? 's' : ''} ago`;
+          return `${daysAgo} day${daysAgo > 1 ? 's' : ''} ago`;
         } else if (hoursAgo > 0) {
-          lastSearched = `${hoursAgo} hour${hoursAgo > 1 ? 's' : ''} ago`;
+          return `${hoursAgo} hour${hoursAgo > 1 ? 's' : ''} ago`;
         } else {
-          lastSearched = 'Just now';
+          return 'Just now';
+        }
+      };
+
+      // Group insights by user_id
+      const usersMap = new Map();
+
+      insights.forEach(insight => {
+        const userId = insight.user_id;
+        
+        if (!usersMap.has(userId)) {
+          usersMap.set(userId, {
+            userId: userId,
+            user: {
+              id: insight.user.id,
+              fullName: insight.user.fullName,
+              email: insight.user.email,
+              profilePicture: insight.user.profilePicture,
+              location: insight.user.location,
+              accountType: insight.user.accountType
+            },
+            searches: [],
+            totalFailedSearches: 0,
+            lastSearched: null
+          });
         }
 
+        const userData = usersMap.get(userId);
+        
+        // Add search to user's searches array
+        userData.searches.push({
+          id: insight.id,
+          searchTerm: insight.search_term,
+          category: insight.category?.name || null,
+          categoryId: insight.category_id || null,
+          location: insight.location || insight.user.location || null,
+          filters: insight.search_filters || {},
+          searchedAt: insight.created_at,
+          timeAgo: getTimeAgo(insight.created_at)
+        });
+
+        userData.totalFailedSearches++;
+        
+        // Update last searched timestamp (most recent)
+        if (!userData.lastSearched || insight.created_at > userData.lastSearched) {
+          userData.lastSearched = insight.created_at;
+        }
+      });
+
+      // Convert map to array and sort searches within each user (newest first)
+      let usersArray = Array.from(usersMap.values()).map(userData => {
+        // Sort user's searches by created_at DESC (newest first)
+        userData.searches.sort((a, b) => new Date(b.searchedAt) - new Date(a.searchedAt));
+        
         return {
-          searchTerm: item.searchTerm,
-          category: mostCommonCategory,
-          searchCount: currentCount,
-          avgBudget: avgBudget ? `₦${avgBudget.toLocaleString()}` : null,
-          trend: trend,
-          trendPercentage: trendPercentage,
-          tags: tags.length > 0 ? tags : ['High Demand'],
-          description: `${item.searchTerm} - ${mostCommonCategory === 'All' ? 'Popular search' : `Popular in ${mostCommonCategory}`}`,
-          lastSearched: lastSearched,
-          locations: Array.from(item.locations).slice(0, 5) // Top 5 locations
+          userId: userData.userId,
+          user: userData.user,
+          totalFailedSearches: userData.totalFailedSearches,
+          lastSearched: getTimeAgo(userData.lastSearched),
+          searches: userData.searches // All searches (no limit)
         };
       });
 
-      // Sort by specified criteria
-      switch (sort_by) {
-        case 'trend':
-          insightsArray.sort((a, b) => {
-            if (a.trend === 'up' && b.trend !== 'up') return -1;
-            if (b.trend === 'up' && a.trend !== 'up') return 1;
-            return b.trendPercentage - a.trendPercentage;
-          });
-          break;
-        case 'last_searched':
-          insightsArray.sort((a, b) => {
-            const aTime = currentInsights.find(i => i.search_term === a.searchTerm)?.created_at || 0;
-            const bTime = currentInsights.find(i => i.search_term === b.searchTerm)?.created_at || 0;
-            return new Date(bTime) - new Date(aTime);
-          });
-          break;
-        default: // search_count
-          insightsArray.sort((a, b) => b.searchCount - a.searchCount);
-      }
-
-      // Add ranking
-      insightsArray = insightsArray.map((item, index) => ({
-        ...item,
-        rank: index + 1,
-        id: `insight-${index + 1}`
-      }));
+      // Sort users by most recent search (newest first)
+      usersArray.sort((a, b) => {
+        // Find the most recent search for each user
+        const aLatest = a.searches[0]?.searchedAt || 0;
+        const bLatest = b.searches[0]?.searchedAt || 0;
+        return new Date(bLatest) - new Date(aLatest);
+      });
 
       // Pagination
-      const offset = (page - 1) * limit;
-      const paginatedInsights = insightsArray.slice(offset, offset + parseInt(limit));
-
-      // Calculate summary stats
-      const totalUnmetSearches = currentInsights.length;
-      const categoriesCount = new Set(
-        currentInsights
-          .filter(i => i.category_id)
-          .map(i => i.category_id)
-      ).size;
-      
-      // Calculate overall average budget
-      let overallAvgBudget = null;
-      const allBudgets = currentInsights
-        .filter(i => i.search_filters)
-        .map(i => {
-          const f = i.search_filters;
-          if (f.minPrice && f.maxPrice) {
-            return (parseFloat(f.minPrice) + parseFloat(f.maxPrice)) / 2;
-          }
-          return f.minPrice ? parseFloat(f.minPrice) : (f.maxPrice ? parseFloat(f.maxPrice) : null);
-        })
-        .filter(b => b !== null);
-      
-      if (allBudgets.length > 0) {
-        const sum = allBudgets.reduce((a, b) => a + b, 0);
-        overallAvgBudget = Math.round(sum / allBudgets.length);
-      }
+      const totalUsers = usersArray.length;
+      const offset = (parseInt(page) - 1) * parseInt(limit);
+      const paginatedUsers = usersArray.slice(offset, offset + parseInt(limit));
 
       res.json({
         success: true,
-        data: paginatedInsights,
+        data: paginatedUsers,
         pagination: {
           current_page: parseInt(page),
-          total_pages: Math.ceil(insightsArray.length / limit),
-          total_items: insightsArray.length,
+          total_pages: Math.ceil(totalUsers / parseInt(limit)),
+          total_items: totalUsers,
           items_per_page: parseInt(limit)
-        },
-        summary: {
-          totalUnmetSearches: totalUnmetSearches,
-          avgBudget: overallAvgBudget ? `₦${overallAvgBudget.toLocaleString()}` : null,
-          categoriesCount: categoriesCount
         }
       });
 
