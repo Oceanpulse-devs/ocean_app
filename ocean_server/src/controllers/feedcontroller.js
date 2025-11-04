@@ -247,6 +247,95 @@ const getHomeFeed = async (req, res) => {
                         showComments: false,
                         commentList: []
                     };
+                } else if (postData.contentType === 'swap_deal') {
+                    // Swap deal post format
+                    const displayName = postData.user?.seller?.businessName || postData.user?.fullName;
+                    
+                    // Get swap deal ID from multiple sources for frontend compatibility
+                    const swapDealId = postData.sourceId || 
+                                      postData.feedMetadata?.swap_deal_id || 
+                                      postData.feedMetadata?.swap_dealId || 
+                                      null;
+                    
+                    // Get images from feedMetadata or media
+                    let swapDealImages = [];
+                    if (postData.feedMetadata?.images && Array.isArray(postData.feedMetadata.images)) {
+                        swapDealImages = postData.feedMetadata.images;
+                    } else if (postData.media && postData.media.length > 0) {
+                        swapDealImages = postData.media.map(m => m.mediaUrl);
+                    }
+                    
+                    // Format media array
+                    const mediaArray = postData.media?.map((m, index) => ({
+                        id: m.id || `media_${Date.now()}_${index}`,
+                        type: m.mediaType || 'image',
+                        url: m.mediaUrl,
+                        thumbnailUrl: m.thumbnailUrl || m.mediaUrl
+                    })) || [];
+                    
+                    // Build feedMetadata with all swap deal details
+                    const feedMetadata = {
+                        swap_deal_id: swapDealId,
+                        images: swapDealImages,
+                        ...(postData.feedMetadata || {}), // Include all existing metadata
+                        product_to_swap: postData.feedMetadata?.product_to_swap || postData.productName || null,
+                        category_to_swap: postData.feedMetadata?.category_to_swap || null,
+                        brand_to_swap: postData.feedMetadata?.brand_to_swap || null,
+                        condition: postData.feedMetadata?.condition || null,
+                        status: postData.feedMetadata?.status || 'active',
+                        is_featured: postData.feedMetadata?.is_featured || false
+                    };
+                    
+                    formattedPost = {
+                        id: postData.id,
+                        swapDealId: swapDealId,  // ✅ Top level swap deal ID
+                        category: 'swap_deal',   // ✅ Required category
+                        type: 'swap_deal',       // ✅ Required type
+                        contentType: 'swap_deal',
+                        sourceId: postData.sourceId || swapDealId,  // ✅ Source ID
+                        sourceTable: postData.sourceTable || 'swap_deals',  // ✅ Source table
+                        createdAt: postData.createdAt,
+                        updatedAt: postData.updatedAt,
+                        user: {
+                            id: postData.user.id,
+                            name: displayName,
+                            avatar: postData.user.profilePicture || '👤',
+                            verified: postData.user.accountStatus === 'verified',
+                            location: postData.user.location
+                        },
+                        // Attach seller identifiers & metadata for frontend
+                        sellerEntityId: postData.user?.seller?.id || null,
+                        sellerMeta: {
+                            businessName: postData.user?.seller?.businessName || null,
+                            profilePicture: postData.user?.profilePicture || null,
+                            businessEmail: postData.user?.seller?.businessEmail || null
+                        },
+                        caption: postData.content || `Swap Deal: ${feedMetadata.product_to_swap || 'Product'}`,
+                        feedMetadata: feedMetadata,  // ✅ Complete metadata with images array
+                        media: mediaArray,  // ✅ Media array format
+                        likes: postData.likesCount || 0,
+                        comments: postData.commentsCount || 0,
+                        shares: postData.sharesCount || 0,
+                        saves: postData.savedCount || 0,
+                        timeAgo: getTimeAgo(postData.createdAt),
+                        isLiked: false,
+                        isSaved: false,
+                        showComments: false,
+                        commentList: []
+                    };
+                    
+                    console.log('🔄 SWAP DEAL POST FOUND:', {
+                        postId: postData.id,
+                        swapDealId: swapDealId,
+                        sourceId: postData.sourceId,
+                        imagesCount: swapDealImages.length
+                    });
+                    console.log('🔄 SWAP DEAL MAPPING:', {
+                        swapDealId: swapDealId,
+                        sourceId: postData.sourceId,
+                        feedMetadataSwapDealId: postData.feedMetadata?.swap_deal_id,
+                        hasImages: swapDealImages.length > 0
+                    });
                 } else {
                     // General post format (default) - Map to frontend field names
                     const displayName = postData.user?.seller?.businessName || postData.user?.fullName;
