@@ -69,9 +69,8 @@ class SubscriptionService {
         currency: plan.currency
       });
 
-      // Update user's subscription status to 'pending' (not 'active' until payment verified)
-      // This ensures subscription stays pending until payment callback activates it
-      await this.updateUserSubscriptionStatus(userId, 'pending', planId, endDate);
+      // Update user's subscription status
+      await this.updateUserSubscriptionStatus(userId, 'active', planId, endDate);
 
       return subscription;
     } catch (error) {
@@ -122,92 +121,28 @@ class SubscriptionService {
         where: { id: userId }
       });
 
-      // Also update user_subscriptions table if status is 'active'
-      if (status === 'active') {
-        console.log('🔍 Activating subscription:', { userId, planId, expiresAt });
-        
-        // ALWAYS try to find pending subscription first (most reliable)
-        // This ensures we find the subscription even if planId is missing from metadata
-        let subscription = await UserSubscription.findOne({
+      // Also update user_subscriptions table if we have a planId
+      if (planId && status === 'active') {
+        // Find the most recent subscription for this user
+        const subscription = await UserSubscription.findOne({
           where: { 
             userId: userId,
-            status: 'pending'
+            planId: planId
           },
           order: [['created_at', 'DESC']]
         });
-        
-        console.log('🔍 Pending subscription search result:', subscription ? {
-          id: subscription.id,
-          planId: subscription.planId,
-          paymentReference: subscription.paymentReference,
-          createdAt: subscription.created_at
-        } : 'null');
-        
-        // If not found by pending status, try with planId if provided
-        if (!subscription && planId) {
-          console.log('🔍 Trying to find subscription by userId + planId:', { userId, planId });
-          subscription = await UserSubscription.findOne({
-            where: { 
-              userId: userId,
-              planId: planId
-            },
-            order: [['created_at', 'DESC']]
-          });
-          
-          console.log('🔍 Subscription by userId + planId result:', subscription ? {
-            id: subscription.id,
-            status: subscription.status
-          } : 'null');
-        }
-        
-        // If found, update it
+
         if (subscription) {
-          // Use subscription's planId if planId param is missing
-          const finalPlanId = planId || subscription.planId;
-          const finalExpiresAt = expiresAt || subscription.endDate;
-          
-          console.log('✅ Found subscription to activate:', {
-            subscriptionId: subscription.id,
-            currentStatus: subscription.status,
-            finalPlanId: finalPlanId,
-            finalExpiresAt: finalExpiresAt
-          });
-          
           await UserSubscription.update({
             status: status,
-            endDate: finalExpiresAt
+            endDate: expiresAt
           }, {
             where: { id: subscription.id }
           });
           
-          console.log('✅ Updated user_subscriptions table for subscription:', subscription.id);
-          
-          // Also ensure users table has the correct planId
-          if (finalPlanId && finalPlanId !== planId) {
-            await UserTable.update({
-              current_plan_id: finalPlanId
-            }, {
-              where: { id: userId }
-            });
-            console.log('✅ Updated users table with correct planId:', finalPlanId);
-          }
+          console.log('Updated user_subscriptions table for subscription:', subscription.id);
         } else {
-          console.error('❌ No matching subscription found in user_subscriptions table');
-          console.error('Search parameters:', { userId, planId, status });
-          
-          // Debug: List all subscriptions for this user
-          const allSubscriptions = await UserSubscription.findAll({
-            where: { userId: userId },
-            attributes: ['id', 'planId', 'status', 'paymentReference', 'created_at'],
-            order: [['created_at', 'DESC']]
-          });
-          console.error('All subscriptions for user:', allSubscriptions.map(s => ({
-            id: s.id,
-            planId: s.planId,
-            status: s.status,
-            paymentReference: s.paymentReference,
-            createdAt: s.created_at
-          })));
+          console.log('No matching subscription found in user_subscriptions table');
         }
       }
       
@@ -228,7 +163,7 @@ class SubscriptionService {
     try {
       const subscription = await UserSubscription.findOne({
         where: {
-          userId: userId,
+          user_id: userId,
           status: 'active'
         },
         order: [['created_at', 'DESC']]
@@ -241,9 +176,9 @@ class SubscriptionService {
       // Cancel the subscription
       await subscription.update({
         status: 'cancelled',
-        cancellationReason: reason,
-        cancelledAt: new Date(),
-        autoRenew: false
+        cancellation_reason: reason,
+        cancelled_at: new Date(),
+        auto_renew: false
       });
 
       // Update user's subscription status
@@ -265,7 +200,7 @@ class SubscriptionService {
       const expiredSubscriptions = await UserSubscription.findAll({
         where: {
           status: 'active',
-          endDate: {
+          end_date: {
             [Op.lt]: new Date()
           }
         }
@@ -275,7 +210,7 @@ class SubscriptionService {
       for (const subscription of expiredSubscriptions) {
         await subscription.update({ status: 'expired' });
         await this.updateUserSubscriptionStatus(
-          subscription.userId, 
+          subscription.user_id, 
           'expired', 
           null, 
           null
@@ -305,9 +240,9 @@ class SubscriptionService {
       // Get current subscription
       const currentSubscription = await UserSubscription.findOne({
         where: {
-          userId: userId,
+          user_id: userId,
           status: 'active',
-          endDate: { [Op.gt]: new Date() }
+          end_date: { [Op.gt]: new Date() }
         },
         include: [{ model: SubscriptionPlan, as: 'plan' }],
         order: [['created_at', 'DESC']]
@@ -316,10 +251,10 @@ class SubscriptionService {
       // Get usage data for the period
       const usageData = await SubscriptionUsage.findAll({
         where: {
-          userId: userId,
-          usagePeriod: { [Op.gte]: startDate }
+          user_id: userId,
+          usage_period: { [Op.gte]: startDate }
         },
-        order: [['usagePeriod', 'DESC']]
+        order: [['usage_period', 'DESC']]
       });
 
       // Calculate totals
@@ -344,10 +279,10 @@ class SubscriptionService {
       // Get promotional boosts
       const boosts = await PromotionalBoost.findAll({
         where: {
-          userId: userId,
-          createdAt: { [Op.gte]: startDate }
+          user_id: userId,
+          created_at: { [Op.gte]: startDate }
         },
-        order: [['createdAt', 'DESC']]
+        order: [['created_at', 'DESC']]
       });
 
       return {

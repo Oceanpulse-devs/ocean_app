@@ -17,36 +17,7 @@ class SubscriptionStatusChecker {
    */
   static async getUserSubscriptionStatus(userId) {
     try {
-      // First, try to get active subscription
-      let subscription = await subscriptionMiddleware.getUserActiveSubscription(userId);
-      
-      // If no active subscription, check for pending subscription
-      // This allows users to see their subscription immediately after creation
-      if (!subscription) {
-        const { UserSubscription, SubscriptionPlan } = require('../../models');
-        subscription = await UserSubscription.findOne({
-          where: {
-            userId: userId,
-            status: 'pending'
-          },
-          include: [{
-            model: SubscriptionPlan,
-            as: 'plan',
-            where: { isActive: true }
-          }],
-          order: [['created_at', 'DESC']]
-        });
-        
-        if (subscription) {
-          console.log('📋 Pending subscription found for user:', {
-            userId: userId,
-            subscriptionId: subscription.id,
-            planId: subscription.planId,
-            paymentReference: subscription.paymentReference,
-            createdAt: subscription.created_at
-          });
-        }
-      }
+      const subscription = await subscriptionMiddleware.getUserActiveSubscription(userId);
       
       if (!subscription) {
         return {
@@ -61,13 +32,10 @@ class SubscriptionStatusChecker {
       }
 
       const plan = subscription.plan;
-      // Only get usage for active subscriptions (pending subscriptions don't have usage yet)
-      const usage = subscription.status === 'active' 
-        ? await subscriptionMiddleware.getTodayUsage(userId, subscription.id)
-        : null;
+      const usage = await subscriptionMiddleware.getTodayUsage(userId, subscription.id);
 
       return {
-        hasActiveSubscription: subscription.status === 'active', // Only true if actually active
+        hasActiveSubscription: true,
         plan: {
           id: plan.id,
           name: plan.name,
@@ -76,8 +44,8 @@ class SubscriptionStatusChecker {
           currency: plan.currency,
           billingPeriod: plan.billing_period
         },
-        status: subscription.status, // Will be 'pending' or 'active'
-        limits: subscription.status === 'active' ? {
+        status: subscription.status,
+        limits: {
           maxListings: plan.max_listings,
           maxGroupBuys: plan.max_group_buys,
           maxSwapDeals: plan.max_swap_deals,
@@ -87,8 +55,8 @@ class SubscriptionStatusChecker {
           maxDailyNotifications: plan.max_daily_notifications,
           maxArProducts: plan.max_ar_products,
           maxPromotionalBoosts: plan.max_promotional_boosts
-        } : this.getFreePlanLimits(), // Pending subscriptions don't have access yet
-        features: subscription.status === 'active' ? {
+        },
+        features: {
           canCreateGroupBuy: plan.can_create_group_buy,
           canCreateSwapDeals: plan.can_create_swap_deals,
           canCreateAuctions: plan.can_create_auctions,
@@ -99,7 +67,7 @@ class SubscriptionStatusChecker {
           hasPrioritySearch: plan.has_priority_search,
           hasBuyerInsights: plan.has_buyer_insights,
           hasUnlimitedFeatures: plan.has_unlimited_features
-        } : this.getFreePlanFeatures(), // Pending subscriptions don't have features yet
+        },
         usage: usage ? {
           listingsCreated: usage.listings_created,
           groupBuysCreated: usage.group_buys_created,
@@ -111,8 +79,7 @@ class SubscriptionStatusChecker {
           arProductsUsed: usage.ar_products_used,
           promotionalBoostsUsed: usage.promotional_boosts_used
         } : null,
-        expiresAt: subscription.end_date,
-        paymentStatus: subscription.status // 'pending' or 'active' - indicates payment status
+        expiresAt: subscription.end_date
       };
     } catch (error) {
       console.error('Error getting user subscription status:', error);
