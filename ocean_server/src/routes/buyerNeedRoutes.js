@@ -28,6 +28,21 @@ const upload = multer({
 // Buyer Need CRUD operations
 router.post('/create', upload.array('images', 10), buyerNeedController.createBuyerNeed);
 router.get('/all', buyerNeedController.getAllBuyerNeeds);
+
+// User-specific buyer needs (must come before /:id)
+router.get('/user/me', buyerNeedController.getUserBuyerNeeds);
+
+// Buyer Need statistics (must come before /:id)
+router.get('/stats/overview', buyerNeedController.getBuyerNeedStats);
+
+// Buyer Search Insights routes (must come before /:id)
+router.post('/search-insight/track', buyerNeedController.trackFailedSearch);
+router.get('/search-insights', buyerNeedController.getBuyerSearchInsights);
+
+// Seller response management (must come before /:id routes)
+router.get('/seller/responses', buyerNeedResponseController.getSellerResponses);
+
+// Parameterized routes (must come after all specific routes)
 router.get('/:id', buyerNeedController.getBuyerNeedById);
 router.put('/:id', buyerNeedController.updateBuyerNeed);
 router.delete('/:id', buyerNeedController.deleteBuyerNeed);
@@ -35,16 +50,6 @@ router.delete('/:id', buyerNeedController.deleteBuyerNeed);
 // Buyer Need actions
 router.put('/:id/cancel', buyerNeedController.cancelBuyerNeed);
 router.put('/:id/fulfill', buyerNeedController.markBuyerNeedFulfilled);
-
-// User-specific buyer needs
-router.get('/user/me', buyerNeedController.getUserBuyerNeeds);
-
-// Buyer Need statistics
-router.get('/stats/overview', buyerNeedController.getBuyerNeedStats);
-
-// Buyer Search Insights routes
-router.post('/search-insight/track', buyerNeedController.trackFailedSearch);
-router.get('/search-insights', buyerNeedController.getBuyerSearchInsights);
 
 // Reach management routes
 router.post('/:id/increment-reach', buyerNeedController.incrementReach);
@@ -62,8 +67,5 @@ router.put('/responses/:id/reject', buyerNeedResponseController.rejectResponse);
 router.put('/responses/:id/withdraw', buyerNeedResponseController.withdrawResponse);
 router.put('/responses/:id/read', buyerNeedResponseController.markResponseAsRead);
 router.put('/responses/:id/feedback', buyerNeedResponseController.provideFeedback);
-
-// Seller response management
-router.get('/seller/responses', buyerNeedResponseController.getSellerResponses);
 
 module.exports = router;
