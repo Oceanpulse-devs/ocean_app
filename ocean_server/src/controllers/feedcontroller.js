@@ -1289,7 +1289,112 @@ const updatePost = async (req, res) => {
 };
 
 const createComment = async (req, res) => {
-    return res.status(501).json({ message: 'createComment not implemented yet' });
+    try {
+        const { postId } = req.params;
+        const { content, parentCommentId } = req.body;
+        const userId = req.user.id;
+
+        if (!postId) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Post ID is required' 
+            });
+        }
+
+        if (!content || content.trim().length === 0) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Comment content is required' 
+            });
+        }
+
+        // Verify post exists
+        const post = await Post.findByPk(postId);
+        if (!post) {
+            return res.status(404).json({ 
+                success: false, 
+                message: 'Post not found' 
+            });
+        }
+
+        // If parentCommentId is provided, verify it exists and belongs to the same post
+        if (parentCommentId) {
+            const parentComment = await PostComment.findOne({
+                where: { id: parentCommentId, postId, status: 'active' }
+            });
+            if (!parentComment) {
+                return res.status(404).json({ 
+                    success: false, 
+                    message: 'Parent comment not found' 
+                });
+            }
+        }
+
+        // Get user info for notification
+        const user = await UserTable.findByPk(userId, {
+            attributes: ['id', 'fullName', 'username']
+        });
+
+        // Create the comment
+        const comment = await PostComment.create({
+            postId,
+            userId,
+            content: content.trim(),
+            parentCommentId: parentCommentId || null,
+            status: 'active'
+        });
+
+        // Fetch the created comment with user info
+        const createdComment = await PostComment.findByPk(comment.id, {
+            include: [
+                {
+                    model: UserTable,
+                    as: 'user',
+                    attributes: ['id', 'fullName', 'username', 'profilePicture', 'accountType', 'accountStatus']
+                }
+            ]
+        });
+
+        // Create notification for post owner (if not the same user)
+        if (post.userId !== userId) {
+            await createNotification(
+                post.userId,
+                'New Comment',
+                `${user?.fullName || 'Someone'} commented on your post`,
+                'comment',
+                'engagement',
+                { postId, commentId: comment.id, userId }
+            );
+        }
+
+        // Format comment to match Flutter expectations (same as getComments)
+        const commentData = createdComment.toJSON();
+        const formattedComment = {
+            id: commentData.id,
+            content: commentData.content,
+            createdAt: commentData.createdAt,
+            updatedAt: commentData.updatedAt,
+            user: {
+                id: commentData.user?.id,
+                fullName: commentData.user?.fullName,
+                profilePicture: commentData.user?.profilePicture || null
+            }
+        };
+
+        res.status(201).json({
+            success: true,
+            message: 'Comment created successfully',
+            data: formattedComment  // Flutter expects: data.data
+        });
+
+    } catch (error) {
+        console.error('Create comment error:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Error creating comment', 
+            error: error.message 
+        });
+    }
 };
 
 const getComments = async (req, res) => {
