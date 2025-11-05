@@ -318,6 +318,14 @@ const createProduct = async (req, res) => {
         const usageResult = await incrementUsage(userId, 'listings');
         console.log('Usage increment result:', usageResult);
 
+        // DEBUG: Log what files we received
+        console.log('📦 Files received:', {
+            filesKeys: req.files ? Object.keys(req.files) : 'no files object',
+            imagesCount: req.files?.images?.length || 0,
+            arModelCount: req.files?.arModel?.length || 0,
+            allFiles: req.files ? Object.keys(req.files) : []
+        });
+
         // Upload images to Cloudinary
         const imageUrls = [];
         for (let i = 0; i < req.files.images.length; i++) {
@@ -339,10 +347,32 @@ const createProduct = async (req, res) => {
 
         // Upload AR model if provided (optional)
         let arModelUrl = null;
+        
+        // DEBUG: Add more detailed logging
+        console.log('🔍 Checking for AR model:', {
+            hasFiles: !!req.files,
+            hasArModel: !!(req.files && req.files.arModel),
+            arModelLength: req.files?.arModel?.length || 0,
+            allFieldNames: req.files ? Object.keys(req.files) : []
+        });
+        
         if (req.files.arModel && req.files.arModel.length > 0) {
             const arFile = req.files.arModel[0];
+            console.log('📤 Attempting to upload AR model:', {
+                filename: arFile.originalname,
+                mimetype: arFile.mimetype,
+                size: arFile.size,
+                fieldname: arFile.fieldname
+            });
+            
             try {
                 const arUploadResult = await cloudinaryService.uploadARModel(arFile.buffer, product.id);
+                
+                console.log('☁️ Cloudinary AR upload result:', {
+                    success: arUploadResult.success,
+                    url: arUploadResult.url,
+                    error: arUploadResult.error
+                });
                 
                 if (!arUploadResult.success) {
                     console.error('AR model upload failed:', arUploadResult.error);
@@ -356,6 +386,8 @@ const createProduct = async (req, res) => {
                 console.error('Error uploading AR model:', error);
                 // Don't fail the product creation if AR upload fails
             }
+        } else {
+            console.log('⚠️ No AR model file found in request');
         }
 
         // Update product with image URLs and AR model URL
