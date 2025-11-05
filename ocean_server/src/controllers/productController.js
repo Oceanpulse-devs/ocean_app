@@ -292,7 +292,7 @@ const createProduct = async (req, res) => {
         console.log('Product category from frontend:', category);
 
         // Validate images/files
-        if (!req.files || req.files.length === 0) {
+        if (!req.files || !req.files.images || req.files.images.length === 0) {
             return res.status(400).json({
                 message: "At least one product image is required"
             });
@@ -320,8 +320,8 @@ const createProduct = async (req, res) => {
 
         // Upload images to Cloudinary
         const imageUrls = [];
-        for (let i = 0; i < req.files.length; i++) {
-            const file = req.files[i];
+        for (let i = 0; i < req.files.images.length; i++) {
+            const file = req.files.images[i];
             try {
                 const uploadResult = await cloudinaryService.uploadProductImage(file.buffer, product.id);
                 
@@ -339,9 +339,10 @@ const createProduct = async (req, res) => {
 
         // Upload AR model if provided (optional)
         let arModelUrl = null;
-        if (req.file && req.file.fieldname === 'arModel') {
+        if (req.files.arModel && req.files.arModel.length > 0) {
+            const arFile = req.files.arModel[0];
             try {
-                const arUploadResult = await cloudinaryService.uploadARModel(req.file.buffer, product.id);
+                const arUploadResult = await cloudinaryService.uploadARModel(arFile.buffer, product.id);
                 
                 if (!arUploadResult.success) {
                     console.error('AR model upload failed:', arUploadResult.error);
@@ -442,12 +443,12 @@ const updateProduct = async (req, res) => {
         }
 
         // Process uploaded images if any
-        if (req.files && req.files.length > 0) {
+        if (req.files && req.files.images && req.files.images.length > 0) {
             const cloudinaryService = require('../services/cloudinaryService');
             const imageUrls = [];
             
-            for (let i = 0; i < req.files.length; i++) {
-                const file = req.files[i];
+            for (let i = 0; i < req.files.images.length; i++) {
+                const file = req.files.images[i];
                 try {
                     const uploadResult = await cloudinaryService.uploadProductImage(file.buffer, product.id);
                     
@@ -470,9 +471,10 @@ const updateProduct = async (req, res) => {
         }
 
         // Process AR model upload if provided (optional, replaces existing)
-        if (req.file && req.file.fieldname === 'arModel') {
+        if (req.files && req.files.arModel && req.files.arModel.length > 0) {
+            const arFile = req.files.arModel[0];
             try {
-                const arUploadResult = await cloudinaryService.uploadARModel(req.file.buffer, product.id);
+                const arUploadResult = await cloudinaryService.uploadARModel(arFile.buffer, product.id);
                 
                 if (!arUploadResult.success) {
                     console.error('AR model upload failed:', arUploadResult.error);

@@ -5,39 +5,36 @@ const authMiddleware = require('../middleware/authMiddleware');
 const optionalAuthMiddleware = require('../middleware/optionalAuthMiddleware');
 const productController = require('../controllers/productController');
 
-// Configure multer for product images
-const upload = multer({
+// Single multer config that handles both images and AR models
+const uploadProductFiles = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit for images
+  limits: { fileSize: 50 * 1024 * 1024 }, // Use higher limit (50MB) to accommodate both
   fileFilter: function (req, file, cb) {
-    if (file.mimetype.startsWith('image/')) {
-      cb(null, true);
+    // Validate based on field name
+    if (file.fieldname === 'images') {
+      // For images, check if it's an image
+      if (file.mimetype.startsWith('image/')) {
+        cb(null, true);
+      } else {
+        cb(new Error('Only image files are allowed for product images'), false);
+      }
+    } else if (file.fieldname === 'arModel') {
+      // For AR models, check if it's GLB/GLTF
+      const allowedMimes = [
+        'model/gltf-binary', // GLB
+        'model/gltf+json',    // GLTF
+        'application/octet-stream' // Sometimes GLB files have this MIME type
+      ];
+      const allowedExtensions = ['.glb', '.gltf'];
+      const fileExt = file.originalname.toLowerCase().substring(file.originalname.lastIndexOf('.'));
+      
+      if (allowedMimes.includes(file.mimetype) || allowedExtensions.includes(fileExt)) {
+        cb(null, true);
+      } else {
+        cb(new Error('Only GLB/GLTF files are allowed for AR models'), false);
+      }
     } else {
-      cb(new Error('Only image files are allowed for product images'), false);
-    }
-  }
-});
-
-// Configure multer for AR model files (GLB)
-const uploadAR = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB limit for GLB files
-  fileFilter: function (req, file, cb) {
-    // Accept GLB files and other 3D model formats
-    const allowedMimes = [
-      'model/gltf-binary', // GLB
-      'model/gltf+json',    // GLTF
-      'application/octet-stream' // Sometimes GLB files have this MIME type
-    ];
-    
-    // Also check file extension as fallback
-    const allowedExtensions = ['.glb', '.gltf'];
-    const fileExt = file.originalname.toLowerCase().substring(file.originalname.lastIndexOf('.'));
-    
-    if (allowedMimes.includes(file.mimetype) || allowedExtensions.includes(fileExt)) {
-      cb(null, true);
-    } else {
-      cb(new Error('Only GLB/GLTF files are allowed for AR models'), false);
+      cb(new Error('Invalid field name. Only "images" and "arModel" are allowed'), false);
     }
   }
 });
@@ -57,8 +54,23 @@ router.get('/api/categories/system', (req, res) => {
 });
 
 // Protected routes (authentication required)
-router.post('/api/products', authMiddleware, upload.array('images', 10), uploadAR.single('arModel'), productController.createProduct);
-router.put('/api/products/:productId', authMiddleware, upload.array('images', 10), uploadAR.single('arModel'), productController.updateProduct);
+router.post('/api/products', 
+  authMiddleware, 
+  uploadProductFiles.fields([
+    { name: 'images', maxCount: 10 },
+    { name: 'arModel', maxCount: 1 }
+  ]), 
+  productController.createProduct
+);
+
+router.put('/api/products/:productId', 
+  authMiddleware, 
+  uploadProductFiles.fields([
+    { name: 'images', maxCount: 10 },
+    { name: 'arModel', maxCount: 1 }
+  ]), 
+  productController.updateProduct
+);
 router.delete('/api/products/:productId', authMiddleware, productController.deleteProduct);
 router.post('/api/products/:productId/like', authMiddleware, productController.toggleLikeProduct);
 router.post('/api/products/:productId/save', authMiddleware, productController.toggleSaveProduct);
