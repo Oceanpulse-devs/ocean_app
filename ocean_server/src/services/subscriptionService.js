@@ -69,8 +69,9 @@ class SubscriptionService {
         currency: plan.currency
       });
 
-      // Update user's subscription status
-      await this.updateUserSubscriptionStatus(userId, 'active', planId, endDate);
+      // Update user's subscription status to 'pending' (not 'active' until payment verified)
+      // This ensures subscription stays pending until payment callback activates it
+      await this.updateUserSubscriptionStatus(userId, 'pending', planId, endDate);
 
       return subscription;
     } catch (error) {
