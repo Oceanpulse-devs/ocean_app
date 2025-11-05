@@ -163,7 +163,7 @@ class SubscriptionService {
     try {
       const subscription = await UserSubscription.findOne({
         where: {
-          user_id: userId,
+          userId: userId,
           status: 'active'
         },
         order: [['created_at', 'DESC']]
@@ -176,9 +176,9 @@ class SubscriptionService {
       // Cancel the subscription
       await subscription.update({
         status: 'cancelled',
-        cancellation_reason: reason,
-        cancelled_at: new Date(),
-        auto_renew: false
+        cancellationReason: reason,
+        cancelledAt: new Date(),
+        autoRenew: false
       });
 
       // Update user's subscription status
@@ -200,7 +200,7 @@ class SubscriptionService {
       const expiredSubscriptions = await UserSubscription.findAll({
         where: {
           status: 'active',
-          end_date: {
+          endDate: {
             [Op.lt]: new Date()
           }
         }
@@ -210,7 +210,7 @@ class SubscriptionService {
       for (const subscription of expiredSubscriptions) {
         await subscription.update({ status: 'expired' });
         await this.updateUserSubscriptionStatus(
-          subscription.user_id, 
+          subscription.userId, 
           'expired', 
           null, 
           null
@@ -240,9 +240,9 @@ class SubscriptionService {
       // Get current subscription
       const currentSubscription = await UserSubscription.findOne({
         where: {
-          user_id: userId,
+          userId: userId,
           status: 'active',
-          end_date: { [Op.gt]: new Date() }
+          endDate: { [Op.gt]: new Date() }
         },
         include: [{ model: SubscriptionPlan, as: 'plan' }],
         order: [['created_at', 'DESC']]
@@ -251,10 +251,10 @@ class SubscriptionService {
       // Get usage data for the period
       const usageData = await SubscriptionUsage.findAll({
         where: {
-          user_id: userId,
-          usage_period: { [Op.gte]: startDate }
+          userId: userId,
+          usagePeriod: { [Op.gte]: startDate }
         },
-        order: [['usage_period', 'DESC']]
+        order: [['usagePeriod', 'DESC']]
       });
 
       // Calculate totals
@@ -279,10 +279,10 @@ class SubscriptionService {
       // Get promotional boosts
       const boosts = await PromotionalBoost.findAll({
         where: {
-          user_id: userId,
-          created_at: { [Op.gte]: startDate }
+          userId: userId,
+          createdAt: { [Op.gte]: startDate }
         },
-        order: [['created_at', 'DESC']]
+        order: [['createdAt', 'DESC']]
       });
 
       return {
