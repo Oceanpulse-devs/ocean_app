@@ -1285,7 +1285,152 @@ const searchPosts = async (req, res) => {
 
 // Add minimal stubs for missing route handlers to prevent runtime errors
 const updatePost = async (req, res) => {
-    return res.status(501).json({ message: 'updatePost not implemented yet' });
+    try {
+        const { postId } = req.params;
+        const userId = req.user.id;
+
+        if (!postId) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Post ID is required' 
+            });
+        }
+
+        // Find the post and verify ownership
+        const post = await Post.findOne({
+            where: { id: postId, userId, status: 'active' }
+        });
+
+        if (!post) {
+            return res.status(404).json({ 
+                success: false, 
+                message: 'Post not found or you do not have permission to update it' 
+            });
+        }
+
+        // Parse form data - handle both multer parsed and raw FormData
+        let formData = {};
+        if (!req.files && req.body._parts) {
+            req.body._parts.forEach(part => {
+                if (part[0] !== 'media') {
+                    formData[part[0]] = part[1];
+                }
+            });
+        } else {
+            formData = req.body;
+        }
+
+        // Extract updateable fields
+        const { content, reach_limit, category_id } = formData;
+
+        // Update fields if provided
+        const updateData = {};
+        if (content !== undefined && content !== null) {
+            if (content.trim().length === 0) {
+                return res.status(400).json({ 
+                    success: false, 
+                    message: 'Content cannot be empty' 
+                });
+            }
+            updateData.content = content.trim();
+            // Update productName from content
+            updateData.productName = content.trim().split(' ').slice(0, 3).join(' ') || 'General Post';
+        }
+
+        if (reach_limit !== undefined && reach_limit !== null && reach_limit !== '') {
+            const parsedReachLimit = parseInt(reach_limit);
+            if (isNaN(parsedReachLimit) || parsedReachLimit < 1 || parsedReachLimit > 50) {
+                return res.status(400).json({ 
+                    success: false, 
+                    message: 'Reach limit must be a number between 1 and 50' 
+                });
+            }
+            updateData.reach_limit = parsedReachLimit;
+        }
+
+        if (category_id !== undefined && category_id !== null && category_id !== '') {
+            const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+            if (!uuidRegex.test(category_id)) {
+                return res.status(400).json({ 
+                    success: false, 
+                    message: 'Category ID must be a valid UUID' 
+                });
+            }
+            
+            const category = await ProductCategory.findByPk(category_id);
+            if (!category) {
+                return res.status(400).json({ 
+                    success: false, 
+                    message: 'Category not found' 
+                });
+            }
+            updateData.category_id = category_id;
+        }
+
+        // Handle media uploads if provided
+        if (req.files && req.files.length > 0) {
+            // Delete existing media
+            await PostMedia.destroy({ where: { postId: post.id } });
+
+            // Upload new media files
+            for (let i = 0; i < req.files.length; i++) {
+                const file = req.files[i];
+                const isVideo = file.mimetype.startsWith('video/');
+                
+                try {
+                    const uploadResult = await cloudinaryService.uploadPostMedia(file.buffer, post.id);
+                    
+                    if (uploadResult.success) {
+                        await PostMedia.create({
+                            postId: post.id,
+                            mediaUrl: uploadResult.url,
+                            mediaType: isVideo ? 'video' : 'image',
+                            thumbnailUrl: uploadResult.thumbnailUrl || null,
+                            mediaOrder: i
+                        });
+                    }
+                } catch (error) {
+                    console.error(`Error uploading media file ${file.originalname}:`, error);
+                }
+            }
+        }
+
+        // Update the post
+        if (Object.keys(updateData).length > 0) {
+            await post.update(updateData);
+        }
+
+        // Fetch updated post with all associations
+        const updatedPost = await Post.findByPk(post.id, {
+            include: [
+                {
+                    model: UserTable,
+                    as: 'user',
+                    attributes: ['id', 'fullName', 'email', 'profilePicture', 'accountType', 'accountStatus']
+                },
+                {
+                    model: PostMedia,
+                    as: 'media',
+                    attributes: ['id', 'mediaType', 'mediaUrl', 'thumbnailUrl', 'mediaOrder'],
+                    order: [['mediaOrder', 'ASC']]
+                }
+            ]
+        });
+
+        res.status(200).json({
+            success: true,
+            message: 'Post updated successfully',
+            data: updatedPost.toJSON()
+        });
+
+    } catch (error) {
+        console.error('Update post error:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Error updating post', 
+            error: error.message 
+        });
+    }
 };
 
 const createComment = async (req, res) => {
@@ -1479,15 +1624,179 @@ const getComments = async (req, res) => {
 };
 
 const updateComment = async (req, res) => {
-    return res.status(501).json({ message: 'updateComment not implemented yet' });
+    try {
+        const { commentId } = req.params;
+        const { content } = req.body;
+        const userId = req.user.id;
+
+        if (!commentId) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Comment ID is required' 
+            });
+        }
+
+        if (!content || content.trim().length === 0) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Comment content is required' 
+            });
+        }
+
+        // Find the comment and verify ownership
+        const comment = await PostComment.findOne({
+            where: { id: commentId, userId, status: 'active' },
+            include: [
+                {
+                    model: UserTable,
+                    as: 'user',
+                    attributes: ['id', 'fullName', 'username', 'profilePicture', 'accountType', 'accountStatus']
+                }
+            ]
+        });
+
+        if (!comment) {
+            return res.status(404).json({ 
+                success: false, 
+                message: 'Comment not found or you do not have permission to update it' 
+            });
+        }
+
+        // Update the comment
+        await comment.update({
+            content: content.trim()
+        });
+
+        // Refresh the comment to get updated timestamp
+        await comment.reload({
+            include: [
+                {
+                    model: UserTable,
+                    as: 'user',
+                    attributes: ['id', 'fullName', 'username', 'profilePicture', 'accountType', 'accountStatus']
+                }
+            ]
+        });
+
+        // Format comment to match Flutter expectations
+        const commentData = comment.toJSON();
+        const formattedComment = {
+            id: commentData.id,
+            content: commentData.content,
+            createdAt: commentData.createdAt,
+            updatedAt: commentData.updatedAt,
+            user: {
+                id: commentData.user?.id,
+                fullName: commentData.user?.fullName,
+                profilePicture: commentData.user?.profilePicture || null
+            }
+        };
+
+        res.status(200).json({
+            success: true,
+            message: 'Comment updated successfully',
+            data: formattedComment  // Flutter expects: data.data
+        });
+
+    } catch (error) {
+        console.error('Update comment error:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Error updating comment', 
+            error: error.message 
+        });
+    }
 };
 
 const deleteComment = async (req, res) => {
-    return res.status(501).json({ message: 'deleteComment not implemented yet' });
+    try {
+        const { commentId } = req.params;
+        const userId = req.user.id;
+
+        if (!commentId) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Comment ID is required' 
+            });
+        }
+
+        // Find the comment and verify ownership
+        const comment = await PostComment.findOne({
+            where: { id: commentId, userId, status: 'active' }
+        });
+
+        if (!comment) {
+            return res.status(404).json({ 
+                success: false, 
+                message: 'Comment not found or you do not have permission to delete it' 
+            });
+        }
+
+        // Soft delete: set status to 'deleted' instead of actually deleting
+        await comment.update({
+            status: 'deleted'
+        });
+
+        res.status(200).json({
+            success: true,
+            message: 'Comment deleted successfully'
+        });
+
+    } catch (error) {
+        console.error('Delete comment error:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Error deleting comment', 
+            error: error.message 
+        });
+    }
 };
 
 const deletePost = async (req, res) => {
-    return res.status(501).json({ message: 'deletePost not implemented yet' });
+    try {
+        const { postId } = req.params;
+        const userId = req.user.id;
+
+        if (!postId) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Post ID is required' 
+            });
+        }
+
+        // Find the post and verify ownership
+        const post = await Post.findOne({
+            where: { id: postId, userId, status: 'active' }
+        });
+
+        if (!post) {
+            return res.status(404).json({ 
+                success: false, 
+                message: 'Post not found or you do not have permission to delete it' 
+            });
+        }
+
+        // Soft delete: set status to 'inactive' instead of actually deleting
+        await post.update({
+            status: 'inactive'
+        });
+
+        // Optionally delete associated media from Cloudinary and database
+        // For now, we'll just soft delete the post and keep media
+
+        res.status(200).json({
+            success: true,
+            message: 'Post deleted successfully'
+        });
+
+    } catch (error) {
+        console.error('Delete post error:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Error deleting post', 
+            error: error.message 
+        });
+    }
 };
 
 const getUserPosts = async (req, res) => {
