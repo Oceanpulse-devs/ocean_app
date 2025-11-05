@@ -269,16 +269,39 @@ function mapNestedFields(data, mapping) {
  * @returns {Object} - Wrapped response with products key
  */
 function wrapProductsList(response) {
-  if (response.data && Array.isArray(response.data) && response.data.length > 0) {
+  // Always wrap consistently, even for empty arrays
+  if (response.data && Array.isArray(response.data)) {
     return {
       ...response,
       data: {
-        products: response.data,
-        pagination: response.pagination
-      }
+        products: response.data, // Will be empty array if no products
+        pagination: response.pagination || {}
+      },
+      // Include searchInfo at top level if it exists
+      ...(response.searchInfo && { searchInfo: response.searchInfo })
     };
   }
-  return response;
+  // If data is not an array, ensure consistent structure
+  if (response.data && typeof response.data === 'object') {
+    return {
+      ...response,
+      data: {
+        products: [],
+        pagination: response.pagination || {},
+        ...response.data
+      },
+      ...(response.searchInfo && { searchInfo: response.searchInfo })
+    };
+  }
+  // Fallback: return with empty products structure
+  return {
+    ...response,
+    data: {
+      products: [],
+      pagination: response.pagination || {}
+    },
+    ...(response.searchInfo && { searchInfo: response.searchInfo })
+  };
 }
 
 /**
