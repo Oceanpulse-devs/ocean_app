@@ -624,24 +624,109 @@ class SubscriptionController {
       console.log('Processing successful payment:', paymentData.reference);
       console.log('Payment data:', JSON.stringify(paymentData, null, 2));
       
-      // Extract user ID from metadata
-      const userId = paymentData.metadata?.userId || paymentData.customer?.id;
-      const planId = paymentData.metadata?.planId;
-      
-      if (!userId) {
-        console.error('No user ID found in payment data');
+      const paymentRef = paymentData.reference;
+      if (!paymentRef) {
+        console.error('No payment reference found in payment data');
         return;
       }
       
-      // Update subscription status
-      await subscriptionService.updateUserSubscriptionStatus(
-        userId,
-        'active',
-        planId,
-        new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days from now
-      );
+      // Find subscription by payment reference first (most reliable)
+      const { UserSubscription, SubscriptionPlan } = require('../../models');
       
-      console.log('Subscription activated for user:', userId);
+      let subscription = await UserSubscription.findOne({
+        where: {
+          paymentReference: paymentRef,
+          status: 'pending'
+        }
+      });
+      
+      let finalUserId, finalPlanId, finalExpiresAt;
+      
+      if (subscription) {
+        // Found subscription by payment reference - use its data
+        console.log('✅ Found subscription by payment reference:', subscription.id);
+        finalUserId = subscription.userId;
+        finalPlanId = subscription.planId;
+        
+        // Calculate expiration date based on plan billing period
+        const plan = await SubscriptionPlan.findByPk(subscription.planId);
+        if (plan) {
+          const endDate = new Date();
+          endDate.setMonth(endDate.getMonth() + (plan.billingPeriod === 'yearly' ? 12 : 1));
+          finalExpiresAt = endDate;
+        } else {
+          finalExpiresAt = subscription.endDate;
+        }
+        
+        // Update the subscription record directly
+        await subscription.update({
+          status: 'active',
+          endDate: finalExpiresAt
+        });
+        console.log('✅ Updated subscription record to active');
+      } else {
+        // Fallback: Use metadata from payment webhook
+        const userId = paymentData.metadata?.userId || paymentData.customer?.email;
+        const planId = paymentData.metadata?.planId;
+        
+        if (!userId) {
+          console.error('❌ Cannot activate subscription: No subscription found by reference and missing userId in metadata');
+          console.error('Payment reference:', paymentRef);
+          console.error('Metadata:', paymentData.metadata);
+          return;
+        }
+        
+        // Try to find pending subscription by userId
+        subscription = await UserSubscription.findOne({
+          where: {
+            userId: userId,
+            status: 'pending'
+          },
+          order: [['created_at', 'DESC']]
+        });
+        
+        if (subscription) {
+          console.log('✅ Found pending subscription by userId:', subscription.id);
+          finalUserId = subscription.userId;
+          finalPlanId = subscription.planId || planId;
+          
+          if (!finalPlanId) {
+            console.error('❌ Cannot activate subscription: No planId found');
+            return;
+          }
+          
+          const plan = await SubscriptionPlan.findByPk(finalPlanId);
+          if (plan) {
+            const endDate = new Date();
+            endDate.setMonth(endDate.getMonth() + (plan.billingPeriod === 'yearly' ? 12 : 1));
+            finalExpiresAt = endDate;
+          } else {
+            finalExpiresAt = subscription.endDate;
+          }
+          
+          // Update payment reference and status
+          await subscription.update({
+            status: 'active',
+            paymentReference: paymentRef,
+            endDate: finalExpiresAt
+          });
+          console.log('✅ Updated subscription record to active');
+        } else {
+          console.error('❌ Cannot activate subscription: No subscription found by reference or userId');
+          console.error('Payment reference:', paymentRef);
+          console.error('UserId:', userId);
+          return;
+        }
+      }
+      
+      // Update user's subscription status in users table
+      await subscriptionService.updateUserSubscriptionStatus(
+        finalUserId,
+        'active',
+        finalPlanId,
+        finalExpiresAt
+      );
+      console.log('✅ Subscription activated for user:', finalUserId);
     } catch (error) {
       console.error('Error processing successful payment:', error);
     }

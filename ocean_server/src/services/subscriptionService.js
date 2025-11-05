@@ -122,16 +122,37 @@ class SubscriptionService {
         where: { id: userId }
       });
 
-      // Also update user_subscriptions table if we have a planId
-      if (planId && status === 'active') {
-        // Find the most recent subscription for this user
-        const subscription = await UserSubscription.findOne({
-          where: { 
-            userId: userId,
-            planId: planId
-          },
-          order: [['created_at', 'DESC']]
-        });
+      // Also update user_subscriptions table if status is 'active'
+      if (status === 'active') {
+        let subscription;
+        
+        if (planId) {
+          // Try to find by userId and planId first
+          subscription = await UserSubscription.findOne({
+            where: { 
+              userId: userId,
+              planId: planId
+            },
+            order: [['created_at', 'DESC']]
+          });
+        }
+        
+        // If not found and status is 'active', try finding any pending subscription for this user
+        // This handles cases where planId might be missing from metadata
+        if (!subscription) {
+          subscription = await UserSubscription.findOne({
+            where: { 
+              userId: userId,
+              status: 'pending'
+            },
+            order: [['created_at', 'DESC']]
+          });
+          
+          // If found pending subscription, update its planId if we have one
+          if (subscription && planId) {
+            await subscription.update({ planId: planId });
+          }
+        }
 
         if (subscription) {
           await UserSubscription.update({
@@ -141,9 +162,10 @@ class SubscriptionService {
             where: { id: subscription.id }
           });
           
-          console.log('Updated user_subscriptions table for subscription:', subscription.id);
+          console.log('✅ Updated user_subscriptions table for subscription:', subscription.id);
         } else {
-          console.log('No matching subscription found in user_subscriptions table');
+          console.log('⚠️ No matching subscription found in user_subscriptions table');
+          console.log('This might be normal if subscription record was already updated by webhook/callback');
         }
       }
       
