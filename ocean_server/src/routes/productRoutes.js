@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const authMiddleware = require('../middleware/authMiddleware');
+const optionalAuthMiddleware = require('../middleware/optionalAuthMiddleware');
 const productController = require('../controllers/productController');
 
 // Configure multer for file uploads
@@ -17,8 +18,8 @@ const upload = multer({
   }
 });
 
-// Public routes (no authentication required)
-router.get('/api/products', productController.getProducts);
+// Public routes (optional authentication - will set req.user if token provided)
+router.get('/api/products', optionalAuthMiddleware, productController.getProducts);
 router.get('/api/categories', productController.getCategories);
 router.get('/api/products/seller/:sellerId', productController.getSellerProducts);
 router.get('/api/users/:userId/products', productController.getUserProducts);
