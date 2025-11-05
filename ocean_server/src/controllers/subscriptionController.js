@@ -621,17 +621,19 @@ class SubscriptionController {
    */
   static async handleSuccessfulPayment(paymentData) {
     try {
-      console.log('Processing successful payment:', paymentData.reference);
+      console.log('🔔 Processing successful payment webhook:', paymentData.reference);
       console.log('Payment data:', JSON.stringify(paymentData, null, 2));
       
       const paymentRef = paymentData.reference;
       if (!paymentRef) {
-        console.error('No payment reference found in payment data');
+        console.error('❌ No payment reference found in payment data');
         return;
       }
       
       // Find subscription by payment reference first (most reliable)
       const { UserSubscription, SubscriptionPlan } = require('../../models');
+      
+      console.log('🔍 Searching for subscription by payment reference:', paymentRef);
       
       let subscription = await UserSubscription.findOne({
         where: {
@@ -644,7 +646,12 @@ class SubscriptionController {
       
       if (subscription) {
         // Found subscription by payment reference - use its data
-        console.log('✅ Found subscription by payment reference:', subscription.id);
+        console.log('✅ Found subscription by payment reference:', {
+          subscriptionId: subscription.id,
+          userId: subscription.userId,
+          planId: subscription.planId,
+          currentStatus: subscription.status
+        });
         finalUserId = subscription.userId;
         finalPlanId = subscription.planId;
         
@@ -663,11 +670,18 @@ class SubscriptionController {
           status: 'active',
           endDate: finalExpiresAt
         });
-        console.log('✅ Updated subscription record to active');
+        console.log('✅ Updated subscription record to active:', {
+          subscriptionId: subscription.id,
+          endDate: finalExpiresAt
+        });
       } else {
         // Fallback: Use metadata from payment webhook
         const userId = paymentData.metadata?.userId || paymentData.customer?.email;
         const planId = paymentData.metadata?.planId;
+        
+        console.log('⚠️ Subscription not found by payment reference, trying fallback methods...');
+        console.log('Metadata userId:', userId);
+        console.log('Metadata planId:', planId);
         
         if (!userId) {
           console.error('❌ Cannot activate subscription: No subscription found by reference and missing userId in metadata');
@@ -677,6 +691,7 @@ class SubscriptionController {
         }
         
         // Try to find pending subscription by userId
+        console.log('🔍 Trying to find subscription by userId:', userId);
         subscription = await UserSubscription.findOne({
           where: {
             userId: userId,
@@ -686,7 +701,11 @@ class SubscriptionController {
         });
         
         if (subscription) {
-          console.log('✅ Found pending subscription by userId:', subscription.id);
+          console.log('✅ Found pending subscription by userId:', {
+            subscriptionId: subscription.id,
+            planId: subscription.planId,
+            paymentReference: subscription.paymentReference
+          });
           finalUserId = subscription.userId;
           finalPlanId = subscription.planId || planId;
           
@@ -710,11 +729,30 @@ class SubscriptionController {
             paymentReference: paymentRef,
             endDate: finalExpiresAt
           });
-          console.log('✅ Updated subscription record to active');
+          console.log('✅ Updated subscription record to active with payment reference:', {
+            subscriptionId: subscription.id,
+            paymentReference: paymentRef,
+            endDate: finalExpiresAt
+          });
         } else {
           console.error('❌ Cannot activate subscription: No subscription found by reference or userId');
           console.error('Payment reference:', paymentRef);
           console.error('UserId:', userId);
+          
+          // Debug: List all subscriptions for this user
+          const allSubscriptions = await UserSubscription.findAll({
+            where: { userId: userId },
+            attributes: ['id', 'planId', 'status', 'paymentReference', 'created_at'],
+            order: [['created_at', 'DESC']]
+          });
+          console.error('All subscriptions for user:', allSubscriptions.map(s => ({
+            id: s.id,
+            planId: s.planId,
+            status: s.status,
+            paymentReference: s.paymentReference,
+            createdAt: s.created_at
+          })));
+          
           return;
         }
       }
@@ -726,9 +764,14 @@ class SubscriptionController {
         finalPlanId,
         finalExpiresAt
       );
-      console.log('✅ Subscription activated for user:', finalUserId);
+      console.log('✅ Subscription activated for user:', {
+        userId: finalUserId,
+        planId: finalPlanId,
+        expiresAt: finalExpiresAt
+      });
     } catch (error) {
-      console.error('Error processing successful payment:', error);
+      console.error('❌ Error processing successful payment:', error);
+      console.error('Error stack:', error.stack);
     }
   }
   
@@ -989,6 +1032,8 @@ class SubscriptionController {
         const { UserSubscription } = require('../../models');
         const paymentRef = reference || trxref;
         
+        console.log('🔍 Searching for subscription by payment reference:', paymentRef);
+        
         let subscription = await UserSubscription.findOne({
           where: {
             paymentReference: paymentRef,
@@ -1000,7 +1045,12 @@ class SubscriptionController {
         
         if (subscription) {
           // Found subscription by payment reference - use its data
-          console.log('✅ Found subscription by payment reference:', subscription.id);
+          console.log('✅ Found subscription by payment reference:', {
+            subscriptionId: subscription.id,
+            userId: subscription.userId,
+            planId: subscription.planId,
+            currentStatus: subscription.status
+          });
           finalUserId = subscription.userId;
           finalPlanId = subscription.planId;
           finalExpiresAt = paymentResult.expiresAt || subscription.endDate;
@@ -1010,17 +1060,17 @@ class SubscriptionController {
             status: 'active',
             endDate: finalExpiresAt
           });
-          console.log('✅ Updated subscription record to active');
-        } else if (paymentResult.userId && paymentResult.planId) {
-          // Fallback: Use metadata from payment verification
-          console.log('⚠️ Subscription not found by reference, using metadata from payment verification');
-          finalUserId = paymentResult.userId;
-          finalPlanId = paymentResult.planId;
-          finalExpiresAt = paymentResult.expiresAt;
+          console.log('✅ Updated subscription record to active:', {
+            subscriptionId: subscription.id,
+            endDate: finalExpiresAt
+          });
         } else {
+          // Subscription not found by reference - try fallback methods
+          console.log('⚠️ Subscription not found by payment reference, trying fallback methods...');
+          
           // Last resort: Try to find any pending subscription for the user from metadata
           if (paymentResult.userId) {
-            console.log('⚠️ Trying to find subscription by userId:', paymentResult.userId);
+            console.log('🔍 Trying to find subscription by userId:', paymentResult.userId);
             subscription = await UserSubscription.findOne({
               where: {
                 userId: paymentResult.userId,
@@ -1030,9 +1080,13 @@ class SubscriptionController {
             });
             
             if (subscription) {
-              console.log('✅ Found pending subscription by userId:', subscription.id);
+              console.log('✅ Found pending subscription by userId:', {
+                subscriptionId: subscription.id,
+                planId: subscription.planId,
+                paymentReference: subscription.paymentReference
+              });
               finalUserId = subscription.userId;
-              finalPlanId = subscription.planId;
+              finalPlanId = subscription.planId || paymentResult.planId;
               finalExpiresAt = paymentResult.expiresAt || subscription.endDate;
               
               // Update payment reference and status
@@ -1041,9 +1095,31 @@ class SubscriptionController {
                 paymentReference: paymentRef,
                 endDate: finalExpiresAt
               });
-              console.log('✅ Updated subscription record to active');
+              console.log('✅ Updated subscription record to active with payment reference:', {
+                subscriptionId: subscription.id,
+                paymentReference: paymentRef,
+                endDate: finalExpiresAt
+              });
             } else {
               console.error('❌ Cannot activate subscription: No subscription found by payment reference or userId');
+              console.error('Payment reference:', paymentRef);
+              console.error('UserId from payment result:', paymentResult.userId);
+              console.error('PlanId from payment result:', paymentResult.planId);
+              
+              // Debug: List all subscriptions for this user
+              const allSubscriptions = await UserSubscription.findAll({
+                where: { userId: paymentResult.userId },
+                attributes: ['id', 'planId', 'status', 'paymentReference', 'created_at'],
+                order: [['created_at', 'DESC']]
+              });
+              console.error('All subscriptions for user:', allSubscriptions.map(s => ({
+                id: s.id,
+                planId: s.planId,
+                status: s.status,
+                paymentReference: s.paymentReference,
+                createdAt: s.created_at
+              })));
+              
               return res.status(400).json({
                 success: false,
                 message: 'Cannot activate subscription: No matching subscription found',
@@ -1054,6 +1130,13 @@ class SubscriptionController {
                 }
               });
             }
+          } else if (paymentResult.userId && paymentResult.planId) {
+            // Fallback: Use metadata from payment verification (but this shouldn't happen if subscription exists)
+            console.log('⚠️ Using metadata from payment verification (subscription record may be missing)');
+            finalUserId = paymentResult.userId;
+            finalPlanId = paymentResult.planId;
+            finalExpiresAt = paymentResult.expiresAt;
+            console.warn('⚠️ Subscription record not found - activation may fail in updateUserSubscriptionStatus');
           } else {
             console.error('❌ Cannot activate subscription: Missing payment reference, userId, and planId');
             return res.status(400).json({

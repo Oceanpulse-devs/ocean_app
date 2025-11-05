@@ -124,10 +124,28 @@ class SubscriptionService {
 
       // Also update user_subscriptions table if status is 'active'
       if (status === 'active') {
-        let subscription;
+        console.log('🔍 Activating subscription:', { userId, planId, expiresAt });
         
-        if (planId) {
-          // Try to find by userId and planId first
+        // ALWAYS try to find pending subscription first (most reliable)
+        // This ensures we find the subscription even if planId is missing from metadata
+        let subscription = await UserSubscription.findOne({
+          where: { 
+            userId: userId,
+            status: 'pending'
+          },
+          order: [['created_at', 'DESC']]
+        });
+        
+        console.log('🔍 Pending subscription search result:', subscription ? {
+          id: subscription.id,
+          planId: subscription.planId,
+          paymentReference: subscription.paymentReference,
+          createdAt: subscription.created_at
+        } : 'null');
+        
+        // If not found by pending status, try with planId if provided
+        if (!subscription && planId) {
+          console.log('🔍 Trying to find subscription by userId + planId:', { userId, planId });
           subscription = await UserSubscription.findOne({
             where: { 
               userId: userId,
@@ -135,37 +153,61 @@ class SubscriptionService {
             },
             order: [['created_at', 'DESC']]
           });
+          
+          console.log('🔍 Subscription by userId + planId result:', subscription ? {
+            id: subscription.id,
+            status: subscription.status
+          } : 'null');
         }
         
-        // If not found and status is 'active', try finding any pending subscription for this user
-        // This handles cases where planId might be missing from metadata
-        if (!subscription) {
-          subscription = await UserSubscription.findOne({
-            where: { 
-              userId: userId,
-              status: 'pending'
-            },
-            order: [['created_at', 'DESC']]
+        // If found, update it
+        if (subscription) {
+          // Use subscription's planId if planId param is missing
+          const finalPlanId = planId || subscription.planId;
+          const finalExpiresAt = expiresAt || subscription.endDate;
+          
+          console.log('✅ Found subscription to activate:', {
+            subscriptionId: subscription.id,
+            currentStatus: subscription.status,
+            finalPlanId: finalPlanId,
+            finalExpiresAt: finalExpiresAt
           });
           
-          // If found pending subscription, update its planId if we have one
-          if (subscription && planId) {
-            await subscription.update({ planId: planId });
-          }
-        }
-
-        if (subscription) {
           await UserSubscription.update({
             status: status,
-            endDate: expiresAt
+            endDate: finalExpiresAt
           }, {
             where: { id: subscription.id }
           });
           
           console.log('✅ Updated user_subscriptions table for subscription:', subscription.id);
+          
+          // Also ensure users table has the correct planId
+          if (finalPlanId && finalPlanId !== planId) {
+            await UserTable.update({
+              current_plan_id: finalPlanId
+            }, {
+              where: { id: userId }
+            });
+            console.log('✅ Updated users table with correct planId:', finalPlanId);
+          }
         } else {
-          console.log('⚠️ No matching subscription found in user_subscriptions table');
-          console.log('This might be normal if subscription record was already updated by webhook/callback');
+          console.error('❌ No matching subscription found in user_subscriptions table');
+          console.error('Search parameters:', { userId, planId, status });
+          
+          // Debug: List all subscriptions for this user
+          const allSubscriptions = await UserSubscription.findAll({
+            where: { userId: userId },
+            attributes: ['id', 'planId', 'status', 'paymentReference', 'created_at'],
+            order: [['created_at', 'DESC']]
+          });
+          console.error('All subscriptions for user:', allSubscriptions.map(s => ({
+            id: s.id,
+            planId: s.planId,
+            status: s.status,
+            paymentReference: s.paymentReference,
+            createdAt: s.created_at
+          })));
         }
       }
       
