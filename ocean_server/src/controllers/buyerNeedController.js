@@ -863,7 +863,7 @@ class BuyerNeedController {
     }
   }
 
-  // Get buyer search insights (user-centric: shows users with their failed searches)
+  // Get buyer search insights (flat list: each search term with user info)
   async getBuyerSearchInsights(req, res) {
     try {
       const {
@@ -885,7 +885,7 @@ class BuyerNeedController {
       const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
       // Get all insights with user info (only logged-in users)
-      const insights = await db.BuyerSearchInsight.findAll({
+      const insights = await db.BuyerSearchInsight.findAndCountAll({
         where: {
           created_at: {
             [Op.gte]: sevenDaysAgo
@@ -898,7 +898,7 @@ class BuyerNeedController {
           {
             model: db.UserTable,
             as: 'user',
-            attributes: ['id', 'fullName', 'email', 'profilePicture', 'location', 'accountType'],
+            attributes: ['id', 'fullName', 'profilePicture'],
             required: true // Only include users who exist
           },
           {
@@ -908,104 +908,38 @@ class BuyerNeedController {
             required: false
           }
         ],
-        order: [['created_at', 'DESC']] // Newest searches first
+        order: [['created_at', 'DESC']], // Newest searches first
+        limit: parseInt(limit),
+        offset: (parseInt(page) - 1) * parseInt(limit)
       });
 
-      // Helper function to calculate time ago
-      const getTimeAgo = (timestamp) => {
-        const timeDiff = now - new Date(timestamp);
-        const hoursAgo = Math.floor(timeDiff / (1000 * 60 * 60));
-        const daysAgo = Math.floor(hoursAgo / 24);
-        
-        if (daysAgo > 0) {
-          return `${daysAgo} day${daysAgo > 1 ? 's' : ''} ago`;
-        } else if (hoursAgo > 0) {
-          return `${hoursAgo} hour${hoursAgo > 1 ? 's' : ''} ago`;
-        } else {
-          return 'Just now';
-        }
-      };
-
-      // Group insights by user_id
-      const usersMap = new Map();
-
-      insights.forEach(insight => {
-        const userId = insight.user_id;
-        
-        if (!usersMap.has(userId)) {
-          usersMap.set(userId, {
-            userId: userId,
-            user: {
-              id: insight.user.id,
-              fullName: insight.user.fullName,
-              email: insight.user.email,
-              profilePicture: insight.user.profilePicture,
-              location: insight.user.location,
-              accountType: insight.user.accountType
-            },
-            searches: [],
-            totalFailedSearches: 0,
-            lastSearched: null
-          });
-        }
-
-        const userData = usersMap.get(userId);
-        
-        // Add search to user's searches array
-        userData.searches.push({
-          id: insight.id,
-          searchTerm: insight.search_term,
-          category: insight.category?.name || null,
-          categoryId: insight.category_id || null,
-          location: insight.location || insight.user.location || null,
-          filters: insight.search_filters || {},
-          searchedAt: insight.created_at,
-          timeAgo: getTimeAgo(insight.created_at)
-        });
-
-        userData.totalFailedSearches++;
-        
-        // Update last searched timestamp (most recent)
-        if (!userData.lastSearched || insight.created_at > userData.lastSearched) {
-          userData.lastSearched = insight.created_at;
-        }
-      });
-
-      // Convert map to array and sort searches within each user (newest first)
-      let usersArray = Array.from(usersMap.values()).map(userData => {
-        // Sort user's searches by created_at DESC (newest first)
-        userData.searches.sort((a, b) => new Date(b.searchedAt) - new Date(a.searchedAt));
-        
+      // Map insights to flat list with user info (using backend field names)
+      const insightsArray = insights.rows.map(insight => {
         return {
-          userId: userData.userId,
-          user: userData.user,
-          totalFailedSearches: userData.totalFailedSearches,
-          lastSearched: getTimeAgo(userData.lastSearched),
-          searches: userData.searches // All searches (no limit)
+          id: `insight_${insight.id}`, // String format
+          user_id: insight.user_id, // Backend field name (snake_case)
+          fullName: insight.user?.fullName || null, // Backend field name (camelCase from UserTable)
+          profilePicture: insight.user?.profilePicture || null, // Backend field name (camelCase from UserTable)
+          search_term: insight.search_term, // Backend field name (snake_case)
+          created_at: insight.created_at, // Backend field name (snake_case)
+          category: insight.category?.name || null // Category name
         };
       });
 
-      // Sort users by most recent search (newest first)
-      usersArray.sort((a, b) => {
-        // Find the most recent search for each user
-        const aLatest = a.searches[0]?.searchedAt || 0;
-        const bLatest = b.searches[0]?.searchedAt || 0;
-        return new Date(bLatest) - new Date(aLatest);
-      });
-
-      // Pagination
-      const totalUsers = usersArray.length;
-      const offset = (parseInt(page) - 1) * parseInt(limit);
-      const paginatedUsers = usersArray.slice(offset, offset + parseInt(limit));
+      // Calculate pagination
+      const totalItems = insights.count;
+      const totalPages = Math.ceil(totalItems / parseInt(limit));
 
       res.json({
         success: true,
-        data: paginatedUsers,
-        pagination: {
-          current_page: parseInt(page),
-          total_pages: Math.ceil(totalUsers / parseInt(limit)),
-          total_items: totalUsers,
-          items_per_page: parseInt(limit)
+        data: {
+          insights: insightsArray,
+          pagination: {
+            current_page: parseInt(page),
+            total_pages: totalPages,
+            total_items: totalItems,
+            items_per_page: parseInt(limit)
+          }
         }
       });
 
