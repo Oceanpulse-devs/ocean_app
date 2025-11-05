@@ -795,29 +795,114 @@ class SubscriptionController {
       console.log('Payment verification result:', paymentResult);
       
       if (paymentResult.success && paymentResult.status === 'success') {
-        console.log('Updating subscription status:', {
+        console.log('Payment verification successful:', {
           userId: paymentResult.userId,
           planId: paymentResult.planId,
-          expiresAt: paymentResult.expiresAt
+          expiresAt: paymentResult.expiresAt,
+          reference: reference || trxref
         });
         
-        // Update subscription status
+        // Find subscription by payment reference first (most reliable)
+        const { UserSubscription } = require('../../models');
+        const paymentRef = reference || trxref;
+        
+        let subscription = await UserSubscription.findOne({
+          where: {
+            paymentReference: paymentRef,
+            status: 'pending'
+          }
+        });
+        
+        let finalUserId, finalPlanId, finalExpiresAt;
+        
+        if (subscription) {
+          // Found subscription by payment reference - use its data
+          console.log('✅ Found subscription by payment reference:', subscription.id);
+          finalUserId = subscription.userId;
+          finalPlanId = subscription.planId;
+          finalExpiresAt = paymentResult.expiresAt || subscription.endDate;
+          
+          // Update the subscription record directly
+          await subscription.update({
+            status: 'active',
+            endDate: finalExpiresAt
+          });
+          console.log('✅ Updated subscription record to active');
+        } else if (paymentResult.userId && paymentResult.planId) {
+          // Fallback: Use metadata from payment verification
+          console.log('⚠️ Subscription not found by reference, using metadata from payment verification');
+          finalUserId = paymentResult.userId;
+          finalPlanId = paymentResult.planId;
+          finalExpiresAt = paymentResult.expiresAt;
+        } else {
+          // Last resort: Try to find any pending subscription for the user from metadata
+          if (paymentResult.userId) {
+            console.log('⚠️ Trying to find subscription by userId:', paymentResult.userId);
+            subscription = await UserSubscription.findOne({
+              where: {
+                userId: paymentResult.userId,
+                status: 'pending'
+              },
+              order: [['created_at', 'DESC']]
+            });
+            
+            if (subscription) {
+              console.log('✅ Found pending subscription by userId:', subscription.id);
+              finalUserId = subscription.userId;
+              finalPlanId = subscription.planId;
+              finalExpiresAt = paymentResult.expiresAt || subscription.endDate;
+              
+              // Update payment reference and status
+              await subscription.update({
+                status: 'active',
+                paymentReference: paymentRef,
+                endDate: finalExpiresAt
+              });
+              console.log('✅ Updated subscription record to active');
+            } else {
+              console.error('❌ Cannot activate subscription: No subscription found by payment reference or userId');
+              return res.status(400).json({
+                success: false,
+                message: 'Cannot activate subscription: No matching subscription found',
+                details: {
+                  reference: paymentRef,
+                  userId: paymentResult.userId,
+                  planId: paymentResult.planId
+                }
+              });
+            }
+          } else {
+            console.error('❌ Cannot activate subscription: Missing payment reference, userId, and planId');
+            return res.status(400).json({
+              success: false,
+              message: 'Cannot activate subscription: Missing payment reference or metadata',
+              details: {
+                reference: paymentRef,
+                userId: paymentResult.userId,
+                planId: paymentResult.planId
+              }
+            });
+          }
+        }
+        
+        // Update user's subscription status in users table
         await subscriptionService.updateUserSubscriptionStatus(
-          paymentResult.userId,
+          finalUserId,
           'active',
-          paymentResult.planId,
-          paymentResult.expiresAt
+          finalPlanId,
+          finalExpiresAt
         );
+        console.log('✅ Updated user subscription status to active');
         
         // Send subscription confirmation email
         try {
-          const user = await subscriptionService.getUserById(paymentResult.userId);
-          const plan = await subscriptionService.getPlanById(paymentResult.planId);
+          const user = await subscriptionService.getUserById(finalUserId);
+          const plan = await subscriptionService.getPlanById(finalPlanId);
           
           if (user && plan) {
             // Check if this is a plan change or new subscription
-            const currentSubscriptionStatus = await SubscriptionStatusChecker.getUserSubscriptionStatus(paymentResult.userId);
-            const isPlanChange = currentSubscriptionStatus.hasActiveSubscription && currentSubscriptionStatus.plan && currentSubscriptionStatus.plan.id !== paymentResult.planId;
+            const currentSubscriptionStatus = await SubscriptionStatusChecker.getUserSubscriptionStatus(finalUserId);
+            const isPlanChange = currentSubscriptionStatus.hasActiveSubscription && currentSubscriptionStatus.plan && currentSubscriptionStatus.plan.id !== finalPlanId;
             
             let emailTemplate;
             
@@ -829,7 +914,7 @@ class SubscriptionController {
                 plan.displayName,
                 plan.price,
                 plan.currency,
-                paymentResult.expiresAt
+                finalExpiresAt
               );
               console.log('📈 Sending plan change email');
             } else {
@@ -839,7 +924,7 @@ class SubscriptionController {
                 plan.displayName,
                 plan.price,
                 plan.currency,
-                paymentResult.expiresAt
+                finalExpiresAt
               );
               console.log('🎉 Sending new subscription email');
             }
@@ -859,9 +944,9 @@ class SubscriptionController {
             reference: reference || trxref,
             status: 'success',
             subscription: {
-              planId: paymentResult.planId,
+              planId: finalPlanId,
               status: 'active',
-              expiresAt: paymentResult.expiresAt
+              expiresAt: finalExpiresAt
             }
           }
         });
