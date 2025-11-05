@@ -170,6 +170,23 @@ class CloudinaryService {
     }
 
     /**
+     * Upload AR model file (GLB) to Cloudinary
+     * @param {Buffer|string} file - GLB file to upload
+     * @param {string} productId - Product ID for organization
+     * @returns {Promise<Object>} Upload result
+     */
+    async uploadARModel(file, productId) {
+        const folder = `ocean-app/products/${productId}/ar-models`;
+        
+        const options = {
+            resource_type: 'raw', // GLB files are raw files, not images
+            // No transformations for 3D models
+        };
+
+        return await this.uploadFile(file, folder, options);
+    }
+
+    /**
      * Upload profile picture with face detection
      * @param {Buffer|string} file - File to upload
      * @param {string} userId - User ID for organization

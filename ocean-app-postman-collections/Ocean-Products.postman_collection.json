@@ -409,7 +409,7 @@
 								"{{productId}}"
 							]
 						},
-						"description": "Get single product details"
+						"description": "Get single product details. Response includes 'arModel' field (nullable) containing the URL to the GLB file if AR model is available."
 					},
 					"response": []
 				}
@@ -492,6 +492,12 @@
 									"key": "images",
 									"type": "file",
 									"src": []
+								},
+								{
+									"key": "arModel",
+									"type": "file",
+									"src": [],
+									"description": "Optional: GLB/GLTF file for AR model viewing (max 50MB)"
 								}
 							]
 						},
@@ -505,7 +511,7 @@
 								"products"
 							]
 						},
-						"description": "Create a new product with mandatory image uploads using form-data. All products must have at least one image. Note: Use valid category ID from the categories list. You can get available categories by calling the Get All Categories endpoint first."
+						"description": "Create a new product with mandatory image uploads using form-data. All products must have at least one image. Optional AR model (GLB/GLTF file, max 50MB) can be included for AR viewing. Note: Use valid category ID from the categories list. You can get available categories by calling the Get All Categories endpoint first."
 					},
 					"response": []
 				},
@@ -518,16 +524,55 @@
 								"key": "Authorization",
 								"value": "Bearer {{auth_token}}",
 								"type": "text"
-							},
-							{
-								"key": "Content-Type",
-								"value": "application/json",
-								"type": "text"
 							}
 						],
 						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"name\": \"Updated Product Name\",\n  \"description\": \"Updated product description\",\n  \"price\": 149.99,\n  \"quantity\": 5\n}"
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "name",
+									"value": "Updated Product Name",
+									"type": "text",
+									"description": "Product name (maps to title)"
+								},
+								{
+									"key": "description",
+									"value": "Updated product description",
+									"type": "text"
+								},
+								{
+									"key": "price",
+									"value": "149.99",
+									"type": "text"
+								},
+								{
+									"key": "currency",
+									"value": "USD",
+									"type": "text"
+								},
+								{
+									"key": "category",
+									"value": "Electronics",
+									"type": "text"
+								},
+								{
+									"key": "location",
+									"value": "Lagos, Nigeria",
+									"type": "text"
+								},
+								{
+									"key": "images",
+									"type": "file",
+									"src": [],
+									"description": "Optional: New product images (replaces existing)"
+								},
+								{
+									"key": "arModel",
+									"type": "file",
+									"src": [],
+									"description": "Optional: GLB/GLTF file for AR model (max 50MB, replaces existing)"
+								}
+							]
 						},
 						"url": {
 							"raw": "{{base_url}}/api/products/{{productId}}",
@@ -540,7 +585,7 @@
 								"{{productId}}"
 							]
 						},
-						"description": "Update an existing product"
+						"description": "Update an existing product. Supports both JSON and form-data formats. When uploading images or AR model, use form-data. AR model file (GLB/GLTF, max 50MB) is optional and will replace existing AR model if provided."
 					},
 					"response": []
 				},

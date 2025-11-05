@@ -11,7 +11,8 @@ const mapProductResponse = (product) => {
   const mapped = product.toJSON ? product.toJSON() : { ...product };
   return {
     ...mapped,
-    name: mapped.title  // Map title → name for frontend
+    name: mapped.title,  // Map title → name for frontend
+    arModel: mapped.arModel || null  // Include AR model URL
   };
 };
 
@@ -336,8 +337,31 @@ const createProduct = async (req, res) => {
             }
         }
 
-        // Update product with image URLs
-        await product.update({ images: imageUrls });
+        // Upload AR model if provided (optional)
+        let arModelUrl = null;
+        if (req.file && req.file.fieldname === 'arModel') {
+            try {
+                const arUploadResult = await cloudinaryService.uploadARModel(req.file.buffer, product.id);
+                
+                if (!arUploadResult.success) {
+                    console.error('AR model upload failed:', arUploadResult.error);
+                    // Don't fail the product creation if AR upload fails
+                    console.warn('Product created but AR model upload failed');
+                } else {
+                    arModelUrl = arUploadResult.url;
+                    console.log('✅ AR model uploaded successfully:', arModelUrl);
+                }
+            } catch (error) {
+                console.error('Error uploading AR model:', error);
+                // Don't fail the product creation if AR upload fails
+            }
+        }
+
+        // Update product with image URLs and AR model URL
+        await product.update({ 
+            images: imageUrls,
+            arModel: arModelUrl
+        });
 
         // Get created product with associations
         const createdProduct = await Product.findByPk(product.id, {
@@ -442,6 +466,25 @@ const updateProduct = async (req, res) => {
             // Update images if new ones were uploaded
             if (imageUrls.length > 0) {
                 updateData.images = imageUrls;
+            }
+        }
+
+        // Process AR model upload if provided (optional, replaces existing)
+        if (req.file && req.file.fieldname === 'arModel') {
+            try {
+                const arUploadResult = await cloudinaryService.uploadARModel(req.file.buffer, product.id);
+                
+                if (!arUploadResult.success) {
+                    console.error('AR model upload failed:', arUploadResult.error);
+                    // Don't fail the product update if AR upload fails
+                    console.warn('Product updated but AR model upload failed');
+                } else {
+                    updateData.arModel = arUploadResult.url;
+                    console.log('✅ AR model uploaded successfully:', arUploadResult.url);
+                }
+            } catch (error) {
+                console.error('Error uploading AR model:', error);
+                // Don't fail the product update if AR upload fails
             }
         }
 
