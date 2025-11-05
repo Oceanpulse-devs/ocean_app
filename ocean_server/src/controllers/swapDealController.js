@@ -63,7 +63,11 @@ class SwapDealController {
         condition,
         preferredSwapCategory,
         preferredSwapSubcategories,
-        swapConditions
+        swapConditions,
+        meetingLocation,
+        meeting_location,  // Also accept snake_case
+        meetingDate,
+        meeting_date  // Also accept snake_case
       } = req.body;
 
       const sellerId = req.user.id;
@@ -124,6 +128,53 @@ class SwapDealController {
         }
       }
 
+      // Validate and set meeting location with fallback
+      let swapMeetingLocation = meetingLocation || meeting_location;
+      swapMeetingLocation = swapMeetingLocation?.trim();
+      
+      // DEBUG: Log received meeting location
+      console.log('📍 Swap Deal Meeting Location received:', {
+          meetingLocation: meetingLocation,
+          meeting_location: meeting_location,
+          final: swapMeetingLocation,
+          isEmpty: !swapMeetingLocation || swapMeetingLocation.length === 0
+      });
+      
+      // If meeting location is empty or undefined, try to get from seller's profile
+      if (!swapMeetingLocation || swapMeetingLocation.length === 0) {
+          // Get seller's country/location as fallback
+          const sellerInfo = await db.SellersTable.findOne({
+              where: { userId: sellerId },
+              attributes: ['country', 'businessAddress']
+          });
+          
+          // Try seller's country, then business address, then default
+          swapMeetingLocation = sellerInfo?.country || 
+                              (sellerInfo?.businessAddress ? sellerInfo.businessAddress.split(',')[0].trim() : null) || 
+                              'Nigeria';
+          
+          console.log('⚠️ Swap Deal meeting location was empty/undefined, using fallback:', {
+              sellerCountry: sellerInfo?.country,
+              businessAddress: sellerInfo?.businessAddress,
+              finalLocation: swapMeetingLocation
+          });
+      }
+
+      // Parse meeting date if provided
+      let swapMeetingDate = null;
+      if (meetingDate || meeting_date) {
+          try {
+              swapMeetingDate = new Date(meetingDate || meeting_date);
+              if (isNaN(swapMeetingDate.getTime())) {
+                  swapMeetingDate = null;
+                  console.warn('Invalid meeting date format, setting to null');
+              }
+          } catch (error) {
+              console.warn('Invalid meeting date format:', error);
+              swapMeetingDate = null;
+          }
+      }
+
       // Create the swap deal
       const swapDeal = await db.SwapDeal.create({
         sellerId: sellerId,
@@ -138,8 +189,8 @@ class SwapDealController {
         title: `${productToSwap} - Swap Deal`,
         swapTerms: `Looking to swap ${productToSwap} (${brandToSwap || 'Any brand'}) in ${categoryToSwap} category`,
         preferredItems: `${categoryToSwap} items, preferably ${brandToSwap || 'any brand'}`,
-        meetingLocation: null,
-        meetingDate: null,
+        meetingLocation: swapMeetingLocation, // Use validated/fallback location
+        meetingDate: swapMeetingDate, // Use parsed date or null
         status: 'active',
         viewsCount: 0,
         proposalsCount: 0,

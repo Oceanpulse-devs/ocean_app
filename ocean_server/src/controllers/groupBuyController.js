@@ -277,6 +277,41 @@ class GroupBuyController {
         }
       }
 
+      // Validate and set location with fallback
+      let groupBuyLocation = location?.trim();
+      
+      // DEBUG: Log received location
+      console.log('📍 Group Buy Location received:', {
+          raw: location,
+          trimmed: groupBuyLocation,
+          isEmpty: !groupBuyLocation || groupBuyLocation.length === 0
+      });
+      
+      // If location is empty or undefined, try to get from creator's profile
+      if (!groupBuyLocation || groupBuyLocation.length === 0) {
+          // Get creator's country/location as fallback
+          const creator = await db.UserTable.findByPk(creator_id, {
+              include: [{
+                  model: db.SellersTable,
+                  as: 'seller',
+                  attributes: ['country', 'businessAddress'],
+                  required: false
+              }],
+              attributes: ['id', 'location']
+          });
+          
+          // Try seller's country, then user's location, then default
+          groupBuyLocation = creator?.seller?.country || 
+                           creator?.location || 
+                           'Nigeria';
+          
+          console.log('⚠️ Group Buy location was empty/undefined, using fallback:', {
+              sellerCountry: creator?.seller?.country,
+              userLocation: creator?.location,
+              finalLocation: groupBuyLocation
+          });
+      }
+
       const groupBuy = await db.GroupBuy.create({
         title,
         description,
@@ -291,7 +326,7 @@ class GroupBuyController {
         quantity_unit: quantity_unit || null,
         remaining_units: quantity_unit || null, // Initialize remaining units to total
         creator_id,
-        location,
+        location: groupBuyLocation, // Use validated/fallback location
         deadline: finalDeadline,  // Use transformed value
         terms_conditions,
         tags: tags ? (typeof tags === 'string' ? (tags.startsWith('[') ? JSON.parse(tags) : tags.split(',').map(t => t.trim())) : tags) : null,

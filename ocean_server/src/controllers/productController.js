@@ -280,8 +280,38 @@ const createProduct = async (req, res) => {
             });
         }
 
-        // Validate required fields
-        if (!productTitle || !description || !price || !category || !location) {
+        // Validate and set location with fallback
+        let productLocation = location?.trim();
+        
+        // DEBUG: Log received location
+        console.log('📍 Location received from frontend:', {
+            raw: location,
+            trimmed: productLocation,
+            isEmpty: !productLocation || productLocation.length === 0
+        });
+        
+        // If location is empty or undefined, try to get from seller's profile
+        if (!productLocation || productLocation.length === 0) {
+            // Get seller's country/location as fallback
+            const sellerInfo = await SellersTable.findOne({
+                where: { userId, verificationStatus: 'approved' },
+                attributes: ['country', 'businessAddress', 'businessName']
+            });
+            
+            // Try seller's country, then business address, then default
+            productLocation = sellerInfo?.country || 
+                           (sellerInfo?.businessAddress ? sellerInfo.businessAddress.split(',')[0].trim() : null) || 
+                           'Nigeria';
+            
+            console.log('⚠️ Location was empty/undefined, using fallback:', {
+                sellerCountry: sellerInfo?.country,
+                businessAddress: sellerInfo?.businessAddress,
+                finalLocation: productLocation
+            });
+        }
+
+        // Validate required fields (use productLocation instead of location)
+        if (!productTitle || !description || !price || !category || !productLocation) {
             return res.status(400).json({
                 message: "Title/Name, description, price, category, and location are required"
             });
@@ -309,7 +339,7 @@ const createProduct = async (req, res) => {
             category: category.trim(),
             subcategory: subcategory?.trim(),
             condition,
-            location: location.trim(),
+            location: productLocation, // Use the validated/fallback location
             images: [] // Will be populated with Cloudinary URLs
         });
 
