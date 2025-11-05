@@ -120,7 +120,6 @@ class SubscriptionAwareSearchService {
           query,
           category,
           location,
-          sortBy,
           hasSubscriptionPriority: userId ? await this.userHasSearchPriority(userId) : false
         }
       };

@@ -900,13 +900,8 @@ class BuyerNeedController {
             as: 'user',
             attributes: ['id', 'fullName', 'profilePicture'],
             required: true // Only include users who exist
-          },
-          {
-            model: db.ProductCategory,
-            as: 'category',
-            attributes: ['id', 'name'],
-            required: false
           }
+          // Removed ProductCategory join - category_id now stores category name directly
         ],
         order: [['created_at', 'DESC']], // Newest searches first
         limit: parseInt(limit),
@@ -922,7 +917,7 @@ class BuyerNeedController {
           profilePicture: insight.user?.profilePicture || null, // Backend field name (camelCase from UserTable)
           search_term: insight.search_term, // Backend field name (snake_case)
           created_at: insight.created_at, // Backend field name (snake_case)
-          category: insight.category?.name || null // Category name
+          category: insight.category_id || null // category_id now stores category name directly
         };
       });
 

@@ -16,9 +16,9 @@ module.exports = (sequelize, DataTypes) => {
       comment: 'User ID who performed the search (null for anonymous)'
     },
     category_id: {
-      type: DataTypes.CHAR(36),
+      type: DataTypes.STRING(255),
       allowNull: true,
-      comment: 'Category filter used during search (if any)'
+      comment: 'Category name or filter used during search (if any)'
     },
     location: {
       type: DataTypes.STRING(255),

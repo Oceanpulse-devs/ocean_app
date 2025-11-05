@@ -744,6 +744,133 @@
 				}
 			],
 			"description": "Reach management for buyer needs - controls how many people can contact the buyer"
+		},
+		{
+			"name": "Buyer Search Insights",
+			"item": [
+				{
+					"name": "Get Buyer Search Insights",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/buyer-needs/search-insights?page=1&limit=20",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"buyer-needs",
+								"search-insights"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1",
+									"description": "Page number (default: 1)"
+								},
+								{
+									"key": "limit",
+									"value": "20",
+									"description": "Items per page (default: 20)"
+								}
+							]
+						},
+						"description": "Get buyer search insights - shows failed product searches from the last 7 days. Only returns insights from logged-in users. Sorted by newest first. Requires seller authentication."
+					},
+					"response": []
+				},
+				{
+					"name": "Track Failed Search (Manual)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"search_term\": \"iPhone 15 Pro Max\",\n  \"category_id\": \"category-uuid-here\",\n  \"location\": \"Lagos\",\n  \"search_filters\": {\n    \"minPrice\": 1000,\n    \"maxPrice\": 50000,\n    \"condition\": \"new\"\n  },\n  \"device_type\": \"mobile\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/buyer-needs/search-insight/track",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"buyer-needs",
+								"search-insight",
+								"track"
+							]
+						},
+						"description": "Manually track a failed search. Note: Failed searches are automatically tracked when GET /api/products returns 0 results with a search query."
+					},
+					"response": []
+				},
+				{
+					"name": "Trigger Failed Search (Auto Tracking)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/products?search=NonExistentProduct12345&category=Electronics&minPrice=100000",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"products"
+							],
+							"query": [
+								{
+									"key": "search",
+									"value": "NonExistentProduct12345",
+									"description": "Search query that will return no results (to trigger tracking)"
+								},
+								{
+									"key": "category",
+									"value": "Electronics",
+									"description": "Category filter"
+								},
+								{
+									"key": "minPrice",
+									"value": "100000",
+									"description": "Min price filter"
+								},
+								{
+									"key": "location",
+									"value": "Lagos",
+									"description": "Location filter"
+								}
+							]
+						},
+						"description": "This endpoint automatically tracks failed searches when search returns 0 results. Use this to test automatic tracking - search for a product that doesn't exist. The failed search will be saved to buyer_search_insights table automatically."
+					},
+					"response": []
+				}
+			],
+			"description": "Buyer search insights - track and view failed product searches. Sellers can see what buyers are searching for but not finding, and message them directly."
 		}
 	],
 	"variable": [

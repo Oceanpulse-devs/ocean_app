@@ -269,9 +269,10 @@ const setupAssociations = () => {
 
   // Buyer Search Insight associations
   db.BuyerSearchInsight.belongsTo(db.UserTable, { foreignKey: 'user_id', as: 'user' });
-  db.BuyerSearchInsight.belongsTo(db.ProductCategory, { foreignKey: 'category_id', as: 'category' });
+  // Removed ProductCategory association - we're storing category names directly, not UUIDs
+  // db.BuyerSearchInsight.belongsTo(db.ProductCategory, { foreignKey: 'category_id', as: 'category' });
   db.UserTable.hasMany(db.BuyerSearchInsight, { foreignKey: 'user_id', as: 'searchInsights' });
-  db.ProductCategory.hasMany(db.BuyerSearchInsight, { foreignKey: 'category_id', as: 'searchInsights' });
+  // db.ProductCategory.hasMany(db.BuyerSearchInsight, { foreignKey: 'category_id', as: 'searchInsights' });
 
   // Market Analytics associations
   db.MarketAnalytics.belongsTo(db.ProductCategory, { foreignKey: 'category_id', as: 'category' });
