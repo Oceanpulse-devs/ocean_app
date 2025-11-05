@@ -1293,7 +1293,84 @@ const createComment = async (req, res) => {
 };
 
 const getComments = async (req, res) => {
-    return res.status(501).json({ message: 'getComments not implemented yet' });
+    try {
+        const { postId } = req.params;
+        const { page = 1, limit = 20 } = req.query;
+        const offset = (page - 1) * limit;
+
+        if (!postId) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Post ID is required' 
+            });
+        }
+
+        // Verify post exists
+        const post = await Post.findByPk(postId);
+        if (!post) {
+            return res.status(404).json({ 
+                success: false, 
+                message: 'Post not found' 
+            });
+        }
+
+        // Get top-level comments (no parent)
+        const { count, rows: comments } = await PostComment.findAndCountAll({
+            where: {
+                postId,
+                parentCommentId: null, // Only top-level comments
+                status: 'active'
+            },
+            include: [
+                {
+                    model: UserTable,
+                    as: 'user',
+                    attributes: ['id', 'fullName', 'username', 'profilePicture', 'accountType', 'accountStatus']
+                }
+            ],
+            order: [['createdAt', 'DESC']], // Newest comments first
+            limit: parseInt(limit),
+            offset: parseInt(offset)
+        });
+
+        // Format comments to match Flutter expectations
+        const formattedComments = comments.map(comment => {
+            const commentData = comment.toJSON();
+            return {
+                id: commentData.id,
+                content: commentData.content,
+                createdAt: commentData.createdAt,
+                updatedAt: commentData.updatedAt,
+                user: {
+                    id: commentData.user?.id,
+                    fullName: commentData.user?.fullName,
+                    profilePicture: commentData.user?.profilePicture || null
+                }
+            };
+        });
+
+        res.status(200).json({
+            success: true,
+            message: 'Comments retrieved successfully',
+            data: {
+                comments: formattedComments  // Flutter expects: data.data.comments
+            },
+            pagination: {
+                currentPage: parseInt(page),
+                totalPages: Math.ceil(count / limit),
+                totalItems: count,
+                itemsPerPage: parseInt(limit)
+            }
+        });
+
+    } catch (error) {
+        console.error('Get comments error:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Error retrieving comments', 
+            error: error.message 
+        });
+    }
 };
 
 const updateComment = async (req, res) => {
