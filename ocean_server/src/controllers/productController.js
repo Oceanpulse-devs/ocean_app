@@ -1980,7 +1980,7 @@ const getAllSavedItems = async (req, res) => {
                         verified: seller.accountStatus === 'verified',
                         rating: 4.5
                     },
-                    images: swapDeal.itemImages || ['🔄'],
+                    images: swapDeal.images || [],
                     description: swapDeal.description,
                     likes: 0,
                     timeAgo: getTimeAgo(savedItem.createdAt),
