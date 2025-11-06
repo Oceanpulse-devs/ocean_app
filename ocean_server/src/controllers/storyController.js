@@ -218,7 +218,7 @@ class StoryController {
                 order: [['createdAt', 'DESC']]
             });
 
-            // Group stories by user
+            // Group stories by user and format them like createStory response
             const groupedStories = stories.reduce((acc, story) => {
                 const userId = story.userId;
                 if (!acc[userId]) {
@@ -227,7 +227,31 @@ class StoryController {
                         stories: []
                     };
                 }
-                acc[userId].stories.push(story);
+                // Format story object to match createStory response format
+                acc[userId].stories.push({
+                    id: story.id,
+                    mediaUrl: story.mediaUrl,
+                    mediaType: story.mediaType,
+                    caption: story.caption,
+                    backgroundColor: story.backgroundColor,
+                    textColor: story.textColor,
+                    fontFamily: story.fontFamily,
+                    textOverlay: story.textOverlay,
+                    textSize: story.textSize ? parseFloat(story.textSize) : null,
+                    textPosition: story.textPositionX !== null && story.textPositionY !== null ? {
+                        x: parseFloat(story.textPositionX),
+                        y: parseFloat(story.textPositionY)
+                    } : null,
+                    music: story.musicTrack,
+                    emoji: story.emoji,
+                    emojiPosition: story.emojiPositionX !== null && story.emojiPositionY !== null ? {
+                        x: parseFloat(story.emojiPositionX),
+                        y: parseFloat(story.emojiPositionY)
+                    } : null,
+                    expiresAt: story.expiresAt,
+                    viewsCount: story.viewsCount,
+                    createdAt: story.createdAt
+                });
                 return acc;
             }, {});
 
@@ -282,10 +306,36 @@ class StoryController {
                 order: [['createdAt', 'ASC']]
             });
 
+            // Format stories to match createStory response format
+            const formattedStories = stories.map(story => ({
+                id: story.id,
+                mediaUrl: story.mediaUrl,
+                mediaType: story.mediaType,
+                caption: story.caption,
+                backgroundColor: story.backgroundColor,
+                textColor: story.textColor,
+                fontFamily: story.fontFamily,
+                textOverlay: story.textOverlay,
+                textSize: story.textSize ? parseFloat(story.textSize) : null,
+                textPosition: story.textPositionX !== null && story.textPositionY !== null ? {
+                    x: parseFloat(story.textPositionX),
+                    y: parseFloat(story.textPositionY)
+                } : null,
+                music: story.musicTrack,
+                emoji: story.emoji,
+                emojiPosition: story.emojiPositionX !== null && story.emojiPositionY !== null ? {
+                    x: parseFloat(story.emojiPositionX),
+                    y: parseFloat(story.emojiPositionY)
+                } : null,
+                expiresAt: story.expiresAt,
+                viewsCount: story.viewsCount,
+                createdAt: story.createdAt
+            }));
+
             res.json({
                 success: true,
                 message: 'User stories retrieved successfully',
-                data: stories
+                data: formattedStories
             });
 
         } catch (error) {
