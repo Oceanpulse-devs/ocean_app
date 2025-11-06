@@ -1809,45 +1809,45 @@ const getAllSavedItems = async (req, res) => {
             
             // If no contentType or sourceId, treat as general post
             if (!contentType || !sourceId || contentType === 'post') {
-                const user = post.user;
-                const media = post.media || [];
-                let mediaUrls = media.map(m => m.mediaUrl).filter(url => url);
+            const user = post.user;
+            const media = post.media || [];
+            let mediaUrls = media.map(m => m.mediaUrl).filter(url => url);
                 
-                if (mediaUrls.length === 0) {
-                    const directMedia = await PostMedia.findAll({
-                        where: { postId: post.id },
-                        attributes: ['mediaUrl', 'mediaType'],
-                        order: [['mediaOrder', 'ASC']]
-                    });
-                    mediaUrls = directMedia.map(m => m.mediaUrl).filter(url => url);
-                }
-                
-                return {
+            if (mediaUrls.length === 0) {
+                const directMedia = await PostMedia.findAll({
+                    where: { postId: post.id },
+                    attributes: ['mediaUrl', 'mediaType'],
+                    order: [['mediaOrder', 'ASC']]
+                });
+                mediaUrls = directMedia.map(m => m.mediaUrl).filter(url => url);
+            }
+            
+            return {
                     id: post.id,
                     type: 'post',
                     sourceId: savedItem.id, // Save reference ID
                     postId: post.id,
                     name: post.productName || (post.content ? post.content.substring(0, 50) : 'Post'),
                     price: null,
-                    originalPrice: null,
+                originalPrice: null,
                     condition: null,
                     category: null,
                     location: null,
-                    seller: {
+                seller: {
                         id: user.id,
-                        name: user.fullName,
-                        avatar: user.profilePicture || '👤',
-                        verified: user.accountStatus === 'verified',
-                        rating: 4.5
+                    name: user.fullName,
+                    avatar: user.profilePicture || '👤',
+                    verified: user.accountStatus === 'verified',
+                    rating: 4.5
                     },
                     images: mediaUrls.length > 0 ? mediaUrls : ['📱'],
-                    description: post.content,
+                description: post.content,
                     likes: 0,
-                    timeAgo: getTimeAgo(savedItem.createdAt),
+                timeAgo: getTimeAgo(savedItem.createdAt),
                     isLiked: false,
-                    isSaved: true,
-                    savedDate: savedItem.createdAt.toISOString().split('T')[0]
-                };
+                isSaved: true,
+                savedDate: savedItem.createdAt.toISOString().split('T')[0]
+            };
             }
             
             // Fetch actual item based on contentType
