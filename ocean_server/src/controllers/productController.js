@@ -1,4 +1,4 @@
-const { Product, ProductCategory, SavedProduct, SavedPost, Post, PostMedia, UserTable, SellersTable, UserFollows, Notification, ProductLike } = require('../../models');
+const { Product, ProductCategory, SavedProduct, SavedPost, Post, PostMedia, UserTable, SellersTable, UserFollows, Notification, ProductLike, Auction, SwapDeal, GroupBuy } = require('../../models');
 const { Op, Sequelize } = require('sequelize');
 const cloudinaryService = require('../services/cloudinaryService');
 const { checkSubscriptionLimit, incrementUsage } = require('../middleware/subscriptionMiddleware');
@@ -1701,7 +1701,7 @@ const getMyProducts = async (req, res) => {
     }
 };
 
-// Get all saved items (products + posts) for user
+// Get all saved items (products + posts with actual items extracted)
 const getAllSavedItems = async (req, res) => {
     try {
         const { page = 1, limit = 20, category } = req.query;
@@ -1737,7 +1737,7 @@ const getAllSavedItems = async (req, res) => {
             order: [['createdAt', 'DESC']]
         });
 
-        // Get saved posts
+        // Get saved posts - include contentType and sourceId
         const savedPosts = await SavedPost.findAndCountAll({
             where: { userId },
             include: [
@@ -1745,6 +1745,7 @@ const getAllSavedItems = async (req, res) => {
                     model: Post,
                     as: 'post',
                     where: { status: 'active' },
+                    attributes: ['id', 'contentType', 'sourceId', 'sourceTable', 'content', 'title', 'status', 'createdAt'], // Include contentType, sourceId, sourceTable
                     include: [
                         {
                             model: UserTable,
@@ -1769,9 +1770,13 @@ const getAllSavedItems = async (req, res) => {
             const product = savedItem.product;
             const seller = product.seller;
             
+            // Determine if it's a distress sale
+            const itemType = product.isDistressSale ? 'distress_sale' : 'product';
+            
             return {
-                id: savedItem.id,
-                type: 'product',
+                id: product.id, // Use product ID, not savedItem ID
+                type: itemType,
+                sourceId: savedItem.id, // Save reference ID
                 name: product.title,
                 price: `${product.currency || 'NGN'} ${product.price}`,
                 originalPrice: product.originalPrice ? `${product.currency || 'NGN'} ${product.originalPrice}` : null,
@@ -1779,9 +1784,10 @@ const getAllSavedItems = async (req, res) => {
                 category: product.category,
                 location: product.location,
                 seller: {
-                    name: seller.fullName,
-                    avatar: seller.profilePicture || '👤',
-                    verified: seller.accountStatus === 'verified',
+                    id: seller.user.id,
+                    name: seller.user.fullName || seller.businessName,
+                    avatar: seller.user.profilePicture || '👤',
+                    verified: seller.user.accountStatus === 'verified',
                     rating: 4.5 // TODO: Add rating to UserTable model
                 },
                 images: product.images || ['📦'],
@@ -1794,75 +1800,272 @@ const getAllSavedItems = async (req, res) => {
             };
         });
 
-        // Format saved posts for frontend
-        const formattedPosts = await Promise.all(savedPosts.rows.map(async (savedItem) => {
+        // Extract actual items from saved posts
+        const extractedItems = await Promise.all(savedPosts.rows.map(async (savedItem) => {
             const post = savedItem.post;
-            const user = post.user;
-            const media = post.media || [];
+            const contentType = post.contentType;
+            const sourceId = post.sourceId;
+            const sourceTable = post.sourceTable;
             
-            // Debug logging
-            console.log(`Post ${post.id} has ${media.length} media items from association:`, media.map(m => m.mediaUrl));
-            
-            // If no media from association, try direct query
-            let mediaUrls = media.map(m => m.mediaUrl).filter(url => url);
-            if (mediaUrls.length === 0) {
-                console.log(`No media from association, querying PostMedia directly for post ${post.id}`);
-                const directMedia = await PostMedia.findAll({
-                    where: { postId: post.id },
-                    attributes: ['mediaUrl', 'mediaType'],
-                    order: [['mediaOrder', 'ASC']]
-                });
-                mediaUrls = directMedia.map(m => m.mediaUrl).filter(url => url);
-                console.log(`Direct query found ${mediaUrls.length} media URLs:`, mediaUrls);
+            // If no contentType or sourceId, treat as general post
+            if (!contentType || !sourceId || contentType === 'post') {
+                const user = post.user;
+                const media = post.media || [];
+                let mediaUrls = media.map(m => m.mediaUrl).filter(url => url);
+                
+                if (mediaUrls.length === 0) {
+                    const directMedia = await PostMedia.findAll({
+                        where: { postId: post.id },
+                        attributes: ['mediaUrl', 'mediaType'],
+                        order: [['mediaOrder', 'ASC']]
+                    });
+                    mediaUrls = directMedia.map(m => m.mediaUrl).filter(url => url);
+                }
+                
+                return {
+                    id: post.id,
+                    type: 'post',
+                    sourceId: savedItem.id, // Save reference ID
+                    postId: post.id,
+                    name: post.title || 'Post',
+                    price: null,
+                    originalPrice: null,
+                    condition: null,
+                    category: null,
+                    location: null,
+                    seller: {
+                        id: user.id,
+                        name: user.fullName,
+                        avatar: user.profilePicture || '👤',
+                        verified: user.accountStatus === 'verified',
+                        rating: 4.5
+                    },
+                    images: mediaUrls.length > 0 ? mediaUrls : ['📱'],
+                    description: post.content,
+                    likes: 0,
+                    timeAgo: getTimeAgo(savedItem.createdAt),
+                    isLiked: false,
+                    isSaved: true,
+                    savedDate: savedItem.createdAt.toISOString().split('T')[0]
+                };
             }
             
-            // Determine if it's a buyer or seller post based on content
-            const isBuyerPost = post.content.toLowerCase().includes('looking for') || 
-                               post.content.toLowerCase().includes('want to buy') ||
-                               post.content.toLowerCase().includes('need');
+            // Fetch actual item based on contentType
+            let actualItem = null;
+            let itemType = contentType;
             
-            return {
-                id: savedItem.id,
-                type: 'feed-post',
-                postType: isBuyerPost ? 'buyer' : 'seller',
-                name: post.title || 'Post',
-                price: isBuyerPost ? null : extractPriceFromContent(post.content),
-                budget: isBuyerPost ? extractBudgetFromContent(post.content) : null,
-                originalPrice: null,
-                condition: extractConditionFromContent(post.content),
-                category: extractCategoryFromContent(post.content),
-                location: extractLocationFromContent(post.content),
-                seller: {
-                    name: user.fullName,
-                    avatar: user.profilePicture || '👤',
-                    verified: user.accountStatus === 'verified',
-                    rating: 4.5 // TODO: Add rating to UserTable model
-                },
-                buyer: isBuyerPost ? {
-                    name: user.fullName,
-                    avatar: user.profilePicture || '👤',
-                    verified: user.accountStatus === 'verified',
-                    rating: 4.5
-                } : null,
-                images: mediaUrls.length > 0 ? mediaUrls : ['📱'], // Use actual post images or fallback
-                description: post.content,
-                likes: post.likesCount || 0,
-                timeAgo: getTimeAgo(savedItem.createdAt),
-                isLiked: false, // TODO: Check if user liked this post
-                isSaved: true,
-                savedDate: savedItem.createdAt.toISOString().split('T')[0]
-            };
+            try {
+                if (contentType === 'auction' && sourceId) {
+                    actualItem = await Auction.findByPk(sourceId, {
+                        include: [
+                            {
+                                model: SellersTable,
+                                as: 'seller',
+                                attributes: ['id', 'userId', 'businessName', 'businessAddress', 'country', 'state', 'category', 'verificationStatus'],
+                                include: [
+                                    {
+                                        model: UserTable,
+                                        as: 'user',
+                                        attributes: ['id', 'fullName', 'email', 'profilePicture', 'accountType', 'accountStatus']
+                                    }
+                                ]
+                            }
+                        ]
+                    });
+                    if (!actualItem) return null;
+                } else if (contentType === 'swap_deal' && sourceId) {
+                    actualItem = await SwapDeal.findByPk(sourceId, {
+                        include: [
+                            {
+                                model: UserTable,
+                                as: 'seller',
+                                attributes: ['id', 'fullName', 'email', 'profilePicture', 'accountType', 'accountStatus']
+                            }
+                        ]
+                    });
+                    if (!actualItem) return null;
+                } else if (contentType === 'group_buy' && sourceId) {
+                    actualItem = await GroupBuy.findByPk(sourceId, {
+                        include: [
+                            {
+                                model: UserTable,
+                                as: 'creator',
+                                attributes: ['id', 'fullName', 'email', 'profilePicture', 'accountType', 'accountStatus']
+                            }
+                        ]
+                    });
+                    if (!actualItem) return null;
+                } else if ((contentType === 'product' || contentType === 'distress_sale') && sourceId) {
+                    actualItem = await Product.findByPk(sourceId, {
+                        include: [
+                            {
+                                model: SellersTable,
+                                as: 'seller',
+                                attributes: ['id', 'userId', 'businessName', 'businessAddress', 'country', 'state', 'category', 'verificationStatus'],
+                                include: [
+                                    {
+                                        model: UserTable,
+                                        as: 'user',
+                                        attributes: ['id', 'fullName', 'email', 'profilePicture', 'accountType', 'accountStatus']
+                                    }
+                                ]
+                            }
+                        ]
+                    });
+                    if (!actualItem) return null;
+                    itemType = actualItem.isDistressSale ? 'distress_sale' : 'product';
+                } else {
+                    // Unknown contentType, skip
+                    return null;
+                }
+            } catch (error) {
+                console.error(`Error fetching ${contentType} with ID ${sourceId}:`, error);
+                return null; // Skip items that can't be fetched
+            }
+            
+            // Format the extracted item based on type
+            if (contentType === 'auction') {
+                const auction = actualItem;
+                const seller = auction.seller;
+                
+                return {
+                    id: auction.id, // Use auction ID, not post ID
+                    type: 'auction',
+                    sourceId: savedItem.id, // Save reference ID
+                    postId: post.id, // Keep post ID for reference
+                    name: auction.title,
+                    price: `${auction.currency || 'NGN'} ${auction.currentPrice || auction.startingPrice}`,
+                    originalPrice: auction.reservePrice ? `${auction.currency || 'NGN'} ${auction.reservePrice}` : null,
+                    condition: auction.condition || null,
+                    category: auction.category,
+                    location: auction.location,
+                    seller: {
+                        id: seller.user.id,
+                        name: seller.user.fullName || seller.businessName,
+                        avatar: seller.user.profilePicture || '👤',
+                        verified: seller.user.accountStatus === 'verified',
+                        rating: 4.5
+                    },
+                    images: auction.images || ['🔨'],
+                    description: auction.description,
+                    likes: 0, // Auctions don't have likes in the same way
+                    timeAgo: getTimeAgo(savedItem.createdAt),
+                    isLiked: false,
+                    isSaved: true,
+                    savedDate: savedItem.createdAt.toISOString().split('T')[0],
+                    // Additional auction-specific fields
+                    startTime: auction.startTime,
+                    endTime: auction.endTime,
+                    currentBid: auction.currentPrice || auction.startingPrice
+                };
+            } else if (contentType === 'swap_deal') {
+                const swapDeal = actualItem;
+                const seller = swapDeal.seller;
+                
+                return {
+                    id: swapDeal.id, // Use swap deal ID, not post ID
+                    type: 'swap_deal',
+                    sourceId: savedItem.id, // Save reference ID
+                    postId: post.id, // Keep post ID for reference
+                    name: swapDeal.title,
+                    price: null, // Swap deals don't have prices
+                    originalPrice: null,
+                    condition: swapDeal.itemCondition || null,
+                    category: swapDeal.category,
+                    location: swapDeal.location,
+                    seller: {
+                        id: seller.id,
+                        name: seller.fullName,
+                        avatar: seller.profilePicture || '👤',
+                        verified: seller.accountStatus === 'verified',
+                        rating: 4.5
+                    },
+                    images: swapDeal.itemImages || ['🔄'],
+                    description: swapDeal.description,
+                    likes: 0,
+                    timeAgo: getTimeAgo(savedItem.createdAt),
+                    isLiked: false,
+                    isSaved: true,
+                    savedDate: savedItem.createdAt.toISOString().split('T')[0]
+                };
+            } else if (contentType === 'group_buy') {
+                const groupBuy = actualItem;
+                const creator = groupBuy.creator;
+                
+                return {
+                    id: groupBuy.id, // Use group buy ID, not post ID
+                    type: 'group_buy',
+                    sourceId: savedItem.id, // Save reference ID
+                    postId: post.id, // Keep post ID for reference
+                    name: groupBuy.title,
+                    price: `${groupBuy.currency || 'NGN'} ${groupBuy.pricePerUnit}`,
+                    originalPrice: groupBuy.originalPrice ? `${groupBuy.currency || 'NGN'} ${groupBuy.originalPrice}` : null,
+                    condition: null,
+                    category: groupBuy.category,
+                    location: groupBuy.location,
+                    seller: {
+                        id: creator.id,
+                        name: creator.fullName,
+                        avatar: creator.profilePicture || '👤',
+                        verified: creator.accountStatus === 'verified',
+                        rating: 4.5
+                    },
+                    images: groupBuy.images || ['👥'],
+                    description: groupBuy.description,
+                    likes: 0,
+                    timeAgo: getTimeAgo(savedItem.createdAt),
+                    isLiked: false,
+                    isSaved: true,
+                    savedDate: savedItem.createdAt.toISOString().split('T')[0]
+                };
+            } else if (contentType === 'product' || contentType === 'distress_sale') {
+                const product = actualItem;
+                const seller = product.seller;
+                const itemType = product.isDistressSale ? 'distress_sale' : 'product';
+                
+                return {
+                    id: product.id, // Use product ID, not post ID
+                    type: itemType,
+                    sourceId: savedItem.id, // Save reference ID
+                    postId: post.id, // Keep post ID for reference
+                    name: product.title,
+                    price: `${product.currency || 'NGN'} ${product.price}`,
+                    originalPrice: product.originalPrice ? `${product.currency || 'NGN'} ${product.originalPrice}` : null,
+                    condition: product.condition,
+                    category: product.category,
+                    location: product.location,
+                    seller: {
+                        id: seller.user.id,
+                        name: seller.user.fullName || seller.businessName,
+                        avatar: seller.user.profilePicture || '👤',
+                        verified: seller.user.accountStatus === 'verified',
+                        rating: 4.5
+                    },
+                    images: product.images || ['📦'],
+                    description: product.description,
+                    likes: product.likes || 0,
+                    timeAgo: getTimeAgo(savedItem.createdAt),
+                    isLiked: false,
+                    isSaved: true,
+                    savedDate: savedItem.createdAt.toISOString().split('T')[0]
+                };
+            }
+            
+            return null;
         }));
 
-        // Combine and sort by saved date
-        const allSavedItems = [...formattedProducts, ...formattedPosts]
+        // Filter out null items (failed fetches)
+        const validExtractedItems = extractedItems.filter(item => item !== null);
+
+        // Combine all saved items
+        const allSavedItems = [...formattedProducts, ...validExtractedItems]
             .sort((a, b) => new Date(b.savedDate) - new Date(a.savedDate));
 
         // Apply category filter if specified
         const filteredItems = category && category !== 'All' 
             ? allSavedItems.filter(item => {
-                if (category === 'Feed Posts') return item.type === 'feed-post';
-                return item.category === category;
+                if (category === 'Feed Posts') return item.type === 'post';
+                return item.category === category || item.type === category;
             })
             : allSavedItems;
 
