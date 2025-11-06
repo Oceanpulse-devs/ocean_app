@@ -849,11 +849,19 @@ const deleteSavedProduct = async (req, res) => {
         const { savedItemId } = req.params;
         const userId = req.user.id;
 
+        console.log('Delete saved product request:', { savedItemId, userId });
+
         const savedProduct = await SavedProduct.findOne({
             where: { id: savedItemId, userId }
         });
 
         if (!savedProduct) {
+            console.log('SavedProduct not found. Checking if it exists with different userId...');
+            const anySavedProduct = await SavedProduct.findOne({
+                where: { id: savedItemId }
+            });
+            console.log('SavedProduct exists:', !!anySavedProduct, anySavedProduct ? { userId: anySavedProduct.userId, currentUserId: userId } : 'N/A');
+            
             return res.status(404).json({ 
                 success: false,
                 message: "Saved product not found" 

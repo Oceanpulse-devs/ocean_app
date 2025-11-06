@@ -1023,11 +1023,19 @@ const deleteSavedPost = async (req, res) => {
         const { savedItemId } = req.params;
         const userId = req.user.id;
 
+        console.log('Delete saved post request:', { savedItemId, userId });
+
         const savedPost = await SavedPost.findOne({
             where: { id: savedItemId, userId }
         });
 
         if (!savedPost) {
+            console.log('SavedPost not found. Checking if it exists with different userId...');
+            const anySavedPost = await SavedPost.findOne({
+                where: { id: savedItemId }
+            });
+            console.log('SavedPost exists:', !!anySavedPost, anySavedPost ? { userId: anySavedPost.userId, currentUserId: userId } : 'N/A');
+            
             return res.status(404).json({ 
                 success: false,
                 message: "Saved post not found" 
