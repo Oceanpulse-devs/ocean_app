@@ -182,7 +182,7 @@ class StoryController {
         }
     }
 
-    // Get all stories for feed (only from users you follow)
+    // Get all stories for feed (from users you follow + your own stories)
     static async getAllStories(req, res) {
         try {
             const userId = req.user.id;
@@ -194,17 +194,11 @@ class StoryController {
             });
 
             const followingIds = followingUsers.map(follow => follow.followsUserId);
+            
+            // Include current user's own stories
+            followingIds.push(userId);
 
-            // If user follows no one, return empty array
-            if (followingIds.length === 0) {
-                return res.json({
-                    success: true,
-                    message: 'No stories available - follow users to see their stories',
-                    data: []
-                });
-            }
-
-            // Get stories from followed users that haven't expired
+            // Get stories from followed users and own stories that haven't expired
             const stories = await Story.findAll({
                 where: {
                     userId: { [Op.in]: followingIds },
