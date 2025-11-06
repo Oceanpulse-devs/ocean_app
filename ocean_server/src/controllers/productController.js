@@ -1745,7 +1745,7 @@ const getAllSavedItems = async (req, res) => {
                     model: Post,
                     as: 'post',
                     where: { status: 'active' },
-                    attributes: ['id', 'contentType', 'sourceId', 'sourceTable', 'content', 'productName', 'status', 'createdAt'], // Include contentType, sourceId, sourceTable
+                    attributes: ['id', 'userId', 'contentType', 'sourceId', 'sourceTable', 'content', 'productName', 'status', 'createdAt'], // Include userId for UserTable association, contentType, sourceId, sourceTable
                     include: [
                         {
                             model: UserTable,
