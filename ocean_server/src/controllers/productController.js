@@ -1745,7 +1745,7 @@ const getAllSavedItems = async (req, res) => {
                     model: Post,
                     as: 'post',
                     where: { status: 'active' },
-                    attributes: ['id', 'contentType', 'sourceId', 'sourceTable', 'content', 'title', 'status', 'createdAt'], // Include contentType, sourceId, sourceTable
+                    attributes: ['id', 'contentType', 'sourceId', 'sourceTable', 'content', 'productName', 'status', 'createdAt'], // Include contentType, sourceId, sourceTable
                     include: [
                         {
                             model: UserTable,
@@ -1827,7 +1827,7 @@ const getAllSavedItems = async (req, res) => {
                     type: 'post',
                     sourceId: savedItem.id, // Save reference ID
                     postId: post.id,
-                    name: post.title || 'Post',
+                    name: post.productName || (post.content ? post.content.substring(0, 50) : 'Post'),
                     price: null,
                     originalPrice: null,
                     condition: null,
