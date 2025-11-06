@@ -1820,7 +1820,7 @@ const getAllSavedItems = async (req, res) => {
             return {
                 id: product.id, // Use product ID, not savedItem ID
                 type: itemType,
-                sourceId: savedItem.id, // Save reference ID
+                sourceId: savedItem.getDataValue('id'), // Save reference ID - explicitly get SavedProduct's ID
                 name: product.title,
                 price: `${product.currency || 'NGN'} ${product.price}`,
                 originalPrice: product.originalPrice ? `${product.currency || 'NGN'} ${product.originalPrice}` : null,
@@ -1869,7 +1869,7 @@ const getAllSavedItems = async (req, res) => {
             return {
                     id: post.id,
                     type: 'post',
-                    sourceId: savedItem.id, // Save reference ID
+                    sourceId: savedItem.getDataValue('id'), // Save reference ID - explicitly get SavedPost's ID
                     postId: post.id,
                     name: post.productName || (post.content ? post.content.substring(0, 50) : 'Post'),
                     price: null,
@@ -1975,7 +1975,7 @@ const getAllSavedItems = async (req, res) => {
                 return {
                     id: auction.id, // Use auction ID, not post ID
                     type: 'auction',
-                    sourceId: savedItem.id, // Save reference ID
+                    sourceId: savedItem.getDataValue('id'), // Save reference ID - explicitly get SavedPost's ID
                     postId: post.id, // Keep post ID for reference
                     name: auction.title,
                     price: `${auction.currency || 'NGN'} ${auction.currentPrice || auction.startingPrice}`,
@@ -2023,7 +2023,7 @@ const getAllSavedItems = async (req, res) => {
                 return {
                     id: swapDeal.id, // Use swap deal ID, not post ID
                     type: 'swap_deal',
-                    sourceId: savedItem.id, // Save reference ID
+                    sourceId: savedItem.getDataValue('id'), // Save reference ID - explicitly get SavedPost's ID
                     postId: post.id, // Keep post ID for reference
                     name: swapDeal.title,
                     price: null, // Swap deals don't have prices
@@ -2053,7 +2053,7 @@ const getAllSavedItems = async (req, res) => {
                 return {
                     id: groupBuy.id, // Use group buy ID, not post ID
                     type: 'group_buy',
-                    sourceId: savedItem.id, // Save reference ID
+                    sourceId: savedItem.getDataValue('id'), // Save reference ID - explicitly get SavedPost's ID
                     postId: post.id, // Keep post ID for reference
                     name: groupBuy.title,
                     price: `${groupBuy.currency || 'NGN'} ${groupBuy.pricePerUnit}`,
@@ -2084,7 +2084,7 @@ const getAllSavedItems = async (req, res) => {
                 return {
                     id: product.id, // Use product ID, not post ID
                     type: itemType,
-                    sourceId: savedItem.id, // Save reference ID
+                    sourceId: savedItem.getDataValue('id'), // Save reference ID - explicitly get SavedPost's ID
                     postId: post.id, // Keep post ID for reference
                     name: product.title,
                     price: `${product.currency || 'NGN'} ${product.price}`,
