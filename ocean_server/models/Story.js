@@ -43,6 +43,46 @@ module.exports = (sequelize, DataTypes) => {
             allowNull: true,
             field: 'font_family'
         },
+        // New fields for frontend overlay features
+        textOverlay: {
+            type: DataTypes.TEXT,
+            allowNull: true,
+            field: 'text_overlay'
+        },
+        textSize: {
+            type: DataTypes.DECIMAL(5, 2),
+            allowNull: true,
+            field: 'text_size'
+        },
+        textPositionX: {
+            type: DataTypes.DECIMAL(10, 2),
+            allowNull: true,
+            field: 'text_position_x'
+        },
+        textPositionY: {
+            type: DataTypes.DECIMAL(10, 2),
+            allowNull: true,
+            field: 'text_position_y'
+        },
+        musicTrack: {
+            type: DataTypes.STRING(255),
+            allowNull: true,
+            field: 'music_track'
+        },
+        emoji: {
+            type: DataTypes.STRING(10),
+            allowNull: true
+        },
+        emojiPositionX: {
+            type: DataTypes.DECIMAL(10, 2),
+            allowNull: true,
+            field: 'emoji_position_x'
+        },
+        emojiPositionY: {
+            type: DataTypes.DECIMAL(10, 2),
+            allowNull: true,
+            field: 'emoji_position_y'
+        },
         expiresAt: {
             type: DataTypes.DATE,
             allowNull: false,

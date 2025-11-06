@@ -15,12 +15,47 @@ class StoryController {
             console.log('Media file check:', req.files?.media ? 'Found' : 'Not found');
             
             const userId = req.user.id;
+            
+            // Extract all fields from request body (matching frontend field names)
             const { 
                 caption, 
                 background_color, 
                 text_color, 
-                font_family 
+                font_family,
+                // New overlay fields from frontend
+                textOverlay,
+                textSize,
+                textPosition,
+                music,
+                emoji,
+                emojiPosition
             } = req.body;
+
+            // Parse position objects if they come as JSON strings
+            let textPositionX = null;
+            let textPositionY = null;
+            let emojiPositionX = null;
+            let emojiPositionY = null;
+
+            if (textPosition) {
+                try {
+                    const position = typeof textPosition === 'string' ? JSON.parse(textPosition) : textPosition;
+                    textPositionX = position.x !== undefined ? position.x : (position.dx !== undefined ? position.dx : null);
+                    textPositionY = position.y !== undefined ? position.y : (position.dy !== undefined ? position.dy : null);
+                } catch (e) {
+                    console.warn('Failed to parse textPosition:', e);
+                }
+            }
+
+            if (emojiPosition) {
+                try {
+                    const position = typeof emojiPosition === 'string' ? JSON.parse(emojiPosition) : emojiPosition;
+                    emojiPositionX = position.x !== undefined ? position.x : (position.dx !== undefined ? position.dx : null);
+                    emojiPositionY = position.y !== undefined ? position.y : (position.dy !== undefined ? position.dy : null);
+                } catch (e) {
+                    console.warn('Failed to parse emojiPosition:', e);
+                }
+            }
 
             // Check if media file is uploaded OR if it's a text-only story
             if (!req.files || req.files.length === 0) {
@@ -94,6 +129,15 @@ class StoryController {
                 backgroundColor: background_color || null,
                 textColor: text_color || null,
                 fontFamily: font_family || null,
+                // New overlay fields
+                textOverlay: textOverlay || null,
+                textSize: textSize ? parseFloat(textSize) : null,
+                textPositionX: textPositionX !== null ? parseFloat(textPositionX) : null,
+                textPositionY: textPositionY !== null ? parseFloat(textPositionY) : null,
+                musicTrack: music || null,
+                emoji: emoji || null,
+                emojiPositionX: emojiPositionX !== null ? parseFloat(emojiPositionX) : null,
+                emojiPositionY: emojiPositionY !== null ? parseFloat(emojiPositionY) : null,
                 expiresAt,
                 viewsCount: 0
             });
@@ -109,6 +153,19 @@ class StoryController {
                     backgroundColor: story.backgroundColor,
                     textColor: story.textColor,
                     fontFamily: story.fontFamily,
+                    // Include new fields in response
+                    textOverlay: story.textOverlay,
+                    textSize: story.textSize ? parseFloat(story.textSize) : null,
+                    textPosition: story.textPositionX !== null && story.textPositionY !== null ? {
+                        x: parseFloat(story.textPositionX),
+                        y: parseFloat(story.textPositionY)
+                    } : null,
+                    music: story.musicTrack,
+                    emoji: story.emoji,
+                    emojiPosition: story.emojiPositionX !== null && story.emojiPositionY !== null ? {
+                        x: parseFloat(story.emojiPositionX),
+                        y: parseFloat(story.emojiPositionY)
+                    } : null,
                     expiresAt: story.expiresAt,
                     viewsCount: story.viewsCount,
                     createdAt: story.createdAt
