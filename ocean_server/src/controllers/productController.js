@@ -1962,6 +1962,20 @@ const getAllSavedItems = async (req, res) => {
                 const swapDeal = actualItem;
                 const seller = swapDeal.seller;
                 
+                // Parse images if it's a JSON string, otherwise use as-is
+                let images = [];
+                if (swapDeal.images) {
+                    if (typeof swapDeal.images === 'string') {
+                        try {
+                            images = JSON.parse(swapDeal.images);
+                        } catch (e) {
+                            images = [];
+                        }
+                    } else if (Array.isArray(swapDeal.images)) {
+                        images = swapDeal.images;
+                    }
+                }
+                
                 return {
                     id: swapDeal.id, // Use swap deal ID, not post ID
                     type: 'swap_deal',
@@ -1980,7 +1994,7 @@ const getAllSavedItems = async (req, res) => {
                         verified: seller.accountStatus === 'verified',
                         rating: 4.5
                     },
-                    images: swapDeal.images || [],
+                    images: images,
                     description: swapDeal.description,
                     likes: 0,
                     timeAgo: getTimeAgo(savedItem.createdAt),
