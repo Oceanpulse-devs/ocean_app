@@ -59,6 +59,7 @@ router.put('/api/posts/:postId', authMiddleware, (req, res, next) => {
 router.delete('/api/posts/:postId', authMiddleware, feedController.deletePost);
 router.post('/api/posts/:postId/like', authMiddleware, feedController.toggleLike);
 router.post('/api/posts/:postId/save', authMiddleware, feedController.toggleSave);
+router.delete('/api/saved-posts/:savedItemId', authMiddleware, feedController.deleteSavedPost);
 router.post('/api/posts/:postId/share', authMiddleware, feedController.toggleShare);
 router.get('/api/saved-posts', authMiddleware, feedController.getSavedPosts);
 

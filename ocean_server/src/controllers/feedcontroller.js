@@ -1017,6 +1017,42 @@ const toggleSave = async (req, res) => {
     }
 };
 
+// Delete saved post by savedItemId
+const deleteSavedPost = async (req, res) => {
+    try {
+        const { savedItemId } = req.params;
+        const userId = req.user.id;
+
+        const savedPost = await SavedPost.findOne({
+            where: { id: savedItemId, userId }
+        });
+
+        if (!savedPost) {
+            return res.status(404).json({ 
+                success: false,
+                message: "Saved post not found" 
+            });
+        }
+
+        const postId = savedPost.postId;
+        await savedPost.destroy();
+        await Post.decrement('savedCount', { where: { id: postId } });
+
+        res.status(200).json({
+            success: true,
+            message: "Saved post removed successfully",
+            data: { isSaved: false }
+        });
+    } catch (error) {
+        console.error('Delete saved post error:', error);
+        res.status(500).json({ 
+            success: false,
+            message: "Error removing saved post", 
+            error: error.message 
+        });
+    }
+};
+
 // Share a post
 const toggleShare = async (req, res) => {
     try {
@@ -1853,6 +1889,7 @@ module.exports = {
     getPost,
     toggleLike,
     toggleSave,
+    deleteSavedPost,
     toggleShare,
     getSavedPosts,
     searchPosts,

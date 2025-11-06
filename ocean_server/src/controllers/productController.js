@@ -843,6 +843,42 @@ const getSavedProducts = async (req, res) => {
     }
 };
 
+// Delete saved product by savedItemId
+const deleteSavedProduct = async (req, res) => {
+    try {
+        const { savedItemId } = req.params;
+        const userId = req.user.id;
+
+        const savedProduct = await SavedProduct.findOne({
+            where: { id: savedItemId, userId }
+        });
+
+        if (!savedProduct) {
+            return res.status(404).json({ 
+                success: false,
+                message: "Saved product not found" 
+            });
+        }
+
+        const productId = savedProduct.productId;
+        await savedProduct.destroy();
+        await Product.decrement('saves', { where: { id: productId } });
+
+        res.status(200).json({
+            success: true,
+            message: "Saved product removed successfully",
+            data: { isSaved: false }
+        });
+    } catch (error) {
+        console.error('Delete saved product error:', error);
+        res.status(500).json({ 
+            success: false,
+            message: "Error removing saved product", 
+            error: error.message 
+        });
+    }
+};
+
 // Get product categories (Universal Categories System)
 const getCategories = async (req, res) => {
     try {
@@ -2156,6 +2192,7 @@ module.exports = {
     toggleLikeProduct,
     toggleSaveProduct,
     getSavedProducts,
+    deleteSavedProduct,
     getCategories,
     createCustomCategory,
     getCustomCategories,
