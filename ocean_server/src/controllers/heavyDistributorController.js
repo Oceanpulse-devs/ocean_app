@@ -182,18 +182,15 @@ class HeavyDistributorController {
         productBrand,
         subCategory,
         location,
-        minRating,
         isVerified,
         sortBy = 'rating',
-        sortOrder = 'DESC',
-        searchQuery
+        sortOrder = 'DESC'
       } = req.query;
 
       console.log('🔍 GET ALL DISTRIBUTORS - Direct Sellers Table Search:');
       console.log('   Business Type:', businessType);
       console.log('   Product Category:', productCategory);
       console.log('   Location:', location);
-      console.log('   Min Rating:', minRating);
 
       const offset = (page - 1) * limit;
 
@@ -227,7 +224,6 @@ class HeavyDistributorController {
 
       const optionalFilters = [];
       const normalizedLocation = location?.trim().toLowerCase();
-      const parsedMinRating = parseFloat(minRating);
 
       if (normalizedLocation) {
         optionalFilters.push({
@@ -236,12 +232,6 @@ class HeavyDistributorController {
             where(fn('LOWER', col('state')), { [Op.like]: `%${normalizedLocation}%` }),
             where(fn('LOWER', col('businessAddress')), { [Op.like]: `%${normalizedLocation}%` }),
           ]
-        });
-      }
-
-      if (!Number.isNaN(parsedMinRating) && parsedMinRating > 0) {
-        optionalFilters.push({
-          rating: { [Op.gte]: parsedMinRating }
         });
       }
 
@@ -257,16 +247,6 @@ class HeavyDistributorController {
         optionalFilters.push(
           literal(`JSON_SEARCH(COALESCE(selectedSubcategories, JSON_OBJECT()), 'one', ${escapedSubCategory}) IS NOT NULL`)
         );
-      }
-
-      if (searchQuery) {
-        optionalFilters.push({
-          [Op.or]: [
-            { businessName: { [Op.like]: `%${searchQuery}%` } },
-            { businessAddress: { [Op.like]: `%${searchQuery}%` } },
-            { country: { [Op.like]: `%${searchQuery}%` } }
-          ]
-        });
       }
 
       const optionalFiltersApplied = optionalFilters.length > 0;
@@ -742,16 +722,13 @@ class HeavyDistributorController {
         productCategory,
         productBrand,
         subCategory,
-        businessType,
-        minRating = 0,
-        maxDistance = 100
+        businessType
       } = req.query;
 
       console.log('🔍 SEARCH DISTRIBUTORS - Direct Sellers Table Search:');
       console.log('   Location:', location);
       console.log('   Product Category:', productCategory);
       console.log('   Business Type:', businessType);
-      console.log('   Min Rating:', minRating);
 
       const allowedSellerTypes = ['manufacturer', 'wholesaler', 'distributor', 'retailer'];
       const typeMap = {
@@ -784,7 +761,6 @@ class HeavyDistributorController {
 
       const optionalFilters = [];
       const normalizedLocation = location?.trim().toLowerCase();
-      const parsedMinRating = parseFloat(minRating);
 
       if (normalizedLocation) {
         optionalFilters.push({
@@ -793,12 +769,6 @@ class HeavyDistributorController {
             where(fn('LOWER', col('state')), { [Op.like]: `%${normalizedLocation}%` }),
             where(fn('LOWER', col('businessAddress')), { [Op.like]: `%${normalizedLocation}%` }),
           ]
-        });
-      }
-
-      if (!Number.isNaN(parsedMinRating) && parsedMinRating > 0) {
-        optionalFilters.push({
-          rating: { [Op.gte]: parsedMinRating }
         });
       }
 
@@ -937,10 +907,8 @@ class HeavyDistributorController {
         searchCriteria: {
           location,
           productCategory,
-          productBrand,
-          businessType,
-          minRating,
-          maxDistance
+          subCategory,
+          businessType
         }
       });
     } catch (error) {
