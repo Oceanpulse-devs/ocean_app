@@ -321,7 +321,7 @@ const getAuctions = async (req, res) => {
     if (category) {
       additionalConditions.push(
         Sequelize.where(
-          Sequelize.fn('LOWER', Sequelize.col('auctions.category')),
+          Sequelize.fn('LOWER', Sequelize.col('Auction.category')),
           { [Op.like]: `%${category.trim().toLowerCase()}%` }
         )
       );
@@ -331,7 +331,7 @@ const getAuctions = async (req, res) => {
     if (subcategory) {
       additionalConditions.push(
         Sequelize.where(
-          Sequelize.fn('LOWER', Sequelize.col('auctions.subcategory')),
+          Sequelize.fn('LOWER', Sequelize.col('Auction.subcategory')),
           { [Op.like]: `%${subcategory.trim().toLowerCase()}%` }
         )
       );
