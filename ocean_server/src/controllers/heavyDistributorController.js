@@ -180,6 +180,7 @@ class HeavyDistributorController {
         businessType,
         productCategory,
         productBrand,
+        subCategory,
         location,
         minRating,
         isVerified,
@@ -231,6 +232,12 @@ class HeavyDistributorController {
       if (productCategory) {
         whereClause.selectedCategories = {
           [Op.like]: `%${productCategory}%`
+        };
+      }
+
+      if (subCategory) {
+        whereClause.selectedSubcategories = {
+          [Op.like]: `%${subCategory}%`
         };
       }
 
@@ -681,6 +688,7 @@ class HeavyDistributorController {
         location,
         productCategory,
         productBrand,
+        subCategory,
         businessType,
         minRating = 0,
         maxDistance = 100
@@ -728,6 +736,12 @@ class HeavyDistributorController {
       if (productCategory) {
         whereClause.selectedCategories = {
           [Op.like]: `%${productCategory}%`
+        };
+      }
+
+      if (subCategory) {
+        whereClause.selectedSubcategories = {
+          [Op.like]: `%${subCategory}%`
         };
       }
 
