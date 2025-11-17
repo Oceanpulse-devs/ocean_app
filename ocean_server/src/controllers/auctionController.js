@@ -1,5 +1,5 @@
 const { Auction, AuctionBid, AuctionWatcher, SellersTable, UserTable, Notification } = require('../../models');
-const { Op, Sequelize } = require('sequelize');
+const { Op, Sequelize, fn, col, where } = require('sequelize');
 const { checkSubscriptionLimit, incrementUsage, checkFeatureAccess } = require('../middleware/subscriptionMiddleware');
 const { auctionCreationMiddleware } = require('../middleware/featureMiddleware');
 const SubscriptionAwareSearchService = require('../services/subscriptionAwareSearchService');
@@ -273,6 +273,7 @@ const getAuctions = async (req, res) => {
       limit = 20,
       status = 'active',
       category,
+      subcategory,
       minPrice,
       maxPrice,
       condition,
@@ -285,6 +286,8 @@ const getAuctions = async (req, res) => {
     console.log('🔍 GET AUCTIONS: Fetching auctions...');
     console.log('   Status:', status);
     console.log('   Category:', category);
+    console.log('   Subcategory:', subcategory);
+    console.log('   Search:', search);
     console.log('   Page:', page);
     console.log('   Limit:', limit);
 
@@ -301,22 +304,70 @@ const getAuctions = async (req, res) => {
       whereClause.status = 'active';
     }
     
+    // Build array of additional conditions
+    const additionalConditions = [];
+    
+    // Search filter - matches title or description
     if (search) {
-      whereClause[Op.or] = [
-        { title: { [Op.like]: `%${search}%` } },
-        { description: { [Op.like]: `%${search}%` } }
-      ];
+      additionalConditions.push({
+        [Op.or]: [
+          { title: { [Op.like]: `%${search}%` } },
+          { description: { [Op.like]: `%${search}%` } }
+        ]
+      });
     }
     
-    if (category) whereClause.category = category;
-    if (condition) whereClause.condition = condition;
-    if (location) whereClause.location = { [Op.like]: `%${location}%` };
-    if (minPrice) whereClause.currentPrice = { [Op.gte]: parseFloat(minPrice) };
+    // Category filter - case-insensitive matching
+    if (category) {
+      additionalConditions.push(
+        Sequelize.where(
+          Sequelize.fn('LOWER', Sequelize.col('category')),
+          { [Op.like]: `%${category.trim().toLowerCase()}%` }
+        )
+      );
+    }
+    
+    // Subcategory filter - case-insensitive matching
+    if (subcategory) {
+      additionalConditions.push(
+        Sequelize.where(
+          Sequelize.fn('LOWER', Sequelize.col('subcategory')),
+          { [Op.like]: `%${subcategory.trim().toLowerCase()}%` }
+        )
+      );
+    }
+    
+    // Optional filters (for future use)
+    if (condition) {
+      additionalConditions.push({ condition });
+    }
+    if (location) {
+      additionalConditions.push({ location: { [Op.like]: `%${location}%` } });
+    }
+    if (minPrice) {
+      additionalConditions.push({ currentPrice: { [Op.gte]: parseFloat(minPrice) } });
+    }
     if (maxPrice) {
-      whereClause.currentPrice = { 
-        ...whereClause.currentPrice, 
-        [Op.lte]: parseFloat(maxPrice) 
-      };
+      const priceCondition = { currentPrice: { [Op.lte]: parseFloat(maxPrice) } };
+      // If minPrice also exists, merge conditions
+      if (minPrice) {
+        const existingPriceIndex = additionalConditions.findIndex(c => c.currentPrice && c.currentPrice[Op.gte]);
+        if (existingPriceIndex >= 0) {
+          additionalConditions[existingPriceIndex].currentPrice = {
+            [Op.gte]: parseFloat(minPrice),
+            [Op.lte]: parseFloat(maxPrice)
+          };
+        } else {
+          additionalConditions.push(priceCondition);
+        }
+      } else {
+        additionalConditions.push(priceCondition);
+      }
+    }
+    
+    // Combine all conditions
+    if (additionalConditions.length > 0) {
+      whereClause[Op.and] = additionalConditions;
     }
 
     const offset = (parseInt(page) - 1) * parseInt(limit);
