@@ -197,21 +197,33 @@ class HeavyDistributorController {
 
       const offset = (page - 1) * limit;
 
+      const allowedSellerTypes = ['manufacturer', 'wholesaler', 'distributor', 'retailer'];
+
       // Build filter conditions for SellersTable
       const whereClause = {
         verificationStatus: 'approved', // Only approved sellers
-        sellerType: {
-          [Op.in]: ['manufacturer', 'wholesaler', 'distributor'] // Only distributor types
-        }
       };
 
       // Add business type filter if provided
       if (businessType) {
-        let mappedSellerType = businessType.toLowerCase();
-        if (mappedSellerType === 'heavy distributor') {
-          mappedSellerType = 'distributor';
-        }
+        const typeMap = {
+          'heavy distributor': 'distributor',
+          'heavy distributors': 'distributor',
+          'manufacturer': 'manufacturer',
+          'manufacturers': 'manufacturer',
+          'wholesaler': 'wholesaler',
+          'wholesalers': 'wholesaler',
+          'retailer': 'retailer',
+          'retailers': 'retailer',
+        };
+
+        const normalizedType = businessType.trim().toLowerCase();
+        const mappedSellerType = typeMap[normalizedType] || normalizedType;
         whereClause.sellerType = mappedSellerType;
+      } else {
+        whereClause.sellerType = {
+          [Op.in]: allowedSellerTypes
+        };
       }
 
       // Add location filter if provided
