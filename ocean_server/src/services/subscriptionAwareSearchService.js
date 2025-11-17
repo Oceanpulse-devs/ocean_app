@@ -196,12 +196,6 @@ class SubscriptionAwareSearchService {
             model: require('../../models').UserTable,
             as: 'creator',
             attributes: ['id', 'fullName', 'username']
-          },
-          {
-            model: require('../../models').ProductCategory,
-            as: 'groupBuyCategory',
-            attributes: ['id', 'name'],
-            required: false
           }
         ],
         order: orderClause,

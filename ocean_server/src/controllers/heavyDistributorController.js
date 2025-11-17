@@ -259,24 +259,24 @@ class HeavyDistributorController {
 
       const runPaginatedQuery = async (whereClause) => {
         return db.SellersTable.findAndCountAll({
-          where: whereClause,
-          attributes: [
-            'id',
-            'userId',
-            'businessName',
-            'businessAddress',
-            'country',
-            'sellerType',
-            'selectedCategories',
-            'selectedSubcategories',
-            'businessEmail',
-            'businessPhone',
-            'rating',
-            'totalSales',
-            'verificationStatus',
-            'createdAt',
-            'updatedAt'
-          ],
+        where: whereClause,
+        attributes: [
+          'id',
+          'userId',
+          'businessName',
+          'businessAddress',
+          'country',
+          'sellerType',
+          'selectedCategories',
+          'selectedSubcategories',
+          'businessEmail',
+          'businessPhone',
+          'rating',
+          'totalSales',
+          'verificationStatus',
+          'createdAt',
+          'updatedAt'
+        ],
           include: [
             {
               model: db.UserTable,
@@ -284,10 +284,10 @@ class HeavyDistributorController {
               attributes: ['id', 'fullName', 'username', 'profilePicture']
             }
           ],
-          order: [[sortBy, sortOrder]],
-          limit: parseInt(limit),
-          offset: parseInt(offset)
-        });
+        order: [[sortBy, sortOrder]],
+        limit: parseInt(limit),
+        offset: parseInt(offset)
+      });
       };
 
       console.log('   Where Clause:', JSON.stringify(combinedWhereClause, null, 2));
