@@ -284,6 +284,13 @@ class HeavyDistributorController {
           'createdAt',
           'updatedAt'
         ],
+        include: [
+          {
+            model: db.UserTable,
+            as: 'user',
+            attributes: ['id', 'fullName', 'username', 'profilePicture']
+          }
+        ],
         order: [[sortBy, sortOrder]],
         limit: parseInt(limit),
         offset: parseInt(offset)
@@ -295,11 +302,19 @@ class HeavyDistributorController {
       const distributors = sellers.map(seller => ({
         id: seller.id,
         supplierId: seller.userId,
+        supplierUser: seller.user ? {
+          id: seller.user.id,
+          fullName: seller.user.fullName,
+          username: seller.user.username,
+          profilePicture: seller.user.profilePicture,
+        } : null,
         businessName: seller.businessName,
         businessType: seller.sellerType,
         productCategories: seller.selectedCategories || [],
         productBrands: [], // Not available in sellers table
         coverageAreas: [seller.country], // Use country as coverage area
+        profilePicture: seller.user?.profilePicture || null,
+        displayName: seller.user?.fullName || seller.businessName,
         businessAddress: seller.businessAddress,
         contactInfo: {
           email: seller.businessEmail,
@@ -790,6 +805,13 @@ class HeavyDistributorController {
           'createdAt',
           'updatedAt'
         ],
+        include: [
+          {
+            model: db.UserTable,
+            as: 'user',
+            attributes: ['id', 'fullName', 'username', 'profilePicture']
+          }
+        ],
         order: [
           ['rating', 'DESC'],
           ['totalSales', 'DESC'],
@@ -804,11 +826,19 @@ class HeavyDistributorController {
       const distributors = sellers.map(seller => ({
         id: seller.id,
         supplierId: seller.userId,
+        supplierUser: seller.user ? {
+          id: seller.user.id,
+          fullName: seller.user.fullName,
+          username: seller.user.username,
+          profilePicture: seller.user.profilePicture,
+        } : null,
         businessName: seller.businessName,
         businessType: seller.sellerType,
         productCategories: seller.selectedCategories || [],
         productBrands: [], // Not available in sellers table
         coverageAreas: [seller.country], // Use country as coverage area
+        profilePicture: seller.user?.profilePicture || null,
+        displayName: seller.user?.fullName || seller.businessName,
         businessAddress: seller.businessAddress,
         contactInfo: {
           email: seller.businessEmail,
