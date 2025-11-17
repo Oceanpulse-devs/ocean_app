@@ -869,8 +869,18 @@ const deleteSavedProduct = async (req, res) => {
         }
 
         const productId = savedProduct.productId;
-        await savedProduct.destroy();
-        await Product.decrement('saves', { where: { id: productId } });
+        
+        // Delete ALL SavedProduct records for this productId and userId (handle duplicates)
+        const deletedCount = await SavedProduct.destroy({
+            where: { productId, userId }
+        });
+        
+        console.log(`Deleted ${deletedCount} SavedProduct record(s) for productId: ${productId}, userId: ${userId}`);
+        
+        await Product.decrement('saves', { 
+            where: { id: productId },
+            by: deletedCount // Decrement by the number of records deleted
+        });
 
         res.status(200).json({
             success: true,
