@@ -159,7 +159,13 @@ class SubscriptionAwareSearchService {
         ];
       }
       
-      if (category) whereClause.category_id = category;
+      // Category filter - case-insensitive matching on category field
+      if (category) {
+        whereClause.category = Sequelize.where(
+          Sequelize.fn('LOWER', Sequelize.col('GroupBuy.category')),
+          { [Op.like]: `%${category.trim().toLowerCase()}%` }
+        );
+      }
       
       // Subcategory filter - case-insensitive matching
       if (subcategory) {

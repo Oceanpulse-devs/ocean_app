@@ -17,8 +17,13 @@ module.exports = (sequelize, DataTypes) => {
   },
   category_id: {
     type: DataTypes.UUID,
+    allowNull: true,
+    comment: 'Product category ID (deprecated - use category field instead)'
+  },
+  category: {
+    type: DataTypes.STRING(255),
     allowNull: false,
-    comment: 'Product category for the group buy'
+    comment: 'Category name for the group buy (e.g., "Fashion", "Electronics")'
   },
   subcategory: {
     type: DataTypes.STRING(255),

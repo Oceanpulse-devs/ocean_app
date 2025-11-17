@@ -13,8 +13,8 @@ const mapGroupBuyResponse = (groupBuy) => {
     ...mapped,
     pricePerUnit: mapped.group_price,
     endDate: mapped.deadline,
-    category: mapped.groupBuyCategory?.name || mapped.category_id, // Include category name
-    categoryName: mapped.groupBuyCategory?.name // Explicit category name field
+    category: mapped.category || mapped.groupBuyCategory?.name || mapped.category_id, // Prioritize category field
+    categoryName: mapped.category || mapped.groupBuyCategory?.name // Explicit category name field
   };
 };
 
@@ -166,7 +166,8 @@ class GroupBuyController {
       const {
         title,
         description,
-        category_id,
+        category,  // Changed from category_id - accepts category name string
+        category_id,  // Keep for backward compatibility
         subcategory,
         product_name,
         product_image,
@@ -223,7 +224,9 @@ class GroupBuyController {
       }
 
       // Validate required fields
-      if (!title || !description || !category_id || !product_name || !original_price || !finalGroupPrice || !min_buyers || !finalDeadline) {
+      // Accept either category (string) or category_id (for backward compatibility)
+      const categoryName = category || category_id;
+      if (!title || !description || !categoryName || !product_name || !original_price || !finalGroupPrice || !min_buyers || !finalDeadline) {
         return res.status(400).json({
           success: false,
           message: 'Missing required fields'
@@ -267,26 +270,9 @@ class GroupBuyController {
         }
       }
 
-      // Accept category from seller's registration (no strict validation)
-      console.log('📋 Category received:', category_id);
-      
-      // Try to find category in database, but don't require it
-      let categoryId = category_id;
-      if (category_id.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
-        // Already a UUID
-        console.log('Category is UUID format');
-      } else {
-        // Try to find by name in database
-        const category = await db.ProductCategory.findOne({ where: { name: category_id } });
-        if (category) {
-          console.log('✅ Found category in database:', category.name, category.id);
-          categoryId = category.id;
-        } else {
-          console.log('⚠️ Category not in database, using as-is:', category_id);
-          // Accept the category string as-is from seller's selection
-          categoryId = category_id;
-        }
-      }
+      // Store category string directly (no lookup needed)
+      const finalCategoryName = categoryName?.trim();
+      console.log('📋 Category received:', finalCategoryName);
 
       // Validate and set location with fallback
       let groupBuyLocation = location?.trim();
@@ -326,8 +312,9 @@ class GroupBuyController {
       const groupBuy = await db.GroupBuy.create({
         title,
         description,
-        category_id: categoryId, // Use resolved category ID or name
-        subcategory: subcategory || null,
+        category: finalCategoryName,  // Store category name directly
+        category_id: null,  // No longer needed
+        subcategory: subcategory?.trim() || null,
         product_name,
         product_image: '', // Will be updated with first uploaded image URL
         original_price: numOriginalPrice,
@@ -532,7 +519,8 @@ class GroupBuyController {
         page = 1,
         limit = 10,
         status = 'active',
-        category_id,
+        category,  // Changed from category_id - accepts category name string
+        category_id,  // Keep for backward compatibility
         subcategory,
         location,
         min_price,
@@ -546,7 +534,7 @@ class GroupBuyController {
       // Use subscription-aware search service
       const searchResults = await SubscriptionAwareSearchService.searchGroupBuys({
         query: search,
-        category: category_id,
+        category: category || category_id,  // Use category if provided, fallback to category_id
         subcategory: subcategory,
         location,
         minPrice: min_price ? parseFloat(min_price) : undefined,
@@ -752,10 +740,17 @@ class GroupBuyController {
       console.log('🏪 Creator Seller:', JSON.stringify(groupBuyJson.creator?.seller, null, 2));
       console.log('💬 Conversation ID:', groupBuyJson.conversation_id);
 
+      // Map group buy response to include category name
+      const mappedResponse = mapGroupBuyResponse(groupBuyJson);
+      
       // Ensure conversation_id is included in response (also as conversationId for frontend compatibility)
       const responseData = {
-        ...groupBuyJson,
-        conversationId: groupBuyJson.conversation_id || groupBuyJson.conversationId
+        ...mappedResponse,
+        conversationId: groupBuyJson.conversation_id || groupBuyJson.conversationId,
+        // Preserve nested relationships
+        creator: groupBuyJson.creator,
+        groupBuyCategory: groupBuyJson.groupBuyCategory,
+        participants: groupBuyJson.participants
       };
 
       res.json({
