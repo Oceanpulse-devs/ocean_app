@@ -851,21 +851,47 @@ const deleteSavedProduct = async (req, res) => {
 
         console.log('Delete saved product request:', { savedItemId, userId });
 
-        const savedProduct = await SavedProduct.findOne({
+        // First, try to find by the savedItemId
+        let savedProduct = await SavedProduct.findOne({
             where: { id: savedItemId, userId }
         });
 
+        // If not found, check if it exists with different userId or try to find by productId
         if (!savedProduct) {
-            console.log('SavedProduct not found. Checking if it exists with different userId...');
+            console.log('SavedProduct not found by ID and userId. Checking alternatives...');
+            
+            // Check if record exists with different userId
             const anySavedProduct = await SavedProduct.findOne({
                 where: { id: savedItemId }
             });
-            console.log('SavedProduct exists:', !!anySavedProduct, anySavedProduct ? { userId: anySavedProduct.userId, currentUserId: userId } : 'N/A');
             
-            return res.status(404).json({ 
-                success: false,
-                message: "Saved product not found" 
-            });
+            if (anySavedProduct) {
+                console.log('SavedProduct exists but with different userId:', {
+                    savedProductId: anySavedProduct.id,
+                    savedProductUserId: anySavedProduct.userId,
+                    currentUserId: userId,
+                    productId: anySavedProduct.productId
+                });
+                
+                // If userId doesn't match, return error (security check)
+                if (anySavedProduct.userId !== userId) {
+                    return res.status(403).json({ 
+                        success: false,
+                        message: "You don't have permission to delete this saved item" 
+                    });
+                }
+                
+                // If userId matches but first query failed (edge case), use this record
+                savedProduct = anySavedProduct;
+            } else {
+                // Record doesn't exist at all - treat as already deleted (idempotent)
+                console.log('SavedProduct record does not exist - treating as already deleted');
+                return res.status(200).json({ 
+                    success: true,
+                    message: "Saved product already removed",
+                    data: { isSaved: false }
+                });
+            }
         }
 
         const productId = savedProduct.productId;
@@ -877,10 +903,13 @@ const deleteSavedProduct = async (req, res) => {
         
         console.log(`Deleted ${deletedCount} SavedProduct record(s) for productId: ${productId}, userId: ${userId}`);
         
-        await Product.decrement('saves', { 
-            where: { id: productId },
-            by: deletedCount // Decrement by the number of records deleted
-        });
+        // Only decrement if we actually deleted something
+        if (deletedCount > 0) {
+            await Product.decrement('saves', { 
+                where: { id: productId },
+                by: deletedCount
+            });
+        }
 
         res.status(200).json({
             success: true,
