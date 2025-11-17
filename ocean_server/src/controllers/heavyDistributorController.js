@@ -712,23 +712,34 @@ class HeavyDistributorController {
       console.log('   Business Type:', businessType);
       console.log('   Min Rating:', minRating);
 
-      // Build search conditions for SellersTable
-      const whereClause = {
-        verificationStatus: 'approved', // Only approved sellers
-        sellerType: {
-          [Op.in]: ['manufacturer', 'wholesaler', 'distributor'] // Only distributor types
-        }
+      const allowedSellerTypes = ['manufacturer', 'wholesaler', 'distributor', 'retailer'];
+      const typeMap = {
+        'heavy distributor': 'distributor',
+        'heavy distributors': 'distributor',
+        'manufacturer': 'manufacturer',
+        'manufacturers': 'manufacturer',
+        'wholesaler': 'wholesaler',
+        'wholesalers': 'wholesaler',
+        'retailer': 'retailer',
+        'retailers': 'retailer',
       };
 
-      // Add business type filter if provided
-      if (businessType) {
-        // Map frontend business types to backend seller types
-        let mappedSellerType = businessType.toLowerCase();
-        if (mappedSellerType === 'heavy distributor') {
-          mappedSellerType = 'distributor';
-        }
-        whereClause.sellerType = mappedSellerType;
-      }
+      const normalizedType = typeof businessType === 'string'
+        ? businessType.trim().toLowerCase()
+        : null;
+      const mappedSellerType = normalizedType
+        ? (typeMap[normalizedType] || normalizedType)
+        : null;
+
+      // Build search conditions for SellersTable
+      const whereClause = {
+        verificationStatus: {
+          [Op.in]: ['approved', 'active']
+        },
+        sellerType: mappedSellerType
+          ? mappedSellerType
+          : { [Op.in]: allowedSellerTypes },
+      };
 
       // Add location filter if provided
       if (location) {
