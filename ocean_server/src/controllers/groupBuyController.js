@@ -12,7 +12,9 @@ const mapGroupBuyResponse = (groupBuy) => {
   return {
     ...mapped,
     pricePerUnit: mapped.group_price,
-    endDate: mapped.deadline
+    endDate: mapped.deadline,
+    category: mapped.groupBuyCategory?.name || mapped.category_id, // Include category name
+    categoryName: mapped.groupBuyCategory?.name // Explicit category name field
   };
 };
 

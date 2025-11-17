@@ -325,7 +325,7 @@ class SwapDealController {
       if (category) {
         additionalConditions.push(
           Sequelize.where(
-            Sequelize.fn('LOWER', Sequelize.col('SwapDeal.categoryToSwap')),
+            Sequelize.fn('LOWER', Sequelize.col('swap_deals.category_to_swap')),
             { [Op.like]: `%${category.trim().toLowerCase()}%` }
           )
         );
@@ -336,7 +336,7 @@ class SwapDealController {
       if (subcategory) {
         additionalConditions.push(
           Sequelize.where(
-            Sequelize.fn('LOWER', Sequelize.col('SwapDeal.preferredSwapSubcategories')),
+            Sequelize.fn('LOWER', Sequelize.col('swap_deals.preferred_swap_subcategories')),
             { [Op.like]: `%${subcategory.trim().toLowerCase()}%` }
           )
         );

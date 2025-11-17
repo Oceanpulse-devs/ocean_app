@@ -185,11 +185,19 @@ class SubscriptionAwareSearchService {
 
       const { count, rows: groupBuys } = await GroupBuy.findAndCountAll({
         where: whereClause,
-        include: [{
-          model: require('../../models').UserTable,
-          as: 'creator',
-          attributes: ['id', 'fullName', 'username']
-        }],
+        include: [
+          {
+            model: require('../../models').UserTable,
+            as: 'creator',
+            attributes: ['id', 'fullName', 'username']
+          },
+          {
+            model: require('../../models').ProductCategory,
+            as: 'groupBuyCategory',
+            attributes: ['id', 'name'],
+            required: false
+          }
+        ],
         order: orderClause,
         limit: parseInt(limit),
         offset: offset
