@@ -2050,14 +2050,28 @@ const getAllSavedItems = async (req, res) => {
                 const groupBuy = actualItem;
                 const creator = groupBuy.creator;
                 
+                // Parse product_image if it's a JSON string, otherwise use as-is
+                let images = [];
+                if (groupBuy.product_image) {
+                    if (typeof groupBuy.product_image === 'string') {
+                        try {
+                            images = JSON.parse(groupBuy.product_image);
+                        } catch (e) {
+                            images = [];
+                        }
+                    } else if (Array.isArray(groupBuy.product_image)) {
+                        images = groupBuy.product_image;
+                    }
+                }
+                
                 return {
                     id: groupBuy.id, // Use group buy ID, not post ID
                     type: 'group_buy',
                     sourceId: savedItem.getDataValue('id'), // Save reference ID - explicitly get SavedPost's ID
                     postId: post.id, // Keep post ID for reference
-                    name: groupBuy.title,
-                    price: `${groupBuy.currency || 'NGN'} ${groupBuy.pricePerUnit}`,
-                    originalPrice: groupBuy.originalPrice ? `${groupBuy.currency || 'NGN'} ${groupBuy.originalPrice}` : null,
+                    name: groupBuy.title || groupBuy.product_name, // Use title or product_name
+                    price: `NGN ${groupBuy.group_price}`, // Use group_price (not pricePerUnit)
+                    originalPrice: groupBuy.original_price ? `NGN ${groupBuy.original_price}` : null, // Use original_price (not originalPrice)
                     condition: null,
                     category: groupBuy.category,
                     location: groupBuy.location,
@@ -2068,7 +2082,7 @@ const getAllSavedItems = async (req, res) => {
                         verified: creator.accountStatus === 'verified',
                         rating: 4.5
                     },
-                    images: groupBuy.images || ['👥'],
+                    images: images.length > 0 ? images : ['👥'], // Use parsed product_image
                     description: groupBuy.description,
                     likes: 0,
                     timeAgo: getTimeAgo(savedItem.createdAt),
