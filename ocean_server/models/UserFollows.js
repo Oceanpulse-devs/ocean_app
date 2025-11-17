@@ -10,10 +10,12 @@ module.exports = (sequelize, DataTypes) => {
     userId: {
       type: DataTypes.UUID,
       allowNull: false,
+      field: 'user_id'  // Map to snake_case column
     },
     followsUserId: {
       type: DataTypes.UUID,
       allowNull: false,
+      field: 'follows_user_id'  // Map to snake_case column
     }
   }, {
     tableName: 'user_follows',
