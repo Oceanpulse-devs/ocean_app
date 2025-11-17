@@ -198,33 +198,33 @@ class HeavyDistributorController {
       const offset = (page - 1) * limit;
 
       const allowedSellerTypes = ['manufacturer', 'wholesaler', 'distributor', 'retailer'];
+      const typeMap = {
+        'heavy distributor': 'distributor',
+        'heavy distributors': 'distributor',
+        'manufacturer': 'manufacturer',
+        'manufacturers': 'manufacturer',
+        'wholesaler': 'wholesaler',
+        'wholesalers': 'wholesaler',
+        'retailer': 'retailer',
+        'retailers': 'retailer',
+      };
+
+      const normalizedType = typeof businessType === 'string'
+        ? businessType.trim().toLowerCase()
+        : null;
+      const mappedSellerType = normalizedType
+        ? (typeMap[normalizedType] || normalizedType)
+        : null;
 
       // Build filter conditions for SellersTable
       const whereClause = {
-        verificationStatus: 'approved', // Only approved sellers
+        verificationStatus: {
+          [Op.in]: ['approved', 'active']
+        },
+        sellerType: mappedSellerType
+          ? mappedSellerType
+          : { [Op.in]: allowedSellerTypes },
       };
-
-      // Add business type filter if provided
-      if (businessType) {
-        const typeMap = {
-          'heavy distributor': 'distributor',
-          'heavy distributors': 'distributor',
-          'manufacturer': 'manufacturer',
-          'manufacturers': 'manufacturer',
-          'wholesaler': 'wholesaler',
-          'wholesalers': 'wholesaler',
-          'retailer': 'retailer',
-          'retailers': 'retailer',
-        };
-
-        const normalizedType = businessType.trim().toLowerCase();
-        const mappedSellerType = typeMap[normalizedType] || normalizedType;
-        whereClause.sellerType = mappedSellerType;
-      } else {
-        whereClause.sellerType = {
-          [Op.in]: allowedSellerTypes
-        };
-      }
 
       // Add location filter if provided
       if (location) {
