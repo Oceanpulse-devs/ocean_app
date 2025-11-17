@@ -217,10 +217,13 @@ const getHomeFeed = async (req, res) => {
                     };
                 } else if (postData.contentType === 'group_buy') {
                     // Group buy post format
+                    const groupBuyId = postData.sourceId || postData.feedMetadata?.group_buy_id || null;
                     formattedPost = {
                         id: postData.id,
                         type: 'group_buy',
                         contentType: postData.contentType,
+                        bulkPurchaseId: groupBuyId, // Add for frontend mapping
+                        groupBuyId: groupBuyId, // Also add as alternative
                         createdAt: postData.createdAt,
                         updatedAt: postData.updatedAt,
                         user: {
@@ -231,6 +234,7 @@ const getHomeFeed = async (req, res) => {
                             location: postData.user.location
                         },
                         groupBuy: {
+                            id: groupBuyId, // Add id to groupBuy object
                             title: postData.productName || 'Group Buy',
                             price: postData.price ? `₦${parseInt(postData.price).toLocaleString()}` : 'Price not specified',
                             description: postData.content,
@@ -2103,6 +2107,7 @@ const getLikedPosts = async (req, res) => {
                         createdAt: postData.createdAt,
                         updatedAt: postData.updatedAt,
                         bulkPurchaseId: groupBuyId, // ✅ Required for navigation
+                        groupBuyId: groupBuyId, // ✅ Also add as alternative
                         sourceId: postData.sourceId || groupBuyId, // ✅ Required for navigation
                         sourceTable: postData.sourceTable || 'group_buys', // ✅ Required for navigation
                         user: {
