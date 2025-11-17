@@ -392,44 +392,56 @@ db.sequelize.sync({
 }).then(() => {
     console.log('✅ Timestamps updated for existing users');
     
-    // Initialize story cleanup service
-    StoryCleanupService.scheduleCleanup();
+    // Initialize story cleanup service (only if not in test mode)
+    if (process.env.NODE_ENV !== 'test') {
+        StoryCleanupService.scheduleCleanup();
+    }
     
 }).catch((error) => {
     console.error('❌ Database sync error:', error);
 });
-// Initialize notification scheduler
-const notificationScheduler = require('./src/services/notificationScheduler');
 
-// Run scheduled checks every hour
-setInterval(async () => {
-  try {
-    await notificationScheduler.runScheduledChecks();
-  } catch (error) {
-    console.error('Error in scheduled notification checks:', error);
-  }
-}, 60 * 60 * 1000); // 1 hour
+// Only run scheduled tasks if not in test environment
+if (process.env.NODE_ENV !== 'test') {
+  // Initialize notification scheduler
+  const notificationScheduler = require('./src/services/notificationScheduler');
 
-// Run initial check after 5 minutes
-setTimeout(async () => {
-  try {
-    console.log('🕐 Running initial notification check...');
-    await notificationScheduler.runScheduledChecks();
-  } catch (error) {
-    console.error('Error in initial notification check:', error);
-  }
-}, 5 * 60 * 1000); // 5 minutes
+  // Run scheduled checks every hour
+  setInterval(async () => {
+    try {
+      await notificationScheduler.runScheduledChecks();
+    } catch (error) {
+      console.error('Error in scheduled notification checks:', error);
+    }
+  }, 60 * 60 * 1000); // 1 hour
 
-// Run performance analytics daily at 2 AM
-setInterval(async () => {
-  try {
-    console.log('📊 Running daily performance analytics...');
-    await notificationScheduler.runPerformanceAnalytics();
-  } catch (error) {
-    console.error('Error in daily performance analytics:', error);
-  }
-}, 24 * 60 * 60 * 1000); // 24 hours
+  // Run initial check after 5 minutes
+  setTimeout(async () => {
+    try {
+      console.log('🕐 Running initial notification check...');
+      await notificationScheduler.runScheduledChecks();
+    } catch (error) {
+      console.error('Error in initial notification check:', error);
+    }
+  }, 5 * 60 * 1000); // 5 minutes
 
-app.listen(port , ()=>{
-    console.log(`● Server running on port ${port} ✅`)
-})
+  // Run performance analytics daily at 2 AM
+  setInterval(async () => {
+    try {
+      console.log('📊 Running daily performance analytics...');
+      await notificationScheduler.runPerformanceAnalytics();
+    } catch (error) {
+      console.error('Error in daily performance analytics:', error);
+    }
+  }, 24 * 60 * 60 * 1000); // 24 hours
+}
+
+// Only start server if not in test environment and file is run directly
+if (process.env.NODE_ENV !== 'test' && require.main === module) {
+    app.listen(port , ()=>{
+        console.log(`● Server running on port ${port} ✅`)
+    })
+}
+
+// Export app for testing
+module.exports = app;

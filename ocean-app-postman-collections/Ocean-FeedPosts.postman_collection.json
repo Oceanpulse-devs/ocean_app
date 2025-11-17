@@ -390,6 +390,45 @@
 						"description": "Get user's saved posts"
 					},
 					"response": []
+				},
+				{
+					"name": "Get User Liked Posts",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/users/{{userId}}/liked-posts?page=1&limit=10",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"users",
+								"{{userId}}",
+								"liked-posts"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1",
+									"description": "Page number (default: 1)"
+								},
+								{
+									"key": "limit",
+									"value": "10",
+									"description": "Items per page (default: 10)"
+								}
+							]
+						},
+						"description": "Get all posts liked by a specific user. Returns posts with full formatting including:\n- Product posts (with productId, sourceId, sourceTable)\n- Auction posts (with auctionId, sourceId, sourceTable)\n- Swap Deal posts (with swapDealId, sourceId, sourceTable)\n- Group Buy posts (with bulkPurchaseId, sourceId, sourceTable)\n- Distress Sale posts (with distressSaleId, sourceId, sourceTable)\n- General posts\n\nAll posts include contentType, category, and navigation fields for proper frontend rendering and detail page navigation.\n\n**Response includes:**\n- Formatted posts with all type-specific IDs\n- Seller information (sellerEntityId, sellerMeta)\n- Pagination information\n- Engagement status (isLiked: true, isSaved)"
+					},
+					"response": []
 				}
 			],
 			"description": "Protected feed and post routes (authentication required)"

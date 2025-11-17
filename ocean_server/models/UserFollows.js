@@ -10,12 +10,10 @@ module.exports = (sequelize, DataTypes) => {
     userId: {
       type: DataTypes.UUID,
       allowNull: false,
-      field: 'user_id',
     },
     followsUserId: {
       type: DataTypes.UUID,
       allowNull: false,
-      field: 'follows_user_id',
     }
   }, {
     tableName: 'user_follows',

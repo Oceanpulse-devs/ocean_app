@@ -34,6 +34,16 @@ const responseWrapper = (req, res, next) => {
     
     // Handle error responses (status codes 400+)
     if (res.statusCode >= 400) {
+      // Special case: Login errors with requiresVerification
+      if (data && data.requiresVerification !== undefined) {
+        return originalJson({
+          success: false,
+          message: data.message || 'An error occurred',
+          requiresVerification: data.requiresVerification,
+          email: data.email || undefined
+        });
+      }
+      
       return originalJson({
         success: false,
         message: data.message || 'An error occurred',
@@ -139,7 +149,23 @@ const responseWrapper = (req, res, next) => {
     }
     
     // ========================================
-    // Special Case: List endpoints with data arrays
+    // Special Case: Responses that already have nested data structure
+    // ========================================
+    // Check if response already has nested data structure (from controllers that return { message, data: { posts, pagination } })
+    if (data && data.data && (data.data.posts || data.data.pagination || 
+        data.data.stories || data.data.savedPosts || data.data.comments ||
+        data.data.id || data.data.content || data.data.user)) {
+      // Response already wrapped by controller, just add success flag and extract nested data
+      return originalJson({
+        success: true,
+        message: data.message || 'Request successful',
+        data: data.data,
+        ...(data.pagination && { pagination: data.pagination })
+      });
+    }
+    
+    // ========================================
+    // Special Case: List endpoints with data arrays (top-level)
     // ========================================
     if (data && (data.posts || data.products || data.auctions || data.distressSales || 
                  data.swapDeals || data.groupBuys || data.demandPosts || data.bids || 
@@ -157,13 +183,24 @@ const responseWrapper = (req, res, next) => {
     }
     
     // ========================================
-    // Special Case: Responses with pagination
+    // Special Case: Responses with pagination at top level
     // ========================================
-    if (data && data.pagination) {
+    if (data && data.pagination && !data.data) {
       return originalJson({
         success: true,
         message: data.message || 'Request successful',
         data: data
+      });
+    }
+    
+    // ========================================
+    // Special Case: Profile Update Response
+    // ========================================
+    if (data && data.profileInfo) {
+      return originalJson({
+        success: true,
+        message: data.message || 'Profile updated successfully',
+        profileInfo: data.profileInfo
       });
     }
     

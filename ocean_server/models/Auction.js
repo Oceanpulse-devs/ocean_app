@@ -80,6 +80,12 @@ module.exports = (sequelize) => {
       type: DataTypes.JSON,
       allowNull: true
     },
+    arModel: {
+      type: DataTypes.STRING(500),
+      allowNull: true,
+      field: 'arModel',
+      comment: 'URL to GLB file for AR model viewing'
+    },
     views: {
       type: DataTypes.INTEGER,
       defaultValue: 0

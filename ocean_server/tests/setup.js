@@ -10,7 +10,10 @@ const path = require('path');
 
 // Set test environment
 process.env.NODE_ENV = 'test';
-process.env.DB_NAME = 'ocean_app_test_db';
+// Use the same database as the app (from .env or default to ocean_app_db)
+if (!process.env.DB_NAME) {
+  process.env.DB_NAME = 'ocean_app_db'; // Use existing database
+}
 process.env.JWT_SECRET = 'test_jwt_secret_key';
 process.env.BCRYPT_ROUNDS = '10';
 
@@ -243,8 +246,8 @@ global.testDb = {
         dialect: 'mysql',
         host: process.env.DB_HOST || 'localhost',
         port: process.env.DB_PORT || 3306,
-        database: process.env.DB_NAME || 'ocean_app_test_db',
-        username: process.env.DB_USER || 'root',
+        database: process.env.DB_NAME || 'ocean_app_db', // Use existing database
+        username: process.env.DB_USERNAME || process.env.DB_USER || 'root',
         password: process.env.DB_PASSWORD || '',
         logging: false, // Disable SQL logging in tests
         pool: {
@@ -275,9 +278,15 @@ global.testDb = {
   cleanup: async () => {
     if (global.testDb.connection) {
       try {
+        // First, get test user IDs
+        const [testUsers] = await global.testDb.connection.query(
+          `SELECT id FROM users WHERE email LIKE '%@test.com' OR email LIKE '%@example.com'`
+        );
+        const testUserIds = testUsers.map(u => `'${u.id}'`).join(',');
+
         // Clean up test data in reverse order of dependencies
-        const tables = [
-          'notifications',
+        // Tables with email column
+        const tablesWithEmail = [
           'comments',
           'posts',
           'products',
@@ -286,8 +295,31 @@ global.testDb = {
           'users'
         ];
 
-        for (const table of tables) {
-          await global.testDb.connection.query(`DELETE FROM ${table} WHERE email LIKE '%@test.com' OR email LIKE '%@example.com'`);
+        for (const table of tablesWithEmail) {
+          try {
+            await global.testDb.connection.query(
+              `DELETE FROM ${table} WHERE email LIKE '%@test.com' OR email LIKE '%@example.com'`
+            );
+          } catch (error) {
+            // Skip if table doesn't have email column or doesn't exist
+            if (!error.message.includes("Unknown column 'email'")) {
+              console.warn(`⚠️  Cleanup warning for ${table}:`, error.message);
+            }
+          }
+        }
+
+        // Tables with userId column (notifications)
+        if (testUserIds) {
+          try {
+            await global.testDb.connection.query(
+              `DELETE FROM notifications WHERE userId IN (${testUserIds})`
+            );
+          } catch (error) {
+            // Skip if table doesn't exist
+            if (!error.message.includes("doesn't exist")) {
+              console.warn(`⚠️  Cleanup warning for notifications:`, error.message);
+            }
+          }
         }
 
         console.log('✅ Test data cleaned up');

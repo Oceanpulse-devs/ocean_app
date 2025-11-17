@@ -421,6 +421,7 @@ const getHomeFeed = async (req, res) => {
         });
 
         res.status(200).json({
+            success: true,
             message: "Home feed retrieved successfully",
             data: {
                 stories: formattedStories,
@@ -598,6 +599,7 @@ const getFeed = async (req, res) => {
         });
 
         res.status(200).json({
+            success: true,
             message: "Feed retrieved successfully",
             data: {
                 posts: postsWithEngagement,
@@ -619,7 +621,7 @@ const createPost = async (req, res) => {
         
         // Parse form data - handle both multer parsed and raw FormData
         let formData = {};
-        if (!req.files && req.body._parts) {
+        if (!req.files && req.body && req.body._parts) {
             console.log('Files not parsed by multer, handling manually');
             // Parse the _parts array to extract form data
             req.body._parts.forEach(part => {
@@ -629,7 +631,7 @@ const createPost = async (req, res) => {
             });
             console.log('Parsed form data:', formData);
         } else {
-            formData = req.body;
+            formData = req.body || {};
         }
         
         // Extract only the fields the frontend actually uses
@@ -639,19 +641,23 @@ const createPost = async (req, res) => {
             category_id  // Changed from 'category' to 'category_id' for proper UUID reference
         } = formData;
         const userId = req.user.id;
-        const userAccountType = req.user.accountType;
+        const userAccountType = req.user.accountType || req.user.role;
 
         // Block buyers from creating posts - they should use buyer needs instead
         if (userAccountType === 'buyer' || userAccountType === 'pending-seller') {
             return res.status(403).json({ 
+                success: false,
                 message: "Buyers cannot create posts. Please use the Buyer Needs feature instead.",
                 redirectTo: "/buyer-needs/create"
             });
         }
 
         // Validate required fields - only content is required now
-        if (!content || content.trim().length === 0) {
-            return res.status(400).json({ message: "Content is required" });
+        if (!content || (typeof content !== 'string') || content.trim().length === 0) {
+            return res.status(400).json({ 
+                success: false,
+                message: "Content is required" 
+            });
         }
 
         // Validate reach_limit if provided
@@ -841,6 +847,7 @@ const createPost = async (req, res) => {
 
         console.log('Sending response:', { message: "Post created successfully", data: createdPost });
         res.status(201).json({
+            success: true,
             message: "Post created successfully",
             data: createdPost
         });
@@ -899,6 +906,7 @@ const getPost = async (req, res) => {
         }
 
         res.status(200).json({
+            success: true,
             message: "Post retrieved successfully",
             data: postData
         });
@@ -932,6 +940,7 @@ const toggleLike = async (req, res) => {
             await post.decrement('likesCount');
             
             res.status(200).json({
+                success: true,
                 message: "Post unliked successfully",
                 data: { isLiked: false }
             });
@@ -962,6 +971,7 @@ const toggleLike = async (req, res) => {
             }
             
             res.status(200).json({
+                success: true,
                 message: "Post liked successfully",
                 data: { isLiked: true }
             });
@@ -997,6 +1007,7 @@ const toggleSave = async (req, res) => {
             await post.decrement('savedCount');
             
             res.status(200).json({
+                success: true,
                 message: "Post unsaved successfully",
                 data: { isSaved: false }
             });
@@ -1006,6 +1017,7 @@ const toggleSave = async (req, res) => {
             await post.increment('savedCount');
             
             res.status(200).json({
+                success: true,
                 message: "Post saved successfully",
                 data: { isSaved: true }
             });
@@ -1082,6 +1094,7 @@ const toggleShare = async (req, res) => {
             // Already shared - optionally remove the share record or just return success
             // For share functionality, we typically don't "unshare", so we just return
             res.status(200).json({
+                success: true,
                 message: "Post already shared",
                 data: { 
                     isShared: true,
@@ -1119,6 +1132,7 @@ const toggleShare = async (req, res) => {
             }
             
             res.status(200).json({
+                success: true,
                 message: "Post shared successfully",
                 data: { 
                     isShared: true,
@@ -1172,17 +1186,27 @@ const getSavedPosts = async (req, res) => {
             offset: parseInt(offset)
         });
 
+        // Map pagination fields to match frontend expectations
+        const pagination = {
+            currentPage: parseInt(page),
+            totalPages: Math.ceil(savedPosts.count / limit),
+            totalSavedPosts: savedPosts.count,
+            hasNextPage: offset + limit < savedPosts.count,
+            hasPrevPage: page > 1
+        };
+        
+        const frontendPagination = mapNestedFields(pagination, {
+            currentPage: 'page',
+            totalSavedPosts: 'totalCount',
+            hasPrevPage: 'hasPreviousPage'
+        });
+
         res.status(200).json({
+            success: true,
             message: "Saved posts retrieved successfully",
             data: {
                 savedPosts: savedPosts.rows,
-                pagination: {
-                    currentPage: parseInt(page),
-                    totalPages: Math.ceil(savedPosts.count / limit),
-                    totalSavedPosts: savedPosts.count,
-                    hasNextPage: offset + limit < savedPosts.count,
-                    hasPrevPage: page > 1
-                }
+                pagination: frontendPagination
             }
         });
 
@@ -1888,6 +1912,407 @@ const getUserPosts = async (req, res) => {
     }
 };
 
+// Get user's liked posts
+const getLikedPosts = async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const { page = 1, limit = 10 } = req.query;
+        const offset = (page - 1) * limit;
+        const currentUserId = req.user?.id;
+
+        // Use userId from params, or fallback to current user
+        const targetUserId = userId || currentUserId;
+        
+        if (!targetUserId) {
+            return res.status(400).json({ 
+                success: false,
+                message: 'User ID is required' 
+            });
+        }
+
+        // Get all liked posts for the user
+        const likedPosts = await PostLike.findAndCountAll({
+            where: { userId: targetUserId },
+            include: [
+                {
+                    model: Post,
+                    as: 'post',
+                    where: { status: 'active' },
+                    include: [
+                        {
+                            model: UserTable,
+                            as: 'user',
+                            attributes: ['id', 'fullName', 'email', 'profilePicture', 'accountType', 'accountStatus', 'location'],
+                            include: [{
+                                model: SellersTable,
+                                as: 'seller',
+                                attributes: ['id', 'userId', 'businessName', 'businessEmail', 'verificationStatus'],
+                                required: false
+                            }]
+                        },
+                        {
+                            model: PostMedia,
+                            as: 'media',
+                            attributes: ['id', 'mediaType', 'mediaUrl', 'thumbnailUrl', 'mediaOrder'],
+                            order: [['mediaOrder', 'ASC']]
+                        }
+                    ]
+                }
+            ],
+            order: [['createdAt', 'DESC']], // Order by when the post was liked
+            limit: parseInt(limit),
+            offset: parseInt(offset),
+            distinct: true
+        });
+
+        // Format posts using the same logic as getHomeFeed
+        const formattedPosts = await Promise.all(
+            likedPosts.rows.map(async (likedItem) => {
+                const post = likedItem.post;
+                if (!post) return null; // Skip if post doesn't exist
+                
+                const postData = post.toJSON();
+                
+                // Determine post type and format accordingly (same as getHomeFeed)
+                let formattedPost;
+                
+                // Format based on content type for unified feed
+                if (postData.contentType === 'product') {
+                    // Try to get images from product table if available
+                    let productImages = postData.media?.map(m => m.mediaUrl) || [];
+                    
+                    // If no images from media, try to get from feed metadata
+                    if (productImages.length === 0 && postData.feedMetadata?.images) {
+                        productImages = postData.feedMetadata.images;
+                    }
+                    
+                    // If still no images, try to query the actual product
+                    if (productImages.length === 0 && postData.sourceId) {
+                        const { Product } = require('../../models');
+                        try {
+                            const actualProduct = await Product.findByPk(postData.sourceId);
+                            if (actualProduct && actualProduct.images) {
+                                productImages = actualProduct.images;
+                            }
+                        } catch (err) {
+                            console.error('Error fetching product images:', err);
+                        }
+                    }
+                    
+                    // Get business name if user is a seller, otherwise use personal name
+                    const displayName = postData.user.seller?.businessName || postData.user.fullName;
+                    
+                    // Product post format
+                    formattedPost = {
+                        id: postData.id,
+                        type: 'product',
+                        contentType: postData.contentType,
+                        category: 'product',
+                        createdAt: postData.createdAt,
+                        updatedAt: postData.updatedAt,
+                        productId: postData.sourceId || postData.feedMetadata?.product_id || null,
+                        sourceId: postData.sourceId || null,
+                        sourceTable: postData.sourceTable || 'products',
+                        user: {
+                            id: postData.user.id,
+                            name: displayName,
+                            avatar: postData.user.profilePicture || '👤',
+                            verified: postData.user.accountStatus === 'verified',
+                            location: postData.user.location
+                        },
+                        sellerEntityId: postData.user?.seller?.id || null,
+                        sellerMeta: {
+                            businessName: postData.user?.seller?.businessName || null,
+                            profilePicture: postData.user?.profilePicture || null,
+                            businessEmail: postData.user?.seller?.businessEmail || null
+                        },
+                        product: {
+                            id: postData.sourceId || postData.feedMetadata?.product_id || null,
+                            title: postData.productName || 'Product',
+                            price: postData.price ? `₦${parseInt(postData.price).toLocaleString()}` : 'Price not specified',
+                            brand: postData.brand,
+                            description: postData.content.replace(/^New Product: /, '').trim() || postData.productName || 'Product',
+                            images: productImages,
+                            metadata: postData.feedMetadata
+                        },
+                        likes: postData.likesCount || 0,
+                        comments: postData.commentsCount || 0,
+                        shares: postData.sharesCount || 0,
+                        saves: postData.savedCount || 0,
+                        timeAgo: getTimeAgo(postData.createdAt),
+                        isLiked: true, // Always true since these are liked posts
+                        isSaved: false, // Will be set below
+                        showComments: false,
+                        commentList: []
+                    };
+                } else if (postData.contentType === 'auction') {
+                    // Auction post format
+                    const displayName = postData.user?.seller?.businessName || postData.user?.fullName;
+                    const auctionId = postData.sourceId || postData.feedMetadata?.auction_id || null;
+                    
+                    formattedPost = {
+                        id: postData.id,
+                        type: 'auction',
+                        contentType: postData.contentType,
+                        category: 'auction',
+                        createdAt: postData.createdAt,
+                        updatedAt: postData.updatedAt,
+                        auctionId: auctionId, // ✅ Required for navigation
+                        sourceId: postData.sourceId || auctionId, // ✅ Required for navigation
+                        sourceTable: postData.sourceTable || 'auctions', // ✅ Required for navigation
+                        user: {
+                            id: postData.user.id,
+                            name: displayName,
+                            avatar: postData.user.profilePicture || '👤',
+                            verified: postData.user.accountStatus === 'verified',
+                            location: postData.user.location
+                        },
+                        sellerEntityId: postData.user?.seller?.id || null,
+                        sellerMeta: {
+                            businessName: postData.user?.seller?.businessName || null,
+                            profilePicture: postData.user?.profilePicture || null,
+                            businessEmail: postData.user?.seller?.businessEmail || null
+                        },
+                        auction: {
+                            id: auctionId,
+                            title: postData.productName || 'Auction',
+                            startingPrice: postData.price ? `₦${parseInt(postData.price).toLocaleString()}` : 'Price not specified',
+                            description: postData.content,
+                            images: postData.media?.map(m => m.mediaUrl) || [],
+                            metadata: postData.feedMetadata
+                        },
+                        likes: postData.likesCount || 0,
+                        comments: postData.commentsCount || 0,
+                        shares: postData.sharesCount || 0,
+                        saves: postData.savedCount || 0,
+                        timeAgo: getTimeAgo(postData.createdAt),
+                        isLiked: true,
+                        isSaved: false,
+                        showComments: false,
+                        commentList: []
+                    };
+                } else if (postData.contentType === 'group_buy') {
+                    // Group buy post format
+                    const groupBuyId = postData.sourceId || postData.feedMetadata?.group_buy_id || null;
+                    
+                    formattedPost = {
+                        id: postData.id,
+                        type: 'group_buy',
+                        contentType: postData.contentType,
+                        category: 'bulk_purchase', // Frontend uses 'bulk_purchase'
+                        createdAt: postData.createdAt,
+                        updatedAt: postData.updatedAt,
+                        bulkPurchaseId: groupBuyId, // ✅ Required for navigation
+                        sourceId: postData.sourceId || groupBuyId, // ✅ Required for navigation
+                        sourceTable: postData.sourceTable || 'group_buys', // ✅ Required for navigation
+                        user: {
+                            id: postData.user.id,
+                            name: postData.user.fullName,
+                            avatar: postData.user.profilePicture || '👤',
+                            verified: postData.user.accountStatus === 'verified',
+                            location: postData.user.location
+                        },
+                        sellerEntityId: postData.user?.seller?.id || null,
+                        sellerMeta: {
+                            businessName: postData.user?.seller?.businessName || null,
+                            profilePicture: postData.user?.profilePicture || null,
+                            businessEmail: postData.user?.seller?.businessEmail || null
+                        },
+                        groupBuy: {
+                            id: groupBuyId,
+                            title: postData.productName || 'Group Buy',
+                            price: postData.price ? `₦${parseInt(postData.price).toLocaleString()}` : 'Price not specified',
+                            description: postData.content,
+                            images: postData.media?.map(m => m.mediaUrl) || [],
+                            metadata: postData.feedMetadata
+                        },
+                        likes: postData.likesCount || 0,
+                        comments: postData.commentsCount || 0,
+                        shares: postData.sharesCount || 0,
+                        saves: postData.savedCount || 0,
+                        timeAgo: getTimeAgo(postData.createdAt),
+                        isLiked: true,
+                        isSaved: false,
+                        showComments: false,
+                        commentList: []
+                    };
+                } else if (postData.contentType === 'swap_deal') {
+                    // Swap deal post format
+                    const displayName = postData.user?.seller?.businessName || postData.user?.fullName;
+                    
+                    // Get swap deal ID from multiple sources for frontend compatibility
+                    const swapDealId = postData.sourceId || 
+                                      postData.feedMetadata?.swap_deal_id || 
+                                      postData.feedMetadata?.swap_dealId || 
+                                      null;
+                    
+                    // Get images from feedMetadata or media
+                    let swapDealImages = [];
+                    if (postData.feedMetadata?.images && Array.isArray(postData.feedMetadata.images)) {
+                        swapDealImages = postData.feedMetadata.images;
+                    } else if (postData.media && postData.media.length > 0) {
+                        swapDealImages = postData.media.map(m => m.mediaUrl);
+                    }
+                    
+                    // Format media array
+                    const mediaArray = postData.media?.map((m, index) => ({
+                        id: m.id || `media_${Date.now()}_${index}`,
+                        type: m.mediaType || 'image',
+                        url: m.mediaUrl,
+                        thumbnailUrl: m.thumbnailUrl || m.mediaUrl
+                    })) || [];
+                    
+                    // Build feedMetadata with all swap deal details
+                    const feedMetadata = {
+                        swap_deal_id: swapDealId,
+                        images: swapDealImages,
+                        ...(postData.feedMetadata || {}), // Include all existing metadata
+                        product_to_swap: postData.feedMetadata?.product_to_swap || postData.productName || null,
+                        category_to_swap: postData.feedMetadata?.category_to_swap || null,
+                        brand_to_swap: postData.feedMetadata?.brand_to_swap || null,
+                        condition: postData.feedMetadata?.condition || null,
+                        status: postData.feedMetadata?.status || 'active',
+                        is_featured: postData.feedMetadata?.is_featured || false
+                    };
+                    
+                    formattedPost = {
+                        id: postData.id,
+                        swapDealId: swapDealId,  // ✅ Top level swap deal ID
+                        category: 'swap_deal',   // ✅ Required category
+                        type: 'swap_deal',       // ✅ Required type
+                        contentType: 'swap_deal',
+                        sourceId: postData.sourceId || swapDealId,  // ✅ Source ID
+                        sourceTable: postData.sourceTable || 'swap_deals',  // ✅ Source table
+                        createdAt: postData.createdAt,
+                        updatedAt: postData.updatedAt,
+                        user: {
+                            id: postData.user.id,
+                            name: displayName,
+                            avatar: postData.user.profilePicture || '👤',
+                            verified: postData.user.accountStatus === 'verified',
+                            location: postData.user.location
+                        },
+                        // Attach seller identifiers & metadata for frontend
+                        sellerEntityId: postData.user?.seller?.id || null,
+                        sellerMeta: {
+                            businessName: postData.user?.seller?.businessName || null,
+                            profilePicture: postData.user?.profilePicture || null,
+                            businessEmail: postData.user?.seller?.businessEmail || null
+                        },
+                        caption: postData.content || `Swap Deal: ${feedMetadata.product_to_swap || 'Product'}`,
+                        feedMetadata: feedMetadata,  // ✅ Complete metadata with images array
+                        media: mediaArray,  // ✅ Media array format
+                        likes: postData.likesCount || 0,
+                        comments: postData.commentsCount || 0,
+                        shares: postData.sharesCount || 0,
+                        saves: postData.savedCount || 0,
+                        timeAgo: getTimeAgo(postData.createdAt),
+                        isLiked: true,
+                        isSaved: false,
+                        showComments: false,
+                        commentList: []
+                    };
+                } else {
+                    // General post format (default) - Map to frontend field names
+                    const displayName = postData.user?.seller?.businessName || postData.user?.fullName;
+                    
+                    // Check if this is a distress sale post
+                    const isDistressSale = postData.contentType === 'distress_sale' || 
+                                          postData.contentType === 'distressSale' ||
+                                          postData.sourceTable === 'distress_sales' ||
+                                          postData.feedMetadata?.distressSaleId;
+                    
+                    formattedPost = {
+                        id: postData.id,
+                        category: postData.contentType || 'general',  // type → category
+                        contentType: postData.contentType || 'post',
+                        createdAt: postData.createdAt,
+                        updatedAt: postData.updatedAt,
+                        distressSaleId: isDistressSale ? (postData.sourceId || postData.feedMetadata?.distressSaleId || null) : null,
+                        sourceId: postData.sourceId || null,
+                        sourceTable: postData.sourceTable || null,
+                        user: {
+                            id: postData.user.id,
+                            name: displayName,
+                            avatar: postData.user.profilePicture || '👤',
+                            verified: postData.user.accountStatus === 'verified',
+                            location: postData.user.location
+                        },
+                        // Attach seller identifiers & metadata for frontend
+                        sellerEntityId: postData.user?.seller?.id || null,
+                        sellerMeta: {
+                            businessName: postData.user?.seller?.businessName || null,
+                            profilePicture: postData.user?.profilePicture || null,
+                            businessEmail: postData.user?.seller?.businessEmail || null
+                        },
+                        caption: postData.content,  // content → caption
+                        media: postData.media?.map((m, index) => ({
+                            id: m.id || `media_${Date.now()}_${index}`,
+                            type: m.mediaType || 'image',
+                            url: m.mediaUrl,
+                            thumbnailUrl: m.thumbnailUrl || m.mediaUrl
+                        })) || [],  // images → media with structure
+                        likes: postData.likesCount || 0,
+                        comments: postData.commentsCount || 0,
+                        shares: postData.sharesCount || 0,
+                        saves: postData.savedCount || 0,
+                        timeAgo: getTimeAgo(postData.createdAt),
+                        isLiked: true,
+                        isSaved: false,
+                        showComments: false,
+                        commentList: []
+                    };
+                }
+
+                // Check if user saved the post
+                if (currentUserId) {
+                    const userSaved = await SavedPost.findOne({
+                        where: { postId: post.id, userId: currentUserId }
+                    });
+                    formattedPost.isSaved = !!userSaved;
+                }
+
+                return formattedPost;
+            })
+        );
+
+        // Filter out null posts (in case some posts were deleted)
+        const validPosts = formattedPosts.filter(post => post !== null);
+
+        // Map pagination fields to match frontend expectations
+        const pagination = {
+            currentPage: parseInt(page),
+            totalPages: Math.ceil(likedPosts.count / limit),
+            totalPosts: likedPosts.count,
+            hasNextPage: offset + limit < likedPosts.count,
+            hasPrevPage: page > 1
+        };
+        
+        const frontendPagination = mapNestedFields(pagination, {
+            currentPage: 'page',
+            totalPosts: 'totalCount',
+            hasPrevPage: 'hasPreviousPage'
+        });
+
+        res.status(200).json({
+            success: true,
+            message: "Liked posts retrieved successfully",
+            data: {
+                posts: validPosts,
+                pagination: frontendPagination
+            }
+        });
+
+    } catch (error) {
+        console.error('Get liked posts error:', error);
+        res.status(500).json({ 
+            success: false,
+            message: "Error retrieving liked posts", 
+            error: error.message 
+        });
+    }
+};
+
 module.exports = {
     getHomeFeed,
     getFeed,
@@ -1905,5 +2330,6 @@ module.exports = {
     getComments,
     updateComment,
     deleteComment,
-    getUserPosts
+    getUserPosts,
+    getLikedPosts
 };

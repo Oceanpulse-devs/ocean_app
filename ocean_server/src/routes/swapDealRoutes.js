@@ -7,20 +7,45 @@ const authMiddleware = require('../middleware/authMiddleware');
 // Apply authentication middleware to all routes
 router.use(authMiddleware);
 
-// Configure Multer for file uploads (for swap proposals)
+// Configure Multer for file uploads (supports images, videos, and AR models)
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 100 * 1024 * 1024, // 100MB limit (for videos)
+    fileSize: 100 * 1024 * 1024, // 100MB limit (for videos and AR models)
     files: 10 // Max 10 files for proposal images
   },
   fileFilter: (req, file, cb) => {
     console.log(`Processing file: ${file.fieldname} - ${file.originalname} (${file.mimetype})`);
-    // Accept images and videos
-    if (file.mimetype.startsWith('image/') || file.mimetype.startsWith('video/')) {
-      cb(null, true);
+    // Validate based on field name
+    if (file.fieldname === 'images') {
+      // For images, accept images and videos
+      if (file.mimetype.startsWith('image/') || file.mimetype.startsWith('video/')) {
+        cb(null, true);
+      } else {
+        cb(new Error(`Only image and video files are allowed for images field! Received: ${file.mimetype}`), false);
+      }
+    } else if (file.fieldname === 'arModel') {
+      // For AR models, check if it's GLB/GLTF
+      const allowedMimes = [
+        'model/gltf-binary', // GLB
+        'model/gltf+json',    // GLTF
+        'application/octet-stream' // Sometimes GLB files have this MIME type
+      ];
+      const allowedExtensions = ['.glb', '.gltf'];
+      const fileExt = file.originalname.toLowerCase().substring(file.originalname.lastIndexOf('.'));
+      
+      if (allowedMimes.includes(file.mimetype) || allowedExtensions.includes(fileExt)) {
+        cb(null, true);
+      } else {
+        cb(new Error('Only GLB/GLTF files are allowed for AR models'), false);
+      }
     } else {
-      cb(new Error(`Only image and video files are allowed! Received: ${file.mimetype}`), false);
+      // For other fields (like proposal images), accept images and videos
+      if (file.mimetype.startsWith('image/') || file.mimetype.startsWith('video/')) {
+        cb(null, true);
+      } else {
+        cb(new Error(`Only image and video files are allowed! Received: ${file.mimetype}`), false);
+      }
     }
   }
 });
@@ -39,7 +64,7 @@ const handleMulterError = (err, req, res, next) => {
 };
 
 // Swap Deal CRUD operations
-router.post('/create', upload.any(), handleMulterError, swapDealController.createSwapDeal);
+router.post('/create', upload.fields([{ name: 'images', maxCount: 10 }, { name: 'arModel', maxCount: 1 }]), handleMulterError, swapDealController.createSwapDeal);
 router.get('/all', swapDealController.getAllSwapDeals);
 router.get('/:id', swapDealController.getSwapDealById);
 router.put('/:id', swapDealController.updateSwapDeal);

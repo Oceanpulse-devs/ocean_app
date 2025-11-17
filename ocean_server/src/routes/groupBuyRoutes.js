@@ -4,21 +4,42 @@ const multer = require('multer');
 const groupBuyController = require('../controllers/groupBuyController');
 const authMiddleware = require('../middleware/authMiddleware');
 
-// Configure multer for file uploads
+// Configure multer for file uploads (supports both images and AR models)
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit per file
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB limit to accommodate AR models
   fileFilter: function (req, file, cb) {
-    if (file.mimetype.startsWith('image/')) {
-      cb(null, true);
+    // Validate based on field name
+    if (file.fieldname === 'images') {
+      // For images, check if it's an image
+      if (file.mimetype.startsWith('image/')) {
+        cb(null, true);
+      } else {
+        cb(new Error('Only image files are allowed for group buy images'), false);
+      }
+    } else if (file.fieldname === 'arModel') {
+      // For AR models, check if it's GLB/GLTF
+      const allowedMimes = [
+        'model/gltf-binary', // GLB
+        'model/gltf+json',    // GLTF
+        'application/octet-stream' // Sometimes GLB files have this MIME type
+      ];
+      const allowedExtensions = ['.glb', '.gltf'];
+      const fileExt = file.originalname.toLowerCase().substring(file.originalname.lastIndexOf('.'));
+      
+      if (allowedMimes.includes(file.mimetype) || allowedExtensions.includes(fileExt)) {
+        cb(null, true);
+      } else {
+        cb(new Error('Only GLB/GLTF files are allowed for AR models'), false);
+      }
     } else {
-      cb(new Error('Only image files are allowed for product images'), false);
+      cb(new Error('Invalid field name. Only "images" and "arModel" are allowed'), false);
     }
   }
 });
 
 // Group Buy CRUD operations (auth middleware applied individually)
-router.post('/create', authMiddleware, upload.array('images', 10), groupBuyController.createGroupBuy);
+router.post('/create', authMiddleware, upload.fields([{ name: 'images', maxCount: 10 }, { name: 'arModel', maxCount: 1 }]), groupBuyController.createGroupBuy);
 
 // Apply authentication middleware to remaining routes
 router.use(authMiddleware);

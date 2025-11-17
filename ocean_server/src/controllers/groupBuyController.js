@@ -184,6 +184,15 @@ class GroupBuyController {
       // Transform frontend field names to backend field names
       const finalGroupPrice = pricePerUnit || group_price;
       const finalDeadline = endDate || deadline;
+      let parsedQuantityUnit = quantity_unit;
+      if (parsedQuantityUnit !== undefined && parsedQuantityUnit !== null && parsedQuantityUnit !== '') {
+        parsedQuantityUnit = parseInt(parsedQuantityUnit, 10);
+        if (Number.isNaN(parsedQuantityUnit)) {
+          parsedQuantityUnit = null;
+        }
+      } else {
+        parsedQuantityUnit = null;
+      }
 
       const creator_id = req.user.id;
 
@@ -247,8 +256,8 @@ class GroupBuyController {
       }
 
       // Validate quantity_unit if provided
-      if (quantity_unit !== undefined && quantity_unit !== null) {
-        if (quantity_unit <= 0 || !Number.isInteger(quantity_unit)) {
+      if (parsedQuantityUnit !== null) {
+        if (parsedQuantityUnit <= 0) {
           return res.status(400).json({
             success: false,
             message: 'Quantity unit must be a positive integer'
@@ -323,8 +332,8 @@ class GroupBuyController {
         group_price: numGroupPrice,  // Use parsed numeric value
         min_buyers,
         max_buyers,
-        quantity_unit: quantity_unit || null,
-        remaining_units: quantity_unit || null, // Initialize remaining units to total
+        quantity_unit: parsedQuantityUnit,
+        remaining_units: parsedQuantityUnit, // Initialize remaining units to total
         creator_id,
         location: groupBuyLocation, // Use validated/fallback location
         deadline: finalDeadline,  // Use transformed value
@@ -335,12 +344,12 @@ class GroupBuyController {
 
       // Handle image uploads to Cloudinary
       const imageUrls = [];
-      if (req.files && req.files.length > 0) {
-        console.log(`Uploading ${req.files.length} image(s) to Cloudinary for group buy ${groupBuy.id}`);
+      if (req.files && req.files.images && req.files.images.length > 0) {
+        console.log(`Uploading ${req.files.images.length} image(s) to Cloudinary for group buy ${groupBuy.id}`);
         
         // Upload all images
-        for (let i = 0; i < req.files.length; i++) {
-          const file = req.files[i];
+        for (let i = 0; i < req.files.images.length; i++) {
+          const file = req.files.images[i];
           try {
             const uploadResult = await cloudinaryService.uploadProductImage(
               file.buffer, 
@@ -349,7 +358,7 @@ class GroupBuyController {
             
             if (uploadResult.success) {
               imageUrls.push(uploadResult.url);
-              console.log(`Image ${i + 1}/${req.files.length} uploaded successfully: ${uploadResult.url}`);
+              console.log(`Image ${i + 1}/${req.files.images.length} uploaded successfully: ${uploadResult.url}`);
             } else {
               console.error(`Cloudinary upload failed for image ${i + 1}:`, uploadResult.error);
             }
@@ -362,6 +371,34 @@ class GroupBuyController {
         if (imageUrls.length > 0) {
           await groupBuy.update({ product_image: imageUrls });
           console.log(`✅ Group buy ${groupBuy.id} updated with ${imageUrls.length} image(s)`);
+        }
+      }
+
+      // Upload AR model if provided (optional)
+      let arModelUrl = null;
+      if (req.files && req.files.arModel && req.files.arModel.length > 0) {
+        const arFile = req.files.arModel[0];
+        console.log('📤 Attempting to upload AR model for group buy:', {
+          filename: arFile.originalname,
+          mimetype: arFile.mimetype,
+          size: arFile.size
+        });
+        
+        try {
+          const arUploadResult = await cloudinaryService.uploadGroupBuyARModel(arFile.buffer, groupBuy.id);
+          
+          if (!arUploadResult.success) {
+            console.error('AR model upload failed:', arUploadResult.error);
+            console.warn('Group buy created but AR model upload failed');
+          } else {
+            arModelUrl = arUploadResult.url;
+            console.log('✅ AR model uploaded successfully:', arModelUrl);
+            // Update group buy with AR model URL
+            await groupBuy.update({ arModel: arModelUrl });
+          }
+        } catch (error) {
+          console.error('Error uploading AR model:', error);
+          // Don't fail the group buy creation if AR upload fails
         }
       }
 
@@ -795,12 +832,70 @@ class GroupBuyController {
       }
 
       // Validate quantity_unit if provided
-      if (updateData.quantity_unit !== undefined && updateData.quantity_unit !== null) {
-        if (updateData.quantity_unit <= 0 || !Number.isInteger(parseFloat(updateData.quantity_unit))) {
+      if (updateData.quantity_unit !== undefined && updateData.quantity_unit !== null && updateData.quantity_unit !== '') {
+        const parsedQuantityUnit = parseInt(updateData.quantity_unit, 10);
+        if (Number.isNaN(parsedQuantityUnit) || parsedQuantityUnit <= 0) {
           return res.status(400).json({
             success: false,
             message: 'Quantity unit must be a positive integer'
           });
+        }
+        updateData.quantity_unit = parsedQuantityUnit;
+      } else {
+        delete updateData.quantity_unit;
+      }
+
+      // Process uploaded images if any
+      if (req.files && req.files.images && req.files.images.length > 0) {
+        console.log(`Uploading ${req.files.images.length} image(s) to Cloudinary for group buy update ${groupBuy.id}`);
+        const imageUrls = [];
+        
+        for (let i = 0; i < req.files.images.length; i++) {
+          const file = req.files.images[i];
+          try {
+            const uploadResult = await cloudinaryService.uploadProductImage(
+              file.buffer, 
+              `groupbuy-${groupBuy.id}/image-${i + 1}`
+            );
+            
+            if (uploadResult.success) {
+              imageUrls.push(uploadResult.url);
+              console.log(`Image ${i + 1}/${req.files.images.length} uploaded successfully: ${uploadResult.url}`);
+            } else {
+              console.error(`Cloudinary upload failed for image ${i + 1}:`, uploadResult.error);
+            }
+          } catch (uploadError) {
+            console.error(`Error uploading image ${i + 1}:`, uploadError.message);
+          }
+        }
+        
+        if (imageUrls.length > 0) {
+          updateData.product_image = imageUrls;
+        }
+      }
+
+      // Process AR model upload if provided (optional, replaces existing)
+      if (req.files && req.files.arModel && req.files.arModel.length > 0) {
+        const arFile = req.files.arModel[0];
+        console.log('📤 Attempting to upload AR model for group buy update:', {
+          filename: arFile.originalname,
+          mimetype: arFile.mimetype,
+          size: arFile.size
+        });
+        
+        try {
+          const arUploadResult = await cloudinaryService.uploadGroupBuyARModel(arFile.buffer, groupBuy.id);
+          
+          if (!arUploadResult.success) {
+            console.error('AR model upload failed:', arUploadResult.error);
+            console.warn('Group buy updated but AR model upload failed');
+          } else {
+            updateData.arModel = arUploadResult.url;
+            console.log('✅ AR model uploaded successfully:', arUploadResult.url);
+          }
+        } catch (error) {
+          console.error('Error uploading AR model:', error);
+          // Don't fail the group buy update if AR upload fails
         }
       }
 

@@ -68,6 +68,12 @@ module.exports = (sequelize, DataTypes) => {
     allowNull: true,
     comment: 'JSON array of image URLs for the swap deal'
   },
+  arModel: {
+    type: DataTypes.STRING(500),
+    allowNull: true,
+    field: 'ar_model',
+    comment: 'URL to GLB file for AR model viewing'
+  },
   swapTerms: {
     type: DataTypes.TEXT,
     allowNull: true,

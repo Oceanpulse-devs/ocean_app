@@ -4,15 +4,36 @@ const multer = require('multer');
 const distressSaleController = require('../controllers/distressSaleController');
 const authMiddleware = require('../middleware/authMiddleware');
 
-// Configure multer for file uploads
+// Configure multer for file uploads (supports both images and AR models)
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB limit to accommodate AR models
   fileFilter: function (req, file, cb) {
-    if (file.mimetype.startsWith('image/')) {
-      cb(null, true);
+    // Validate based on field name
+    if (file.fieldname === 'images') {
+      // For images, check if it's an image
+      if (file.mimetype.startsWith('image/')) {
+        cb(null, true);
+      } else {
+        cb(new Error('Only image files are allowed for distress sale images'), false);
+      }
+    } else if (file.fieldname === 'arModel') {
+      // For AR models, check if it's GLB/GLTF
+      const allowedMimes = [
+        'model/gltf-binary', // GLB
+        'model/gltf+json',    // GLTF
+        'application/octet-stream' // Sometimes GLB files have this MIME type
+      ];
+      const allowedExtensions = ['.glb', '.gltf'];
+      const fileExt = file.originalname.toLowerCase().substring(file.originalname.lastIndexOf('.'));
+      
+      if (allowedMimes.includes(file.mimetype) || allowedExtensions.includes(fileExt)) {
+        cb(null, true);
+      } else {
+        cb(new Error('Only GLB/GLTF files are allowed for AR models'), false);
+      }
     } else {
-      cb(new Error('Only image files are allowed for distress sale images'), false);
+      cb(new Error('Invalid field name. Only "images" and "arModel" are allowed'), false);
     }
   }
 });
@@ -23,8 +44,8 @@ router.get('/stats', distressSaleController.getDistressSaleStats);
 router.get('/:id', distressSaleController.getDistressSaleById);
 
 // Protected routes (authentication required)
-router.post('/create', authMiddleware, upload.array('images', 10), distressSaleController.createDistressSale);
-router.put('/:id', authMiddleware, upload.array('images', 10), distressSaleController.updateDistressSale);
+router.post('/create', authMiddleware, upload.fields([{ name: 'images', maxCount: 10 }, { name: 'arModel', maxCount: 1 }]), distressSaleController.createDistressSale);
+router.put('/:id', authMiddleware, upload.fields([{ name: 'images', maxCount: 10 }, { name: 'arModel', maxCount: 1 }]), distressSaleController.updateDistressSale);
 router.delete('/:id', authMiddleware, distressSaleController.deleteDistressSale);
 router.put('/:id/convert', authMiddleware, distressSaleController.convertToDistressSale);
 

@@ -967,7 +967,7 @@ const resendVerificationEmail = async (req, res) => {
                 resendCount: newResendCount
             }));
 
-            await redisClient.setEx(resendKey, 86400, newResendCount);
+            await redisClient.setEx(resendKey, 86400, String(newResendCount));
         } catch (redisError) {
             console.error('❌ Redis resend caching failed:', redisError.message);
         }

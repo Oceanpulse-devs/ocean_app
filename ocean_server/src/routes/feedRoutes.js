@@ -72,6 +72,9 @@ router.delete('/api/comments/:commentId', authMiddleware, feedController.deleteC
 // User posts route
 router.get('/api/users/:userId/posts', feedController.getUserPosts);
 
+// User liked posts route
+router.get('/api/users/:userId/liked-posts', authMiddleware, feedController.getLikedPosts);
+
 // Import group buy controller for user group buys endpoint
 const groupBuyController = require('../controllers/groupBuyController');
 router.get('/api/users/:userId/group-buys', (req, res) => groupBuyController.getUserGroupBuysById(req, res));

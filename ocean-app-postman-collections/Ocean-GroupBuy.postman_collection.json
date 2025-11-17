@@ -10,7 +10,7 @@
 			"name": "Group Buy CRUD",
 			"item": [
 				{
-					"name": "Create Group Buy",
+					"name": "Create Group Buy (JSON)",
 					"request": {
 						"method": "POST",
 						"header": [
@@ -40,7 +40,117 @@
 								"create"
 							]
 						},
-						"description": "Create a new group buy"
+						"description": "Create a new group buy using JSON (without file uploads)"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Group Buy (Form Data with Images & AR)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "title",
+									"value": "Bulk Electronics Purchase",
+									"type": "text"
+								},
+								{
+									"key": "description",
+									"value": "Group buy for electronics at wholesale prices",
+									"type": "text"
+								},
+								{
+									"key": "product_name",
+									"value": "iPhone 15 Pro",
+									"type": "text"
+								},
+								{
+									"key": "group_price",
+									"value": "899.99",
+									"type": "text"
+								},
+								{
+									"key": "pricePerUnit",
+									"value": "899.99",
+									"type": "text",
+									"description": "Frontend field name (also accepts 'group_price')"
+								},
+								{
+									"key": "original_price",
+									"value": "999.99",
+									"type": "text"
+								},
+								{
+									"key": "min_buyers",
+									"value": "10",
+									"type": "text"
+								},
+								{
+									"key": "max_buyers",
+									"value": "50",
+									"type": "text"
+								},
+								{
+									"key": "category_id",
+									"value": "{{tech_category_id}}",
+									"type": "text"
+								},
+								{
+									"key": "deadline",
+									"value": "2024-12-31T23:59:59Z",
+									"type": "text"
+								},
+								{
+									"key": "endDate",
+									"value": "2024-12-31T23:59:59Z",
+									"type": "text",
+									"description": "Frontend field name (also accepts 'deadline')"
+								},
+								{
+									"key": "location",
+									"value": "New York, NY",
+									"type": "text"
+								},
+								{
+									"key": "images",
+									"type": "file",
+									"src": [],
+									"description": "Product images (max 10 files)"
+								},
+								{
+									"key": "images",
+									"type": "file",
+									"src": []
+								},
+								{
+									"key": "arModel",
+									"type": "file",
+									"src": [],
+									"description": "Optional: AR model file (GLB/GLTF format, max 50MB) for 3D viewing"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/group-buy/create",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"group-buy",
+								"create"
+							]
+						},
+						"description": "Create a new group buy with images and optional AR model using form-data"
 					},
 					"response": []
 				},
@@ -97,7 +207,7 @@
 					"response": []
 				},
 				{
-					"name": "Update Group Buy",
+					"name": "Update Group Buy (JSON)",
 					"request": {
 						"method": "PUT",
 						"header": [
@@ -127,7 +237,70 @@
 								"{{groupBuyId}}"
 							]
 						},
-						"description": "Update group buy details"
+						"description": "Update group buy details using JSON (without file uploads)"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Group Buy (Form Data with Images & AR)",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "title",
+									"value": "Updated Group Buy Title",
+									"type": "text"
+								},
+								{
+									"key": "description",
+									"value": "Updated description with new images",
+									"type": "text"
+								},
+								{
+									"key": "group_price",
+									"value": "799.99",
+									"type": "text"
+								},
+								{
+									"key": "images",
+									"type": "file",
+									"src": [],
+									"description": "New product images (max 10 files)"
+								},
+								{
+									"key": "images",
+									"type": "file",
+									"src": []
+								},
+								{
+									"key": "arModel",
+									"type": "file",
+									"src": [],
+									"description": "Optional: AR model file (GLB/GLTF format, max 50MB) to replace existing AR model"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/group-buy/{{groupBuyId}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"group-buy",
+								"{{groupBuyId}}"
+							]
+						},
+						"description": "Update group buy with new images and optional AR model using form-data"
 					},
 					"response": []
 				},

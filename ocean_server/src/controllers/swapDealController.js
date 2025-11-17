@@ -106,10 +106,10 @@ class SwapDealController {
 
       // Process uploaded images for the swap deal
       let swapDealImages = [];
-        if (req.files && req.files.length > 0) {
-        console.log(`📸 Processing ${req.files.length} images for swap deal`);
+      if (req.files && req.files.images && req.files.images.length > 0) {
+        console.log(`📸 Processing ${req.files.images.length} images for swap deal`);
         
-        for (const file of req.files) {
+        for (const file of req.files.images) {
           try {
             const uploadResult = await cloudinaryService.uploadProductImage(
               file.buffer, 
@@ -199,6 +199,34 @@ class SwapDealController {
         images: JSON.stringify(swapDealImages)
       });
 
+      // Upload AR model if provided (optional)
+      let arModelUrl = null;
+      if (req.files && req.files.arModel && req.files.arModel.length > 0) {
+        const arFile = req.files.arModel[0];
+        console.log('📤 Attempting to upload AR model for swap deal:', {
+          filename: arFile.originalname,
+          mimetype: arFile.mimetype,
+          size: arFile.size
+        });
+        
+        try {
+          const arUploadResult = await cloudinaryService.uploadSwapDealARModel(arFile.buffer, swapDeal.id);
+          
+          if (!arUploadResult.success) {
+            console.error('AR model upload failed:', arUploadResult.error);
+            console.warn('Swap deal created but AR model upload failed');
+          } else {
+            arModelUrl = arUploadResult.url;
+            console.log('✅ AR model uploaded successfully:', arModelUrl);
+            // Update swap deal with AR model URL
+            await swapDeal.update({ arModel: arModelUrl });
+          }
+        } catch (error) {
+          console.error('Error uploading AR model:', error);
+          // Don't fail the swap deal creation if AR upload fails
+        }
+      }
+
       // Increment usage count
       await incrementUsage(sellerId, 'swap_deals');
 
@@ -230,6 +258,7 @@ class SwapDealController {
         viewsCount: swapDeal.viewsCount,
         proposalsCount: swapDeal.proposalsCount,
         images: JSON.parse(swapDeal.images || '[]'),
+        arModel: swapDeal.arModel,
         createdAt: swapDeal.createdAt,
         expiresAt: swapDeal.expiresAt
       };
@@ -875,7 +904,7 @@ class SwapDealController {
     try {
       const { id } = req.params;
       const sellerId = req.user.id;
-      const updateData = req.body;
+      const updateData = { ...req.body };
 
       const swapDeal = await db.SwapDeal.findOne({
         where: { id, sellerId }
@@ -886,6 +915,59 @@ class SwapDealController {
           success: false,
           message: 'Swap deal not found or you do not own this deal'
         });
+      }
+
+      // Process uploaded images if any
+      if (req.files && req.files.images && req.files.images.length > 0) {
+        console.log(`📸 Processing ${req.files.images.length} images for swap deal update`);
+        const swapDealImages = [];
+        
+        for (const file of req.files.images) {
+          try {
+            const uploadResult = await cloudinaryService.uploadProductImage(
+              file.buffer, 
+              `swap-deal-${swapDeal.id}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+            );
+            
+            if (uploadResult.success) {
+              swapDealImages.push(uploadResult.url);
+              console.log(`✅ Image uploaded successfully: ${uploadResult.url}`);
+            } else {
+              console.warn(`❌ Failed to upload image: ${file.originalname}. Error: ${uploadResult.error}`);
+            }
+          } catch (uploadError) {
+            console.error(`❌ Error uploading image ${file.originalname}:`, uploadError);
+          }
+        }
+        
+        if (swapDealImages.length > 0) {
+          updateData.images = JSON.stringify(swapDealImages);
+        }
+      }
+
+      // Process AR model upload if provided (optional, replaces existing)
+      if (req.files && req.files.arModel && req.files.arModel.length > 0) {
+        const arFile = req.files.arModel[0];
+        console.log('📤 Attempting to upload AR model for swap deal update:', {
+          filename: arFile.originalname,
+          mimetype: arFile.mimetype,
+          size: arFile.size
+        });
+        
+        try {
+          const arUploadResult = await cloudinaryService.uploadSwapDealARModel(arFile.buffer, swapDeal.id);
+          
+          if (!arUploadResult.success) {
+            console.error('AR model upload failed:', arUploadResult.error);
+            console.warn('Swap deal updated but AR model upload failed');
+          } else {
+            updateData.arModel = arUploadResult.url;
+            console.log('✅ AR model uploaded successfully:', arUploadResult.url);
+          }
+        } catch (error) {
+          console.error('Error uploading AR model:', error);
+          // Don't fail the swap deal update if AR upload fails
+        }
       }
 
       // Update swap deal

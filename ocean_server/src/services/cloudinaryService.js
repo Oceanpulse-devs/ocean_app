@@ -187,6 +187,68 @@ class CloudinaryService {
     }
 
     /**
+     * Upload AR model file (GLB) for Auction
+     * @param {Buffer|string} file - GLB file to upload
+     * @param {string} auctionId - Auction ID for organization
+     * @returns {Promise<Object>} Upload result
+     */
+    async uploadAuctionARModel(file, auctionId) {
+        const folder = `ocean-app/auctions/${auctionId}/ar-models`;
+        
+        const options = {
+            resource_type: 'raw', // GLB files are raw files, not images
+            // No transformations for 3D models
+        };
+
+        return await this.uploadFile(file, folder, options);
+    }
+
+    /**
+     * Upload AR model file (GLB) for Swap Deal
+     * @param {Buffer|string} file - GLB file to upload
+     * @param {string} swapDealId - Swap Deal ID for organization
+     * @returns {Promise<Object>} Upload result
+     */
+    async uploadSwapDealARModel(file, swapDealId) {
+        const folder = `ocean-app/swap-deals/${swapDealId}/ar-models`;
+        
+        const options = {
+            resource_type: 'raw', // GLB files are raw files, not images
+            // No transformations for 3D models
+        };
+
+        return await this.uploadFile(file, folder, options);
+    }
+
+    /**
+     * Upload AR model file (GLB) for Group Buy
+     * @param {Buffer|string} file - GLB file to upload
+     * @param {string|number} groupBuyId - Group Buy ID for organization
+     * @returns {Promise<Object>} Upload result
+     */
+    async uploadGroupBuyARModel(file, groupBuyId) {
+        const folder = `ocean-app/group-buys/${groupBuyId}/ar-models`;
+        
+        const options = {
+            resource_type: 'raw', // GLB files are raw files, not images
+            // No transformations for 3D models
+        };
+
+        return await this.uploadFile(file, folder, options);
+    }
+
+    /**
+     * Upload AR model file (GLB) for Distress Sale (uses Product model)
+     * @param {Buffer|string} file - GLB file to upload
+     * @param {string} productId - Product ID for organization
+     * @returns {Promise<Object>} Upload result
+     */
+    async uploadDistressSaleARModel(file, productId) {
+        // Distress Sale uses Product model, so reuse product AR upload
+        return await this.uploadARModel(file, productId);
+    }
+
+    /**
      * Upload profile picture with face detection
      * @param {Buffer|string} file - File to upload
      * @param {string} userId - User ID for organization

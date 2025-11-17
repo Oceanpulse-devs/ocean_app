@@ -205,6 +205,12 @@
 									"key": "images",
 									"type": "file",
 									"src": []
+								},
+								{
+									"key": "arModel",
+									"type": "file",
+									"src": [],
+									"description": "Optional: AR model file (GLB/GLTF format, max 50MB) for 3D viewing"
 								}
 							]
 						},
@@ -326,6 +332,12 @@
 									"key": "images",
 									"type": "file",
 									"src": []
+								},
+								{
+									"key": "arModel",
+									"type": "file",
+									"src": [],
+									"description": "Optional: AR model file (GLB/GLTF format, max 50MB) to replace existing AR model"
 								}
 							]
 						},

@@ -35,6 +35,12 @@ module.exports = (sequelize, DataTypes) => {
     allowNull: true,
     comment: 'Array of product image URLs'
   },
+  arModel: {
+    type: DataTypes.STRING(500),
+    allowNull: true,
+    field: 'ar_model',
+    comment: 'URL to GLB file for AR model viewing'
+  },
   original_price: {
     type: DataTypes.DECIMAL(10, 2),
     allowNull: false,

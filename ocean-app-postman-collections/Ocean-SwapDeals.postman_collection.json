@@ -87,6 +87,12 @@
 									"key": "wantedItem_image2",
 									"description": "Upload screenshot/photo of camera you want (back view)",
 									"type": "file"
+								},
+								{
+									"key": "arModel",
+									"type": "file",
+									"src": [],
+									"description": "Optional: AR model file (GLB/GLTF format, max 100MB) for 3D viewing of swap deal items"
 								}
 							]
 						},

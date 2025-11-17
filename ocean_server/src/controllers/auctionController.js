@@ -106,12 +106,12 @@ const createAuction = async (req, res) => {
 
     // Process uploaded images
     let imageUrls = [];
-    if (req.files && req.files.length > 0) {
+    if (req.files && req.files.images && req.files.images.length > 0) {
       const cloudinaryService = require('../services/cloudinaryService');
-      console.log(`Processing ${req.files.length} uploaded images`);
+      console.log(`Processing ${req.files.images.length} uploaded images`);
       
-      for (let i = 0; i < req.files.length; i++) {
-        const file = req.files[i];
+      for (let i = 0; i < req.files.images.length; i++) {
+        const file = req.files.images[i];
         try {
           const uploadResult = await cloudinaryService.uploadFile(
             file.buffer,
@@ -189,6 +189,35 @@ const createAuction = async (req, res) => {
       shippingInfo: shippingInfo || {},
       returnPolicy
     });
+
+    // Upload AR model if provided (optional)
+    let arModelUrl = null;
+    if (req.files && req.files.arModel && req.files.arModel.length > 0) {
+      const arFile = req.files.arModel[0];
+      console.log('📤 Attempting to upload AR model for auction:', {
+        filename: arFile.originalname,
+        mimetype: arFile.mimetype,
+        size: arFile.size
+      });
+      
+      try {
+        const cloudinaryService = require('../services/cloudinaryService');
+        const arUploadResult = await cloudinaryService.uploadAuctionARModel(arFile.buffer, auction.id);
+        
+        if (!arUploadResult.success) {
+          console.error('AR model upload failed:', arUploadResult.error);
+          console.warn('Auction created but AR model upload failed');
+        } else {
+          arModelUrl = arUploadResult.url;
+          console.log('✅ AR model uploaded successfully:', arModelUrl);
+          // Update auction with AR model URL
+          await auction.update({ arModel: arModelUrl });
+        }
+      } catch (error) {
+        console.error('Error uploading AR model:', error);
+        // Don't fail the auction creation if AR upload fails
+      }
+    }
 
     // Track subscription usage for auction creation
     await incrementUsage(userId, 'auctions');
@@ -874,13 +903,13 @@ const updateAuction = async (req, res) => {
     }
 
     // Process uploaded images if any
-    if (req.files && req.files.length > 0) {
+    if (req.files && req.files.images && req.files.images.length > 0) {
       const cloudinaryService = require('../services/cloudinaryService');
-      console.log(`Processing ${req.files.length} uploaded images for update`);
+      console.log(`Processing ${req.files.images.length} uploaded images for update`);
       
       const imageUrls = [];
-      for (let i = 0; i < req.files.length; i++) {
-        const file = req.files[i];
+      for (let i = 0; i < req.files.images.length; i++) {
+        const file = req.files.images[i];
         try {
           const uploadResult = await cloudinaryService.uploadFile(
             file.buffer,
@@ -904,6 +933,32 @@ const updateAuction = async (req, res) => {
       // Update images if new ones were uploaded
       if (imageUrls.length > 0) {
         updateData.images = imageUrls;
+      }
+    }
+
+    // Process AR model upload if provided (optional, replaces existing)
+    if (req.files && req.files.arModel && req.files.arModel.length > 0) {
+      const arFile = req.files.arModel[0];
+      console.log('📤 Attempting to upload AR model for auction update:', {
+        filename: arFile.originalname,
+        mimetype: arFile.mimetype,
+        size: arFile.size
+      });
+      
+      try {
+        const cloudinaryService = require('../services/cloudinaryService');
+        const arUploadResult = await cloudinaryService.uploadAuctionARModel(arFile.buffer, auction.id);
+        
+        if (!arUploadResult.success) {
+          console.error('AR model upload failed:', arUploadResult.error);
+          console.warn('Auction updated but AR model upload failed');
+        } else {
+          updateData.arModel = arUploadResult.url;
+          console.log('✅ AR model uploaded successfully:', arUploadResult.url);
+        }
+      } catch (error) {
+        console.error('Error uploading AR model:', error);
+        // Don't fail the auction update if AR upload fails
       }
     }
 

@@ -145,15 +145,30 @@ router.post('/api/seller-registration', authMiddleware, upload.fields([
 ]), sellerRegistration)
 
 
+// Middleware to conditionally apply multer only for multipart requests
+const optionalMulter = (req, res, next) => {
+  // Only use multer if the request is multipart/form-data
+  // Check Content-Type header to determine if multer should process
+  const contentType = req.get('content-type') || '';
+  if (contentType.includes('multipart/form-data')) {
+    return upload.fields([
+      { name: 'profilePicture', maxCount: 1 },
+      { name: 'coverPicture', maxCount: 1 }
+    ])(req, res, next);
+  }
+  // For JSON requests, skip multer and proceed directly
+  next();
+};
+
 //profile routes 
-router.get('/api/profile', authMiddleware, currentUserprofile)
+// Use router.route() to explicitly register both GET and PUT on the same path
+router.route('/api/profile')
+  .put(authMiddleware, optionalMulter, updateProfile)
+  .get(authMiddleware, currentUserprofile)
+
 router.get('/api/users/:userId', authMiddleware, getUserProfileById)
 // Public endpoint for messaging server to sync users
 router.get('/api/user/:userId', getUserProfileById)
-router.put('/api/profile', authMiddleware, upload.fields([
-  { name: 'profilePicture', maxCount: 1 },
-  { name: 'coverPicture', maxCount: 1 }
-]), updateProfile)
 
 
 
