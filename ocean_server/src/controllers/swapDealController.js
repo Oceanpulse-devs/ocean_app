@@ -1,5 +1,5 @@
 const db = require('../../models');
-const { Op } = require('sequelize');
+const { Op, Sequelize } = require('sequelize');
 const cloudinaryService = require('../services/cloudinaryService');
 const { checkSubscriptionLimit, incrementUsage, checkFeatureAccess } = require('../middleware/subscriptionMiddleware');
 const SubscriptionAwareSearchService = require('../services/subscriptionAwareSearchService');
@@ -315,24 +315,50 @@ class SwapDealController {
   // Get all active swap deals
   async getAllSwapDeals(req, res) {
     try {
-      const { page = 1, limit = 20, category, location, search } = req.query;
+      const { page = 1, limit = 20, category, subcategory, location, search } = req.query;
       const offset = (page - 1) * limit;
 
       let whereClause = { status: 'active' };
+      const additionalConditions = [];
 
-      // Add filters
+      // Category filter - case-insensitive matching on categoryToSwap
       if (category) {
-        whereClause['$product.category$'] = category;
+        additionalConditions.push(
+          Sequelize.where(
+            Sequelize.fn('LOWER', Sequelize.col('SwapDeal.categoryToSwap')),
+            { [Op.like]: `%${category.trim().toLowerCase()}%` }
+          )
+        );
       }
+
+      // Subcategory filter - case-insensitive matching
+      // Since SwapDeal doesn't have a direct subcategory field, we'll search in preferredSwapSubcategories JSON
+      if (subcategory) {
+        additionalConditions.push(
+          Sequelize.where(
+            Sequelize.fn('LOWER', Sequelize.col('SwapDeal.preferredSwapSubcategories')),
+            { [Op.like]: `%${subcategory.trim().toLowerCase()}%` }
+          )
+        );
+      }
+
+      // Location filter
       if (location) {
-        whereClause['$product.location$'] = { [Op.like]: `%${location}%` };
+        whereClause.meetingLocation = { [Op.like]: `%${location}%` };
       }
+
+      // Search filter
       if (search) {
         whereClause[Op.or] = [
           { title: { [Op.like]: `%${search}%` } },
           { description: { [Op.like]: `%${search}%` } },
-          { '$product.title$': { [Op.like]: `%${search}%` } }
+          { productToSwap: { [Op.like]: `%${search}%` } }
         ];
+      }
+
+      // Combine additional conditions
+      if (additionalConditions.length > 0) {
+        whereClause[Op.and] = additionalConditions;
       }
 
       const swapDeals = await db.SwapDeal.findAndCountAll({

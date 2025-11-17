@@ -531,6 +531,7 @@ class GroupBuyController {
         limit = 10,
         status = 'active',
         category_id,
+        subcategory,
         location,
         min_price,
         max_price,
@@ -544,6 +545,7 @@ class GroupBuyController {
       const searchResults = await SubscriptionAwareSearchService.searchGroupBuys({
         query: search,
         category: category_id,
+        subcategory: subcategory,
         location,
         minPrice: min_price ? parseFloat(min_price) : undefined,
         maxPrice: max_price ? parseFloat(max_price) : undefined,

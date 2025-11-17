@@ -1,5 +1,5 @@
 const { Product, GroupBuy, SwapDeal, Auction, UserSubscription, SubscriptionPlan } = require('../../models');
-const { Op } = require('sequelize');
+const { Op, Sequelize } = require('sequelize');
 
 /**
  * Subscription-Aware Search Service
@@ -140,6 +140,7 @@ class SubscriptionAwareSearchService {
       const { 
         query, 
         category, 
+        subcategory,
         location, 
         minPrice, 
         maxPrice,
@@ -159,6 +160,15 @@ class SubscriptionAwareSearchService {
       }
       
       if (category) whereClause.category_id = category;
+      
+      // Subcategory filter - case-insensitive matching
+      if (subcategory) {
+        whereClause.subcategory = Sequelize.where(
+          Sequelize.fn('LOWER', Sequelize.col('GroupBuy.subcategory')),
+          { [Op.like]: `%${subcategory.trim().toLowerCase()}%` }
+        );
+      }
+      
       if (location) whereClause.location = { [Op.like]: `%${location}%` };
       if (minPrice) whereClause.group_price = { [Op.gte]: minPrice };
       if (maxPrice) whereClause.group_price = { ...whereClause.group_price, [Op.lte]: maxPrice };

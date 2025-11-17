@@ -1,5 +1,5 @@
 const db = require('../../models');
-const { Op, fn, col } = require('sequelize');
+const { Op, Sequelize, fn, col, where } = require('sequelize');
 const { checkSubscriptionLimit, incrementUsage, checkFeatureAccess } = require('../middleware/subscriptionMiddleware');
 
 // Helper function to map distress sale field names for frontend
@@ -270,7 +270,9 @@ class DistressSaleController {
         maxDiscount,
         minDiscount,
         category,
+        subcategory,
         location,
+        search,
         sortBy = 'createdAt',
         sortOrder = 'DESC'
       } = req.query;
@@ -300,14 +302,49 @@ class DistressSaleController {
         };
       }
 
+      // Additional conditions array for complex filters
+      const additionalConditions = [];
+
+      // Category filter - case-insensitive matching
       if (category) {
-        whereClause.category = category;
+        additionalConditions.push(
+          Sequelize.where(
+            Sequelize.fn('LOWER', Sequelize.col('Product.category')),
+            { [Op.like]: `%${category.trim().toLowerCase()}%` }
+          )
+        );
       }
 
+      // Subcategory filter - case-insensitive matching
+      if (subcategory) {
+        additionalConditions.push(
+          Sequelize.where(
+            Sequelize.fn('LOWER', Sequelize.col('Product.subcategory')),
+            { [Op.like]: `%${subcategory.trim().toLowerCase()}%` }
+          )
+        );
+      }
+
+      // Search filter - searches in title and description
+      if (search) {
+        additionalConditions.push({
+          [Op.or]: [
+            { title: { [Op.like]: `%${search}%` } },
+            { description: { [Op.like]: `%${search}%` } }
+          ]
+        });
+      }
+
+      // Location filter - case-insensitive
       if (location) {
         whereClause.location = {
           [Op.like]: `%${location}%`
         };
+      }
+
+      // Combine additional conditions with whereClause
+      if (additionalConditions.length > 0) {
+        whereClause[Op.and] = additionalConditions;
       }
 
       // Get distress sales with pagination and sorting
