@@ -1,5 +1,5 @@
 const db = require('../../models');
-const { Op } = require('sequelize');
+const { Op, fn, col, literal, where } = require('sequelize');
 
 class HeavyDistributorController {
   // Create a new heavy distributor listing
@@ -216,8 +216,7 @@ class HeavyDistributorController {
         ? (typeMap[normalizedType] || normalizedType)
         : null;
 
-      // Build filter conditions for SellersTable
-      const whereClause = {
+      const baseWhereClause = {
         verificationStatus: {
           [Op.in]: ['approved', 'active']
         },
@@ -226,75 +225,102 @@ class HeavyDistributorController {
           : { [Op.in]: allowedSellerTypes },
       };
 
-      // Add location filter if provided
-      if (location) {
-        whereClause.country = {
-          [Op.like]: `%${location}%`
-        };
+      const optionalFilters = [];
+      const normalizedLocation = location?.trim().toLowerCase();
+      const parsedMinRating = parseFloat(minRating);
+
+      if (normalizedLocation) {
+        optionalFilters.push({
+          [Op.or]: [
+            where(fn('LOWER', col('country')), { [Op.like]: `%${normalizedLocation}%` }),
+            where(fn('LOWER', col('state')), { [Op.like]: `%${normalizedLocation}%` }),
+            where(fn('LOWER', col('businessAddress')), { [Op.like]: `%${normalizedLocation}%` }),
+          ]
+        });
       }
 
-      // Add rating filter if provided
-      if (minRating) {
-        whereClause.rating = {
-          [Op.gte]: parseFloat(minRating)
-        };
+      if (!Number.isNaN(parsedMinRating) && parsedMinRating > 0) {
+        optionalFilters.push({
+          rating: { [Op.gte]: parsedMinRating }
+        });
       }
 
-      // Add product category filter if provided
       if (productCategory) {
-        whereClause.selectedCategories = {
-          [Op.like]: `%${productCategory}%`
-        };
+        const escapedCategory = db.sequelize.escape(productCategory.trim());
+        optionalFilters.push(
+          literal(`JSON_CONTAINS(COALESCE(selectedCategories, JSON_ARRAY()), JSON_QUOTE(${escapedCategory}))`)
+        );
       }
 
       if (subCategory) {
-        whereClause.selectedSubcategories = {
-          [Op.like]: `%${subCategory}%`
-        };
+        const escapedSubCategory = db.sequelize.escape(`%${subCategory.trim()}%`);
+        optionalFilters.push(
+          literal(`JSON_SEARCH(COALESCE(selectedSubcategories, JSON_OBJECT()), 'one', ${escapedSubCategory}) IS NOT NULL`)
+        );
       }
 
-      // Add search query filter if provided
       if (searchQuery) {
-        whereClause[Op.or] = [
-          { businessName: { [Op.like]: `%${searchQuery}%` } },
-          { businessAddress: { [Op.like]: `%${searchQuery}%` } },
-          { selectedCategories: { [Op.like]: `%${searchQuery}%` } }
-        ];
+        optionalFilters.push({
+          [Op.or]: [
+            { businessName: { [Op.like]: `%${searchQuery}%` } },
+            { businessAddress: { [Op.like]: `%${searchQuery}%` } },
+            { country: { [Op.like]: `%${searchQuery}%` } }
+          ]
+        });
       }
 
-      console.log('   Where Clause:', JSON.stringify(whereClause, null, 2));
+      const optionalFiltersApplied = optionalFilters.length > 0;
+      const combinedWhereClause = optionalFiltersApplied
+        ? {
+            ...baseWhereClause,
+            [Op.and]: optionalFilters
+          }
+        : { ...baseWhereClause };
+
+      const runPaginatedQuery = async (whereClause) => {
+        return db.SellersTable.findAndCountAll({
+          where: whereClause,
+          attributes: [
+            'id',
+            'userId',
+            'businessName',
+            'businessAddress',
+            'country',
+            'sellerType',
+            'selectedCategories',
+            'selectedSubcategories',
+            'businessEmail',
+            'businessPhone',
+            'rating',
+            'totalSales',
+            'verificationStatus',
+            'createdAt',
+            'updatedAt'
+          ],
+          include: [
+            {
+              model: db.UserTable,
+              as: 'user',
+              attributes: ['id', 'fullName', 'username', 'profilePicture']
+            }
+          ],
+          order: [[sortBy, sortOrder]],
+          limit: parseInt(limit),
+          offset: parseInt(offset)
+        });
+      };
+
+      console.log('   Where Clause:', JSON.stringify(combinedWhereClause, null, 2));
 
       // Get sellers with pagination and sorting
-      const { count, rows: sellers } = await db.SellersTable.findAndCountAll({
-        where: whereClause,
-        attributes: [
-          'id',
-          'userId',
-          'businessName',
-          'businessAddress',
-          'country',
-          'sellerType',
-          'selectedCategories',
-          'selectedSubcategories',
-          'businessEmail',
-          'businessPhone',
-          'rating',
-          'totalSales',
-          'verificationStatus',
-          'createdAt',
-          'updatedAt'
-        ],
-        include: [
-          {
-            model: db.UserTable,
-            as: 'user',
-            attributes: ['id', 'fullName', 'username', 'profilePicture']
-          }
-        ],
-        order: [[sortBy, sortOrder]],
-        limit: parseInt(limit),
-        offset: parseInt(offset)
-      });
+      let { count, rows: sellers } = await runPaginatedQuery(combinedWhereClause);
+
+      if (count === 0 && optionalFiltersApplied) {
+        console.log('⚠️ No sellers matched optional filters. Falling back to sellerType-only search.');
+        const fallbackResult = await runPaginatedQuery(baseWhereClause);
+        count = fallbackResult.count;
+        sellers = fallbackResult.rows;
+      }
 
       console.log('✅ Found', sellers.length, 'sellers matching criteria');
 
@@ -747,7 +773,7 @@ class HeavyDistributorController {
         : null;
 
       // Build search conditions for SellersTable
-      const whereClause = {
+      const baseWhereClause = {
         verificationStatus: {
           [Op.in]: ['approved', 'active']
         },
@@ -756,38 +782,53 @@ class HeavyDistributorController {
           : { [Op.in]: allowedSellerTypes },
       };
 
-      // Add location filter if provided
-      if (location) {
-        whereClause.country = {
-          [Op.like]: `%${location}%`
-        };
+      const optionalFilters = [];
+      const normalizedLocation = location?.trim().toLowerCase();
+      const parsedMinRating = parseFloat(minRating);
+
+      if (normalizedLocation) {
+        optionalFilters.push({
+          [Op.or]: [
+            where(fn('LOWER', col('country')), { [Op.like]: `%${normalizedLocation}%` }),
+            where(fn('LOWER', col('state')), { [Op.like]: `%${normalizedLocation}%` }),
+            where(fn('LOWER', col('businessAddress')), { [Op.like]: `%${normalizedLocation}%` }),
+          ]
+        });
       }
 
-      // Add rating filter if provided
-      if (minRating > 0) {
-        whereClause.rating = {
-          [Op.gte]: parseFloat(minRating)
-        };
+      if (!Number.isNaN(parsedMinRating) && parsedMinRating > 0) {
+        optionalFilters.push({
+          rating: { [Op.gte]: parsedMinRating }
+        });
       }
 
-      // Add product category filter if provided
       if (productCategory) {
-        whereClause.selectedCategories = {
-          [Op.like]: `%${productCategory}%`
-        };
+        const escapedCategory = db.sequelize.escape(productCategory.trim());
+        optionalFilters.push(
+          literal(`JSON_CONTAINS(COALESCE(selectedCategories, JSON_ARRAY()), JSON_QUOTE(${escapedCategory}))`)
+        );
       }
 
       if (subCategory) {
-        whereClause.selectedSubcategories = {
-          [Op.like]: `%${subCategory}%`
-        };
+        const escapedSubCategory = db.sequelize.escape(`%${subCategory.trim()}%`);
+        optionalFilters.push(
+          literal(`JSON_SEARCH(COALESCE(selectedSubcategories, JSON_OBJECT()), 'one', ${escapedSubCategory}) IS NOT NULL`)
+        );
       }
 
-      console.log('   Where Clause:', JSON.stringify(whereClause, null, 2));
+      const optionalFiltersApplied = optionalFilters.length > 0;
+      const combinedWhereClause = optionalFiltersApplied
+        ? {
+            ...baseWhereClause,
+            [Op.and]: optionalFilters
+          }
+        : { ...baseWhereClause };
+
+      console.log('   Where Clause:', JSON.stringify(combinedWhereClause, null, 2));
 
       // Search directly from SellersTable
-      const sellers = await db.SellersTable.findAll({
-        where: whereClause,
+      let sellers = await db.SellersTable.findAll({
+        where: combinedWhereClause,
         attributes: [
           'id',
           'userId',
@@ -819,6 +860,43 @@ class HeavyDistributorController {
         ],
         limit: 50
       });
+
+      if (!sellers.length && optionalFiltersApplied) {
+        console.log('⚠️ No sellers matched optional filters. Falling back to sellerType-only search.');
+        sellers = await db.SellersTable.findAll({
+          where: baseWhereClause,
+          attributes: [
+            'id',
+            'userId',
+            'businessName',
+            'businessAddress',
+            'country',
+            'sellerType',
+            'selectedCategories',
+            'selectedSubcategories',
+            'businessEmail',
+            'businessPhone',
+            'rating',
+            'totalSales',
+            'verificationStatus',
+            'createdAt',
+            'updatedAt'
+          ],
+          include: [
+            {
+              model: db.UserTable,
+              as: 'user',
+              attributes: ['id', 'fullName', 'username', 'profilePicture']
+            }
+          ],
+          order: [
+            ['rating', 'DESC'],
+            ['totalSales', 'DESC'],
+            ['createdAt', 'DESC']
+          ],
+          limit: 50
+        });
+      }
 
       console.log('✅ Found', sellers.length, 'sellers matching criteria');
 
