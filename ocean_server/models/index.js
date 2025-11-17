@@ -166,8 +166,7 @@ const setupAssociations = () => {
   db.ProductLike.belongsTo(db.UserTable, { foreignKey: 'userId', as: 'user' });
   db.UserTable.hasMany(db.ProductLike, { foreignKey: 'userId', as: 'productLikes' });
   
-  // ProductCategory associations
-  db.ProductCategory.hasMany(db.GroupBuy, { foreignKey: 'category_id', as: 'groupBuys' });
+  // ProductCategory associations (removed GroupBuy association - no longer uses category_id)
   
   // ProductCategory self-referencing associations for parent-child categories
   db.ProductCategory.hasMany(db.ProductCategory, { foreignKey: 'parentId', as: 'subcategories' });
@@ -231,7 +230,6 @@ const setupAssociations = () => {
   // GroupBuy associations
   db.GroupBuy.belongsTo(db.UserTable, { foreignKey: 'creator_id', as: 'creator' });
   db.GroupBuy.belongsTo(db.UserTable, { foreignKey: 'seller_id', as: 'seller' });
-  db.GroupBuy.belongsTo(db.ProductCategory, { foreignKey: 'category_id', as: 'groupBuyCategory' });
   db.GroupBuy.hasMany(db.GroupBuyParticipant, { foreignKey: 'group_buy_id', as: 'participants' });
   
   // GroupBuyParticipant associations

@@ -15,11 +15,6 @@ module.exports = (sequelize, DataTypes) => {
     allowNull: false,
     comment: 'Detailed description of the group buy'
   },
-  category_id: {
-    type: DataTypes.UUID,
-    allowNull: true,
-    comment: 'Product category ID (deprecated - use category field instead)'
-  },
   category: {
     type: DataTypes.STRING(255),
     allowNull: false,
@@ -165,7 +160,7 @@ module.exports = (sequelize, DataTypes) => {
   timestamps: true,
   indexes: [
     {
-      fields: ['category_id']
+      fields: ['category']
     },
     {
       fields: ['creator_id']

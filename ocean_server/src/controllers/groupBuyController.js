@@ -13,8 +13,8 @@ const mapGroupBuyResponse = (groupBuy) => {
     ...mapped,
     pricePerUnit: mapped.group_price,
     endDate: mapped.deadline,
-    category: mapped.category || mapped.groupBuyCategory?.name || mapped.category_id, // Prioritize category field
-    categoryName: mapped.category || mapped.groupBuyCategory?.name // Explicit category name field
+    category: mapped.category, // Use category field directly
+    categoryName: mapped.category // Explicit category name field
   };
 };
 
@@ -166,8 +166,7 @@ class GroupBuyController {
       const {
         title,
         description,
-        category,  // Changed from category_id - accepts category name string
-        category_id,  // Keep for backward compatibility
+        category,  // Category name string
         subcategory,
         product_name,
         product_image,
@@ -224,9 +223,7 @@ class GroupBuyController {
       }
 
       // Validate required fields
-      // Accept either category (string) or category_id (for backward compatibility)
-      const categoryName = category || category_id;
-      if (!title || !description || !categoryName || !product_name || !original_price || !finalGroupPrice || !min_buyers || !finalDeadline) {
+      if (!title || !description || !category || !product_name || !original_price || !finalGroupPrice || !min_buyers || !finalDeadline) {
         return res.status(400).json({
           success: false,
           message: 'Missing required fields'
@@ -271,7 +268,7 @@ class GroupBuyController {
       }
 
       // Store category string directly (no lookup needed)
-      const finalCategoryName = categoryName?.trim();
+      const finalCategoryName = category?.trim();
       console.log('📋 Category received:', finalCategoryName);
 
       // Validate and set location with fallback
@@ -313,7 +310,6 @@ class GroupBuyController {
         title,
         description,
         category: finalCategoryName,  // Store category name directly
-        category_id: null,  // No longer needed
         subcategory: subcategory?.trim() || null,
         product_name,
         product_image: '', // Will be updated with first uploaded image URL
@@ -421,7 +417,7 @@ class GroupBuyController {
             model: db.Product,
             as: 'product',
             attributes: ['category'],
-            where: { category: category_id }
+            where: { category: finalCategoryName }
           },
           {
             model: db.UserTable,
@@ -438,7 +434,7 @@ class GroupBuyController {
           await createNotification(
             savedProduct.user.id,
             'New Group Buy Created!',
-            `${creator.fullName || creator.username} created a new group buy "${title}" in ${category_id}`,
+            `${creator.fullName || creator.username} created a new group buy "${title}" in ${finalCategoryName}`,
             'info',
             'group_buy',
             { 
@@ -447,7 +443,7 @@ class GroupBuyController {
               creatorId: creator_id,
               creatorName: creator.fullName || creator.username,
               creatorUsername: creator.username,
-              category: category_id,
+              category: finalCategoryName,
               productName: product_name,
               originalPrice: original_price,
               groupPrice: group_price,
@@ -474,11 +470,6 @@ class GroupBuyController {
                 attributes: ['id', 'userId', 'businessName', 'businessEmail']
               }
             ]
-          },
-          {
-            model: db.ProductCategory,
-            as: 'groupBuyCategory',
-            attributes: ['id', 'name']
           }
         ]
       });
@@ -519,8 +510,7 @@ class GroupBuyController {
         page = 1,
         limit = 10,
         status = 'active',
-        category,  // Changed from category_id - accepts category name string
-        category_id,  // Keep for backward compatibility
+        category,  // Category name string
         subcategory,
         location,
         min_price,
@@ -534,7 +524,7 @@ class GroupBuyController {
       // Use subscription-aware search service
       const searchResults = await SubscriptionAwareSearchService.searchGroupBuys({
         query: search,
-        category: category || category_id,  // Use category if provided, fallback to category_id
+        category: category,
         subcategory: subcategory,
         location,
         minPrice: min_price ? parseFloat(min_price) : undefined,
@@ -638,11 +628,6 @@ class GroupBuyController {
               ],
               required: false
             }]
-          },
-          {
-            model: db.ProductCategory,
-            as: 'groupBuyCategory',
-            attributes: ['id', 'name']
           },
           {
             model: db.GroupBuyParticipant,
@@ -749,7 +734,6 @@ class GroupBuyController {
         conversationId: groupBuyJson.conversation_id || groupBuyJson.conversationId,
         // Preserve nested relationships
         creator: groupBuyJson.creator,
-        groupBuyCategory: groupBuyJson.groupBuyCategory,
         participants: groupBuyJson.participants
       };
 
@@ -1343,11 +1327,6 @@ class GroupBuyController {
             as: 'creator',
             attributes: ['id', 'username', 'profilePicture']
           },
-          {
-            model: db.ProductCategory,
-            as: 'groupBuyCategory',
-            attributes: ['id', 'name']
-          },
           ...includeClause
         ],
         order: [['createdAt', 'DESC']]
@@ -1405,11 +1384,6 @@ class GroupBuyController {
               attributes: ['id', 'businessName', 'verificationStatus'],
               required: false
             }]
-          },
-          {
-            model: db.ProductCategory,
-            as: 'groupBuyCategory',
-            attributes: ['id', 'name']
           },
           {
             model: db.GroupBuyParticipant,
