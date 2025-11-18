@@ -453,8 +453,8 @@ const createConversation = async (req, res) => {
             
             console.log('❌ Found duplicate conversation:', conv.id);
             
-            // If metadata is provided and existing conversation doesn't have it, update it
-            if (metadata && (!conv.metadata || Object.keys(conv.metadata).length === 0)) {
+            // If metadata is provided, always update it (allows updating with new product info)
+            if (metadata) {
               console.log('📦 Updating existing conversation with metadata');
               await conv.update({ metadata });
               await conv.reload();
@@ -487,13 +487,21 @@ const createConversation = async (req, res) => {
               ? existingConv.participants.map(p => formatParticipant(p))
               : [];
             
+            const responseData = {
+              ...existingConv.toJSON(),
+              participants: formattedParticipants
+            };
+            
+            console.log('📤 Returning 400 with full conversation data:', {
+              conversationId: conv.id,
+              hasMetadata: !!existingConv.metadata,
+              metadata: existingConv.metadata
+            });
+            
             return res.status(400).json({
               message: 'Direct conversation already exists',
               conversationId: conv.id,
-              data: {
-                ...existingConv.toJSON(),
-                participants: formattedParticipants
-              }
+              data: responseData
             });
           }
         }
