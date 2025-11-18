@@ -452,9 +452,48 @@ const createConversation = async (req, res) => {
               convParticipantIds[1] === requestedParticipantIds[1]) {
             
             console.log('❌ Found duplicate conversation:', conv.id);
+            
+            // If metadata is provided and existing conversation doesn't have it, update it
+            if (metadata && (!conv.metadata || Object.keys(conv.metadata).length === 0)) {
+              console.log('📦 Updating existing conversation with metadata');
+              await conv.update({ metadata });
+              await conv.reload();
+            }
+            
+            // Load conversation with participants to return full data
+            const existingConv = await Conversation.findByPk(conv.id, {
+              include: [
+                {
+                  model: ConversationParticipant,
+                  as: 'participants',
+                  include: [
+                    {
+                      model: UserReference,
+                      as: 'user',
+                      attributes: ['id', 'fullName', 'profilePicture', 'businessName', 'accountType', 'sellerId']
+                    }
+                  ]
+                },
+                {
+                  model: UserReference,
+                  as: 'creator',
+                  attributes: ['id', 'fullName']
+                }
+              ]
+            });
+            
+            // Format participants
+            const formattedParticipants = existingConv.participants 
+              ? existingConv.participants.map(p => formatParticipant(p))
+              : [];
+            
             return res.status(400).json({
               message: 'Direct conversation already exists',
-              conversationId: conv.id
+              conversationId: conv.id,
+              data: {
+                ...existingConv.toJSON(),
+                participants: formattedParticipants
+              }
             });
           }
         }
