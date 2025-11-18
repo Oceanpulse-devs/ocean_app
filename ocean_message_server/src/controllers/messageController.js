@@ -16,6 +16,8 @@ const createNotification = async (userId, title, message, type = 'info', categor
     return notification;
   } catch (error) {
     console.error('Error creating message notification:', error);
+    // Don't throw - notifications are optional, but log the error
+    return null;
   }
 };
 
