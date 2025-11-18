@@ -394,7 +394,7 @@ const getConversation = async (req, res) => {
 // Create new conversation
 const createConversation = async (req, res) => {
   try {
-    const { type = 'direct', name, description, participants } = req.body;
+    const { type = 'direct', name, description, participants, metadata } = req.body;
     const userId = req.user.id;
 
     // Validate participants
@@ -465,11 +465,15 @@ const createConversation = async (req, res) => {
 
     // Create conversation
     console.log('🚀 Creating new conversation with type:', type, 'and participants:', participants);
+    if (metadata) {
+      console.log('📦 Conversation metadata:', JSON.stringify(metadata));
+    }
     const conversation = await Conversation.create({
       type,
       name: type === 'group' ? name : null,
       description: type === 'group' ? description : null,
-      createdBy: userId
+      createdBy: userId,
+      metadata: metadata || null
     });
     console.log('✅ Conversation created with ID:', conversation.id);
 
