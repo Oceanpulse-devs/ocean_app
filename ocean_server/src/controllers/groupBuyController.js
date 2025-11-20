@@ -490,7 +490,7 @@ class GroupBuyController {
         attributes: ['id', 'fullName', 'username', 'profilePicture']
       });
 
-      // Find users who might be interested in this category
+      // Find users who might be interested in this categorys
       // This could be users who have saved products in this category or have shown interest
       const interestedUsers = await db.SavedProduct.findAll({
         include: [
