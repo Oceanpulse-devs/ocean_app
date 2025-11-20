@@ -48,6 +48,7 @@ router.get('/by-conversation/:conversationId', groupBuyController.getGroupBuyByC
 router.get('/:id', groupBuyController.getGroupBuyById);
 router.put('/:id', groupBuyController.updateGroupBuy);
 router.delete('/:id', groupBuyController.deleteGroupBuy);
+router.patch('/:id/deadline', groupBuyController.extendGroupBuyDeadline);
 
 // Group Buy participation
 router.post('/:id/join', groupBuyController.joinGroupBuy);
@@ -59,6 +60,8 @@ router.get('/user/me', groupBuyController.getUserGroupBuys);
 
 // Admin/creator operations
 router.put('/:id/successful', groupBuyController.markGroupBuySuccessful);
+router.post('/:id/cancel', groupBuyController.cancelGroupBuy);
+router.patch('/:groupBuyId/participants/:participantId/status', groupBuyController.updateParticipantStatus);
 
 // Statistics
 router.get('/stats/overview', groupBuyController.getGroupBuyStats);

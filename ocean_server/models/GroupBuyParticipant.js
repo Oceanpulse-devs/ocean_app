@@ -22,14 +22,49 @@ module.exports = (sequelize, DataTypes) => {
     comment: 'Quantity of items the user wants to buy'
   },
   status: {
-    type: DataTypes.ENUM('pending', 'confirmed', 'cancelled', 'completed'),
+    type: DataTypes.ENUM('pending', 'reserved', 'paid', 'fulfilled', 'cancelled', 'disputed'),
     defaultValue: 'pending',
-    comment: 'Status of the user\'s participation'
+    comment: 'Overall lifecycle status of the participation'
   },
   payment_status: {
     type: DataTypes.ENUM('pending', 'paid', 'refunded'),
     defaultValue: 'pending',
     comment: 'Payment status for this participation'
+  },
+  fulfillment_status: {
+    type: DataTypes.ENUM('pending', 'processing', 'ready_for_pickup', 'in_transit', 'delivered', 'cancelled'),
+    defaultValue: 'pending',
+    comment: 'Fulfillment stage for this participant'
+  },
+  status_note: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    comment: 'Optional note describing the latest status update'
+  },
+  status_updated_at: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    comment: 'Timestamp when status/fulfillment was last updated'
+  },
+  payment_confirmed_at: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    comment: 'When payment was confirmed by the seller'
+  },
+  fulfilled_at: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    comment: 'When goods were marked fulfilled/delivered'
+  },
+  issue_status: {
+    type: DataTypes.ENUM('none', 'reported', 'resolved'),
+    defaultValue: 'none',
+    comment: 'Whether this participant has reported an issue'
+  },
+  issue_note: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    comment: 'Seller/admin notes regarding disputes/issues'
   },
   payment_method: {
     type: DataTypes.STRING(100),
@@ -69,17 +104,17 @@ module.exports = (sequelize, DataTypes) => {
   confirmed_at: {
     type: DataTypes.DATE,
     allowNull: true,
-    comment: 'When the participation was confirmed'
+    comment: 'Deprecated - use status timestamps instead'
   },
   cancelled_at: {
     type: DataTypes.DATE,
     allowNull: true,
-    comment: 'When the participation was cancelled'
+    comment: 'Deprecated - use status timestamps instead'
   },
   completed_at: {
     type: DataTypes.DATE,
     allowNull: true,
-    comment: 'When the participation was completed'
+    comment: 'Deprecated - use fulfilled_at instead'
   },
   createdAt: {
     type: DataTypes.DATE,

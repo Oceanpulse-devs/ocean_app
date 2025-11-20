@@ -126,9 +126,17 @@ const sendMessage = async (req, res) => {
       referenceId,
       referenceTitle,
       referenceCategory,
-      buyerNeedId // Special field to indicate if message is from buyer needs page
+      buyerNeedId, // Special field to indicate if message is from buyer needs page
+      senderId: overrideSenderId
     } = req.body;
-    const userId = req.user.id;
+    const isInternalCall = req.user?.isInternal;
+    const userId = isInternalCall ? overrideSenderId : req.user.id;
+    
+    if (!userId) {
+      return res.status(400).json({
+        message: 'Sender ID is required.'
+      });
+    }
 
     // Validate conversation access
     const participant = await ConversationParticipant.findOne({

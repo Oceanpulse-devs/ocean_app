@@ -107,6 +107,11 @@ module.exports = (sequelize, DataTypes) => {
     allowNull: false,
     comment: 'Deadline for joining the group buy'
   },
+  deadline_extended_at: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    comment: 'Timestamp when the deadline was last extended'
+  },
   delivery_date: {
     type: DataTypes.DATE,
     allowNull: true,

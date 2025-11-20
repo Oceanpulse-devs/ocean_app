@@ -36,14 +36,45 @@ const createNotification = async (userId, title, message, type = 'info', categor
   }
 };
 
-// Helper function to create group conversation in messaging server
-const createGroupConversation = async (groupBuy, creatorId, authToken) => {
+// Helper function to send system message to conversation
+const sendSystemMessageToConversation = async (conversationId, senderId, content, metadata = {}) => {
+  if (!conversationId || !senderId || !content) {
+    return;
+  }
+  
   try {
-    // Remove trailing slash if present
     let messageServerUrl = process.env.MESSAGE_SERVER_URL || 'https://messageserver-production-88ba.up.railway.app';
     messageServerUrl = messageServerUrl.replace(/\/$/, '');
     
-    // Get creator info
+    await axios.post(
+      `${messageServerUrl}/api/messages`,
+      {
+        conversationId,
+        content,
+        type: 'system',
+        senderId,
+        metadata
+      },
+      {
+        headers: {
+          'Authorization': `Bearer ${process.env.INTERNAL_API_TOKEN || 'internal-token'}`
+        },
+        timeout: 10000
+      }
+    );
+    
+    console.log('💬 System message sent to conversation:', conversationId, content);
+  } catch (error) {
+    console.error('❌ Error sending system message to conversation:', error.message);
+  }
+};
+
+// Helper function to create group conversation in messaging server
+const createGroupConversation = async (groupBuy, creatorId, authToken) => {
+  try {
+    let messageServerUrl = process.env.MESSAGE_SERVER_URL || 'https://messageserver-production-88ba.up.railway.app';
+    messageServerUrl = messageServerUrl.replace(/\/$/, '');
+
     const creator = await db.UserTable.findByPk(creatorId, {
       include: [{
         model: db.SellersTable,
@@ -51,27 +82,21 @@ const createGroupConversation = async (groupBuy, creatorId, authToken) => {
         attributes: ['businessName']
       }]
     });
-    
+
     if (!creator) {
       throw new Error('Creator not found');
     }
-    
-    // Get business name for sellers, otherwise use fullName
+
     const businessName = creator.seller?.businessName || creator.fullName;
     const groupName = `BP ${businessName} - ${groupBuy.product_name}`;
-    
-    console.log(`🗨️ Creating group conversation: ${groupName}`);
-    console.log(`🔗 Message Server URL: ${messageServerUrl}`);
-    console.log(`🔑 Auth token available: ${authToken ? 'Yes' : 'No'}`);
-    
-    // Create group conversation via messaging server API
+
     const response = await axios.post(
       `${messageServerUrl}/api/conversations`,
       {
         type: 'group',
         name: groupName,
-        description: groupBuy.description.substring(0, 200), // Limit description length
-        participants: [creatorId] // Creator is automatically added
+        description: groupBuy.description ? groupBuy.description.substring(0, 200) : '',
+        participants: [creatorId]
       },
       {
         headers: {
@@ -80,21 +105,77 @@ const createGroupConversation = async (groupBuy, creatorId, authToken) => {
         timeout: 10000
       }
     );
-    
-    console.log(`📡 Response status: ${response.status}`);
-    console.log(`📦 Response data:`, JSON.stringify(response.data, null, 2));
-    
-    const conversationId = response.data.data?.id;
-    console.log(`✅ Group conversation created with ID: ${conversationId}`);
-    
-    return conversationId;
+
+    return response.data.data?.id || null;
   } catch (error) {
-    console.error('❌ Error creating group conversation:');
-    console.error('   Message:', error.message);
-    console.error('   Status:', error.response?.status);
-    console.error('   Data:', error.response?.data);
-    // Don't throw - group buy can still be created without conversation
+    console.error('❌ Error creating group conversation:', error.message);
     return null;
+  }
+};
+
+const updateParticipantStatus = async (participant, updates = {}, metadata = null, conversationId = null, creatorId = null) => {
+  const timestampedUpdates = {
+    ...updates
+  };
+
+  if (updates.status && updates.status !== participant.status) {
+    timestampedUpdates.status_updated_at = new Date();
+    switch (updates.status) {
+      case 'paid':
+        timestampedUpdates.payment_confirmed_at = new Date();
+        break;
+      case 'fulfilled':
+        timestampedUpdates.fulfilled_at = new Date();
+        break;
+      case 'cancelled':
+        timestampedUpdates.cancelled_at = new Date();
+        break;
+      default:
+        break;
+    }
+  }
+
+  if (updates.payment_status && updates.payment_status !== participant.payment_status) {
+    timestampedUpdates.status_updated_at = new Date();
+    if (updates.payment_status === 'paid') {
+      timestampedUpdates.payment_confirmed_at = new Date();
+    }
+  }
+
+  if (updates.fulfillment_status && updates.fulfillment_status !== participant.fulfillment_status) {
+    timestampedUpdates.status_updated_at = new Date();
+  }
+
+  await participant.update(timestampedUpdates);
+
+  if (updates.status) {
+    let content = '';
+    switch (updates.status) {
+      case 'paid':
+        content = `${participant.user?.fullName || 'A buyer'} payment has been confirmed.`;
+        break;
+      case 'fulfilled':
+        content = `${participant.user?.fullName || 'A buyer'} has received their order.`;
+        break;
+      case 'cancelled':
+        content = `${participant.user?.fullName || 'A buyer'} has been marked as cancelled.`;
+        break;
+      case 'disputed':
+        content = `${participant.user?.fullName || 'A buyer'} reported an issue with their order.`;
+        break;
+      default:
+        content = `${participant.user?.fullName || 'A buyer'} status updated to ${updates.status}.`;
+        break;
+    }
+
+    if (conversationId) {
+      await sendSystemMessageToConversation(
+        conversationId,
+        creatorId,
+        content,
+        metadata || { event: 'participant_status', status: updates.status }
+      );
+    }
   }
 };
 
@@ -1075,6 +1156,18 @@ class GroupBuyController {
         const updatedRemainingUnits = await calculateRemainingUnits(id);
         if (updatedRemainingUnits !== null) {
           await groupBuy.update({ remaining_units: updatedRemainingUnits });
+          
+          if (updatedRemainingUnits === 0 && groupBuy.conversation_id) {
+            await sendSystemMessageToConversation(
+              groupBuy.conversation_id,
+              groupBuy.creator_id,
+              `🎉 All units for "${groupBuy.title}" have been locked in! Seller will follow up with delivery steps.`,
+              {
+                event: 'group_buy_full',
+                groupBuyId: groupBuy.id
+              }
+            );
+          }
         }
       }
 
@@ -1155,6 +1248,19 @@ class GroupBuyController {
             }
           );
         }
+        
+        if (groupBuy.conversation_id) {
+          await sendSystemMessageToConversation(
+            groupBuy.conversation_id,
+            groupBuy.creator_id,
+            `✅ "${groupBuy.title}" hit the minimum requirement! The deal is now active.`,
+            {
+              event: 'threshold_met',
+              groupBuyId: groupBuy.id,
+              minBuyers: groupBuy.min_buyers
+            }
+          );
+        }
       }
 
       res.status(201).json({
@@ -1165,9 +1271,174 @@ class GroupBuyController {
           conversationId: groupBuy.conversation_id // Include conversation ID for navigation
         }
       });
-
     } catch (error) {
       console.error('Error joining group buy:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error',
+        error: error.message
+      });
+    }
+  }
+
+  async updateParticipantStatus(req, res) {
+    try {
+      const { groupBuyId, participantId } = req.params;
+      const {
+        status,
+        payment_status,
+        fulfillment_status,
+        status_note,
+        issue_status,
+        issue_note
+      } = req.body;
+      const userId = req.user.id;
+
+      const groupBuy = await db.GroupBuy.findByPk(groupBuyId);
+      if (!groupBuy) {
+        return res.status(404).json({
+          success: false,
+          message: 'Group buy not found'
+        });
+      }
+
+      const participant = await db.GroupBuyParticipant.findByPk(participantId, {
+        include: [{
+          model: db.UserTable,
+          as: 'user',
+          attributes: ['id', 'fullName']
+        }]
+      });
+
+      if (!participant || participant.group_buy_id !== groupBuy.id) {
+        return res.status(404).json({
+          success: false,
+          message: 'Participant not found in this group buy'
+        });
+      }
+
+      // Check authorization: participants can only report issues, creator can do everything
+      const isCreator = groupBuy.creator_id === userId;
+      const isParticipant = participant.user_id === userId;
+      const isReportingIssue = issue_status === 'reported' && issue_note !== undefined;
+      
+      if (!isCreator && !(isParticipant && isReportingIssue)) {
+        return res.status(403).json({
+          success: false,
+          message: 'Only the creator can update participant statuses, or participants can report issues'
+        });
+      }
+
+      const updates = {};
+
+      if (status && participant.status !== status) {
+        updates.status = status;
+        if (status === 'paid') {
+          updates.payment_confirmed_at = new Date();
+        }
+        if (status === 'fulfilled') {
+          updates.fulfilled_at = new Date();
+        }
+      }
+
+      if (payment_status && participant.payment_status !== payment_status) {
+        updates.payment_status = payment_status;
+        if (payment_status === 'paid') {
+          updates.payment_confirmed_at = new Date();
+        }
+      }
+
+      if (fulfillment_status && participant.fulfillment_status !== fulfillment_status) {
+        updates.fulfillment_status = fulfillment_status;
+      }
+
+      if (status_note !== undefined) {
+        updates.status_note = status_note;
+      }
+
+      if (issue_status && participant.issue_status !== issue_status) {
+        updates.issue_status = issue_status;
+        // If reporting an issue, also set status to disputed if not already
+        if (issue_status === 'reported' && participant.status !== 'disputed') {
+          updates.status = 'disputed';
+        }
+      }
+
+      if (issue_note !== undefined) {
+        updates.issue_note = issue_note;
+      }
+
+      updates.status_updated_at = new Date();
+
+      await participant.update(updates);
+      await participant.reload();
+
+      // Send system messages for status changes
+      if (groupBuy.conversation_id) {
+        let systemMessage = null;
+
+        if (updates.status === 'paid' || updates.payment_status === 'paid') {
+          systemMessage = `✅ Payment confirmed for ${participant.user?.fullName || 'participant'}.`;
+        } else if (updates.status === 'fulfilled' || updates.fulfillment_status === 'delivered') {
+          systemMessage = `📦 ${participant.user?.fullName || 'Participant'} has received their items.`;
+        } else if (updates.issue_status === 'reported') {
+          // Include issue description in system message (truncate if too long)
+          const issueDesc = updates.issue_note || issue_note || '';
+          const truncatedDesc = issueDesc.length > 100 
+            ? issueDesc.substring(0, 100) + '...' 
+            : issueDesc;
+          systemMessage = `⚠️ ${participant.user?.fullName || 'Participant'} reported an issue: ${truncatedDesc}. Seller will follow up.`;
+        } else if (updates.issue_status === 'resolved') {
+          const resolvedNote = updates.issue_note || issue_note || '';
+          systemMessage = resolvedNote && resolvedNote.trim().length > 0
+            ? `✅ Issue reported by ${participant.user?.fullName || 'participant'} has been resolved. ${resolvedNote}`
+            : `✅ Issue reported by ${participant.user?.fullName || 'participant'} has been resolved.`;
+        } else if (updates.status === 'disputed' && !updates.issue_status) {
+          systemMessage = `⚠️ ${participant.user?.fullName || 'Participant'} reported an issue.`;
+        }
+
+        if (systemMessage) {
+          await sendSystemMessageToConversation(
+            groupBuy.conversation_id,
+            groupBuy.creator_id,
+            systemMessage,
+            {
+              event: 'participant_status_update',
+              groupBuyId: groupBuy.id,
+              participantId: participant.id,
+              status: updates.status || participant.status,
+              payment_status: updates.payment_status || participant.payment_status,
+              fulfillment_status: updates.fulfillment_status || participant.fulfillment_status,
+              issue_status: updates.issue_status || participant.issue_status,
+            }
+          );
+
+          // Send notification to seller when issue is reported
+          if (updates.issue_status === 'reported' && isParticipant) {
+            await createNotification(
+              groupBuy.creator_id,
+              'Issue Reported',
+              `${participant.user?.fullName || 'A participant'} reported an issue in "${groupBuy.title}"`,
+              'warning',
+              'group_buy',
+              {
+                groupBuyId: groupBuy.id,
+                title: groupBuy.title,
+                participantId: participant.id,
+                participantName: participant.user?.fullName,
+                issueNote: updates.issue_note || issue_note
+              }
+            );
+          }
+        }
+      }
+
+      res.json({
+        success: true,
+        data: participant
+      });
+    } catch (error) {
+      console.error('Error updating participant status:', error);
       res.status(500).json({
         success: false,
         message: 'Internal server error',
@@ -1248,6 +1519,11 @@ class GroupBuyController {
       }
 
       const participantQuantity = participant.quantity || 0;
+      const participantId = participant.id;
+      const leaverName = req.user.fullName || req.user.username || 'A participant';
+
+      // Set status to cancelled before destroying
+      await participant.update({ status: 'cancelled' });
 
       await participant.destroy();
 
@@ -1255,9 +1531,12 @@ class GroupBuyController {
       await groupBuy.decrement('current_buyers');
 
       // Recalculate remaining units if quantity_unit is set
+      let unitsReopened = 0;
       if (groupBuy.quantity_unit !== null && groupBuy.quantity_unit !== undefined) {
         const updatedRemainingUnits = await calculateRemainingUnits(id);
         if (updatedRemainingUnits !== null) {
+          const previousRemaining = groupBuy.remaining_units || 0;
+          unitsReopened = updatedRemainingUnits - previousRemaining;
           await groupBuy.update({ remaining_units: updatedRemainingUnits });
         }
       }
@@ -1267,6 +1546,25 @@ class GroupBuyController {
         await groupBuy.update({ status: 'pending' });
       }
 
+      // Send system message to conversation
+      if (groupBuy.conversation_id) {
+        const message = unitsReopened > 0
+          ? `📤 ${leaverName} left the group buy. ${unitsReopened} ${unitsReopened === 1 ? 'unit' : 'units'} ${unitsReopened === 1 ? 'is' : 'are'} now available again.`
+          : `📤 ${leaverName} left the group buy.`;
+        
+        await sendSystemMessageToConversation(
+          groupBuy.conversation_id,
+          groupBuy.creator_id,
+          message,
+          {
+            event: 'participant_left',
+            groupBuyId: groupBuy.id,
+            participantId: participantId,
+            unitsReopened: unitsReopened
+          }
+        );
+      }
+
       res.json({
         success: true,
         message: 'Successfully left group buy'
@@ -1274,6 +1572,111 @@ class GroupBuyController {
 
     } catch (error) {
       console.error('Error leaving group buy:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error',
+        error: error.message
+      });
+    }
+  }
+
+  // Cancel a group buy (seller/admin only)
+  async cancelGroupBuy(req, res) {
+    try {
+      const { id } = req.params;
+      const { reason } = req.body;
+      const userId = req.user.id;
+
+      if (!reason || reason.trim().isEmpty()) {
+        return res.status(400).json({
+          success: false,
+          message: 'Cancellation reason is required'
+        });
+      }
+
+      const groupBuy = await db.GroupBuy.findByPk(id);
+      if (!groupBuy) {
+        return res.status(404).json({
+          success: false,
+          message: 'Group buy not found'
+        });
+      }
+
+      if (groupBuy.creator_id !== userId) {
+        return res.status(403).json({
+          success: false,
+          message: 'Only the creator can cancel the group buy'
+        });
+      }
+
+      if (groupBuy.status === 'cancelled' || groupBuy.status === 'failed') {
+        return res.status(400).json({
+          success: false,
+          message: 'Group buy is already cancelled or failed'
+        });
+      }
+
+      // Update group buy status
+      await groupBuy.update({ status: 'cancelled' });
+
+      // Cancel all participants
+      const participants = await db.GroupBuyParticipant.findAll({
+        where: { group_buy_id: id, status: { [Op.ne]: 'cancelled' } }
+      });
+
+      for (const participant of participants) {
+        await participant.update({ status: 'cancelled' });
+      }
+
+      // Return all units to pool
+      if (groupBuy.quantity_unit !== null && groupBuy.quantity_unit !== undefined) {
+        const updatedRemainingUnits = await calculateRemainingUnits(id);
+        if (updatedRemainingUnits !== null) {
+          await groupBuy.update({ remaining_units: updatedRemainingUnits });
+        }
+      }
+
+      // Reset current buyers
+      await groupBuy.update({ current_buyers: 0 });
+
+      // Send system message to conversation
+      if (groupBuy.conversation_id) {
+        await sendSystemMessageToConversation(
+          groupBuy.conversation_id,
+          groupBuy.creator_id,
+          `❌ This group buy has been cancelled by the seller. Reason: ${reason.trim()}. We apologize for any inconvenience.`,
+          {
+            event: 'group_buy_cancelled',
+            groupBuyId: groupBuy.id,
+            reason: reason.trim()
+          }
+        );
+      }
+
+      // Send notifications to all participants
+      for (const participant of participants) {
+        await createNotification(
+          participant.user_id,
+          'Group Buy Cancelled',
+          `The group buy "${groupBuy.title}" has been cancelled. Reason: ${reason.trim()}`,
+          'warning',
+          'group_buy',
+          {
+            groupBuyId: groupBuy.id,
+            title: groupBuy.title,
+            reason: reason.trim()
+          }
+        );
+      }
+
+      res.json({
+        success: true,
+        message: 'Group buy cancelled successfully',
+        data: groupBuy
+      });
+
+    } catch (error) {
+      console.error('Error cancelling group buy:', error);
       res.status(500).json({
         success: false,
         message: 'Internal server error',
@@ -1466,6 +1869,18 @@ class GroupBuyController {
         delivery_date: delivery_date || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // Default 7 days from now
       });
 
+      if (groupBuy.conversation_id) {
+        await sendSystemMessageToConversation(
+          groupBuy.conversation_id,
+          groupBuy.creator_id,
+          `🏁 "${groupBuy.title}" has been marked successful. Delivery prep is underway.`,
+          {
+            event: 'group_buy_successful',
+            groupBuyId: groupBuy.id
+          }
+        );
+      }
+
       res.json({
         success: true,
         message: 'Group buy marked as successful',
@@ -1474,6 +1889,76 @@ class GroupBuyController {
 
     } catch (error) {
       console.error('Error marking group buy successful:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error',
+        error: error.message
+      });
+    }
+  }
+
+  // Extend deadline
+  async extendGroupBuyDeadline(req, res) {
+    try {
+      const { id } = req.params;
+      const { newDeadline, reason } = req.body;
+      const userId = req.user.id;
+
+      if (!newDeadline) {
+        return res.status(400).json({
+          success: false,
+          message: 'New deadline is required'
+        });
+      }
+
+      const groupBuy = await db.GroupBuy.findByPk(id);
+      if (!groupBuy) {
+        return res.status(404).json({
+          success: false,
+          message: 'Group buy not found'
+        });
+      }
+
+      if (groupBuy.creator_id !== userId) {
+        return res.status(403).json({
+          success: false,
+          message: 'Only the creator can extend the deadline'
+        });
+      }
+
+      const newDeadlineDate = new Date(newDeadline);
+      if (newDeadlineDate <= new Date()) {
+        return res.status(400).json({
+          success: false,
+          message: 'Deadline must be set in the future'
+        });
+      }
+
+      await groupBuy.update({
+        deadline: newDeadlineDate,
+        deadline_extended_at: new Date()
+      });
+
+      if (groupBuy.conversation_id) {
+        await sendSystemMessageToConversation(
+          groupBuy.conversation_id,
+          groupBuy.creator_id,
+          `📅 Deadline extended to ${newDeadlineDate.toLocaleDateString()}. ${reason || ''}`.trim(),
+          {
+            event: 'deadline_extended',
+            groupBuyId: groupBuy.id,
+            newDeadline: newDeadlineDate
+          }
+        );
+      }
+
+      res.json({
+        success: true,
+        message: 'Deadline updated successfully',
+        data: groupBuy
+      });
+    } catch (error) {
+      console.error('Error extending deadline:', error);
       res.status(500).json({
         success: false,
         message: 'Internal server error',
