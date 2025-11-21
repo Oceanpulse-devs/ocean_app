@@ -1096,10 +1096,11 @@ const updateAuction = async (req, res) => {
       });
     }
 
-    // Prevent updates if auction has bids
-    if (auction.totalBids > 0) {
+    // Prevent updates if auction has bids, EXCEPT for status updates to 'sold'
+    // This allows sellers to mark auctions as sold even when there are bids
+    if (auction.totalBids > 0 && (!updateData.status || updateData.status !== 'sold')) {
       return res.status(400).json({
-        message: 'Cannot update auction that has bids'
+        message: 'Cannot update auction that has bids (except to mark as sold)'
       });
     }
 
@@ -1213,7 +1214,59 @@ const updateAuction = async (req, res) => {
     delete updateData.winnerId;
     delete updateData.winningBidAmount;
 
+    const previousStatus = auction.status;
     await auction.update(updateData);
+
+    // Reload auction to get updated values
+    await auction.reload();
+
+    // Emit socket events if status changed to 'sold'
+    if (updateData.status === 'sold' && previousStatus !== 'sold') {
+      try {
+        // Notify all bidders that auction was marked as sold
+        const bidders = await AuctionBid.findAll({
+          where: { auctionId },
+          include: [
+            {
+              model: UserTable,
+              as: 'bidder',
+              attributes: ['id', 'fullName']
+            }
+          ]
+        });
+
+        // Notify bidders
+        for (const bid of bidders) {
+          await createAuctionNotification(
+            bid.bidderId,
+            'Auction Sold',
+            `The auction "${auction.title}" has been marked as sold by the seller.`,
+            'auction',
+            'sold'
+          );
+        }
+
+        // Emit to auction room
+        emitToAuction(auctionId, 'auction:status_changed', {
+          auctionId,
+          status: 'sold',
+          previousStatus: previousStatus,
+          reason: 'seller_marked_sold'
+        });
+
+        // Emit sold event
+        emitToAuction(auctionId, 'auction:sold', {
+          auctionId,
+          auction: {
+            id: auction.id,
+            title: auction.title,
+            status: 'sold'
+          }
+        });
+      } catch (socketError) {
+        console.error('Error emitting socket events:', socketError);
+      }
+    }
 
     res.json({
       message: 'Auction updated successfully',
