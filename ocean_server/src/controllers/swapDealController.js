@@ -649,8 +649,8 @@ class SwapDealController {
       // Update proposal status
       await proposal.update({ status: 'accepted' });
 
-      // Update swap deal status to completed
-      await proposal.swapDeal.update({ status: 'completed' });
+      // Note: Swap deal remains 'active' to allow accepting multiple proposals
+      // Seller can manually mark as completed later if needed
 
       // Create notifications
       await createNotification(
@@ -663,8 +663,8 @@ class SwapDealController {
 
       await createNotification(
         sellerId,
-        'Swap Deal Completed',
-        `You have accepted a swap proposal for "${proposal.swapDeal.title}".`,
+        'Swap Proposal Accepted',
+        `You have accepted a swap proposal for "${proposal.swapDeal.title}". The swap deal remains active for more proposals.`,
         'success',
         'swap'
       );
