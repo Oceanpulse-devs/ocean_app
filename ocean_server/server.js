@@ -1,15 +1,19 @@
 const express = require('express');
+const http = require('http');
 const cors = require('cors');
 const dotenv = require('dotenv').config();
 const session = require('express-session');
 const passport = require('passport');
 const multer = require('multer');
+const socketIo = require('socket.io');
 const port = process.env.PORT || 5000
 const redisClient = require('./src/config/redisdb')
 const db = require('./models')
 const pool = require('./src/config/database')
 const cookieParser = require('cookie-parser')
 const responseWrapper = require('./src/middleware/responseWrapper')
+const socketAuthMiddleware = require('./src/middleware/socketAuthMiddleware');
+const { auctionSocketHandler, setIOInstance } = require('./src/socket/auctionSocketHandler');
 
 // Initialize OAuth services only if environment variables are available
 if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
@@ -30,6 +34,37 @@ if (process.env.FACEBOOK_APP_ID && process.env.FACEBOOK_APP_SECRET) {
 
 
 const app = express();
+const server = http.createServer(app);
+
+// Initialize Socket.IO
+const io = socketIo(server, {
+  cors: {
+    origin: true, // Allow all origins for development and production
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    credentials: true,
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+  },
+  pingTimeout: parseInt(process.env.WS_HEARTBEAT_TIMEOUT) || 5000,
+  pingInterval: parseInt(process.env.WS_HEARTBEAT_INTERVAL) || 25000
+});
+
+// Set Socket.IO instance in auction socket handler
+setIOInstance(io);
+
+// Socket.IO authentication middleware
+io.use(socketAuthMiddleware);
+
+// Socket.IO connection handler
+io.on('connection', (socket) => {
+  console.log(`🔌 User connected to auction socket: ${socket.userId}`);
+  
+  // Initialize auction socket handler
+  auctionSocketHandler(io, socket);
+  
+  socket.on('disconnect', () => {
+    console.log(`🔌 User disconnected from auction socket: ${socket.userId}`);
+  });
+});
 
 app.use(express.json({ limit: '100mb' }));
 app.use(express.urlencoded({ extended: true, limit: '100mb' }));
@@ -434,14 +469,19 @@ setInterval(async () => {
     console.error('Error in daily performance analytics:', error);
   }
 }, 24 * 60 * 60 * 1000); // 24 hours
+
+// Initialize auction scheduler
+const AuctionScheduler = require('./src/services/auctionScheduler');
+AuctionScheduler.scheduleChecks();
 }
 
 // Only start server if not in test environment and file is run directly
 if (process.env.NODE_ENV !== 'test' && require.main === module) {
-app.listen(port , ()=>{
+server.listen(port , ()=>{
     console.log(`● Server running on port ${port} ✅`)
+    console.log(`● WebSocket server initialized for real-time auction updates ✅`)
 })
 }
 
-// Export app for testing
-module.exports = app;
+// Export app and server for testing
+module.exports = { app, server, io };

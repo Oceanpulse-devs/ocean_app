@@ -151,6 +151,33 @@ module.exports = (sequelize) => {
       allowNull: true,
       field: 'boost_id',
       comment: 'Reference to promotional boost'
+    },
+    buyNowPrice: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: true,
+      validate: {
+        min: 0
+      },
+      comment: 'Buy Now price - allows immediate purchase at this price'
+    },
+    buyNowEnabled: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: true,
+      comment: 'Whether Buy Now feature is enabled for this auction'
+    },
+    boughtAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      comment: 'Timestamp when item was purchased via Buy Now'
+    },
+    buyerId: {
+      type: DataTypes.UUID,
+      allowNull: true,
+      references: {
+        model: 'users',
+        key: 'id'
+      },
+      comment: 'User who purchased via Buy Now'
     }
   }, {
     tableName: 'auctions',
@@ -204,6 +231,12 @@ module.exports = (sequelize) => {
       Auction.belongsTo(models.UserTable, {
         foreignKey: 'winnerId',
         as: 'winner'
+      });
+
+      // Auction belongs to Buyer (User who used Buy Now)
+      Auction.belongsTo(models.UserTable, {
+        foreignKey: 'buyerId',
+        as: 'buyer'
       });
     }
   };

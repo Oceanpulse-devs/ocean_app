@@ -43,16 +43,27 @@ router.get('/api/auctions', auctionController.getAuctions);
 router.get('/api/auctions/categories', auctionController.getAuctionCategories);
 router.get('/api/users/:userId/auctions', auctionController.getUserAuctionsById);
 router.get('/api/auction/:auctionId', auctionController.getAuction);
+router.get('/api/auction/:auctionId/bids', auctionController.getAuctionBids);
 
 // Protected routes (authentication required)
 router.post('/api/auctions', authMiddleware, upload.fields([{ name: 'images', maxCount: 10 }, { name: 'arModel', maxCount: 1 }]), auctionController.createAuction);
 router.post('/api/auction/:auctionId/bid', authMiddleware, auctionController.placeBid);
+router.post('/api/auction/:auctionId/buy-now', authMiddleware, auctionController.buyNow);
 router.post('/api/auction/:auctionId/watch', authMiddleware, auctionController.toggleWatchAuction);
 router.put('/api/auction/:auctionId', authMiddleware, upload.fields([{ name: 'images', maxCount: 10 }, { name: 'arModel', maxCount: 1 }]), auctionController.updateAuction);
 router.delete('/api/auction/:auctionId', authMiddleware, auctionController.cancelAuction);
+router.delete('/api/auction/:auctionId/bid/:bidId', authMiddleware, auctionController.retractBid);
+
+// Buy Now Request routes (Seller only for accept/reject, Seller only for get requests)
+router.get('/api/auction/:auctionId/buy-now-requests', authMiddleware, auctionController.getBuyNowRequests);
+router.post('/api/auction/:auctionId/buy-now-request/:requestId/accept', authMiddleware, auctionController.acceptBuyNowRequest);
+router.post('/api/auction/:auctionId/buy-now-request/:requestId/reject', authMiddleware, auctionController.rejectBuyNowRequest);
 
 // User-specific routes (must be before /api/user/:userId route in authRoutes)
 router.get('/api/user/auctions', authMiddleware, auctionController.getUserAuctions);
 router.get('/api/user/bids', authMiddleware, auctionController.getUserBids);
+
+// Winner selection route (Seller only)
+router.post('/api/auction/:auctionId/select-winner', authMiddleware, auctionController.selectWinner);
 
 module.exports = router; 

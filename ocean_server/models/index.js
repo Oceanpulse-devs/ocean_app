@@ -30,6 +30,7 @@ const UserFollows = require('./UserFollows');
 const Auction = require('./Auction');
 const AuctionBid = require('./AuctionBid');
 const AuctionWatcher = require('./AuctionWatcher');
+const AuctionBuyNowRequest = require('./AuctionBuyNowRequest');
 const Conversation = require('./Conversation');
 const ConversationParticipant = require('./ConversationParticipant');
 const Message = require('./Message');
@@ -82,6 +83,7 @@ db.UserFollows = UserFollows(sequelize, Sequelize.DataTypes);
 db.Auction = Auction(sequelize, Sequelize.DataTypes);
 db.AuctionBid = AuctionBid(sequelize, Sequelize.DataTypes);
 db.AuctionWatcher = AuctionWatcher(sequelize, Sequelize.DataTypes);
+db.AuctionBuyNowRequest = AuctionBuyNowRequest(sequelize, Sequelize.DataTypes);
 db.Conversation = Conversation(sequelize, Sequelize.DataTypes);
 db.ConversationParticipant = ConversationParticipant(sequelize, Sequelize.DataTypes);
 db.Message = Message(sequelize, Sequelize.DataTypes);
@@ -190,6 +192,7 @@ const setupAssociations = () => {
   db.Auction.belongsTo(db.SellersTable, { foreignKey: 'sellerId', as: 'seller' });
   db.Auction.hasMany(db.AuctionBid, { foreignKey: 'auctionId', as: 'bids' });
   db.Auction.hasMany(db.AuctionWatcher, { foreignKey: 'auctionId', as: 'watchers' });
+  db.Auction.hasMany(db.AuctionBuyNowRequest, { foreignKey: 'auctionId', as: 'buyNowRequests' });
   
   // AuctionBid associations
   db.AuctionBid.belongsTo(db.Auction, { foreignKey: 'auctionId', as: 'auction' });
@@ -198,6 +201,10 @@ const setupAssociations = () => {
   // AuctionWatcher associations
   db.AuctionWatcher.belongsTo(db.Auction, { foreignKey: 'auctionId', as: 'auction' });
   db.AuctionWatcher.belongsTo(db.UserTable, { foreignKey: 'userId', as: 'user' });
+  
+  // AuctionBuyNowRequest associations
+  db.AuctionBuyNowRequest.belongsTo(db.Auction, { foreignKey: 'auctionId', as: 'auction' });
+  db.AuctionBuyNowRequest.belongsTo(db.UserTable, { foreignKey: 'buyerId', as: 'buyer' });
   
   // Conversation associations
   db.Conversation.hasMany(db.ConversationParticipant, { foreignKey: 'conversationId', as: 'participants' });
