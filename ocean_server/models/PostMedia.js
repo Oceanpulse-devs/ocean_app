@@ -21,7 +21,7 @@ module.exports = (sequelize) => {
             defaultValue: 'image'
         },
         mediaUrl: {
-            type: DataTypes.STRING(500),
+            type: DataTypes.TEXT,
             allowNull: false
         },
         thumbnailUrl: {
