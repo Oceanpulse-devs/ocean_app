@@ -186,7 +186,7 @@ class SwapDealController {
         preferredSwapCategory: preferredSwapCategory,
         preferredSwapSubcategories: JSON.stringify(preferredSwapSubcategories || []),
         swapConditions: swapConditions,
-        title: `${productToSwap} - Swap Deal`,
+        title: `${productToSwap}`,
         swapTerms: `Looking to swap ${productToSwap} (${brandToSwap || 'Any brand'}) in ${categoryToSwap} category`,
         preferredItems: `${categoryToSwap} items, preferably ${brandToSwap || 'any brand'}`,
         meetingLocation: swapMeetingLocation, // Use validated/fallback location
