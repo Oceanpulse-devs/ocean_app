@@ -588,12 +588,6 @@ const placeBid = async (req, res) => {
       });
     }
 
-    if (new Date() < new Date(auction.startTime)) {
-      return res.status(400).json({
-        message: 'Auction has not started yet'
-      });
-    }
-
     if (new Date() > new Date(auction.endTime)) {
       return res.status(400).json({
         message: 'Auction has ended'
