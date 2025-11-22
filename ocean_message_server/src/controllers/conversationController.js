@@ -395,7 +395,8 @@ const getConversation = async (req, res) => {
 const createConversation = async (req, res) => {
   try {
     const { type = 'direct', name, description, participants, metadata } = req.body;
-    const userId = req.user.id;
+    const isInternalCall = req.user?.isInternal;
+    const userId = isInternalCall ? null : req.user.id;
 
     // Validate participants
     if (!participants || participants.length === 0) {
@@ -404,9 +405,14 @@ const createConversation = async (req, res) => {
       });
     }
 
-    // Add creator to participants if not already included
-    if (!participants.includes(userId)) {
-      participants.push(userId);
+    // For internal calls creating direct conversations, don't add creator to participants
+    // The participants array already contains exactly 2 participants (seller and winner)
+    // For regular calls or group conversations, add creator if not already included
+    if (!isInternalCall || type !== 'direct') {
+      // Add creator to participants if not already included (for regular calls or group conversations)
+      if (userId && !participants.includes(userId)) {
+        participants.push(userId);
+      }
     }
 
     // For direct conversations, ensure only 2 participants
@@ -515,11 +521,18 @@ const createConversation = async (req, res) => {
     if (metadata) {
       console.log('📦 Conversation metadata:', JSON.stringify(metadata));
     }
+    
+    // For internal calls, use first participant as creator (usually the seller)
+    // For regular calls, use the authenticated user
+    const createdBy = isInternalCall && type === 'direct' 
+      ? participants[0]  // Use first participant (seller) as creator for internal direct conversations
+      : userId;
+    
     const conversation = await Conversation.create({
       type,
       name: type === 'group' ? name : null,
       description: type === 'group' ? description : null,
-      createdBy: userId,
+      createdBy: createdBy,
       metadata: metadata || null
     });
     console.log('✅ Conversation created with ID:', conversation.id);
@@ -554,10 +567,16 @@ const createConversation = async (req, res) => {
     }
 
     // Add participants
+    // For internal calls creating direct conversations, make first participant (seller) admin
+    // For regular calls, make the creator admin
+    const adminUserId = isInternalCall && type === 'direct' 
+      ? participants[0]  // First participant (seller) is admin for internal direct conversations
+      : userId;
+    
     const participantData = syncedParticipants.map(participantId => ({
       conversationId: conversation.id,
       userId: participantId,
-      role: participantId === userId ? 'admin' : 'member'
+      role: participantId === adminUserId ? 'admin' : 'member'
     }));
 
     console.log('👥 Adding participants:', participantData);
