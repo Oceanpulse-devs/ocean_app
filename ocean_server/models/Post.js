@@ -83,7 +83,7 @@ module.exports = (sequelize) => {
             allowNull: true
         },
         price: {
-            type: DataTypes.DECIMAL(10, 2),
+            type: DataTypes.DECIMAL(15, 2),
             allowNull: true
         },
         currency: {
