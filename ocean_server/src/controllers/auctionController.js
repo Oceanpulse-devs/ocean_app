@@ -1612,6 +1612,21 @@ const createAuctionBuyNowDM = async (sellerId, buyerId, auction, buyNowPrice) =>
 // Helper function to create DM for auction winner
 const createAuctionWinnerDM = async (sellerId, winnerId, auction, winningBidAmount) => {
   try {
+    // Validate both IDs are present and valid
+    if (!sellerId || !winnerId) {
+      console.error(`❌ Cannot create DM: missing IDs - sellerId=${sellerId}, winnerId=${winnerId}`);
+      return null;
+    }
+
+    // Ensure IDs are strings (in case they're numbers or other types)
+    const sellerIdStr = String(sellerId).trim();
+    const winnerIdStr = String(winnerId).trim();
+
+    if (!sellerIdStr || !winnerIdStr) {
+      console.error(`❌ Cannot create DM: empty IDs after conversion - sellerId="${sellerIdStr}", winnerId="${winnerIdStr}"`);
+      return null;
+    }
+
     let messageServerUrl = process.env.MESSAGE_SERVER_URL || 'https://messageserver-production-88ba.up.railway.app';
     messageServerUrl = messageServerUrl.replace(/\/$/, '');
     
@@ -1642,11 +1657,21 @@ const createAuctionWinnerDM = async (sellerId, winnerId, auction, winningBidAmou
     // Create or get existing conversation via message server
     let conversationId = null;
     try {
+      // Filter participants to ensure only valid IDs are included
+      const participants = [sellerIdStr, winnerIdStr].filter(id => id && id.trim().length > 0);
+      
+      if (participants.length !== 2) {
+        console.error(`❌ Invalid participants array: expected 2, got ${participants.length}`, { sellerId: sellerIdStr, winnerId: winnerIdStr });
+        return null;
+      }
+
+      console.log(`📧 Creating DM with participants: [${participants.join(', ')}]`);
+      
       const response = await axios.post(
         `${messageServerUrl}/api/conversations`,
         {
           type: 'direct',
-          participants: [sellerId, winnerId],
+          participants: participants,
           metadata: metadata
         },
         {
@@ -1694,7 +1719,7 @@ const createAuctionWinnerDM = async (sellerId, winnerId, auction, winningBidAmou
             conversationId,
             content: `🎉 Congratulations! You won the auction "${auction.title}" with a winning bid of ₦${formattedAmount}. Let's coordinate the details!`,
             type: 'system',
-            senderId: sellerId,
+            senderId: sellerIdStr,
             referenceType: 'auction',
             referenceId: auction.id,
             referenceTitle: auction.title,
@@ -1708,7 +1733,7 @@ const createAuctionWinnerDM = async (sellerId, winnerId, auction, winningBidAmou
           }
         );
         
-        console.log(`✅ Sent winner message to conversation ${conversationId} (seller ${sellerId} and winner ${winnerId} for auction ${auction.id})`);
+        console.log(`✅ Sent winner message to conversation ${conversationId} (seller ${sellerIdStr} and winner ${winnerIdStr} for auction ${auction.id})`);
       } catch (messageError) {
         console.error('Error sending system message to conversation:', messageError.message);
         if (messageError.response) {
