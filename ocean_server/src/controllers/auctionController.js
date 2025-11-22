@@ -1283,13 +1283,18 @@ const updateAuction = async (req, res) => {
             );
 
             // Create DM between seller and winner
-            if (auction.seller && auction.seller.user) {
+            // Get seller userId - use the seller we already have from earlier in the function
+            const sellerUserId = auction.seller?.user?.id || seller.userId;
+            if (sellerUserId && highestBid.bidderId) {
+              console.log(`📧 Creating DM for auction winner: seller=${sellerUserId}, winner=${highestBid.bidderId}, auction=${auction.id}`);
               await createAuctionWinnerDM(
-                auction.seller.user.id,
+                sellerUserId,
                 highestBid.bidderId,
                 auction,
                 highestBid.bidAmount
               );
+            } else {
+              console.error(`❌ Cannot create DM: sellerUserId=${sellerUserId}, winnerId=${highestBid.bidderId}`);
             }
 
             // Notify winner
@@ -1634,41 +1639,15 @@ const createAuctionWinnerDM = async (sellerId, winnerId, auction, winningBidAmou
       }
     };
 
-    // Create conversation via message server
-    const response = await axios.post(
-      `${messageServerUrl}/api/conversations`,
-      {
-        type: 'direct',
-        participants: [sellerId, winnerId],
-        metadata: metadata
-      },
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.INTERNAL_API_TOKEN || 'internal-token'}`
-        },
-        timeout: 10000
-      }
-    );
-
-    const conversationId = response.data.conversationId || response.data.id || response.data.data?.id;
-
-    // Send system message
-    if (conversationId) {
-      const formattedAmount = typeof winningBidAmount === 'number' 
-        ? parseFloat(winningBidAmount).toFixed(2) 
-        : winningBidAmount;
-      
-      await axios.post(
-        `${messageServerUrl}/api/messages`,
+    // Create or get existing conversation via message server
+    let conversationId = null;
+    try {
+      const response = await axios.post(
+        `${messageServerUrl}/api/conversations`,
         {
-          conversationId,
-          content: `🎉 Congratulations! You won the auction "${auction.title}" with a winning bid of ₦${formattedAmount}. Let's coordinate the details!`,
-          type: 'system',
-          senderId: sellerId,
-          referenceType: 'auction',
-          referenceId: auction.id,
-          referenceTitle: auction.title,
+          type: 'direct',
+          participants: [sellerId, winnerId],
+          metadata: metadata
         },
         {
           headers: {
@@ -1678,8 +1657,66 @@ const createAuctionWinnerDM = async (sellerId, winnerId, auction, winningBidAmou
           timeout: 10000
         }
       );
+
+      conversationId = response.data.conversationId || response.data.id || response.data.data?.id;
+      console.log(`✅ Created new conversation: ${conversationId}`);
+    } catch (error) {
+      // Handle case where conversation already exists (400 status)
+      if (error.response && error.response.status === 400 && error.response.data?.conversationId) {
+        conversationId = error.response.data.conversationId;
+        console.log(`📧 Conversation already exists: ${conversationId}, updating metadata and sending winner message`);
+        
+        // Message server already updates metadata, but we log it
+        if (error.response.data.data?.metadata) {
+          console.log(`📦 Conversation metadata updated with auction win info`);
+        }
+      } else {
+        // Real error - log and return null
+        console.error('Error creating auction winner DM:', error.message);
+        if (error.response) {
+          console.error('Response status:', error.response.status);
+          console.error('Response data:', error.response.data);
+        }
+        return null;
+      }
+    }
+
+    // Send system message (works for both new and existing conversations)
+    if (conversationId) {
+      const formattedAmount = typeof winningBidAmount === 'number' 
+        ? parseFloat(winningBidAmount).toFixed(2) 
+        : winningBidAmount;
       
-      console.log(`✅ Created DM between seller ${sellerId} and winner ${winnerId} for auction ${auction.id}`);
+      try {
+        await axios.post(
+          `${messageServerUrl}/api/messages`,
+          {
+            conversationId,
+            content: `🎉 Congratulations! You won the auction "${auction.title}" with a winning bid of ₦${formattedAmount}. Let's coordinate the details!`,
+            type: 'system',
+            senderId: sellerId,
+            referenceType: 'auction',
+            referenceId: auction.id,
+            referenceTitle: auction.title,
+          },
+          {
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${process.env.INTERNAL_API_TOKEN || 'internal-token'}`
+            },
+            timeout: 10000
+          }
+        );
+        
+        console.log(`✅ Sent winner message to conversation ${conversationId} (seller ${sellerId} and winner ${winnerId} for auction ${auction.id})`);
+      } catch (messageError) {
+        console.error('Error sending system message to conversation:', messageError.message);
+        if (messageError.response) {
+          console.error('Response status:', messageError.response.status);
+          console.error('Response data:', messageError.response.data);
+        }
+        // Don't fail - conversation exists, message sending is secondary
+      }
     }
 
     return conversationId;
