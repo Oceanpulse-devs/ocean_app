@@ -19,14 +19,14 @@ const mapAuctionResponse = (auction) => {
 };
 
 // Simple notification function to avoid circular dependency
-const createAuctionNotification = async (userId, title, message, type = 'auction', category = 'system') => {
+const createAuctionNotification = async (userId, title, message, notificationType = 'info', category = 'auction') => {
   try {
     await Notification.create({
       userId,
       title,
       message,
-      type,
-      category,
+      type: notificationType, // Use valid enum: 'info', 'success', 'warning', 'error', 'admin'
+      category, // Store 'auction' here instead
       isRead: false,
       isEmailSent: false
     });
@@ -778,7 +778,7 @@ const placeBid = async (req, res) => {
         outbidBid.bidderId,
         'You were outbid!',
         `Someone outbid you on "${auction.title}". Current price: ₦${currentAuctionPrice.toFixed(2)}`,
-        'auction',
+        'warning',
         'outbid'
       );
     }
@@ -1303,7 +1303,7 @@ const updateAuction = async (req, res) => {
               highestBid.bidderId,
               'Auction Won!',
               `Congratulations! You won the auction "${auction.title}" with a winning bid of ₦${parseFloat(highestBid.bidAmount).toFixed(2)}. Check your messages to coordinate details.`,
-              'auction',
+              'success',
               'won'
             );
 
@@ -1349,18 +1349,18 @@ const updateAuction = async (req, res) => {
           ]
         });
 
-        // Notify bidders (excluding winner who already got a notification)
-        for (const bid of bidders) {
-          if (bid.bidderId !== auction.winnerId) {
-            await createAuctionNotification(
-              bid.bidderId,
-              'Auction Sold',
-              `The auction "${auction.title}" has been marked as sold by the seller.`,
-              'auction',
-              'sold'
-            );
-          }
-        }
+            // Notify bidders (excluding winner who already got a notification)
+            for (const bid of bidders) {
+              if (bid.bidderId !== auction.winnerId) {
+                await createAuctionNotification(
+                  bid.bidderId,
+                  'Auction Sold',
+                  `The auction "${auction.title}" has been marked as sold by the seller.`,
+                  'info',
+                  'sold'
+                );
+              }
+            }
 
         // Emit to auction room
         emitToAuction(auctionId, 'auction:status_changed', {
@@ -1450,7 +1450,7 @@ const cancelAuction = async (req, res) => {
         bid.bidderId,
         'Auction Cancelled',
         `The auction "${auction.title}" has been cancelled by the seller.`,
-        'auction',
+        'info',
         'cancelled'
       );
     }
@@ -1530,7 +1530,7 @@ const createAuctionBuyNowDM = async (sellerId, buyerId, auction, buyNowPrice) =>
       ? auction.images[0]
       : null;
 
-    // Build metadata for conversation
+    // Build metadata for conversation - ensure all values are properly formatted
     const metadata = {
       productId: auction.id,
       productName: auction.title,
@@ -1539,9 +1539,13 @@ const createAuctionBuyNowDM = async (sellerId, buyerId, auction, buyNowPrice) =>
       auctionWin: {
         auctionId: auction.id,
         auctionTitle: auction.title,
-        winningBidAmount: buyNowPrice,
+        winningBidAmount: typeof buyNowPrice === 'number' 
+          ? parseFloat(buyNowPrice).toFixed(2) 
+          : buyNowPrice.toString(), // Format as string
         currency: 'NGN',
-        endedAt: auction.endTime,
+        endedAt: auction.endTime 
+          ? new Date(auction.endTime).toISOString() 
+          : new Date().toISOString(), // Ensure ISO string format
         purchaseMethod: 'buy_now'
       }
     };
@@ -1567,11 +1571,15 @@ const createAuctionBuyNowDM = async (sellerId, buyerId, auction, buyNowPrice) =>
 
     // Send system message
     if (conversationId) {
+      const formattedAmount = typeof buyNowPrice === 'number' 
+        ? parseFloat(buyNowPrice).toFixed(2) 
+        : buyNowPrice;
+      
       await axios.post(
         `${messageServerUrl}/api/messages`,
         {
           conversationId,
-          content: `✅ Purchase successful! You purchased "${auction.title}" via Buy Now for ₦${buyNowPrice}. Let's coordinate the details!`,
+          content: `✅ Purchase successful! You purchased "${auction.title}" via Buy Now for ₦${formattedAmount}. Let's coordinate the details!`,
           type: 'system',
           senderId: sellerId,
           referenceType: 'auction',
@@ -1593,6 +1601,10 @@ const createAuctionBuyNowDM = async (sellerId, buyerId, auction, buyNowPrice) =>
     return conversationId;
   } catch (error) {
     console.error('Error creating auction buy now DM:', error.message);
+    if (error.response) {
+      console.error('Response status:', error.response.status);
+      console.error('Response data:', error.response.data);
+    }
     // Don't fail the buy now if DM creation fails
     return null;
   }
@@ -1609,7 +1621,7 @@ const createAuctionWinnerDM = async (sellerId, winnerId, auction, winningBidAmou
       ? auction.images[0]
       : null;
 
-    // Build metadata for conversation
+    // Build metadata for conversation - ensure all values are properly formatted
     const metadata = {
       productId: auction.id,
       productName: auction.title,
@@ -1618,9 +1630,13 @@ const createAuctionWinnerDM = async (sellerId, winnerId, auction, winningBidAmou
       auctionWin: {
         auctionId: auction.id,
         auctionTitle: auction.title,
-        winningBidAmount: winningBidAmount,
+        winningBidAmount: typeof winningBidAmount === 'number' 
+          ? parseFloat(winningBidAmount).toFixed(2) 
+          : winningBidAmount.toString(), // Format as string
         currency: 'NGN',
-        endedAt: auction.endTime,
+        endedAt: auction.endTime 
+          ? new Date(auction.endTime).toISOString() 
+          : new Date().toISOString(), // Ensure ISO string format
       }
     };
 
@@ -1645,11 +1661,15 @@ const createAuctionWinnerDM = async (sellerId, winnerId, auction, winningBidAmou
 
     // Send system message
     if (conversationId) {
+      const formattedAmount = typeof winningBidAmount === 'number' 
+        ? parseFloat(winningBidAmount).toFixed(2) 
+        : winningBidAmount;
+      
       await axios.post(
         `${messageServerUrl}/api/messages`,
         {
           conversationId,
-          content: `🎉 Congratulations! You won the auction "${auction.title}" with a winning bid of ₦${winningBidAmount}. Let's coordinate the details!`,
+          content: `🎉 Congratulations! You won the auction "${auction.title}" with a winning bid of ₦${formattedAmount}. Let's coordinate the details!`,
           type: 'system',
           senderId: sellerId,
           referenceType: 'auction',
@@ -1671,6 +1691,10 @@ const createAuctionWinnerDM = async (sellerId, winnerId, auction, winningBidAmou
     return conversationId;
   } catch (error) {
     console.error('Error creating auction winner DM:', error.message);
+    if (error.response) {
+      console.error('Response status:', error.response.status);
+      console.error('Response data:', error.response.data);
+    }
     // Don't fail the auction ending if DM creation fails
     return null;
   }
@@ -2144,7 +2168,7 @@ const retractBid = async (req, res) => {
       userId,
       'Bid Retracted',
       `Your bid of ₦${parseFloat(bid.bidAmount).toFixed(2)} on "${auction.title}" has been successfully retracted.`,
-      'auction',
+      'info',
       'bid_retracted'
     );
 
@@ -2174,7 +2198,7 @@ const retractBid = async (req, res) => {
           outbidBid.bidderId,
           'Auction Price Updated',
           `The current price of "${auction.title}" has changed to ₦${newCurrentPrice.toFixed(2)}.`,
-          'auction',
+          'info',
           'price_update'
         );
       }
@@ -2185,7 +2209,7 @@ const retractBid = async (req, res) => {
           nextHighestBid.bidderId,
           'You\'re Now Winning!',
           `You are now the highest bidder on "${auction.title}" with a bid of ₦${newCurrentPrice.toFixed(2)}.`,
-          'auction',
+          'success',
           'winning_bid'
         );
       }
@@ -2371,7 +2395,7 @@ const buyNow = async (req, res) => {
           auction.seller.user.id,
           'New Buy Now Request',
           `A buyer has requested to purchase "${auction.title}" via Buy Now for ₦${parseFloat(auction.buyNowPrice).toFixed(2)}. Review the request in your auction management.`,
-          'auction',
+          'info',
           'buy_now_request'
         );
       }
@@ -2381,7 +2405,7 @@ const buyNow = async (req, res) => {
         userId,
         'Buy Now Request Sent',
         `Your Buy Now request for "${auction.title}" has been sent to the seller. You'll be notified when they respond.`,
-        'auction',
+        'info',
         'buy_now_request_sent'
       );
 
@@ -2598,7 +2622,7 @@ const acceptBuyNowRequest = async (req, res) => {
         buyerId,
         'Buy Now Request Accepted!',
         `Your Buy Now request for "${auction.title}" has been accepted! The auction is now closed. Check your messages to coordinate details.`,
-        'auction',
+        'success',
         'buy_now_accepted'
       );
 
@@ -2608,7 +2632,7 @@ const acceptBuyNowRequest = async (req, res) => {
           auction.seller.user.id,
           'Buy Now Request Accepted',
           `You accepted a Buy Now request for "${auction.title}" at ₦${buyNowPrice.toFixed(2)}. The auction is now closed.`,
-          'auction',
+          'success',
           'buy_now_accepted'
         );
       }
@@ -2631,7 +2655,7 @@ const acceptBuyNowRequest = async (req, res) => {
           bid.bidderId,
           'Auction Ended - Item Purchased',
           `The auction "${auction.title}" ended as the item was purchased via Buy Now.`,
-          'auction',
+          'info',
           'buy_now_ended'
         );
       }
@@ -2784,7 +2808,7 @@ const rejectBuyNowRequest = async (req, res) => {
       buyNowRequest.buyerId,
       'Buy Now Request Rejected',
       `Your Buy Now request for "${buyNowRequest.auction.title}" has been rejected by the seller. The auction continues.`,
-      'auction',
+      'warning',
       'buy_now_rejected'
     );
 
@@ -2793,7 +2817,7 @@ const rejectBuyNowRequest = async (req, res) => {
       userId,
       'Buy Now Request Rejected',
       `You rejected a Buy Now request for "${buyNowRequest.auction.title}". The auction continues.`,
-      'auction',
+      'info',
       'buy_now_rejected'
     );
 
