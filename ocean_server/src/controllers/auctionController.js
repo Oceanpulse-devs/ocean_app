@@ -1223,6 +1223,120 @@ const updateAuction = async (req, res) => {
     // Emit socket events if status changed to 'sold'
     if (updateData.status === 'sold' && previousStatus !== 'sold') {
       try {
+        // Reload auction with seller info for DM creation
+        await auction.reload({
+          include: [{
+            model: SellersTable,
+            as: 'seller',
+            include: [{
+              model: UserTable,
+              as: 'user',
+              attributes: ['id', 'fullName']
+            }]
+          }]
+        });
+
+        // If auction has bids, automatically select highest bidder as winner
+        if (auction.totalBids > 0 && !auction.winnerId) {
+          // Find the highest bid (winning bid)
+          const winningBid = await AuctionBid.findOne({
+            where: {
+              auctionId: auctionId,
+              isWinningBid: true,
+              status: { [Op.in]: ['active', 'won'] }
+            },
+            include: [{
+              model: UserTable,
+              as: 'bidder',
+              attributes: ['id', 'fullName']
+            }],
+            order: [['bidAmount', 'DESC']]
+          });
+
+          // If no winning bid found, find the highest bid by amount
+          const highestBid = winningBid || await AuctionBid.findOne({
+            where: {
+              auctionId: auctionId,
+              status: { [Op.in]: ['active', 'won'] }
+            },
+            include: [{
+              model: UserTable,
+              as: 'bidder',
+              attributes: ['id', 'fullName']
+            }],
+            order: [['bidAmount', 'DESC']]
+          });
+
+          if (highestBid) {
+            // Update auction with winner
+            await auction.update({
+              winnerId: highestBid.bidderId,
+              winningBidAmount: highestBid.bidAmount
+            });
+
+            // Update bid status
+            await highestBid.update({ status: 'won', isWinningBid: true });
+
+            // Update other bids to outbid
+            await AuctionBid.update(
+              { status: 'outbid', isWinningBid: false },
+              {
+                where: {
+                  auctionId: auctionId,
+                  id: { [Op.ne]: highestBid.id }
+                }
+              }
+            );
+
+            // Create DM between seller and winner
+            if (auction.seller && auction.seller.user) {
+              await createAuctionWinnerDM(
+                auction.seller.user.id,
+                highestBid.bidderId,
+                auction,
+                highestBid.bidAmount
+              );
+            }
+
+            // Notify winner
+            await createAuctionNotification(
+              highestBid.bidderId,
+              'Auction Won!',
+              `Congratulations! You won the auction "${auction.title}" with a winning bid of ₦${parseFloat(highestBid.bidAmount).toFixed(2)}. Check your messages to coordinate details.`,
+              'auction',
+              'won'
+            );
+
+            // Emit winner selected event
+            emitToAuction(auctionId, 'auction:winner_selected', {
+              auctionId,
+              winner: {
+                id: highestBid.bidderId,
+                name: highestBid.bidder.fullName,
+                bidAmount: highestBid.bidAmount
+              },
+              auction: {
+                id: auction.id,
+                title: auction.title,
+                status: 'sold'
+              }
+            });
+
+            // Emit to winner
+            emitToUser(highestBid.bidderId, 'auction:winner_selected', {
+              auctionId,
+              winner: {
+                id: highestBid.bidderId,
+                bidAmount: highestBid.bidAmount
+              },
+              auction: {
+                id: auction.id,
+                title: auction.title
+              }
+            });
+          }
+        }
+
         // Notify all bidders that auction was marked as sold
         const bidders = await AuctionBid.findAll({
           where: { auctionId },
@@ -1235,15 +1349,17 @@ const updateAuction = async (req, res) => {
           ]
         });
 
-        // Notify bidders
+        // Notify bidders (excluding winner who already got a notification)
         for (const bid of bidders) {
-          await createAuctionNotification(
-            bid.bidderId,
-            'Auction Sold',
-            `The auction "${auction.title}" has been marked as sold by the seller.`,
-            'auction',
-            'sold'
-          );
+          if (bid.bidderId !== auction.winnerId) {
+            await createAuctionNotification(
+              bid.bidderId,
+              'Auction Sold',
+              `The auction "${auction.title}" has been marked as sold by the seller.`,
+              'auction',
+              'sold'
+            );
+          }
         }
 
         // Emit to auction room
