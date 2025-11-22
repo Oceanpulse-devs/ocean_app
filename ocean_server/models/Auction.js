@@ -24,26 +24,26 @@ module.exports = (sequelize) => {
       allowNull: false
     },
     startingPrice: {
-      type: DataTypes.DECIMAL(10, 2),
+      type: DataTypes.DECIMAL(15, 2),
       allowNull: false,
       validate: {
         min: 0
       }
     },
     currentPrice: {
-      type: DataTypes.DECIMAL(10, 2),
+      type: DataTypes.DECIMAL(15, 2),
       allowNull: false,
       defaultValue: 0
     },
     reservePrice: {
-      type: DataTypes.DECIMAL(10, 2),
+      type: DataTypes.DECIMAL(15, 2),
       allowNull: true,
       validate: {
         min: 0
       }
     },
     minimumBidIncrement: {
-      type: DataTypes.DECIMAL(10, 2),
+      type: DataTypes.DECIMAL(15, 2),
       allowNull: false,
       defaultValue: 1.00
     },
@@ -111,7 +111,7 @@ module.exports = (sequelize) => {
       }
     },
     winningBidAmount: {
-      type: DataTypes.DECIMAL(10, 2),
+      type: DataTypes.DECIMAL(15, 2),
       allowNull: true
     },
     autoExtend: {
@@ -153,7 +153,7 @@ module.exports = (sequelize) => {
       comment: 'Reference to promotional boost'
     },
     buyNowPrice: {
-      type: DataTypes.DECIMAL(10, 2),
+      type: DataTypes.DECIMAL(15, 2),
       allowNull: true,
       validate: {
         min: 0

@@ -24,7 +24,7 @@ module.exports = (sequelize) => {
       }
     },
     bidAmount: {
-      type: DataTypes.DECIMAL(10, 2),
+      type: DataTypes.DECIMAL(15, 2),
       allowNull: false,
       validate: {
         min: 0
@@ -35,7 +35,7 @@ module.exports = (sequelize) => {
       defaultValue: false
     },
     maxAutoBidAmount: {
-      type: DataTypes.DECIMAL(10, 2),
+      type: DataTypes.DECIMAL(15, 2),
       allowNull: true
     },
     isWinningBid: {
