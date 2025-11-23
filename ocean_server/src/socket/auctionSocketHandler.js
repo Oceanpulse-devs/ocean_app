@@ -23,6 +23,23 @@ const auctionSocketHandler = (io, socket) => {
   // Join user to their personal room for notifications
   socket.join(`user:${socket.userId}`);
 
+  // Helper function to get and emit active viewer count
+  const emitActiveViewerCount = (auctionId) => {
+    const io = getIO();
+    if (!io) return;
+    
+    const room = io.sockets.adapter.rooms.get(`auction:${auctionId}`);
+    const activeViewerCount = room ? room.size : 0;
+    
+    // Emit to all users in the auction room
+    io.to(`auction:${auctionId}`).emit('auction:viewer_count_updated', {
+      auctionId,
+      activeViewerCount
+    });
+    
+    console.log(`👁️ Active viewers for auction ${auctionId}: ${activeViewerCount}`);
+  };
+
   // Handle joining an auction room (when user views auction detail page)
   socket.on('join_auction', async (data) => {
     try {
@@ -44,6 +61,11 @@ const auctionSocketHandler = (io, socket) => {
       socket.join(`auction:${auctionId}`);
       console.log(`👥 User ${socket.userId} joined auction room: ${auctionId}`);
 
+      // Get active viewer count before emitting
+      const io = getIO();
+      const room = io?.sockets.adapter.rooms.get(`auction:${auctionId}`);
+      const activeViewerCount = room ? room.size : 0;
+
       // If user is watching the auction, they're already in the room
       const watcher = await AuctionWatcher.findOne({
         where: { auctionId, userId: socket.userId }
@@ -51,8 +73,12 @@ const auctionSocketHandler = (io, socket) => {
 
       socket.emit('joined_auction', {
         auctionId,
-        isWatching: !!watcher
+        isWatching: !!watcher,
+        activeViewerCount
       });
+
+      // Emit updated viewer count to all users in the room
+      emitActiveViewerCount(auctionId);
     } catch (error) {
       console.error('Error joining auction room:', error);
       socket.emit('error', { message: 'Failed to join auction room' });
@@ -67,6 +93,9 @@ const auctionSocketHandler = (io, socket) => {
       if (auctionId) {
         socket.leave(`auction:${auctionId}`);
         console.log(`👋 User ${socket.userId} left auction room: ${auctionId}`);
+        
+        // Emit updated viewer count after leaving
+        emitActiveViewerCount(auctionId);
       }
     } catch (error) {
       console.error('Error leaving auction room:', error);
@@ -96,6 +125,9 @@ const auctionSocketHandler = (io, socket) => {
   // Handle disconnection
   socket.on('disconnect', () => {
     console.log(`🔌 User ${socket.userId} disconnected from auction socket`);
+    // Note: Socket.IO automatically removes disconnected sockets from rooms,
+    // so we don't need to manually emit viewer count updates here
+    // The room size will be updated automatically on the next join/leave
   });
 };
 
