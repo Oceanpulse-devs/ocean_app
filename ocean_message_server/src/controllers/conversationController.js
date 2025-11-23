@@ -411,7 +411,7 @@ const createConversation = async (req, res) => {
     if (!isInternalCall || type !== 'direct') {
       // Add creator to participants if not already included (for regular calls or group conversations)
       if (userId && !participants.includes(userId)) {
-        participants.push(userId);
+      participants.push(userId);
       }
     }
 
