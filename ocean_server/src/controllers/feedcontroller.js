@@ -114,9 +114,20 @@ const getHomeFeed = async (req, res) => {
             distinct: true
         });
 
-        // Format posts for frontend
+        // Format posts for frontend and filter out empty posts
         const formattedPosts = await Promise.all(
-            posts.rows.map(async (post) => {
+            posts.rows
+                .filter(post => {
+                    const postData = post.toJSON();
+                    // Filter out posts with no content and no media
+                    const hasContent = postData.content && postData.content.trim().length > 0;
+                    const hasMedia = postData.media && postData.media.length > 0;
+                    const hasProductName = postData.productName && postData.productName.trim().length > 0;
+                    
+                    // Keep post if it has at least content OR media OR productName
+                    return hasContent || hasMedia || hasProductName;
+                })
+                .map(async (post) => {
                 const postData = post.toJSON();
                 
                 // Determine post type and format accordingly
@@ -639,9 +650,20 @@ const getFeed = async (req, res) => {
             distinct: true
         });
 
-        // Add engagement status for current user
+        // Add engagement status for current user and filter out empty posts
         const postsWithEngagement = await Promise.all(
-            posts.rows.map(async (post) => {
+            posts.rows
+                .filter(post => {
+                    const postData = post.toJSON();
+                    // Filter out posts with no content and no media
+                    const hasContent = postData.content && postData.content.trim().length > 0;
+                    const hasMedia = postData.media && postData.media.length > 0;
+                    const hasProductName = postData.productName && postData.productName.trim().length > 0;
+                    
+                    // Keep post if it has at least content OR media OR productName
+                    return hasContent || hasMedia || hasProductName;
+                })
+                .map(async (post) => {
                 const postData = post.toJSON();
                 
                 if (currentUserId) {

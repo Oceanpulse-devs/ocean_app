@@ -73,6 +73,17 @@ module.exports = (sequelize, DataTypes) => {
       defaultValue: false,
       comment: 'Whether the reach limit has been exceeded'
     },
+    userRegion: {
+      type: DataTypes.STRING(100),
+      allowNull: false,
+      comment: 'User region for feed filtering'
+    },
+    userCountry: {
+      type: DataTypes.STRING(100),
+      allowNull: false,
+      defaultValue: 'Nigeria',
+      comment: 'User country for feed filtering'
+    },
     created_at: {
       type: DataTypes.DATE,
       defaultValue: DataTypes.NOW

@@ -121,6 +121,12 @@ class BuyerNeedController {
       // Set default expiration (30 days from now)
       const expirationDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
+      // Get user's region and country
+      const user = await db.UserTable.findByPk(buyer_id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
       // Create buyer need (store content as both title and description for backward compatibility)
       const buyerNeed = await db.BuyerNeed.create({
         title: finalContent.trim(),  // Store content as title
@@ -132,7 +138,9 @@ class BuyerNeedController {
         expires_at: expirationDate,
         status: 'active',
         current_reach: 0,
-        reach_exceeded: false
+        reach_exceeded: false,
+        userRegion: user.region || 'Lagos',  // Add user region
+        userCountry: user.country || 'Nigeria'  // Add user country
       });
 
       // Add images if provided (optional - field name changed from media to images)
