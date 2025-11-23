@@ -22,7 +22,7 @@ module.exports = (sequelize) => {
         },
         // Unified feed system fields
         contentType: {
-            type: DataTypes.ENUM('post', 'product', 'group_buy', 'swap_deal', 'auction', 'distress_sale'),
+            type: DataTypes.ENUM('post', 'product', 'group_buy', 'swap_deal', 'auction', 'distress_sale', 'product_demand'),
             allowNull: false,
             defaultValue: 'post',
             field: 'content_type'

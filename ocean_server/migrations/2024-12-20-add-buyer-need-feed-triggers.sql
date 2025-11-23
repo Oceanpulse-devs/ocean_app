@@ -47,8 +47,8 @@ BEGIN
         NEW.title,
         NEW.category,  -- Category stored as string
         NULL,  -- Buyer needs don't have location in the main table
-        NULL,
-        'Nigeria',
+        'Lagos',  -- Set default region (posts table requires NOT NULL)
+        'Nigeria',  -- Set default country
         'product_demand',
         NEW.id,
         'buyer_needs',
