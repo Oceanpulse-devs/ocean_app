@@ -65,7 +65,8 @@ const getHomeFeed = async (req, res) => {
         const { SellersTable } = require('../../models');
         const posts = await Post.findAndCountAll({
             where: {
-                status: 'active'
+                status: 'active',
+                feedVisible: true  // Only show posts that should appear in feed
             },
             include: [
                 {
