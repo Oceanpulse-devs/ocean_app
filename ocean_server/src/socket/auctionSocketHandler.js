@@ -61,24 +61,27 @@ const auctionSocketHandler = (io, socket) => {
       socket.join(`auction:${auctionId}`);
       console.log(`👥 User ${socket.userId} joined auction room: ${auctionId}`);
 
-      // Get active viewer count before emitting
-      const io = getIO();
-      const room = io?.sockets.adapter.rooms.get(`auction:${auctionId}`);
-      const activeViewerCount = room ? room.size : 0;
-
       // If user is watching the auction, they're already in the room
       const watcher = await AuctionWatcher.findOne({
         where: { auctionId, userId: socket.userId }
       });
 
-      socket.emit('joined_auction', {
-        auctionId,
-        isWatching: !!watcher,
-        activeViewerCount
-      });
-
-      // Emit updated viewer count to all users in the room
-      emitActiveViewerCount(auctionId);
+      // Get active viewer count and emit - use a small delay to ensure room is updated
+      // Socket.IO's join() is synchronous but room updates might need a moment
+      setTimeout(() => {
+        const io = getIO();
+        const room = io?.sockets.adapter.rooms.get(`auction:${auctionId}`);
+        const activeViewerCount = room ? room.size : 1; // Default to 1 if room doesn't exist yet
+        
+        socket.emit('joined_auction', {
+          auctionId,
+          isWatching: !!watcher,
+          activeViewerCount
+        });
+        
+        // Emit updated viewer count to all users in the room
+        emitActiveViewerCount(auctionId);
+      }, 100); // Small delay to ensure room is fully updated
     } catch (error) {
       console.error('Error joining auction room:', error);
       socket.emit('error', { message: 'Failed to join auction room' });
