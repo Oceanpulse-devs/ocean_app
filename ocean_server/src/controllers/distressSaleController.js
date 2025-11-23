@@ -418,7 +418,7 @@ class DistressSaleController {
           {
             model: db.SellersTable,
             as: 'seller',
-            attributes: ['id', 'userId', 'businessName', 'businessAddress', 'country', 'state', 'category', 'verificationStatus']
+            attributes: ['id', 'userId', 'businessName', 'businessAddress', 'businessPhone', 'country', 'state', 'category', 'verificationStatus']
             // Removed nested 'user' include - only seller business info needed
           }
         ]

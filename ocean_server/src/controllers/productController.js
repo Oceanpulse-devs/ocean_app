@@ -138,7 +138,7 @@ const getProduct = async (req, res) => {
                 {
                     model: SellersTable,
                     as: 'seller',
-                    attributes: ['id', 'userId', 'businessName', 'businessAddress', 'country', 'state', 'category', 'verificationStatus'],
+                    attributes: ['id', 'userId', 'businessName', 'businessAddress', 'businessPhone', 'country', 'state', 'category', 'verificationStatus'],
                     include: [
                         {
                             model: UserTable,
