@@ -340,6 +340,90 @@ const getHomeFeed = async (req, res) => {
                         feedMetadataSwapDealId: postData.feedMetadata?.swap_deal_id,
                         hasImages: swapDealImages.length > 0
                     });
+                } else if (postData.contentType === 'product_demand') {
+                    // Product Demand post format (read-only mode on feed)
+                    const buyerNeedId = postData.sourceId || postData.feedMetadata?.buyer_need_id || null;
+                    
+                    // Get images from media or feedMetadata
+                    let demandImages = [];
+                    if (postData.media && postData.media.length > 0) {
+                        demandImages = postData.media.map(m => m.mediaUrl);
+                    }
+                    
+                    // Format media array
+                    const mediaArray = postData.media?.map((m, index) => ({
+                        id: m.id || `media_${Date.now()}_${index}`,
+                        type: m.mediaType || 'image',
+                        url: m.mediaUrl,
+                        thumbnailUrl: m.thumbnailUrl || m.mediaUrl
+                    })) || [];
+                    
+                    // Build feedMetadata with all buyer need details
+                    const feedMetadata = {
+                        buyer_need_id: buyerNeedId,
+                        title: postData.feedMetadata?.title || postData.productName || 'Product Demand',
+                        description: postData.feedMetadata?.description || postData.content || '',
+                        category: postData.feedMetadata?.category || postData.category || null,
+                        status: postData.feedMetadata?.status || 'active',
+                        reach_limit: postData.feedMetadata?.reach_limit || 5,
+                        current_reach: postData.feedMetadata?.current_reach || 0,
+                        reach_exceeded: postData.feedMetadata?.reach_exceeded || false,
+                        expires_at: postData.feedMetadata?.expires_at || null,
+                        is_featured: postData.feedMetadata?.is_featured || false,
+                        images: demandImages,
+                        ...(postData.feedMetadata || {}) // Include all existing metadata
+                    };
+                    
+                    formattedPost = {
+                        id: postData.id,
+                        demandPostId: buyerNeedId,  // Top level buyer need ID
+                        category: 'product_demand',   // Required category
+                        type: 'product_demand',       // Required type
+                        contentType: 'product_demand',
+                        sourceId: postData.sourceId || buyerNeedId,  // Source ID
+                        sourceTable: postData.sourceTable || 'buyer_needs',  // Source table
+                        createdAt: postData.createdAt,
+                        updatedAt: postData.updatedAt,
+                        user: {
+                            id: postData.user.id,
+                            name: postData.user.fullName,  // Buyer name (not seller)
+                            avatar: postData.user.profilePicture || '👤',
+                            verified: postData.user.accountStatus === 'verified',
+                            location: postData.user.location
+                        },
+                        // Buyer need specific fields
+                        buyerNeed: {
+                            id: buyerNeedId,
+                            title: postData.feedMetadata?.title || postData.productName || 'Product Demand',
+                            description: postData.feedMetadata?.description || postData.content || '',
+                            category: postData.feedMetadata?.category || postData.category || null,
+                            status: postData.feedMetadata?.status || 'active',
+                            reach_limit: postData.feedMetadata?.reach_limit || 5,
+                            current_reach: postData.feedMetadata?.current_reach || 0,
+                            reach_exceeded: postData.feedMetadata?.reach_exceeded || false,
+                            expires_at: postData.feedMetadata?.expires_at || null,
+                            is_featured: postData.feedMetadata?.is_featured || false
+                        },
+                        caption: postData.content || `Product Demand: ${feedMetadata.title}`,
+                        feedMetadata: feedMetadata,  // Complete metadata with images array
+                        media: mediaArray,  // Media array format
+                        likes: postData.likesCount || 0,
+                        comments: postData.commentsCount || 0,
+                        shares: postData.sharesCount || 0,
+                        saves: postData.savedCount || 0,
+                        timeAgo: getTimeAgo(postData.createdAt),
+                        isLiked: false,
+                        isSaved: false,
+                        showComments: false,
+                        commentList: []
+                    };
+                    
+                    console.log('🔍 PRODUCT DEMAND POST FOUND:', {
+                        postId: postData.id,
+                        buyerNeedId: buyerNeedId,
+                        sourceId: postData.sourceId,
+                        imagesCount: demandImages.length
+                    });
                 } else {
                     // General post format (default) - Map to frontend field names
                     const displayName = postData.user?.seller?.businessName || postData.user?.fullName;
@@ -2214,6 +2298,83 @@ const getLikedPosts = async (req, res) => {
                         timeAgo: getTimeAgo(postData.createdAt),
                         isLiked: true,
                         isSaved: false,
+                        showComments: false,
+                        commentList: []
+                    };
+                } else if (postData.contentType === 'product_demand') {
+                    // Product Demand post format (read-only mode on feed)
+                    const buyerNeedId = postData.sourceId || postData.feedMetadata?.buyer_need_id || null;
+                    
+                    // Get images from media or feedMetadata
+                    let demandImages = [];
+                    if (postData.media && postData.media.length > 0) {
+                        demandImages = postData.media.map(m => m.mediaUrl);
+                    }
+                    
+                    // Format media array
+                    const mediaArray = postData.media?.map((m, index) => ({
+                        id: m.id || `media_${Date.now()}_${index}`,
+                        type: m.mediaType || 'image',
+                        url: m.mediaUrl,
+                        thumbnailUrl: m.thumbnailUrl || m.mediaUrl
+                    })) || [];
+                    
+                    // Build feedMetadata with all buyer need details
+                    const feedMetadata = {
+                        buyer_need_id: buyerNeedId,
+                        title: postData.feedMetadata?.title || postData.productName || 'Product Demand',
+                        description: postData.feedMetadata?.description || postData.content || '',
+                        category: postData.feedMetadata?.category || postData.category || null,
+                        status: postData.feedMetadata?.status || 'active',
+                        reach_limit: postData.feedMetadata?.reach_limit || 5,
+                        current_reach: postData.feedMetadata?.current_reach || 0,
+                        reach_exceeded: postData.feedMetadata?.reach_exceeded || false,
+                        expires_at: postData.feedMetadata?.expires_at || null,
+                        is_featured: postData.feedMetadata?.is_featured || false,
+                        images: demandImages,
+                        ...(postData.feedMetadata || {}) // Include all existing metadata
+                    };
+                    
+                    formattedPost = {
+                        id: postData.id,
+                        demandPostId: buyerNeedId,  // Top level buyer need ID
+                        category: 'product_demand',   // Required category
+                        type: 'product_demand',       // Required type
+                        contentType: 'product_demand',
+                        sourceId: postData.sourceId || buyerNeedId,  // Source ID
+                        sourceTable: postData.sourceTable || 'buyer_needs',  // Source table
+                        createdAt: postData.createdAt,
+                        updatedAt: postData.updatedAt,
+                        user: {
+                            id: postData.user.id,
+                            name: postData.user.fullName,  // Buyer name (not seller)
+                            avatar: postData.user.profilePicture || '👤',
+                            verified: postData.user.accountStatus === 'verified',
+                            location: postData.user.location
+                        },
+                        // Buyer need specific fields
+                        buyerNeed: {
+                            id: buyerNeedId,
+                            title: postData.feedMetadata?.title || postData.productName || 'Product Demand',
+                            description: postData.feedMetadata?.description || postData.content || '',
+                            category: postData.feedMetadata?.category || postData.category || null,
+                            status: postData.feedMetadata?.status || 'active',
+                            reach_limit: postData.feedMetadata?.reach_limit || 5,
+                            current_reach: postData.feedMetadata?.current_reach || 0,
+                            reach_exceeded: postData.feedMetadata?.reach_exceeded || false,
+                            expires_at: postData.feedMetadata?.expires_at || null,
+                            is_featured: postData.feedMetadata?.is_featured || false
+                        },
+                        caption: postData.content || `Product Demand: ${feedMetadata.title}`,
+                        feedMetadata: feedMetadata,  // Complete metadata with images array
+                        media: mediaArray,  // Media array format
+                        likes: postData.likesCount || 0,
+                        comments: postData.commentsCount || 0,
+                        shares: postData.sharesCount || 0,
+                        saves: postData.savedCount || 0,
+                        timeAgo: getTimeAgo(postData.createdAt),
+                        isLiked: true, // Always true since these are liked posts
+                        isSaved: false, // Will be set below
                         showComments: false,
                         commentList: []
                     };
