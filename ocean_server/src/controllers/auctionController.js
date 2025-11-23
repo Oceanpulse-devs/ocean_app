@@ -480,7 +480,7 @@ const getAuction = async (req, res) => {
             {
               model: UserTable,
               as: 'bidder',
-              attributes: ['id', 'fullName']
+              attributes: ['id', 'fullName', 'profilePicture']
             }
           ],
           order: [['bidAmount', 'DESC']],
@@ -779,6 +779,11 @@ const placeBid = async (req, res) => {
 
     // Emit socket events for real-time updates
     try {
+      // Get bidder info for socket event
+      const bidder = await UserTable.findByPk(userId, {
+        attributes: ['id', 'fullName', 'profilePicture']
+      });
+      
       // Emit bid placed event to auction room
       emitToAuction(auctionId, 'auction:bid_placed', {
         auctionId,
@@ -787,7 +792,12 @@ const placeBid = async (req, res) => {
           bidderId: userId,
           bidAmount: currentAuctionPrice,
           isAutoBid: bid.isAutoBid || false,
-          createdAt: bid.createdAt
+          createdAt: bid.createdAt,
+          bidder: bidder ? {
+            id: bidder.id,
+            fullName: bidder.fullName,
+            profilePicture: bidder.profilePicture
+          } : null
         },
         currentPrice: currentAuctionPrice,
         totalBids: auction.totalBids,
