@@ -97,8 +97,10 @@ const auctionSocketHandler = (io, socket) => {
         socket.leave(`auction:${auctionId}`);
         console.log(`👋 User ${socket.userId} left auction room: ${auctionId}`);
         
-        // Emit updated viewer count after leaving
-        emitActiveViewerCount(auctionId);
+        // Emit updated viewer count after leaving - use a small delay to ensure room is updated
+        setTimeout(() => {
+          emitActiveViewerCount(auctionId);
+        }, 100); // Small delay to ensure room is fully updated
       }
     } catch (error) {
       console.error('Error leaving auction room:', error);
@@ -128,9 +130,19 @@ const auctionSocketHandler = (io, socket) => {
   // Handle disconnection
   socket.on('disconnect', () => {
     console.log(`🔌 User ${socket.userId} disconnected from auction socket`);
-    // Note: Socket.IO automatically removes disconnected sockets from rooms,
-    // so we don't need to manually emit viewer count updates here
-    // The room size will be updated automatically on the next join/leave
+    
+    // Get all rooms this socket was in before disconnection
+    const rooms = Array.from(socket.rooms);
+    const auctionRooms = rooms.filter(room => room.startsWith('auction:'));
+    
+    // Emit viewer count updates for all auction rooms after a short delay
+    // (Socket.IO removes the socket from rooms automatically, but we need to wait for that)
+    setTimeout(() => {
+      auctionRooms.forEach(room => {
+        const auctionId = room.replace('auction:', '');
+        emitActiveViewerCount(auctionId);
+      });
+    }, 100);
   });
 };
 
