@@ -127,22 +127,32 @@ const auctionSocketHandler = (io, socket) => {
     }
   });
 
-  // Handle disconnection
-  socket.on('disconnect', () => {
-    console.log(`🔌 User ${socket.userId} disconnected from auction socket`);
+  // Handle disconnecting (fires BEFORE socket is removed from rooms)
+  socket.on('disconnecting', () => {
+    console.log(`🔌 User ${socket.userId} is disconnecting from auction socket`);
     
-    // Get all rooms this socket was in before disconnection
+    // Get all rooms this socket is in BEFORE it's removed
+    // socket.rooms is still populated at this point
     const rooms = Array.from(socket.rooms);
     const auctionRooms = rooms.filter(room => room.startsWith('auction:'));
     
+    console.log(`📋 User ${socket.userId} was in ${auctionRooms.length} auction room(s): ${auctionRooms.join(', ')}`);
+    
     // Emit viewer count updates for all auction rooms after a short delay
-    // (Socket.IO removes the socket from rooms automatically, but we need to wait for that)
+    // This ensures the socket is fully removed from rooms before we count
     setTimeout(() => {
       auctionRooms.forEach(room => {
         const auctionId = room.replace('auction:', '');
+        console.log(`📤 Emitting viewer count update for auction ${auctionId} after user ${socket.userId} disconnected`);
         emitActiveViewerCount(auctionId);
       });
     }, 100);
+  });
+
+  // Handle disconnection (fires AFTER socket is removed from rooms)
+  socket.on('disconnect', () => {
+    console.log(`🔌 User ${socket.userId} disconnected from auction socket`);
+    // Note: socket.rooms is empty here, so we handle it in 'disconnecting' instead
   });
 };
 
