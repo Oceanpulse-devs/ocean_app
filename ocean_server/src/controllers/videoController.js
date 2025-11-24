@@ -107,20 +107,46 @@ class VideoController {
                 console.error('Redis cache clear failed:', redisError.message);
             }
 
+            // Fetch the created video with user data
+            const createdVideo = await Video.findByPk(video.id, {
+                include: [{
+                    model: UserTable,
+                    as: 'user',
+                    attributes: ['id', 'fullName', 'profilePicture'],
+                    include: [{
+                        model: SellersTable,
+                        as: 'seller',
+                        attributes: ['businessName'],
+                        required: false
+                    }]
+                }]
+            });
+
+            const videoData = createdVideo.toJSON();
+
             res.status(201).json({
                 success: true,
                 message: 'Video uploaded successfully',
                 data: {
-                    id: video.id,
-                    videoUrl: video.videoUrl,
-                    thumbnailUrl: video.thumbnailUrl,
-                    description: video.description,
-                    ctaEnabled: video.ctaEnabled,
-                    ctaType: video.ctaType,
-                    ctaLabel: video.ctaLabel,
-                    videoRole: video.videoRole,
-                    duration: video.duration,
-                    createdAt: video.createdAt
+                    id: videoData.id,
+                    videoUrl: videoData.videoUrl,
+                    thumbnailUrl: videoData.thumbnailUrl,
+                    description: videoData.description,
+                    ctaEnabled: videoData.ctaEnabled,
+                    ctaType: videoData.ctaType,
+                    ctaLabel: videoData.ctaLabel,
+                    videoRole: videoData.videoRole,
+                    duration: videoData.duration,
+                    createdAt: videoData.createdAt,
+                    creatorId: videoData.user?.id || null,
+                    creatorName: videoData.user?.seller?.businessName || videoData.user?.fullName || 'Unknown',
+                    creatorAvatar: videoData.user?.profilePicture || null,
+                    category: videoData.videoRole === 'seller' ? 'seller' : 'buyer',
+                    isBuyerNeed: videoData.videoRole === 'buyer',
+                    likeCount: videoData.likeCount,
+                    commentCount: videoData.commentCount,
+                    shareCount: videoData.shareCount,
+                    isSponsored: videoData.isSponsored
                 }
             });
         } catch (error) {
@@ -156,11 +182,36 @@ class VideoController {
 
             if (cachedVideos) {
                 // Still need to check user-specific data (likes, etc.)
+                // Also need to ensure cached videos have creatorId and proper creatorName
                 const videos = await Promise.all(
                     cachedVideos.map(async (video) => {
                         const isLiked = currentUserId ? await VideoLike.findOne({
                             where: { videoId: video.id, userId: currentUserId }
                         }) : false;
+
+                        // If cached video doesn't have creatorId, fetch it
+                        if (!video.creatorId) {
+                            const videoRecord = await Video.findByPk(video.id, {
+                                include: [{
+                                    model: UserTable,
+                                    as: 'user',
+                                    attributes: ['id', 'fullName', 'profilePicture'],
+                                    include: [{
+                                        model: SellersTable,
+                                        as: 'seller',
+                                        attributes: ['businessName'],
+                                        required: false
+                                    }]
+                                }]
+                            });
+                            
+                            if (videoRecord) {
+                                const videoData = videoRecord.toJSON();
+                                video.creatorId = videoData.user?.id || null;
+                                video.creatorName = videoData.user?.seller?.businessName || videoData.user?.fullName || 'Unknown';
+                                video.creatorAvatar = videoData.user?.profilePicture || null;
+                            }
+                        }
 
                         return {
                             ...video,
@@ -223,7 +274,8 @@ class VideoController {
                     videoUrl: videoData.videoUrl,
                     thumbnailUrl: videoData.thumbnailUrl,
                     description: videoData.description,
-                    creatorName: videoData.user?.fullName || 'Unknown',
+                    creatorId: videoData.user?.id || null,
+                    creatorName: videoData.user?.seller?.businessName || videoData.user?.fullName || 'Unknown',
                     creatorAvatar: videoData.user?.profilePicture || null,
                     category: videoData.videoRole === 'seller' ? 'seller' : 'buyer',
                     location: videoData.user?.location || null,
