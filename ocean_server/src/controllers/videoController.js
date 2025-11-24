@@ -114,7 +114,7 @@ class VideoController {
                     include: [{
                         model: SellersTable,
                         as: 'seller',
-                        attributes: ['businessName'],
+                        attributes: ['businessName', 'businessPhone'],
                         required: false
                     }]
                 }]
@@ -141,6 +141,8 @@ class VideoController {
                     creatorAvatar: videoData.user?.profilePicture || null,
                     category: videoData.videoRole === 'seller' ? 'seller' : 'buyer',
                     isBuyerNeed: videoData.videoRole === 'buyer',
+                    ctaType: videoData.ctaType,
+                    businessPhone: videoData.user?.seller?.businessPhone || null,
                     likeCount: videoData.likeCount,
                     commentCount: videoData.commentCount,
                     shareCount: videoData.shareCount,
@@ -242,7 +244,7 @@ class VideoController {
                         include: [{
                             model: SellersTable,
                             as: 'seller',
-                            attributes: ['businessName', 'verificationStatus'],
+                            attributes: ['businessName', 'verificationStatus', 'businessPhone'],
                             required: false
                         }]
                     }
@@ -281,7 +283,9 @@ class VideoController {
                     commentCount: videoData.commentCount,
                     shareCount: videoData.shareCount,
                     isSponsored: videoData.isSponsored,
+                    ctaType: videoData.ctaType,
                     ctaLabel: videoData.ctaLabel,
+                    businessPhone: videoData.user?.seller?.businessPhone || null,
                     isBuyerNeed: videoData.videoRole === 'buyer',
                     isLiked: likedVideoIds.has(videoData.id),
                     isSaved: false, // TODO: Implement saved videos
