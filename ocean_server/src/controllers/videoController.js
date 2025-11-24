@@ -10,7 +10,7 @@ class VideoController {
         try {
             console.log('📹 Video creation request received');
             console.log('User ID:', req.user?.id);
-            console.log('Request files:', req.files ? Object.keys(req.files) : 'No files');
+            console.log('Request file:', req.file ? 'File present' : 'No file');
             console.log('Request body:', req.body);
 
             const userId = req.user.id;
@@ -25,14 +25,14 @@ class VideoController {
             } = req.body;
 
             // Check if video file is uploaded
-            if (!req.files || req.files.length === 0) {
+            if (!req.file) {
                 return res.status(400).json({
                     success: false,
                     message: 'Video file is required'
                 });
             }
 
-            const videoFile = req.files[0];
+            const videoFile = req.file;
 
             // Validate file type
             if (!videoFile.mimetype.startsWith('video/')) {
