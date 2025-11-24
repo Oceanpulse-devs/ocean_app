@@ -1,0 +1,723 @@
+const { Video, VideoLike, VideoView, VideoComment, VideoCommentLike, UserTable, SellersTable } = require('../../models');
+const { Op } = require('sequelize');
+const { v4: uuidv4 } = require('uuid');
+const cloudinaryService = require('../services/cloudinaryService');
+const redisClient = require('../config/redisdb');
+
+class VideoController {
+    // Create a new video
+    static async createVideo(req, res) {
+        try {
+            console.log('📹 Video creation request received');
+            console.log('User ID:', req.user?.id);
+            console.log('Request files:', req.files ? Object.keys(req.files) : 'No files');
+            console.log('Request body:', req.body);
+
+            const userId = req.user.id;
+
+            // Extract fields from request body
+            const {
+                description,
+                cta_enabled,
+                cta_type,
+                cta_label,
+                video_role
+            } = req.body;
+
+            // Check if video file is uploaded
+            if (!req.files || req.files.length === 0) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Video file is required'
+                });
+            }
+
+            const videoFile = req.files[0];
+
+            // Validate file type
+            if (!videoFile.mimetype.startsWith('video/')) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Only video files are allowed'
+                });
+            }
+
+            // Validate file size (max 100MB)
+            const maxSize = 100 * 1024 * 1024; // 100MB
+            if (videoFile.size > maxSize) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Video file size exceeds 100MB limit'
+                });
+            }
+
+            // Upload video to Cloudinary
+            const folder = `ocean-app/videos/${userId}`;
+            const uploadOptions = {
+                resource_type: 'video',
+                quality: 'auto',
+                transformation: [
+                    { width: 1080, height: 1920, crop: 'limit' } // Vertical video format
+                ]
+            };
+
+            const uploadResult = await cloudinaryService.uploadFile(
+                videoFile.buffer,
+                folder,
+                uploadOptions
+            );
+
+            if (!uploadResult.success) {
+                return res.status(500).json({
+                    success: false,
+                    message: 'Failed to upload video',
+                    error: uploadResult.error
+                });
+            }
+
+            // Generate thumbnail (Cloudinary auto-generates thumbnails for videos)
+            let thumbnailUrl = uploadResult.thumbnailUrl || uploadResult.url;
+
+            // Create video record
+            const video = await Video.create({
+                id: uuidv4(),
+                userId,
+                videoUrl: uploadResult.url,
+                thumbnailUrl: thumbnailUrl,
+                description: description || null,
+                ctaEnabled: cta_enabled === 'true' || cta_enabled === true,
+                ctaType: cta_type || 'none',
+                ctaLabel: cta_label || null,
+                videoRole: video_role || 'seller',
+                duration: uploadResult.duration ? Math.round(uploadResult.duration) : null,
+                fileSize: videoFile.size,
+                mimeType: videoFile.mimetype,
+                likeCount: 0,
+                commentCount: 0,
+                shareCount: 0,
+                viewsCount: 0,
+                isSponsored: false,
+                status: 'active'
+            });
+
+            // Clear video feed cache
+            try {
+                await redisClient.del('video:feed:*');
+            } catch (redisError) {
+                console.error('Redis cache clear failed:', redisError.message);
+            }
+
+            res.status(201).json({
+                success: true,
+                message: 'Video uploaded successfully',
+                data: {
+                    id: video.id,
+                    videoUrl: video.videoUrl,
+                    thumbnailUrl: video.thumbnailUrl,
+                    description: video.description,
+                    ctaEnabled: video.ctaEnabled,
+                    ctaType: video.ctaType,
+                    ctaLabel: video.ctaLabel,
+                    videoRole: video.videoRole,
+                    duration: video.duration,
+                    createdAt: video.createdAt
+                }
+            });
+        } catch (error) {
+            console.error('Error creating video:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Error creating video',
+                error: error.message
+            });
+        }
+    }
+
+    // Get video feed (paginated, TikTok-style)
+    static async getVideos(req, res) {
+        try {
+            const { page = 1, limit = 10 } = req.query;
+            const offset = (page - 1) * limit;
+            const currentUserId = req.user?.id;
+
+            // Try to get from Redis cache first
+            const cacheKey = `video:feed:${page}:${limit}`;
+            let cachedVideos = null;
+
+            try {
+                const cached = await redisClient.get(cacheKey);
+                if (cached) {
+                    cachedVideos = JSON.parse(cached);
+                    console.log('✅ Video feed retrieved from Redis cache');
+                }
+            } catch (redisError) {
+                console.error('Redis cache read failed:', redisError.message);
+            }
+
+            if (cachedVideos) {
+                // Still need to check user-specific data (likes, etc.)
+                const videos = await Promise.all(
+                    cachedVideos.map(async (video) => {
+                        const isLiked = currentUserId ? await VideoLike.findOne({
+                            where: { videoId: video.id, userId: currentUserId }
+                        }) : false;
+
+                        return {
+                            ...video,
+                            isLiked: !!isLiked
+                        };
+                    })
+                );
+
+                return res.json({
+                    success: true,
+                    data: videos,
+                    pagination: {
+                        page: parseInt(page),
+                        limit: parseInt(limit),
+                        total: cachedVideos.length
+                    }
+                });
+            }
+
+            // Fetch from database
+            const videos = await Video.findAndCountAll({
+                where: {
+                    status: 'active'
+                },
+                include: [
+                    {
+                        model: UserTable,
+                        as: 'user',
+                        attributes: ['id', 'fullName', 'profilePicture', 'accountStatus'],
+                        include: [{
+                            model: SellersTable,
+                            as: 'seller',
+                            attributes: ['businessName', 'verificationStatus'],
+                            required: false
+                        }]
+                    }
+                ],
+                order: [['createdAt', 'DESC']],
+                limit: parseInt(limit),
+                offset: parseInt(offset),
+                distinct: true
+            });
+
+            // Check user likes for each video
+            const videoIds = videos.rows.map(v => v.id);
+            const userLikes = currentUserId ? await VideoLike.findAll({
+                where: {
+                    videoId: { [Op.in]: videoIds },
+                    userId: currentUserId
+                }
+            }) : [];
+
+            const likedVideoIds = new Set(userLikes.map(like => like.videoId));
+
+            // Format videos for frontend
+            const formattedVideos = videos.rows.map(video => {
+                const videoData = video.toJSON();
+                return {
+                    id: videoData.id,
+                    videoUrl: videoData.videoUrl,
+                    thumbnailUrl: videoData.thumbnailUrl,
+                    description: videoData.description,
+                    creatorName: videoData.user?.fullName || 'Unknown',
+                    creatorAvatar: videoData.user?.profilePicture || null,
+                    category: videoData.videoRole === 'seller' ? 'seller' : 'buyer',
+                    location: videoData.user?.location || null,
+                    likeCount: videoData.likeCount,
+                    commentCount: videoData.commentCount,
+                    shareCount: videoData.shareCount,
+                    isSponsored: videoData.isSponsored,
+                    ctaLabel: videoData.ctaLabel,
+                    isBuyerNeed: videoData.videoRole === 'buyer',
+                    isLiked: likedVideoIds.has(videoData.id),
+                    isSaved: false, // TODO: Implement saved videos
+                    createdAt: videoData.createdAt
+                };
+            });
+
+            // Cache in Redis (expire after 5 minutes)
+            try {
+                await redisClient.setEx(cacheKey, 300, JSON.stringify(formattedVideos));
+            } catch (redisError) {
+                console.error('Redis cache write failed:', redisError.message);
+            }
+
+            res.json({
+                success: true,
+                data: formattedVideos,
+                pagination: {
+                    page: parseInt(page),
+                    limit: parseInt(limit),
+                    total: videos.count,
+                    totalPages: Math.ceil(videos.count / limit)
+                }
+            });
+        } catch (error) {
+            console.error('Error fetching videos:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Error fetching videos',
+                error: error.message
+            });
+        }
+    }
+
+    // Get single video by ID
+    static async getVideoById(req, res) {
+        try {
+            const { id } = req.params;
+            const currentUserId = req.user?.id;
+
+            const video = await Video.findByPk(id, {
+                include: [
+                    {
+                        model: UserTable,
+                        as: 'user',
+                        attributes: ['id', 'fullName', 'profilePicture', 'accountStatus', 'location'],
+                        include: [{
+                            model: SellersTable,
+                            as: 'seller',
+                            attributes: ['businessName', 'verificationStatus', 'businessPhone'],
+                            required: false
+                        }]
+                    },
+                    {
+                        model: VideoComment,
+                        as: 'comments',
+                        where: { status: 'active' },
+                        required: false,
+                        include: [{
+                            model: UserTable,
+                            as: 'user',
+                            attributes: ['id', 'fullName', 'profilePicture']
+                        }],
+                        limit: 10,
+                        order: [['createdAt', 'DESC']]
+                    }
+                ]
+            });
+
+            if (!video) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Video not found'
+                });
+            }
+
+            // Check if user liked the video
+            const isLiked = currentUserId ? await VideoLike.findOne({
+                where: { videoId: id, userId: currentUserId }
+            }) : false;
+
+            const videoData = video.toJSON();
+            res.json({
+                success: true,
+                data: {
+                    ...videoData,
+                    isLiked: !!isLiked
+                }
+            });
+        } catch (error) {
+            console.error('Error fetching video:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Error fetching video',
+                error: error.message
+            });
+        }
+    }
+
+    // Like/unlike video
+    static async likeVideo(req, res) {
+        try {
+            const { id } = req.params;
+            const userId = req.user.id;
+
+            // Check if video exists
+            const video = await Video.findByPk(id);
+            if (!video) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Video not found'
+                });
+            }
+
+            // Check if already liked
+            const existingLike = await VideoLike.findOne({
+                where: { videoId: id, userId }
+            });
+
+            if (existingLike) {
+                // Unlike: delete the like
+                await existingLike.destroy();
+                // Trigger will automatically decrement like_count
+
+                res.json({
+                    success: true,
+                    message: 'Video unliked',
+                    data: {
+                        isLiked: false,
+                        likeCount: video.likeCount - 1
+                    }
+                });
+            } else {
+                // Like: create new like
+                await VideoLike.create({
+                    id: uuidv4(),
+                    videoId: id,
+                    userId
+                });
+                // Trigger will automatically increment like_count
+
+                res.json({
+                    success: true,
+                    message: 'Video liked',
+                    data: {
+                        isLiked: true,
+                        likeCount: video.likeCount + 1
+                    }
+                });
+            }
+
+            // Clear cache
+            try {
+                await redisClient.del('video:feed:*');
+            } catch (redisError) {
+                console.error('Redis cache clear failed:', redisError.message);
+            }
+        } catch (error) {
+            console.error('Error liking video:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Error liking video',
+                error: error.message
+            });
+        }
+    }
+
+    // Track video view
+    static async viewVideo(req, res) {
+        try {
+            const { id } = req.params;
+            const userId = req.user?.id;
+            const ipAddress = req.ip || req.connection.remoteAddress;
+
+            // Check if video exists
+            const video = await Video.findByPk(id);
+            if (!video) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Video not found'
+                });
+            }
+
+            // Check if user already viewed (prevent duplicate views)
+            const existingView = userId ? await VideoView.findOne({
+                where: {
+                    videoId: id,
+                    userId,
+                    viewedAt: {
+                        [Op.gte]: new Date(Date.now() - 24 * 60 * 60 * 1000) // Last 24 hours
+                    }
+                }
+            }) : null;
+
+            if (!existingView) {
+                // Create view record
+                await VideoView.create({
+                    id: uuidv4(),
+                    videoId: id,
+                    userId: userId || null,
+                    ipAddress: userId ? null : ipAddress
+                });
+                // Trigger will automatically increment views_count
+            }
+
+            res.json({
+                success: true,
+                message: 'View tracked'
+            });
+        } catch (error) {
+            console.error('Error tracking view:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Error tracking view',
+                error: error.message
+            });
+        }
+    }
+
+    // Add comment to video
+    static async addComment(req, res) {
+        try {
+            const { id } = req.params;
+            const userId = req.user.id;
+            const { comment, parent_comment_id } = req.body;
+
+            if (!comment || comment.trim().length === 0) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Comment text is required'
+                });
+            }
+
+            // Check if video exists
+            const video = await Video.findByPk(id);
+            if (!video) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Video not found'
+                });
+            }
+
+            // If parent_comment_id provided, verify it exists
+            if (parent_comment_id) {
+                const parentComment = await VideoComment.findByPk(parent_comment_id);
+                if (!parentComment || parentComment.videoId !== id) {
+                    return res.status(400).json({
+                        success: false,
+                        message: 'Invalid parent comment'
+                    });
+                }
+            }
+
+            // Create comment
+            const newComment = await VideoComment.create({
+                id: uuidv4(),
+                videoId: id,
+                userId,
+                comment: comment.trim(),
+                parentCommentId: parent_comment_id || null,
+                likeCount: 0,
+                status: 'active'
+            });
+
+            // Fetch comment with user info
+            const commentWithUser = await VideoComment.findByPk(newComment.id, {
+                include: [{
+                    model: UserTable,
+                    as: 'user',
+                    attributes: ['id', 'fullName', 'profilePicture']
+                }]
+            });
+
+            // Trigger will automatically increment comment_count
+
+            res.status(201).json({
+                success: true,
+                message: 'Comment added',
+                data: commentWithUser
+            });
+        } catch (error) {
+            console.error('Error adding comment:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Error adding comment',
+                error: error.message
+            });
+        }
+    }
+
+    // Get video comments
+    static async getComments(req, res) {
+        try {
+            const { id } = req.params;
+            const { page = 1, limit = 20 } = req.query;
+            const offset = (page - 1) * limit;
+            const currentUserId = req.user?.id;
+
+            // Check if video exists
+            const video = await Video.findByPk(id);
+            if (!video) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Video not found'
+                });
+            }
+
+            const comments = await VideoComment.findAndCountAll({
+                where: {
+                    videoId: id,
+                    status: 'active',
+                    parentCommentId: null // Only top-level comments
+                },
+                include: [
+                    {
+                        model: UserTable,
+                        as: 'user',
+                        attributes: ['id', 'fullName', 'profilePicture']
+                    },
+                    {
+                        model: VideoComment,
+                        as: 'replies',
+                        where: { status: 'active' },
+                        required: false,
+                        include: [{
+                            model: UserTable,
+                            as: 'user',
+                            attributes: ['id', 'fullName', 'profilePicture']
+                        }],
+                        limit: 3,
+                        order: [['createdAt', 'DESC']]
+                    }
+                ],
+                order: [['createdAt', 'DESC']],
+                limit: parseInt(limit),
+                offset: parseInt(offset),
+                distinct: true
+            });
+
+            // Check user likes for comments
+            const commentIds = comments.rows.map(c => c.id);
+            const userLikes = currentUserId ? await VideoCommentLike.findAll({
+                where: {
+                    commentId: { [Op.in]: commentIds },
+                    userId: currentUserId
+                }
+            }) : [];
+
+            const likedCommentIds = new Set(userLikes.map(like => like.commentId));
+
+            // Format comments
+            const formattedComments = comments.rows.map(comment => {
+                const commentData = comment.toJSON();
+                return {
+                    ...commentData,
+                    isLiked: likedCommentIds.has(commentData.id)
+                };
+            });
+
+            res.json({
+                success: true,
+                data: formattedComments,
+                pagination: {
+                    page: parseInt(page),
+                    limit: parseInt(limit),
+                    total: comments.count,
+                    totalPages: Math.ceil(comments.count / limit)
+                }
+            });
+        } catch (error) {
+            console.error('Error fetching comments:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Error fetching comments',
+                error: error.message
+            });
+        }
+    }
+
+    // Like/unlike comment
+    static async likeComment(req, res) {
+        try {
+            const { commentId } = req.params;
+            const userId = req.user.id;
+
+            // Check if comment exists
+            const comment = await VideoComment.findByPk(commentId);
+            if (!comment) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Comment not found'
+                });
+            }
+
+            // Check if already liked
+            const existingLike = await VideoCommentLike.findOne({
+                where: { commentId, userId }
+            });
+
+            if (existingLike) {
+                // Unlike: delete the like
+                await existingLike.destroy();
+                // Trigger will automatically decrement like_count
+
+                res.json({
+                    success: true,
+                    message: 'Comment unliked',
+                    data: {
+                        isLiked: false,
+                        likeCount: comment.likeCount - 1
+                    }
+                });
+            } else {
+                // Like: create new like
+                await VideoCommentLike.create({
+                    id: uuidv4(),
+                    commentId,
+                    userId
+                });
+                // Trigger will automatically increment like_count
+
+                res.json({
+                    success: true,
+                    message: 'Comment liked',
+                    data: {
+                        isLiked: true,
+                        likeCount: comment.likeCount + 1
+                    }
+                });
+            }
+        } catch (error) {
+            console.error('Error liking comment:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Error liking comment',
+                error: error.message
+            });
+        }
+    }
+
+    // Delete video
+    static async deleteVideo(req, res) {
+        try {
+            const { id } = req.params;
+            const userId = req.user.id;
+
+            const video = await Video.findByPk(id);
+            if (!video) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Video not found'
+                });
+            }
+
+            // Check if user owns the video
+            if (video.userId !== userId) {
+                return res.status(403).json({
+                    success: false,
+                    message: 'You can only delete your own videos'
+                });
+            }
+
+            // Soft delete: update status
+            await video.update({ status: 'deleted' });
+
+            // Clear cache
+            try {
+                await redisClient.del('video:feed:*');
+            } catch (redisError) {
+                console.error('Redis cache clear failed:', redisError.message);
+            }
+
+            res.json({
+                success: true,
+                message: 'Video deleted successfully'
+            });
+        } catch (error) {
+            console.error('Error deleting video:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Error deleting video',
+                error: error.message
+            });
+        }
+    }
+}
+
+module.exports = VideoController;
+

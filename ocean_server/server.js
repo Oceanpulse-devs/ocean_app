@@ -385,6 +385,7 @@ const heavyDistributorRoutes = require('./src/routes/heavyDistributorRoutes');
 const sellerVerificationRoutes = require('./src/routes/sellerVerificationRoutes');
 const subscriptionRoutes = require('./src/routes/subscriptionRoutes');
 const storyRoutes = require('./src/routes/storyRoutes');
+const videoRoutes = require('./src/routes/videoRoutes');
 const StoryCleanupService = require('./src/services/storyCleanupService');
 
 // Register auctionRoutes BEFORE authRoutes to avoid route conflict with /api/user/:userId
@@ -408,6 +409,7 @@ app.use('/api/stories', (req, res, next) => {
     console.log('🚀 Stories route registered - Path:', req.path, 'Method:', req.method);
     next();
 }, storyRoutes);
+app.use('/api/videos', videoRoutes);
 
 
 

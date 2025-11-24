@@ -66,6 +66,11 @@ const ProductView = require('./ProductView');
 const AuctionView = require('./AuctionView');
 const GroupBuyView = require('./GroupBuyView');
 const SwapDealView = require('./SwapDealView');
+const Video = require('./Video');
+const VideoLike = require('./VideoLike');
+const VideoView = require('./VideoView');
+const VideoComment = require('./VideoComment');
+const VideoCommentLike = require('./VideoCommentLike');
 
 // Initialize all models
 db.UserTable = UserTable(sequelize, Sequelize.DataTypes);
@@ -119,6 +124,11 @@ db.ShareStats = ShareStats(sequelize, Sequelize.DataTypes);
   db.AuctionView = AuctionView(sequelize, Sequelize.DataTypes);
   db.GroupBuyView = GroupBuyView(sequelize, Sequelize.DataTypes);
   db.SwapDealView = SwapDealView(sequelize, Sequelize.DataTypes);
+  db.Video = Video(sequelize, Sequelize.DataTypes);
+  db.VideoLike = VideoLike(sequelize, Sequelize.DataTypes);
+  db.VideoView = VideoView(sequelize, Sequelize.DataTypes);
+  db.VideoComment = VideoComment(sequelize, Sequelize.DataTypes);
+  db.VideoCommentLike = VideoCommentLike(sequelize, Sequelize.DataTypes);
 
 // Set up associations
 const setupAssociations = () => {
@@ -376,6 +386,32 @@ const setupAssociations = () => {
   db.SwapDealView.belongsTo(db.SwapDeal, { foreignKey: 'swap_deal_id', as: 'swapDeal' });
   db.SwapDealView.belongsTo(db.UserTable, { foreignKey: 'viewer_id', as: 'viewer' });
   db.UserTable.hasMany(db.SwapDealView, { foreignKey: 'viewer_id', as: 'swapDealViews' });
+
+  // Video associations
+  db.Video.belongsTo(db.UserTable, { foreignKey: 'user_id', as: 'user' });
+  db.Video.hasMany(db.VideoLike, { foreignKey: 'video_id', as: 'likes' });
+  db.Video.hasMany(db.VideoView, { foreignKey: 'video_id', as: 'views' });
+  db.Video.hasMany(db.VideoComment, { foreignKey: 'video_id', as: 'comments' });
+  db.UserTable.hasMany(db.Video, { foreignKey: 'user_id', as: 'videos' });
+
+  // VideoLike associations
+  db.VideoLike.belongsTo(db.Video, { foreignKey: 'video_id', as: 'video' });
+  db.VideoLike.belongsTo(db.UserTable, { foreignKey: 'user_id', as: 'user' });
+
+  // VideoView associations
+  db.VideoView.belongsTo(db.Video, { foreignKey: 'video_id', as: 'video' });
+  db.VideoView.belongsTo(db.UserTable, { foreignKey: 'user_id', as: 'user' });
+
+  // VideoComment associations
+  db.VideoComment.belongsTo(db.Video, { foreignKey: 'video_id', as: 'video' });
+  db.VideoComment.belongsTo(db.UserTable, { foreignKey: 'user_id', as: 'user' });
+  db.VideoComment.belongsTo(db.VideoComment, { foreignKey: 'parent_comment_id', as: 'parentComment' });
+  db.VideoComment.hasMany(db.VideoComment, { foreignKey: 'parent_comment_id', as: 'replies' });
+  db.VideoComment.hasMany(db.VideoCommentLike, { foreignKey: 'comment_id', as: 'likes' });
+
+  // VideoCommentLike associations
+  db.VideoCommentLike.belongsTo(db.VideoComment, { foreignKey: 'comment_id', as: 'comment' });
+  db.VideoCommentLike.belongsTo(db.UserTable, { foreignKey: 'user_id', as: 'user' });
 };
 
 // Setup associations
