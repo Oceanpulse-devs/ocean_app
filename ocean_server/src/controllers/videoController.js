@@ -55,10 +55,8 @@ class VideoController {
             const folder = `ocean-app/videos/${userId}`;
             const uploadOptions = {
                 resource_type: 'video',
-                quality: 'auto',
-                transformation: [
-                    { width: 1080, height: 1920, crop: 'limit' } // Vertical video format
-                ]
+                quality: 'auto', // Preserves quality while optimizing file size
+                // No transformation - preserves original dimensions and aspect ratio
             };
 
             const uploadResult = await cloudinaryService.uploadFile(
