@@ -124,7 +124,7 @@ class SellerFeedbackController {
             res.status(201).json({
                 success: true,
                 message: 'Feedback submitted successfully',
-                data: this._formatFeedback(createdFeedback, req.user?.id)
+                data: SellerFeedbackController._formatFeedback(createdFeedback, req.user?.id)
             });
         } catch (error) {
             console.error('Error creating feedback:', error);
@@ -213,7 +213,7 @@ class SellerFeedbackController {
                         }
                     }) : false;
 
-                    const formatted = this._formatFeedback(feedback, currentUserId);
+                    const formatted = SellerFeedbackController._formatFeedback(feedback, currentUserId);
                     formatted.isLiked = !!isLiked;
 
                     // Check if response is liked
@@ -474,7 +474,7 @@ class SellerFeedbackController {
             res.status(response.isEdited ? 200 : 201).json({
                 success: true,
                 message: response.isEdited ? 'Response updated successfully' : 'Response created successfully',
-                data: this._formatResponse(createdResponse, req.user?.id)
+                data: SellerFeedbackController._formatResponse(createdResponse, req.user?.id)
             });
         } catch (error) {
             console.error('Error creating response:', error);
@@ -614,7 +614,7 @@ class SellerFeedbackController {
             isLiked: false, // Will be set by caller if needed
             createdAt: feedbackData.createdAt,
             updatedAt: feedbackData.updatedAt,
-            response: response ? this._formatResponse(response, currentUserId) : null
+            response: response ? SellerFeedbackController._formatResponse(response, currentUserId) : null
         };
     }
 
