@@ -316,7 +316,7 @@ class SellerFeedbackController {
 
             // Cache for 5 minutes
             try {
-                await redisClient.setex(cacheKey, 300, JSON.stringify(summary));
+                await redisClient.setEx(cacheKey, 300, JSON.stringify(summary));
             } catch (redisError) {
                 console.error('Redis cache write failed:', redisError.message);
             }
