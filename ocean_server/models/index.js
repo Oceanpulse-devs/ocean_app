@@ -71,6 +71,10 @@ const VideoLike = require('./VideoLike');
 const VideoView = require('./VideoView');
 const VideoComment = require('./VideoComment');
 const VideoCommentLike = require('./VideoCommentLike');
+const SellerFeedback = require('./SellerFeedback');
+const SellerFeedbackLike = require('./SellerFeedbackLike');
+const SellerFeedbackResponse = require('./SellerFeedbackResponse');
+const SellerFeedbackResponseLike = require('./SellerFeedbackResponseLike');
 
 // Initialize all models
 db.UserTable = UserTable(sequelize, Sequelize.DataTypes);
@@ -129,6 +133,10 @@ db.ShareStats = ShareStats(sequelize, Sequelize.DataTypes);
   db.VideoView = VideoView(sequelize, Sequelize.DataTypes);
   db.VideoComment = VideoComment(sequelize, Sequelize.DataTypes);
   db.VideoCommentLike = VideoCommentLike(sequelize, Sequelize.DataTypes);
+  db.SellerFeedback = SellerFeedback(sequelize, Sequelize.DataTypes);
+  db.SellerFeedbackLike = SellerFeedbackLike(sequelize, Sequelize.DataTypes);
+  db.SellerFeedbackResponse = SellerFeedbackResponse(sequelize, Sequelize.DataTypes);
+  db.SellerFeedbackResponseLike = SellerFeedbackResponseLike(sequelize, Sequelize.DataTypes);
 
 // Set up associations
 const setupAssociations = () => {
@@ -412,6 +420,32 @@ const setupAssociations = () => {
   // VideoCommentLike associations
   db.VideoCommentLike.belongsTo(db.VideoComment, { foreignKey: 'comment_id', as: 'comment' });
   db.VideoCommentLike.belongsTo(db.UserTable, { foreignKey: 'user_id', as: 'user' });
+
+  // Seller Feedback associations
+  db.SellerFeedback.belongsTo(db.UserTable, { foreignKey: 'seller_id', as: 'seller' });
+  db.SellerFeedback.belongsTo(db.UserTable, { foreignKey: 'reviewer_id', as: 'reviewer' });
+  db.SellerFeedback.hasMany(db.SellerFeedbackLike, { foreignKey: 'feedback_id', as: 'likes' });
+  db.SellerFeedback.hasOne(db.SellerFeedbackResponse, { foreignKey: 'feedback_id', as: 'response' });
+  
+  // SellerFeedbackLike associations
+  db.SellerFeedbackLike.belongsTo(db.SellerFeedback, { foreignKey: 'feedback_id', as: 'feedback' });
+  db.SellerFeedbackLike.belongsTo(db.UserTable, { foreignKey: 'user_id', as: 'user' });
+  
+  // SellerFeedbackResponse associations
+  db.SellerFeedbackResponse.belongsTo(db.SellerFeedback, { foreignKey: 'feedback_id', as: 'feedback' });
+  db.SellerFeedbackResponse.belongsTo(db.UserTable, { foreignKey: 'seller_id', as: 'seller' });
+  db.SellerFeedbackResponse.hasMany(db.SellerFeedbackResponseLike, { foreignKey: 'response_id', as: 'likes' });
+  
+  // SellerFeedbackResponseLike associations
+  db.SellerFeedbackResponseLike.belongsTo(db.SellerFeedbackResponse, { foreignKey: 'response_id', as: 'response' });
+  db.SellerFeedbackResponseLike.belongsTo(db.UserTable, { foreignKey: 'user_id', as: 'user' });
+  
+  // UserTable associations for seller feedback
+  db.UserTable.hasMany(db.SellerFeedback, { foreignKey: 'seller_id', as: 'receivedFeedback' });
+  db.UserTable.hasMany(db.SellerFeedback, { foreignKey: 'reviewer_id', as: 'givenFeedback' });
+  db.UserTable.hasMany(db.SellerFeedbackLike, { foreignKey: 'user_id', as: 'feedbackLikes' });
+  db.UserTable.hasMany(db.SellerFeedbackResponse, { foreignKey: 'seller_id', as: 'feedbackResponses' });
+  db.UserTable.hasMany(db.SellerFeedbackResponseLike, { foreignKey: 'user_id', as: 'responseLikes' });
 };
 
 // Setup associations
