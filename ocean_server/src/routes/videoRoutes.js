@@ -23,6 +23,7 @@ const upload = multer({
 // Video routes
 router.post('/', authMiddleware, upload.single('video'), VideoController.createVideo);
 router.get('/', authMiddleware, VideoController.getVideos);
+router.get('/user/:userId', authMiddleware, VideoController.getUserVideos);
 router.get('/:id', authMiddleware, VideoController.getVideoById);
 router.post('/:id/like', authMiddleware, VideoController.likeVideo);
 router.post('/:id/view', authMiddleware, VideoController.viewVideo);

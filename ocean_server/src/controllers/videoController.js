@@ -320,6 +320,105 @@ class VideoController {
         }
     }
 
+    // Get videos by user ID (for profile pages)
+    static async getUserVideos(req, res) {
+        try {
+            const { userId } = req.params;
+            const { page = 1, limit = 10 } = req.query;
+            const offset = (page - 1) * limit;
+            const currentUserId = req.user?.id;
+
+            // Validate userId
+            if (!userId) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'User ID is required'
+                });
+            }
+
+            // Fetch videos from database filtered by userId
+            const videos = await Video.findAndCountAll({
+                where: {
+                    userId: userId,
+                    status: 'active'
+                },
+                include: [
+                    {
+                        model: UserTable,
+                        as: 'user',
+                        attributes: ['id', 'fullName', 'profilePicture', 'accountStatus', 'location'],
+                        include: [{
+                            model: SellersTable,
+                            as: 'seller',
+                            attributes: ['businessName', 'verificationStatus', 'businessPhone'],
+                            required: false
+                        }]
+                    }
+                ],
+                order: [['createdAt', 'DESC']],
+                limit: parseInt(limit),
+                offset: parseInt(offset),
+                distinct: true
+            });
+
+            // Check user likes for each video
+            const videoIds = videos.rows.map(v => v.id);
+            const userLikes = currentUserId ? await VideoLike.findAll({
+                where: {
+                    videoId: { [Op.in]: videoIds },
+                    userId: currentUserId
+                }
+            }) : [];
+
+            const likedVideoIds = new Set(userLikes.map(like => like.videoId));
+
+            // Format videos for frontend
+            const formattedVideos = videos.rows.map(video => {
+                const videoData = video.toJSON();
+                return {
+                    id: videoData.id,
+                    videoUrl: videoData.videoUrl,
+                    thumbnailUrl: videoData.thumbnailUrl,
+                    description: videoData.description,
+                    creatorId: videoData.user?.id || null,
+                    creatorName: videoData.user?.seller?.businessName || videoData.user?.fullName || 'Unknown',
+                    creatorAvatar: videoData.user?.profilePicture || null,
+                    category: videoData.videoRole === 'seller' ? 'seller' : 'buyer',
+                    location: videoData.user?.location || null,
+                    likeCount: videoData.likeCount,
+                    commentCount: videoData.commentCount,
+                    shareCount: videoData.shareCount,
+                    isSponsored: videoData.isSponsored,
+                    ctaType: videoData.ctaType,
+                    ctaLabel: videoData.ctaLabel,
+                    businessPhone: videoData.user?.seller?.businessPhone || null,
+                    isBuyerNeed: videoData.videoRole === 'buyer',
+                    isLiked: likedVideoIds.has(videoData.id),
+                    isSaved: false, // TODO: Implement saved videos
+                    createdAt: videoData.createdAt
+                };
+            });
+
+            res.json({
+                success: true,
+                data: formattedVideos,
+                pagination: {
+                    page: parseInt(page),
+                    limit: parseInt(limit),
+                    total: videos.count,
+                    totalPages: Math.ceil(videos.count / limit)
+                }
+            });
+        } catch (error) {
+            console.error('Error fetching user videos:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Error fetching user videos',
+                error: error.message
+            });
+        }
+    }
+
     // Get single video by ID
     static async getVideoById(req, res) {
         try {
