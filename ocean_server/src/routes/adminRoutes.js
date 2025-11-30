@@ -7,6 +7,7 @@ const adminAnalyticsController = require('../controllers/adminAnalyticsControlle
 const systemAdminController = require('../controllers/systemAdminController');
 const securityModerationController = require('../controllers/securityModerationController');
 const contentAdminController = require('../controllers/contentAdminController');
+const ReportController = require('../controllers/reportController');
 const authMiddleware = require('../middleware/authMiddleware');
 
 // Apply authentication middleware to all routes
@@ -138,5 +139,14 @@ router.delete('/content/categories/:id', contentAdminController.deleteCategory.b
 
 // Content Statistics
 router.get('/content/stats', contentAdminController.getContentStats.bind(contentAdminController));
+
+// ==================== USER REPORTS MANAGEMENT ROUTES ====================
+
+// Report Management
+router.get('/reports/list', ReportController.getAllReports);
+router.get('/reports/stats', ReportController.getReportStats);
+router.get('/reports/:id', ReportController.getReport);
+router.put('/reports/:id/status', ReportController.updateReportStatus);
+router.post('/reports/:id/resolve', ReportController.resolveReport);
 
 module.exports = router; 

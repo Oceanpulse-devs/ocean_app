@@ -387,6 +387,7 @@ const subscriptionRoutes = require('./src/routes/subscriptionRoutes');
 const storyRoutes = require('./src/routes/storyRoutes');
 const videoRoutes = require('./src/routes/videoRoutes');
 const sellerFeedbackRoutes = require('./src/routes/sellerFeedbackRoutes');
+const reportRoutes = require('./src/routes/reportRoutes');
 const StoryCleanupService = require('./src/services/storyCleanupService');
 
 // Register auctionRoutes BEFORE authRoutes to avoid route conflict with /api/user/:userId
@@ -412,6 +413,7 @@ app.use('/api/stories', (req, res, next) => {
 }, storyRoutes);
 app.use('/api/videos', videoRoutes);
 app.use('/api/seller-feedback', sellerFeedbackRoutes);
+app.use('/api/reports', reportRoutes);
 
 
 

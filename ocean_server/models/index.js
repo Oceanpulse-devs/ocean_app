@@ -75,6 +75,7 @@ const SellerFeedback = require('./SellerFeedback');
 const SellerFeedbackLike = require('./SellerFeedbackLike');
 const SellerFeedbackResponse = require('./SellerFeedbackResponse');
 const SellerFeedbackResponseLike = require('./SellerFeedbackResponseLike');
+const Report = require('./Report');
 
 // Initialize all models
 db.UserTable = UserTable(sequelize, Sequelize.DataTypes);
@@ -137,6 +138,7 @@ db.ShareStats = ShareStats(sequelize, Sequelize.DataTypes);
   db.SellerFeedbackLike = SellerFeedbackLike(sequelize, Sequelize.DataTypes);
   db.SellerFeedbackResponse = SellerFeedbackResponse(sequelize, Sequelize.DataTypes);
   db.SellerFeedbackResponseLike = SellerFeedbackResponseLike(sequelize, Sequelize.DataTypes);
+  db.Report = Report(sequelize, Sequelize.DataTypes);
 
 // Set up associations
 const setupAssociations = () => {
@@ -446,6 +448,16 @@ const setupAssociations = () => {
   db.UserTable.hasMany(db.SellerFeedbackLike, { foreignKey: 'user_id', as: 'feedbackLikes' });
   db.UserTable.hasMany(db.SellerFeedbackResponse, { foreignKey: 'seller_id', as: 'feedbackResponses' });
   db.UserTable.hasMany(db.SellerFeedbackResponseLike, { foreignKey: 'user_id', as: 'responseLikes' });
+  
+  // Report associations
+  db.Report.belongsTo(db.UserTable, { foreignKey: 'reporter_id', as: 'reporter' });
+  db.Report.belongsTo(db.UserTable, { foreignKey: 'reported_user_id', as: 'reportedUser' });
+  db.Report.belongsTo(db.UserTable, { foreignKey: 'resolved_by', as: 'resolver' });
+  
+  // UserTable associations for reports
+  db.UserTable.hasMany(db.Report, { foreignKey: 'reporter_id', as: 'reportsMade' });
+  db.UserTable.hasMany(db.Report, { foreignKey: 'reported_user_id', as: 'reportsReceived' });
+  db.UserTable.hasMany(db.Report, { foreignKey: 'resolved_by', as: 'reportsResolved' });
 };
 
 // Setup associations
