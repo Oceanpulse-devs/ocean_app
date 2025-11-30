@@ -50,11 +50,17 @@ class CloudinaryService {
                 throw new Error('Invalid file format. Expected Buffer or string.');
             }
 
+            // Extract eager transformations if available (for video thumbnails)
+            const eager = uploadResult.eager || [];
+            
             return {
                 success: true,
                 publicId: uploadResult.public_id,
                 url: uploadResult.secure_url,
-                thumbnailUrl: this.generateThumbnailUrl(uploadResult.secure_url, uploadResult.resource_type),
+                thumbnailUrl: eager.length > 0 
+                    ? (eager[0].secure_url || eager[0].url)
+                    : this.generateThumbnailUrl(uploadResult.secure_url, uploadResult.resource_type, uploadResult.public_id),
+                eager: eager, // Include eager transformations in response
                 format: uploadResult.format,
                 resourceType: uploadResult.resource_type,
                 size: uploadResult.bytes,
@@ -298,18 +304,31 @@ class CloudinaryService {
     }
 
     /**
-     * Generate thumbnail URL for videos
+     * Generate thumbnail URL for videos (fallback method)
      * @param {string} originalUrl - Original Cloudinary URL
      * @param {string} resourceType - Resource type (image/video)
+     * @param {string} publicId - Cloudinary public ID (optional, for better URL generation)
      * @returns {string} Thumbnail URL
      */
-    generateThumbnailUrl(originalUrl, resourceType) {
+    generateThumbnailUrl(originalUrl, resourceType, publicId = null) {
         if (resourceType === 'video') {
-            // Generate video thumbnail
-            return originalUrl.replace('/upload/', '/upload/w_400,h_300,c_fill/');
+            // Generate video thumbnail by extracting frame at 5 seconds
+            // Transformation: so_5 = start offset 5 seconds, convert to JPG
+            if (publicId) {
+                // Use Cloudinary URL helper for more reliable thumbnail generation
+                return cloudinary.url(publicId, {
+                    resource_type: 'video',
+                    transformation: [
+                        { start_offset: '5' }, // Extract frame at 5 seconds
+                        { width: 400, height: 300, crop: 'fill', format: 'jpg', quality: 'auto:good' }
+                    ]
+                });
+            }
+            // Fallback: use URL manipulation (less reliable but works)
+            return originalUrl.replace('/upload/', '/upload/so_5,w_400,h_300,c_fill,f_jpg,q_auto:good/');
         }
-        // For images, return a smaller version
-        return originalUrl.replace('/upload/', '/upload/w_400,h_300,c_fill/');
+        // For images, return an optimized version
+        return originalUrl.replace('/upload/', '/upload/w_400,h_300,c_fill,q_auto:good/');
     }
 
     /**

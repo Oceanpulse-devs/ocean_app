@@ -51,12 +51,23 @@ class VideoController {
                 });
             }
 
-            // Upload video to Cloudinary
+            // Upload video to Cloudinary with eager transformations for thumbnail
             const folder = `ocean-app/videos/${userId}`;
             const uploadOptions = {
                 resource_type: 'video',
                 quality: 'auto', // Preserves quality while optimizing file size
-                // No transformation - preserves original dimensions and aspect ratio
+                // Generate thumbnail as eager transformation (extract frame at 5 seconds)
+                eager: [
+                    {
+                        format: 'jpg',
+                        width: 400,
+                        height: 300,
+                        crop: 'fill',
+                        quality: 'auto:good',
+                        start_offset: '5' // Extract frame at 5 seconds (or 'auto' for middle frame)
+                    }
+                ],
+                eager_async: false // Generate synchronously so thumbnail is available immediately
             };
 
             const uploadResult = await cloudinaryService.uploadFile(
@@ -73,8 +84,16 @@ class VideoController {
                 });
             }
 
-            // Generate thumbnail (Cloudinary auto-generates thumbnails for videos)
+            // Get thumbnail from eager transformations (preferred) or fallback
             let thumbnailUrl = uploadResult.thumbnailUrl || uploadResult.url;
+            
+            // If eager transformations were generated, use the first one as thumbnail
+            if (uploadResult.eager && uploadResult.eager.length > 0) {
+                thumbnailUrl = uploadResult.eager[0].secure_url || uploadResult.eager[0].url;
+                console.log('✅ Using eager transformation thumbnail:', thumbnailUrl);
+            } else {
+                console.log('⚠️ No eager transformations found, using fallback thumbnail URL');
+            }
 
             // Create video record
             const video = await Video.create({
