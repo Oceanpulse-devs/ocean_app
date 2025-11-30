@@ -908,6 +908,114 @@ class VideoController {
             });
         }
     }
+
+    // Update video (description and CTA only)
+    static async updateVideo(req, res) {
+        try {
+            const { id } = req.params;
+            const userId = req.user.id;
+
+            // Extract fields from request body
+            const {
+                description,
+                cta_enabled,
+                cta_type,
+                cta_label
+            } = req.body;
+
+            // Check if video exists
+            const video = await Video.findByPk(id);
+            if (!video) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Video not found'
+                });
+            }
+
+            // Check if user owns the video
+            if (video.userId !== userId) {
+                return res.status(403).json({
+                    success: false,
+                    message: 'You can only edit your own videos'
+                });
+            }
+
+            // Prepare update data (only allow description and CTA fields)
+            const updateData = {};
+            
+            if (description !== undefined) {
+                updateData.description = description || null;
+            }
+            
+            if (cta_enabled !== undefined) {
+                updateData.ctaEnabled = cta_enabled === 'true' || cta_enabled === true;
+            }
+            
+            if (cta_type !== undefined) {
+                // Validate CTA type
+                const validCtaTypes = ['message_seller', 'call_seller', 'message_buyer', 'none'];
+                if (!validCtaTypes.includes(cta_type)) {
+                    return res.status(400).json({
+                        success: false,
+                        message: 'Invalid CTA type. Must be one of: message_seller, call_seller, message_buyer, none'
+                    });
+                }
+                updateData.ctaType = cta_type;
+            }
+            
+            if (cta_label !== undefined) {
+                updateData.ctaLabel = cta_label || null;
+            }
+
+            // If no fields to update, return error
+            if (Object.keys(updateData).length === 0) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'No fields provided for update'
+                });
+            }
+
+            // Update the video
+            await video.update(updateData);
+
+            // Clear cache
+            try {
+                await redisClient.del('video:feed:*');
+            } catch (redisError) {
+                console.error('Redis cache clear failed:', redisError.message);
+            }
+
+            // Fetch the updated video with user data
+            const updatedVideo = await Video.findByPk(id, {
+                include: [{
+                    model: UserTable,
+                    as: 'user',
+                    attributes: ['id', 'fullName', 'profilePicture'],
+                    include: [{
+                        model: SellersTable,
+                        as: 'seller',
+                        attributes: ['businessName', 'businessPhone'],
+                        required: false
+                    }]
+                }]
+            });
+
+            const videoData = updatedVideo.toJSON();
+
+            res.json({
+                success: true,
+                message: 'Video updated successfully',
+                data: videoData
+            });
+        } catch (error) {
+            console.error('Error updating video:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Error updating video',
+                error: error.message
+            });
+        }
+    }
 }
 
 module.exports = VideoController;

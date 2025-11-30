@@ -30,6 +30,7 @@ router.post('/:id/view', authMiddleware, VideoController.viewVideo);
 router.post('/:id/comments', authMiddleware, VideoController.addComment);
 router.get('/:id/comments', authMiddleware, VideoController.getComments);
 router.post('/comments/:commentId/like', authMiddleware, VideoController.likeComment);
+router.put('/:id', authMiddleware, VideoController.updateVideo);
 router.delete('/:id', authMiddleware, VideoController.deleteVideo);
 
 module.exports = router;
