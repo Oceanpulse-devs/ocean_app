@@ -84,6 +84,25 @@ class VideoController {
                 });
             }
 
+            // Validate video duration (max 2 minutes = 120 seconds)
+            const maxDuration = 120; // 2 minutes in seconds
+            const videoDuration = uploadResult.duration ? Math.round(uploadResult.duration) : null;
+
+            if (videoDuration && videoDuration > maxDuration) {
+                // Delete the uploaded video from Cloudinary since it exceeds limit
+                try {
+                    await cloudinaryService.deleteFile(uploadResult.publicId);
+                    console.log('🗑️ Deleted video exceeding duration limit from Cloudinary');
+                } catch (deleteError) {
+                    console.error('Error deleting video from Cloudinary:', deleteError);
+                }
+                
+                return res.status(400).json({
+                    success: false,
+                    message: `Video duration exceeds 2 minute limit. Your video is ${Math.round(videoDuration)} seconds long.`
+                });
+            }
+
             // Get thumbnail from eager transformations (preferred) or fallback
             let thumbnailUrl = uploadResult.thumbnailUrl || uploadResult.url;
             
