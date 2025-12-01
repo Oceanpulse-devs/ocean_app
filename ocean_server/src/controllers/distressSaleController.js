@@ -625,8 +625,9 @@ class DistressSaleController {
         }
       }
 
-      // Recalculate discounted price if originalPrice or discountPercentage is being updated
-      if (updateData.originalPrice || updateData.discountPercentage) {
+      // Recalculate discounted price ONLY if discountPercentage is being updated
+      // If user is explicitly setting both originalPrice and price (distress_price), respect those values
+      if (updateData.discountPercentage) {
         try {
           console.log('distressSale exists:', !!distressSale);
           console.log('distressSale.originalPrice:', distressSale ? distressSale.originalPrice : 'N/A');
@@ -634,7 +635,7 @@ class DistressSaleController {
           
           // Convert string values to numbers for form-data
           const originalPrice = updateData.originalPrice ? parseFloat(updateData.originalPrice) : (distressSale ? distressSale.originalPrice : null);
-          const discountPercentage = updateData.discountPercentage ? parseFloat(updateData.discountPercentage) : (distressSale ? distressSale.discountPercentage : null);
+          const discountPercentage = parseFloat(updateData.discountPercentage);
           
           console.log('Calculated originalPrice:', originalPrice);
           console.log('Calculated discountPercentage:', discountPercentage);
@@ -649,6 +650,8 @@ class DistressSaleController {
           throw error;
         }
       }
+      // If discountPercentage is not being updated, use the price (distress_price) that was explicitly set
+      // This ensures originalPrice and price (distress_price) are saved as-is when user sets them directly
 
       // Update the product
       await distressSale.update(updateData);
