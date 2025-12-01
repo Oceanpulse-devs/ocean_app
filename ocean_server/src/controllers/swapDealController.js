@@ -967,7 +967,24 @@ class SwapDealController {
         }
         
         if (swapDealImages.length > 0) {
-          updateData.images = JSON.stringify(swapDealImages);
+          // Get existing images from swap deal and merge with new ones
+          let existingImages = [];
+          try {
+            const currentImages = swapDeal.images;
+            if (typeof currentImages === 'string') {
+              existingImages = JSON.parse(currentImages);
+            } else if (Array.isArray(currentImages)) {
+              existingImages = currentImages;
+            }
+          } catch (e) {
+            console.warn('Could not parse existing images, starting fresh');
+            existingImages = [];
+          }
+          
+          // Merge existing images with newly uploaded ones
+          const allImages = [...existingImages, ...swapDealImages];
+          updateData.images = JSON.stringify(allImages);
+          console.log(`📸 Merged images: ${existingImages.length} existing + ${swapDealImages.length} new = ${allImages.length} total`);
         }
       }
 
