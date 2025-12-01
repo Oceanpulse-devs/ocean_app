@@ -515,6 +515,37 @@ class DistressSaleController {
         delete updateData.productName;
       }
 
+      // Map snake_case field names from frontend to camelCase for Product model
+      // product_name → title
+      if (updateData.product_name !== undefined && !updateData.title) {
+        updateData.title = updateData.product_name;
+        delete updateData.product_name;
+      }
+      
+      // original_price → originalPrice
+      if (updateData.original_price !== undefined) {
+        updateData.originalPrice = updateData.original_price;
+        delete updateData.original_price;
+      }
+      
+      // distress_price → price
+      if (updateData.distress_price !== undefined) {
+        updateData.price = updateData.distress_price;
+        delete updateData.distress_price;
+      }
+      
+      // distress_reason → distressReason
+      if (updateData.distress_reason !== undefined) {
+        updateData.distressReason = updateData.distress_reason;
+        delete updateData.distress_reason;
+      }
+      
+      // distress_expiry_date → distressExpiryDate
+      if (updateData.distress_expiry_date !== undefined) {
+        updateData.distressExpiryDate = updateData.distress_expiry_date;
+        delete updateData.distress_expiry_date;
+      }
+
       // Validate discount data if being updated
       if (updateData.originalPrice && updateData.price) {
         if (parseFloat(updateData.originalPrice) <= parseFloat(updateData.price)) {
