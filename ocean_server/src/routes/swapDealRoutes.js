@@ -67,7 +67,7 @@ const handleMulterError = (err, req, res, next) => {
 router.post('/create', upload.fields([{ name: 'images', maxCount: 10 }, { name: 'arModel', maxCount: 1 }]), handleMulterError, swapDealController.createSwapDeal);
 router.get('/all', swapDealController.getAllSwapDeals);
 router.get('/:id', swapDealController.getSwapDealById);
-router.put('/:id', swapDealController.updateSwapDeal);
+router.put('/:id', upload.fields([{ name: 'images', maxCount: 10 }, { name: 'arModel', maxCount: 1 }]), handleMulterError, swapDealController.updateSwapDeal);
 router.put('/:id/cancel', swapDealController.cancelSwapDeal);
 
 // Swap Proposal operations
