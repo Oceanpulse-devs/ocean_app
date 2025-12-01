@@ -46,7 +46,7 @@ router.use(authMiddleware);
 router.get('/all', groupBuyController.getAllGroupBuys);
 router.get('/by-conversation/:conversationId', groupBuyController.getGroupBuyByConversationId);
 router.get('/:id', groupBuyController.getGroupBuyById);
-router.put('/:id', groupBuyController.updateGroupBuy);
+router.put('/:id', upload.fields([{ name: 'images', maxCount: 10 }, { name: 'arModel', maxCount: 1 }]), groupBuyController.updateGroupBuy);
 router.delete('/:id', groupBuyController.deleteGroupBuy);
 router.patch('/:id/deadline', groupBuyController.extendGroupBuyDeadline);
 
