@@ -5,6 +5,7 @@ const {signup,login,forgotPassword,verifyResetCode,resetPassword,sellerRegistrat
 const authMiddleware = require('../middleware/authMiddleware')
 const updateRoleBasedOnVerification = require('../middleware/sellerVerficationstatusWare')
 const updateVerificationStatusBasedOnDocuments = require('../middleware/sellerdocstatusWare')
+const { updateBusinessInfo } = require('../controllers/sellerBusinessController')
 const { currentUserprofile, getUserProfileById } = require('../controllers/profilecontroller')
 const { updateProfile } = require('../controllers/profileUpdateController')
 
@@ -143,6 +144,9 @@ router.post('/api/seller-registration', authMiddleware, upload.fields([
   { name: 'businessDocument', maxCount: 1 },
   { name: 'personalId', maxCount: 1 }
 ]), sellerRegistration)
+
+// Inline seller business information update (from profile page)
+router.put('/api/seller/business-info', authMiddleware, updateBusinessInfo)
 
 
 // Middleware to conditionally apply multer only for multipart requests
