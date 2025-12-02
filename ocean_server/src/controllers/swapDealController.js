@@ -967,24 +967,44 @@ class SwapDealController {
         }
         
         if (swapDealImages.length > 0) {
-          // Get existing images from swap deal and merge with new ones
+          // Get existing images to keep from request body (sent by frontend)
           let existingImages = [];
-          try {
-            const currentImages = swapDeal.images;
-            if (typeof currentImages === 'string') {
-              existingImages = JSON.parse(currentImages);
-            } else if (Array.isArray(currentImages)) {
-              existingImages = currentImages;
+          if (updateData.existingImages) {
+            try {
+              const existingImagesStr = updateData.existingImages;
+              if (typeof existingImagesStr === 'string') {
+                existingImages = JSON.parse(existingImagesStr);
+              } else if (Array.isArray(existingImagesStr)) {
+                existingImages = existingImagesStr;
+              }
+            } catch (e) {
+              console.warn('Could not parse existing images from request, using empty array');
+              existingImages = [];
             }
-          } catch (e) {
-            console.warn('Could not parse existing images, starting fresh');
-            existingImages = [];
           }
           
-          // Merge existing images with newly uploaded ones
+          // Combine existing images (that user wants to keep) with newly uploaded ones
           const allImages = [...existingImages, ...swapDealImages];
           updateData.images = JSON.stringify(allImages);
-          console.log(`📸 Merged images: ${existingImages.length} existing + ${swapDealImages.length} new = ${allImages.length} total`);
+          console.log(`📸 Combined images: ${existingImages.length} existing + ${swapDealImages.length} new = ${allImages.length} total`);
+          delete updateData.existingImages; // Remove from updateData to avoid saving it as a field
+        }
+      } else if (updateData.existingImages) {
+        // If no new images but existing images list provided, use that (user removed all new images, kept some existing)
+        try {
+          let existingImages = [];
+          const existingImagesStr = updateData.existingImages;
+          if (typeof existingImagesStr === 'string') {
+            existingImages = JSON.parse(existingImagesStr);
+          } else if (Array.isArray(existingImagesStr)) {
+            existingImages = existingImagesStr;
+          }
+          updateData.images = JSON.stringify(existingImages);
+          console.log(`📸 Using only existing images: ${existingImages.length} images`);
+          delete updateData.existingImages; // Remove from updateData to avoid saving it as a field
+        } catch (e) {
+          console.warn('Could not parse existing images, keeping current images');
+          delete updateData.existingImages;
         }
       }
 
