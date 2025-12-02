@@ -69,7 +69,11 @@ const updateBusinessInfo = async (req, res) => {
     // Optionally mirror some fields into UserTable (businessName, website)
     const userUpdateData = {};
     if (businessName !== undefined) userUpdateData.businessName = businessName.trim();
-    if (website !== undefined) userUpdateData.website = website;
+    if (website !== undefined) {
+      const trimmedWebsite = (website || '').trim();
+      // If website is blank, store null instead of empty string to satisfy notEmpty validator
+      userUpdateData.website = trimmedWebsite === '' ? null : trimmedWebsite;
+    }
 
     if (Object.keys(userUpdateData).length > 0) {
       const user = await db.UserTable.findByPk(userId);
