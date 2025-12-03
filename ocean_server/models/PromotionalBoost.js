@@ -57,12 +57,48 @@ module.exports = (sequelize) => {
       allowNull: true,
       field: 'boost_reason',
       comment: 'Reason for boost'
+    },
+    autoReboost: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+      field: 'auto_reboost',
+      comment: 'Whether boost should automatically reboost when expired'
+    },
+    reboostIntervalHours: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      field: 'reboost_interval_hours',
+      comment: 'Interval in hours for auto-reboost (6, 12, or 24)'
+    },
+    locationTarget: {
+      type: DataTypes.JSON,
+      allowNull: true,
+      field: 'location_target',
+      comment: 'Target locations (states/cities) for boost'
+    },
+    boostPackage: {
+      type: DataTypes.ENUM('1-day', '3-day', '7-day'),
+      defaultValue: '1-day',
+      field: 'boost_package',
+      comment: 'Boost package duration'
+    },
+    cost: {
+      type: DataTypes.DECIMAL(10, 2),
+      defaultValue: 0.00,
+      field: 'cost',
+      comment: 'Cost of the boost (0.00 for free boosts)'
+    },
+    isFree: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+      field: 'is_free',
+      comment: 'Whether this boost is free (from monthly allowance)'
     }
   }, {
     tableName: 'promotional_boosts',
     timestamps: true,
     createdAt: 'created_at',
-    updatedAt: false, // No updated_at field in this table
+    updatedAt: 'updated_at',
     indexes: [
       {
         fields: ['user_id']

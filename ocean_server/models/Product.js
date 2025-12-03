@@ -136,6 +136,58 @@ module.exports = (sequelize) => {
       allowNull: true,
       field: 'boost_id',
       comment: 'Reference to promotional boost'
+    },
+    // Top Placement Engine fields
+    isTopPlaced: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+      field: 'is_top_placed',
+      comment: 'Whether product is currently top placed'
+    },
+    topPlacementExpiresAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      field: 'top_placement_expires_at',
+      comment: 'When top placement expires'
+    },
+    topPlacementId: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      field: 'top_placement_id',
+      comment: 'Reference to top_placements table'
+    },
+    // Spotlight Engine fields
+    isSpotlighted: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+      field: 'is_spotlighted',
+      comment: 'Whether product is currently in spotlight'
+    },
+    spotlightExpiresAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      field: 'spotlight_expires_at',
+      comment: 'When spotlight expires'
+    },
+    spotlightId: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      field: 'spotlight_id',
+      comment: 'Reference to spotlight_slots table'
+    },
+    // Ranking Engine fields
+    visibilityScore: {
+      type: DataTypes.DECIMAL(10, 2),
+      defaultValue: 0.0,
+      allowNull: false,
+      field: 'visibility_score',
+      comment: 'Calculated visibility score for ranking'
+    },
+    lastScoreUpdate: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      field: 'last_score_update',
+      comment: 'When visibility score was last calculated'
     }
   }, {
     tableName: 'products',

@@ -60,6 +60,10 @@ const SubscriptionPlan = require('./SubscriptionPlan');
 const UserSubscription = require('./UserSubscription');
 const SubscriptionUsage = require('./SubscriptionUsage');
 const PromotionalBoost = require('./PromotionalBoost');
+const PromotionUsage = require('./PromotionUsage');
+const TopPlacement = require('./TopPlacement');
+const SpotlightSlot = require('./SpotlightSlot');
+const VisibilityScore = require('./VisibilityScore');
 const Story = require('./Story');
 const StoryView = require('./StoryView');
 const ProductView = require('./ProductView');
@@ -123,6 +127,10 @@ db.ShareStats = ShareStats(sequelize, Sequelize.DataTypes);
   db.UserSubscription = UserSubscription(sequelize, Sequelize.DataTypes);
   db.SubscriptionUsage = SubscriptionUsage(sequelize, Sequelize.DataTypes);
   db.PromotionalBoost = PromotionalBoost(sequelize, Sequelize.DataTypes);
+  db.PromotionUsage = PromotionUsage(sequelize, Sequelize.DataTypes);
+  db.TopPlacement = TopPlacement(sequelize, Sequelize.DataTypes);
+  db.SpotlightSlot = SpotlightSlot(sequelize, Sequelize.DataTypes);
+  db.VisibilityScore = VisibilityScore(sequelize, Sequelize.DataTypes);
   db.Story = Story(sequelize, Sequelize.DataTypes);
   db.StoryView = StoryView(sequelize, Sequelize.DataTypes);
   db.ProductView = ProductView(sequelize, Sequelize.DataTypes);
@@ -354,6 +362,18 @@ const setupAssociations = () => {
   // PromotionalBoost associations
   db.PromotionalBoost.belongsTo(db.UserSubscription, { foreignKey: 'subscription_id', as: 'subscription' });
   db.PromotionalBoost.belongsTo(db.UserTable, { foreignKey: 'user_id', as: 'user' });
+  
+  // TopPlacement associations
+  db.TopPlacement.belongsTo(db.UserSubscription, { foreignKey: 'subscription_id', as: 'subscription' });
+  db.TopPlacement.belongsTo(db.UserTable, { foreignKey: 'user_id', as: 'user' });
+  db.UserSubscription.hasMany(db.TopPlacement, { foreignKey: 'subscription_id', as: 'topPlacements' });
+  db.UserTable.hasMany(db.TopPlacement, { foreignKey: 'user_id', as: 'topPlacements' });
+  
+  // SpotlightSlot associations
+  db.SpotlightSlot.belongsTo(db.UserSubscription, { foreignKey: 'subscription_id', as: 'subscription' });
+  db.SpotlightSlot.belongsTo(db.UserTable, { foreignKey: 'user_id', as: 'user' });
+  db.UserSubscription.hasMany(db.SpotlightSlot, { foreignKey: 'subscription_id', as: 'spotlightSlots' });
+  db.UserTable.hasMany(db.SpotlightSlot, { foreignKey: 'user_id', as: 'spotlightSlots' });
   
   // UserTable subscription associations
   db.UserTable.hasMany(db.UserSubscription, { foreignKey: 'user_id', as: 'subscriptions' });

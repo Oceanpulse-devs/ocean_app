@@ -40,9 +40,13 @@ const upload = multer({
 
 // Public routes (no authentication required)
 router.get('/api/auctions', auctionController.getAuctions);
+router.get('/api/auctions/trending', auctionController.getTrendingAuctions);
+router.get('/api/auctions/spotlight', auctionController.getSpotlightAuctions);
+router.get('/api/auctions/top-placement', auctionController.getTopPlacementAuctions);
 router.get('/api/auctions/categories', auctionController.getAuctionCategories);
 router.get('/api/users/:userId/auctions', auctionController.getUserAuctionsById);
 router.get('/api/auction/:auctionId', auctionController.getAuction);
+router.get('/api/auction/:auctionId/similar', auctionController.getSimilarAuctions);
 router.get('/api/auction/:auctionId/bids', auctionController.getAuctionBids);
 
 // Protected routes (authentication required)

@@ -388,6 +388,9 @@ const storyRoutes = require('./src/routes/storyRoutes');
 const videoRoutes = require('./src/routes/videoRoutes');
 const sellerFeedbackRoutes = require('./src/routes/sellerFeedbackRoutes');
 const reportRoutes = require('./src/routes/reportRoutes');
+const visibilityScoreRoutes = require('./src/routes/visibilityScoreRoutes');
+const topPlacementRoutes = require('./src/routes/topPlacementRoutes');
+const spotlightRoutes = require('./src/routes/spotlightRoutes');
 const StoryCleanupService = require('./src/services/storyCleanupService');
 
 // Register auctionRoutes BEFORE authRoutes to avoid route conflict with /api/user/:userId
@@ -414,6 +417,10 @@ app.use('/api/stories', (req, res, next) => {
 app.use('/api/videos', videoRoutes);
 app.use('/api/seller-feedback', sellerFeedbackRoutes);
 app.use('/api/reports', reportRoutes);
+app.use('/api/visibility-scores', visibilityScoreRoutes);
+app.use('/api/top-placement', topPlacementRoutes);
+app.use('/api/spotlight', spotlightRoutes);
+app.use('/api/promotions/analytics', require('./src/routes/promotionAnalyticsRoutes'));
 
 
 
@@ -479,6 +486,21 @@ setInterval(async () => {
 // Initialize auction scheduler
 const AuctionScheduler = require('./src/services/auctionScheduler');
 AuctionScheduler.scheduleChecks();
+
+// Initialize promotion expiration cron job (handles boosts, top placements, spotlights, and auto-reboosts)
+const PromotionExpirationJob = require('./src/jobs/promotionExpirationJob');
+const MonthlyPromotionResetJob = require('./src/jobs/monthlyPromotionResetJob');
+PromotionExpirationJob.start();
+console.log('✅ Promotion expiration cron job initialized (runs every hour)');
+
+// Initialize score recalculation cron job
+const ScoreRecalculationJob = require('./src/jobs/scoreRecalculationJob');
+ScoreRecalculationJob.start();
+console.log('✅ Score recalculation cron job initialized (runs every hour at :05)');
+
+// Initialize monthly promotion reset cron job
+MonthlyPromotionResetJob.start();
+console.log('✅ Monthly promotion reset cron job initialized (runs on 1st of each month at 00:00)');
 }
 
 // Only start server if not in test environment and file is run directly

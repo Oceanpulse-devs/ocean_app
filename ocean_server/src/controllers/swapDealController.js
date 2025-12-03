@@ -3,6 +3,10 @@ const { Op, Sequelize } = require('sequelize');
 const cloudinaryService = require('../services/cloudinaryService');
 const { checkSubscriptionLimit, incrementUsage, checkFeatureAccess } = require('../middleware/subscriptionMiddleware');
 const SubscriptionAwareSearchService = require('../services/subscriptionAwareSearchService');
+const PromotionHelperService = require('../services/promotionHelperService');
+const RankingService = require('../services/rankingService');
+const SpotlightService = require('../services/spotlightService');
+const TopPlacementService = require('../services/topPlacementService');
 
 // Helper function to map swap deal field names for frontend
 const mapSwapDealResponse = (swapDeal) => {
@@ -383,7 +387,7 @@ class SwapDealController {
       });
 
       // Map swap deal field names for frontend compatibility and enrich seller business info
-      const mappedSwapDeals = swapDeals.rows.map((row) => {
+      let mappedSwapDeals = swapDeals.rows.map((row) => {
         const base = mapSwapDealResponse(row);
         if (row.seller) {
           base.seller = {
@@ -402,6 +406,9 @@ class SwapDealController {
         }
         return base;
       });
+
+      // Include promotion fields and sort by promotion priority
+      mappedSwapDeals = PromotionHelperService.processItemsForResponse(mappedSwapDeals);
 
       res.json({
         success: true,
@@ -483,7 +490,7 @@ class SwapDealController {
       }
 
       // Map swap deal field names for frontend compatibility and enrich seller business info
-      const mappedSwapDeal = mapSwapDealResponse(swapDeal);
+      let mappedSwapDeal = mapSwapDealResponse(swapDeal);
       if (swapDeal.seller) {
         mappedSwapDeal.seller = {
           id: swapDeal.seller.id,
@@ -499,6 +506,9 @@ class SwapDealController {
           verificationStatus: swapDeal.seller.seller?.verificationStatus,
         };
       }
+
+      // Include promotion fields
+      mappedSwapDeal = PromotionHelperService.includePromotionFields(mappedSwapDeal);
 
       res.json({
         success: true,
@@ -764,10 +774,14 @@ class SwapDealController {
         offset: parseInt(offset)
       });
 
+      // Map swap deal field names and include promotion fields
+      let mappedSwapDeals = swapDeals.rows.map(swapDeal => mapSwapDealResponse(swapDeal));
+      mappedSwapDeals = PromotionHelperService.processItemsForResponse(mappedSwapDeals);
+
       res.json({
         success: true,
         data: {
-          swapDeals: swapDeals.rows,
+          swapDeals: mappedSwapDeals,
           pagination: {
             currentPage: parseInt(page),
             totalPages: Math.ceil(swapDeals.count / limit),
@@ -831,7 +845,7 @@ class SwapDealController {
       });
 
       // Map swap deal field names for frontend (similar to getAllSwapDeals)
-      const mappedSwapDeals = swapDeals.rows.map(swapDeal => {
+      let mappedSwapDeals = swapDeals.rows.map(swapDeal => {
         const mapped = mapSwapDealResponse(swapDeal);
         if (swapDeal.seller) {
           mapped.seller = {
@@ -850,6 +864,9 @@ class SwapDealController {
         }
         return mapped;
       });
+
+      // Include promotion fields and sort by promotion priority
+      mappedSwapDeals = PromotionHelperService.processItemsForResponse(mappedSwapDeals);
 
       res.json({
         success: true,
@@ -1144,6 +1161,266 @@ class SwapDealController {
         success: false,
         message: 'Failed to fetch statistics',
         error: error.message
+      });
+    }
+  }
+
+  // Get trending swap deals
+  async getTrendingSwapDeals(req, res) {
+    try {
+      const { category = null, limit = 20, offset = 0 } = req.query;
+      const currentUserId = req.user?.id;
+
+      // Get user location if available
+      let buyerLocation = null;
+      if (currentUserId) {
+        const user = await db.UserTable.findByPk(currentUserId, {
+          attributes: ['location']
+        });
+        buyerLocation = user?.location || null;
+      }
+
+      // Get trending swap deals using ranking service
+      const swapDeals = await RankingService.getTrendingItems('swap_deal', {
+        category,
+        limit: parseInt(limit),
+        offset: parseInt(offset),
+        buyerLocation
+      });
+
+      // Map swap deal field names and include promotion fields
+      let mappedSwapDeals = swapDeals.map(mapSwapDealResponse);
+      mappedSwapDeals = PromotionHelperService.processItemsForResponse(mappedSwapDeals);
+
+      res.status(200).json({
+        success: true,
+        message: "Trending swap deals retrieved successfully",
+        data: {
+          swapDeals: mappedSwapDeals,
+          pagination: {
+            currentPage: Math.floor(parseInt(offset) / parseInt(limit)) + 1,
+            limit: parseInt(limit),
+            totalSwapDeals: mappedSwapDeals.length,
+            hasNextPage: mappedSwapDeals.length === parseInt(limit)
+          }
+        }
+      });
+    } catch (error) {
+      console.error('Get trending swap deals error:', error);
+      res.status(500).json({ 
+        success: false,
+        message: "Error retrieving trending swap deals", 
+        error: error.message 
+      });
+    }
+  }
+
+  // Get similar swap deals
+  async getSimilarSwapDeals(req, res) {
+    try {
+      const { id } = req.params;
+      const { limit = 10, offset = 0 } = req.query;
+
+      // Get similar swap deals using ranking service
+      const swapDeals = await RankingService.getSimilarItems('swap_deal', id, {
+        limit: parseInt(limit),
+        offset: parseInt(offset)
+      });
+
+      // Map swap deal field names and include promotion fields
+      let mappedSwapDeals = swapDeals.map(mapSwapDealResponse);
+      mappedSwapDeals = PromotionHelperService.processItemsForResponse(mappedSwapDeals);
+
+      res.status(200).json({
+        success: true,
+        message: "Similar swap deals retrieved successfully",
+        data: {
+          swapDeals: mappedSwapDeals,
+          pagination: {
+            currentPage: Math.floor(parseInt(offset) / parseInt(limit)) + 1,
+            limit: parseInt(limit),
+            totalSwapDeals: mappedSwapDeals.length,
+            hasNextPage: mappedSwapDeals.length === parseInt(limit)
+          }
+        }
+      });
+    } catch (error) {
+      console.error('Get similar swap deals error:', error);
+      res.status(500).json({ 
+        success: false,
+        message: "Error retrieving similar swap deals", 
+        error: error.message 
+      });
+    }
+  }
+
+  // Get spotlight swap deals
+  async getSpotlightSwapDeals(req, res) {
+    try {
+      const { slotType = 'homepage', category = null, limit = 20, offset = 0 } = req.query;
+
+      // Get spotlight slots
+      const spotlightSlots = await SpotlightService.getSpotlightsBySlotType(slotType, {
+        category,
+        limit: parseInt(limit),
+        offset: parseInt(offset)
+      });
+
+      // Extract swap deal IDs from spotlight slots
+      const swapDealIds = spotlightSlots
+        .filter(slot => slot.item_type === 'swap_deal')
+        .map(slot => slot.item_id);
+
+      if (swapDealIds.length === 0) {
+        return res.status(200).json({
+          success: true,
+          message: "Spotlight swap deals retrieved successfully",
+          data: {
+            swapDeals: [],
+            pagination: {
+              currentPage: 1,
+              limit: parseInt(limit),
+              totalSwapDeals: 0,
+              hasNextPage: false
+            }
+          }
+        });
+      }
+
+      // Get swap deals
+      const swapDeals = await db.SwapDeal.findAll({
+        where: {
+          id: { [Op.in]: swapDealIds },
+          status: 'active'
+        },
+        include: [
+          {
+            model: db.UserTable,
+            as: 'seller',
+            attributes: ['id', 'fullName', 'username', 'profilePicture', 'email'],
+            include: [{
+              model: db.SellersTable,
+              as: 'seller',
+              attributes: ['id', 'businessName', 'country', 'state']
+            }]
+          }
+        ]
+      });
+
+      // Sort swap deals to match spotlight slot order
+      const sortedSwapDeals = swapDealIds
+        .map(id => swapDeals.find(sd => sd.id === id))
+        .filter(sd => sd !== undefined);
+
+      // Map swap deal field names and include promotion fields
+      let mappedSwapDeals = sortedSwapDeals.map(mapSwapDealResponse);
+      mappedSwapDeals = PromotionHelperService.processItemsForResponse(mappedSwapDeals);
+
+      res.status(200).json({
+        success: true,
+        message: "Spotlight swap deals retrieved successfully",
+        data: {
+          swapDeals: mappedSwapDeals,
+          pagination: {
+            currentPage: Math.floor(parseInt(offset) / parseInt(limit)) + 1,
+            limit: parseInt(limit),
+            totalSwapDeals: mappedSwapDeals.length,
+            hasNextPage: mappedSwapDeals.length === parseInt(limit)
+          }
+        }
+      });
+    } catch (error) {
+      console.error('Get spotlight swap deals error:', error);
+      res.status(500).json({ 
+        success: false,
+        message: "Error retrieving spotlight swap deals", 
+        error: error.message 
+      });
+    }
+  }
+
+  // Get top placement swap deals
+  async getTopPlacementSwapDeals(req, res) {
+    try {
+      const { category = null, placementType = null, limit = 20, offset = 0 } = req.query;
+
+      // Get top placements
+      const placements = await TopPlacementService.getTopPlacementsByType('swap_deal', {
+        category,
+        placementType,
+        limit: parseInt(limit) + parseInt(offset) // Get more to handle offset
+      });
+
+      // Apply offset
+      const paginatedPlacements = placements.slice(parseInt(offset), parseInt(offset) + parseInt(limit));
+
+      // Extract swap deal IDs from placements
+      const swapDealIds = paginatedPlacements.map(placement => placement.item_id);
+
+      if (swapDealIds.length === 0) {
+        return res.status(200).json({
+          success: true,
+          message: "Top placement swap deals retrieved successfully",
+          data: {
+            swapDeals: [],
+            pagination: {
+              currentPage: Math.floor(parseInt(offset) / parseInt(limit)) + 1,
+              limit: parseInt(limit),
+              totalSwapDeals: 0,
+              hasNextPage: false
+            }
+          }
+        });
+      }
+
+      // Get swap deals
+      const swapDeals = await db.SwapDeal.findAll({
+        where: {
+          id: { [Op.in]: swapDealIds },
+          status: 'active'
+        },
+        include: [
+          {
+            model: db.UserTable,
+            as: 'seller',
+            attributes: ['id', 'fullName', 'username', 'profilePicture', 'email'],
+            include: [{
+              model: db.SellersTable,
+              as: 'seller',
+              attributes: ['id', 'businessName', 'country', 'state']
+            }]
+          }
+        ]
+      });
+
+      // Sort swap deals to match placement order
+      const sortedSwapDeals = swapDealIds
+        .map(id => swapDeals.find(sd => sd.id === id))
+        .filter(sd => sd !== undefined);
+
+      // Map swap deal field names and include promotion fields
+      let mappedSwapDeals = sortedSwapDeals.map(mapSwapDealResponse);
+      mappedSwapDeals = PromotionHelperService.processItemsForResponse(mappedSwapDeals);
+
+      res.status(200).json({
+        success: true,
+        message: "Top placement swap deals retrieved successfully",
+        data: {
+          swapDeals: mappedSwapDeals,
+          pagination: {
+            currentPage: Math.floor(parseInt(offset) / parseInt(limit)) + 1,
+            limit: parseInt(limit),
+            totalSwapDeals: placements.length,
+            hasNextPage: parseInt(offset) + parseInt(limit) < placements.length
+          }
+        }
+      });
+    } catch (error) {
+      console.error('Get top placement swap deals error:', error);
+      res.status(500).json({ 
+        success: false,
+        message: "Error retrieving top placement swap deals", 
+        error: error.message 
       });
     }
   }

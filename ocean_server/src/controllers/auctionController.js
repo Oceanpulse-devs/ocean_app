@@ -7,6 +7,10 @@ const SubscriptionAwareSearchService = require('../services/subscriptionAwareSea
 const { mapResponseFields, mapArrayFields } = require('../../utils/fieldMapper');
 const axios = require('axios');
 const { emitToAuction, emitToUser, emitToSeller } = require('../socket/auctionSocketHandler');
+const PromotionHelperService = require('../services/promotionHelperService');
+const RankingService = require('../services/rankingService');
+const SpotlightService = require('../services/spotlightService');
+const TopPlacementService = require('../services/topPlacementService');
 
 // Helper function to map auction field names for frontend
 const mapAuctionResponse = (auction) => {
@@ -431,7 +435,10 @@ const getAuctions = async (req, res) => {
     console.log('✅ GET AUCTIONS: Found', count, 'auctions');
 
     // Map auction field names for frontend compatibility
-    const mappedAuctions = auctions.map(mapAuctionResponse);
+    let mappedAuctions = auctions.map(mapAuctionResponse);
+
+    // Include promotion fields and sort by promotion priority
+    mappedAuctions = PromotionHelperService.processItemsForResponse(mappedAuctions);
 
     res.status(200).json({
       success: true,
@@ -539,7 +546,10 @@ const getAuction = async (req, res) => {
     }
 
     // Map auction field names for frontend compatibility
-    const mappedAuction = mapAuctionResponse(auction);
+    let mappedAuction = mapAuctionResponse(auction);
+
+    // Include promotion fields
+    mappedAuction = PromotionHelperService.includePromotionFields(mappedAuction);
 
     // Attach canonical sellerEntityId for frontend convenience
     if (auction?.seller?.id) {
@@ -885,8 +895,12 @@ const getUserAuctions = async (req, res) => {
       offset: (page - 1) * limit
     });
 
+    // Map auction field names and include promotion fields
+    let mappedAuctions = auctions.rows.map(auction => mapAuctionResponse(auction));
+    mappedAuctions = PromotionHelperService.processItemsForResponse(mappedAuctions);
+
     res.json({
-      auctions: auctions.rows,
+      auctions: mappedAuctions,
       total: auctions.count,
       currentPage: parseInt(page),
       totalPages: Math.ceil(auctions.count / limit)
@@ -1004,7 +1018,10 @@ const getUserAuctionsById = async (req, res) => {
     });
 
     // Map auction field names for frontend
-    const mappedAuctions = auctions.rows.map(auction => mapAuctionResponse(auction));
+    let mappedAuctions = auctions.rows.map(auction => mapAuctionResponse(auction));
+
+    // Include promotion fields and sort by promotion priority
+    mappedAuctions = PromotionHelperService.processItemsForResponse(mappedAuctions);
 
     res.json({
       success: true,
@@ -3031,6 +3048,266 @@ const getBuyNowRequests = async (req, res) => {
   }
 };
 
+// Get trending auctions
+const getTrendingAuctions = async (req, res) => {
+  try {
+    const { category = null, limit = 20, offset = 0 } = req.query;
+    const currentUserId = req.user?.id;
+
+    // Get user location if available
+    let buyerLocation = null;
+    if (currentUserId) {
+      const user = await UserTable.findByPk(currentUserId, {
+        attributes: ['location']
+      });
+      buyerLocation = user?.location || null;
+    }
+
+    // Get trending auctions using ranking service
+    const auctions = await RankingService.getTrendingItems('auction', {
+      category,
+      limit: parseInt(limit),
+      offset: parseInt(offset),
+      buyerLocation
+    });
+
+    // Map auction field names and include promotion fields
+    let mappedAuctions = auctions.map(mapAuctionResponse);
+    mappedAuctions = PromotionHelperService.processItemsForResponse(mappedAuctions);
+
+    res.status(200).json({
+      success: true,
+      message: "Trending auctions retrieved successfully",
+      data: {
+        auctions: mappedAuctions,
+        pagination: {
+          currentPage: Math.floor(parseInt(offset) / parseInt(limit)) + 1,
+          limit: parseInt(limit),
+          totalAuctions: mappedAuctions.length,
+          hasNextPage: mappedAuctions.length === parseInt(limit)
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Get trending auctions error:', error);
+    res.status(500).json({ 
+      success: false,
+      message: "Error retrieving trending auctions", 
+      error: error.message 
+    });
+  }
+};
+
+// Get similar auctions
+const getSimilarAuctions = async (req, res) => {
+  try {
+    const { auctionId } = req.params;
+    const { limit = 10, offset = 0 } = req.query;
+
+    // Get similar auctions using ranking service
+    const auctions = await RankingService.getSimilarItems('auction', auctionId, {
+      limit: parseInt(limit),
+      offset: parseInt(offset)
+    });
+
+    // Map auction field names and include promotion fields
+    let mappedAuctions = auctions.map(mapAuctionResponse);
+    mappedAuctions = PromotionHelperService.processItemsForResponse(mappedAuctions);
+
+    res.status(200).json({
+      success: true,
+      message: "Similar auctions retrieved successfully",
+      data: {
+        auctions: mappedAuctions,
+        pagination: {
+          currentPage: Math.floor(parseInt(offset) / parseInt(limit)) + 1,
+          limit: parseInt(limit),
+          totalAuctions: mappedAuctions.length,
+          hasNextPage: mappedAuctions.length === parseInt(limit)
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Get similar auctions error:', error);
+    res.status(500).json({ 
+      success: false,
+      message: "Error retrieving similar auctions", 
+      error: error.message 
+    });
+  }
+};
+
+// Get spotlight auctions
+const getSpotlightAuctions = async (req, res) => {
+  try {
+    const { slotType = 'homepage', category = null, limit = 20, offset = 0 } = req.query;
+
+    // Get spotlight slots
+    const spotlightSlots = await SpotlightService.getSpotlightsBySlotType(slotType, {
+      category,
+      limit: parseInt(limit),
+      offset: parseInt(offset)
+    });
+
+    // Extract auction IDs from spotlight slots
+    const auctionIds = spotlightSlots
+      .filter(slot => slot.item_type === 'auction')
+      .map(slot => slot.item_id);
+
+    if (auctionIds.length === 0) {
+      return res.status(200).json({
+        success: true,
+        message: "Spotlight auctions retrieved successfully",
+        data: {
+          auctions: [],
+          pagination: {
+            currentPage: 1,
+            limit: parseInt(limit),
+            totalAuctions: 0,
+            hasNextPage: false
+          }
+        }
+      });
+    }
+
+    // Get auctions
+    const auctions = await Auction.findAll({
+      where: {
+        id: { [Op.in]: auctionIds },
+        status: 'active'
+      },
+      include: [
+        {
+          model: SellersTable,
+          as: 'seller',
+          attributes: ['id', 'userId', 'businessName', 'country', 'state'],
+          include: [{
+            model: UserTable,
+            as: 'user',
+            attributes: ['id', 'fullName', 'profilePicture', 'accountStatus']
+          }]
+        }
+      ]
+    });
+
+    // Sort auctions to match spotlight slot order
+    const sortedAuctions = auctionIds
+      .map(id => auctions.find(a => a.id === id))
+      .filter(a => a !== undefined);
+
+    // Map auction field names and include promotion fields
+    let mappedAuctions = sortedAuctions.map(mapAuctionResponse);
+    mappedAuctions = PromotionHelperService.processItemsForResponse(mappedAuctions);
+
+    res.status(200).json({
+      success: true,
+      message: "Spotlight auctions retrieved successfully",
+      data: {
+        auctions: mappedAuctions,
+        pagination: {
+          currentPage: Math.floor(parseInt(offset) / parseInt(limit)) + 1,
+          limit: parseInt(limit),
+          totalAuctions: mappedAuctions.length,
+          hasNextPage: mappedAuctions.length === parseInt(limit)
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Get spotlight auctions error:', error);
+    res.status(500).json({ 
+      success: false,
+      message: "Error retrieving spotlight auctions", 
+      error: error.message 
+    });
+  }
+};
+
+// Get top placement auctions
+const getTopPlacementAuctions = async (req, res) => {
+  try {
+    const { category = null, placementType = null, limit = 20, offset = 0 } = req.query;
+
+    // Get top placements
+    const placements = await TopPlacementService.getTopPlacementsByType('auction', {
+      category,
+      placementType,
+      limit: parseInt(limit) + parseInt(offset) // Get more to handle offset
+    });
+
+    // Apply offset
+    const paginatedPlacements = placements.slice(parseInt(offset), parseInt(offset) + parseInt(limit));
+
+    // Extract auction IDs from placements
+    const auctionIds = paginatedPlacements.map(placement => placement.item_id);
+
+    if (auctionIds.length === 0) {
+      return res.status(200).json({
+        success: true,
+        message: "Top placement auctions retrieved successfully",
+        data: {
+          auctions: [],
+          pagination: {
+            currentPage: Math.floor(parseInt(offset) / parseInt(limit)) + 1,
+            limit: parseInt(limit),
+            totalAuctions: 0,
+            hasNextPage: false
+          }
+        }
+      });
+    }
+
+    // Get auctions
+    const auctions = await Auction.findAll({
+      where: {
+        id: { [Op.in]: auctionIds },
+        status: 'active'
+      },
+      include: [
+        {
+          model: SellersTable,
+          as: 'seller',
+          attributes: ['id', 'userId', 'businessName', 'country', 'state'],
+          include: [{
+            model: UserTable,
+            as: 'user',
+            attributes: ['id', 'fullName', 'profilePicture', 'accountStatus']
+          }]
+        }
+      ]
+    });
+
+    // Sort auctions to match placement order
+    const sortedAuctions = auctionIds
+      .map(id => auctions.find(a => a.id === id))
+      .filter(a => a !== undefined);
+
+    // Map auction field names and include promotion fields
+    let mappedAuctions = sortedAuctions.map(mapAuctionResponse);
+    mappedAuctions = PromotionHelperService.processItemsForResponse(mappedAuctions);
+
+    res.status(200).json({
+      success: true,
+      message: "Top placement auctions retrieved successfully",
+      data: {
+        auctions: mappedAuctions,
+        pagination: {
+          currentPage: Math.floor(parseInt(offset) / parseInt(limit)) + 1,
+          limit: parseInt(limit),
+          totalAuctions: placements.length,
+          hasNextPage: parseInt(offset) + parseInt(limit) < placements.length
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Get top placement auctions error:', error);
+    res.status(500).json({ 
+      success: false,
+      message: "Error retrieving top placement auctions", 
+      error: error.message 
+    });
+  }
+};
+
 module.exports = {
   createAuction,
   getAuctions,
@@ -3049,5 +3326,9 @@ module.exports = {
   buyNow,
   acceptBuyNowRequest,
   rejectBuyNowRequest,
-  getBuyNowRequests
+  getBuyNowRequests,
+  getTrendingAuctions,
+  getSimilarAuctions,
+  getSpotlightAuctions,
+  getTopPlacementAuctions
 }; 

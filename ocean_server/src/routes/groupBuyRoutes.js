@@ -44,8 +44,12 @@ router.post('/create', authMiddleware, upload.fields([{ name: 'images', maxCount
 // Apply authentication middleware to remaining routes
 router.use(authMiddleware);
 router.get('/all', groupBuyController.getAllGroupBuys);
+router.get('/trending', groupBuyController.getTrendingGroupBuys);
+router.get('/spotlight', groupBuyController.getSpotlightGroupBuys);
+router.get('/top-placement', groupBuyController.getTopPlacementGroupBuys);
 router.get('/by-conversation/:conversationId', groupBuyController.getGroupBuyByConversationId);
 router.get('/:id', groupBuyController.getGroupBuyById);
+router.get('/:id/similar', groupBuyController.getSimilarGroupBuys);
 router.put('/:id', upload.fields([{ name: 'images', maxCount: 10 }, { name: 'arModel', maxCount: 1 }]), groupBuyController.updateGroupBuy);
 router.delete('/:id', groupBuyController.deleteGroupBuy);
 router.patch('/:id/deadline', groupBuyController.extendGroupBuyDeadline);

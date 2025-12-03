@@ -41,10 +41,15 @@ const uploadProductFiles = multer({
 
 // Public routes (optional authentication - will set req.user if token provided)
 router.get('/api/products', optionalAuthMiddleware, productController.getProducts);
+router.get('/api/products/trending', optionalAuthMiddleware, productController.getTrendingProducts);
+router.get('/api/products/recommended', optionalAuthMiddleware, productController.getRecommendedProducts);
+router.get('/api/products/spotlight', optionalAuthMiddleware, productController.getSpotlightProducts);
+router.get('/api/products/top-placement', optionalAuthMiddleware, productController.getTopPlacementProducts);
 router.get('/api/categories', productController.getCategories);
 router.get('/api/products/seller/:sellerId', productController.getSellerProducts);
 router.get('/api/users/:userId/products', productController.getUserProducts);
 router.get('/api/product/:productId', productController.getProduct);
+router.get('/api/product/:productId/similar', optionalAuthMiddleware, productController.getSimilarProducts);
 
 // System categories route (public)
 router.get('/api/categories/system', (req, res) => {

@@ -1,6 +1,10 @@
 const db = require('../../models');
 const { Op, Sequelize, fn, col, where } = require('sequelize');
 const { checkSubscriptionLimit, incrementUsage, checkFeatureAccess } = require('../middleware/subscriptionMiddleware');
+const PromotionHelperService = require('../services/promotionHelperService');
+const RankingService = require('../services/rankingService');
+const SpotlightService = require('../services/spotlightService');
+const TopPlacementService = require('../services/topPlacementService');
 
 // Helper function to map distress sale field names for frontend
 const mapDistressSaleResponse = (distressSale) => {
@@ -381,12 +385,16 @@ class DistressSaleController {
       const validDistressSales = distressSales.filter(sale => sale.seller && sale.seller.id);
       console.log(`Filtered to ${validDistressSales.length} valid distress sales with seller data`);
 
+      // Map distress sale field names and include promotion fields
+      let mappedDistressSales = validDistressSales.map(mapDistressSaleResponse);
+      mappedDistressSales = PromotionHelperService.processItemsForResponse(mappedDistressSales);
+
       // Calculate total pages
       const totalPages = Math.ceil(count / limit);
 
       res.json({
         success: true,
-        data: validDistressSales,
+        data: mappedDistressSales,
         pagination: {
           currentPage: parseInt(page),
           totalPages,
@@ -450,10 +458,14 @@ class DistressSaleController {
       }
 
       // Attach canonical sellerEntityId
-      const distressSaleData = distressSale.toJSON ? distressSale.toJSON() : distressSale;
+      let distressSaleData = distressSale.toJSON ? distressSale.toJSON() : distressSale;
       if (distressSaleData?.seller?.id) {
         distressSaleData.sellerEntityId = distressSaleData.seller.id;
       }
+
+      // Map distress sale field names and include promotion fields
+      distressSaleData = mapDistressSaleResponse(distressSaleData);
+      distressSaleData = PromotionHelperService.includePromotionFields(distressSaleData);
 
       res.json({
         success: true,
@@ -1034,6 +1046,270 @@ class DistressSaleController {
     if (days > 0) return `${days} days ${hours} hours`;
     if (hours > 0) return `${hours} hours ${minutes} minutes`;
     return `${minutes} minutes`;
+  }
+
+  // Get trending distress sales
+  async getTrendingDistressSales(req, res) {
+    try {
+      const { category = null, limit = 20, offset = 0 } = req.query;
+      const currentUserId = req.user?.id;
+
+      // Get user location if available
+      let buyerLocation = null;
+      if (currentUserId) {
+        const user = await db.UserTable.findByPk(currentUserId, {
+          attributes: ['location']
+        });
+        buyerLocation = user?.location || null;
+      }
+
+      // Get trending distress sales using ranking service
+      const distressSales = await RankingService.getTrendingItems('distress_sale', {
+        category,
+        limit: parseInt(limit),
+        offset: parseInt(offset),
+        buyerLocation
+      });
+
+      // Map distress sale field names and include promotion fields
+      let mappedDistressSales = distressSales.map(mapDistressSaleResponse);
+      mappedDistressSales = PromotionHelperService.processItemsForResponse(mappedDistressSales);
+
+      res.status(200).json({
+        success: true,
+        message: "Trending distress sales retrieved successfully",
+        data: {
+          distressSales: mappedDistressSales,
+          pagination: {
+            currentPage: Math.floor(parseInt(offset) / parseInt(limit)) + 1,
+            limit: parseInt(limit),
+            totalDistressSales: mappedDistressSales.length,
+            hasNextPage: mappedDistressSales.length === parseInt(limit)
+          }
+        }
+      });
+    } catch (error) {
+      console.error('Get trending distress sales error:', error);
+      res.status(500).json({ 
+        success: false,
+        message: "Error retrieving trending distress sales", 
+        error: error.message 
+      });
+    }
+  }
+
+  // Get similar distress sales
+  async getSimilarDistressSales(req, res) {
+    try {
+      const { id } = req.params;
+      const { limit = 10, offset = 0 } = req.query;
+
+      // Get similar distress sales using ranking service
+      const distressSales = await RankingService.getSimilarItems('distress_sale', id, {
+        limit: parseInt(limit),
+        offset: parseInt(offset)
+      });
+
+      // Map distress sale field names and include promotion fields
+      let mappedDistressSales = distressSales.map(mapDistressSaleResponse);
+      mappedDistressSales = PromotionHelperService.processItemsForResponse(mappedDistressSales);
+
+      res.status(200).json({
+        success: true,
+        message: "Similar distress sales retrieved successfully",
+        data: {
+          distressSales: mappedDistressSales,
+          pagination: {
+            currentPage: Math.floor(parseInt(offset) / parseInt(limit)) + 1,
+            limit: parseInt(limit),
+            totalDistressSales: mappedDistressSales.length,
+            hasNextPage: mappedDistressSales.length === parseInt(limit)
+          }
+        }
+      });
+    } catch (error) {
+      console.error('Get similar distress sales error:', error);
+      res.status(500).json({ 
+        success: false,
+        message: "Error retrieving similar distress sales", 
+        error: error.message 
+      });
+    }
+  }
+
+  // Get spotlight distress sales
+  async getSpotlightDistressSales(req, res) {
+    try {
+      const { slotType = 'homepage', category = null, limit = 20, offset = 0 } = req.query;
+
+      // Get spotlight slots
+      const spotlightSlots = await SpotlightService.getSpotlightsBySlotType(slotType, {
+        category,
+        limit: parseInt(limit),
+        offset: parseInt(offset)
+      });
+
+      // Extract distress sale IDs from spotlight slots
+      const distressSaleIds = spotlightSlots
+        .filter(slot => slot.item_type === 'distress_sale')
+        .map(slot => slot.item_id);
+
+      if (distressSaleIds.length === 0) {
+        return res.status(200).json({
+          success: true,
+          message: "Spotlight distress sales retrieved successfully",
+          data: {
+            distressSales: [],
+            pagination: {
+              currentPage: 1,
+              limit: parseInt(limit),
+              totalDistressSales: 0,
+              hasNextPage: false
+            }
+          }
+        });
+      }
+
+      // Get distress sales (from Product table with isDistressSale: true)
+      const distressSales = await db.Product.findAll({
+        where: {
+          id: { [Op.in]: distressSaleIds },
+          isDistressSale: true,
+          status: 'active',
+          isAvailable: true
+        },
+        include: [
+          {
+            model: db.SellersTable,
+            as: 'seller',
+            attributes: ['id', 'userId', 'businessName', 'country', 'state'],
+            include: [{
+              model: db.UserTable,
+              as: 'user',
+              attributes: ['id', 'fullName', 'profilePicture', 'accountStatus']
+            }]
+          }
+        ]
+      });
+
+      // Sort distress sales to match spotlight slot order
+      const sortedDistressSales = distressSaleIds
+        .map(id => distressSales.find(ds => ds.id === id))
+        .filter(ds => ds !== undefined);
+
+      // Map distress sale field names and include promotion fields
+      let mappedDistressSales = sortedDistressSales.map(mapDistressSaleResponse);
+      mappedDistressSales = PromotionHelperService.processItemsForResponse(mappedDistressSales);
+
+      res.status(200).json({
+        success: true,
+        message: "Spotlight distress sales retrieved successfully",
+        data: {
+          distressSales: mappedDistressSales,
+          pagination: {
+            currentPage: Math.floor(parseInt(offset) / parseInt(limit)) + 1,
+            limit: parseInt(limit),
+            totalDistressSales: mappedDistressSales.length,
+            hasNextPage: mappedDistressSales.length === parseInt(limit)
+          }
+        }
+      });
+    } catch (error) {
+      console.error('Get spotlight distress sales error:', error);
+      res.status(500).json({ 
+        success: false,
+        message: "Error retrieving spotlight distress sales", 
+        error: error.message 
+      });
+    }
+  }
+
+  // Get top placement distress sales
+  async getTopPlacementDistressSales(req, res) {
+    try {
+      const { category = null, placementType = null, limit = 20, offset = 0 } = req.query;
+
+      // Get top placements
+      const placements = await TopPlacementService.getTopPlacementsByType('distress_sale', {
+        category,
+        placementType,
+        limit: parseInt(limit) + parseInt(offset) // Get more to handle offset
+      });
+
+      // Apply offset
+      const paginatedPlacements = placements.slice(parseInt(offset), parseInt(offset) + parseInt(limit));
+
+      // Extract distress sale IDs from placements
+      const distressSaleIds = paginatedPlacements.map(placement => placement.item_id);
+
+      if (distressSaleIds.length === 0) {
+        return res.status(200).json({
+          success: true,
+          message: "Top placement distress sales retrieved successfully",
+          data: {
+            distressSales: [],
+            pagination: {
+              currentPage: Math.floor(parseInt(offset) / parseInt(limit)) + 1,
+              limit: parseInt(limit),
+              totalDistressSales: 0,
+              hasNextPage: false
+            }
+          }
+        });
+      }
+
+      // Get distress sales (from Product table with isDistressSale: true)
+      const distressSales = await db.Product.findAll({
+        where: {
+          id: { [Op.in]: distressSaleIds },
+          isDistressSale: true,
+          status: 'active',
+          isAvailable: true
+        },
+        include: [
+          {
+            model: db.SellersTable,
+            as: 'seller',
+            attributes: ['id', 'userId', 'businessName', 'country', 'state'],
+            include: [{
+              model: db.UserTable,
+              as: 'user',
+              attributes: ['id', 'fullName', 'profilePicture', 'accountStatus']
+            }]
+          }
+        ]
+      });
+
+      // Sort distress sales to match placement order
+      const sortedDistressSales = distressSaleIds
+        .map(id => distressSales.find(ds => ds.id === id))
+        .filter(ds => ds !== undefined);
+
+      // Map distress sale field names and include promotion fields
+      let mappedDistressSales = sortedDistressSales.map(mapDistressSaleResponse);
+      mappedDistressSales = PromotionHelperService.processItemsForResponse(mappedDistressSales);
+
+      res.status(200).json({
+        success: true,
+        message: "Top placement distress sales retrieved successfully",
+        data: {
+          distressSales: mappedDistressSales,
+          pagination: {
+            currentPage: Math.floor(parseInt(offset) / parseInt(limit)) + 1,
+            limit: parseInt(limit),
+            totalDistressSales: placements.length,
+            hasNextPage: parseInt(offset) + parseInt(limit) < placements.length
+          }
+        }
+      });
+    } catch (error) {
+      console.error('Get top placement distress sales error:', error);
+      res.status(500).json({ 
+        success: false,
+        message: "Error retrieving top placement distress sales", 
+        error: error.message 
+      });
+    }
   }
 }
 

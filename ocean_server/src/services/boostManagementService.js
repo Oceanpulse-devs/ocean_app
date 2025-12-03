@@ -1,11 +1,13 @@
 const { PromotionalBoost, Product, GroupBuy, SwapDeal, Auction } = require('../../models');
 const { Op } = require('sequelize');
+const promotionGatingService = require('./promotionGatingService');
 
 /**
  * Boost Management Service
  * 
  * Handles promotional boost operations across different models
- * including applying boosts, removing expired boosts, and boost analytics
+ * including applying boosts, removing expired boosts, boost analytics,
+ * auto-reboost, location targeting, and boost packages
  */
 
 class BoostManagementService {
@@ -415,6 +417,291 @@ class BoostManagementService {
     });
 
     return grouped;
+  }
+
+  /**
+   * Validate boost package
+   * @param {string} boostPackage - Package type ('1-day', '3-day', '7-day')
+   * @param {number} durationHours - Duration in hours
+   * @returns {Object} Validation result
+   */
+  static validateBoostPackage(boostPackage, durationHours) {
+    const packageMap = {
+      '1-day': 24,
+      '3-day': 72,
+      '7-day': 168
+    };
+
+    const expectedHours = packageMap[boostPackage];
+    
+    if (!expectedHours) {
+      return {
+        valid: false,
+        reason: `Invalid boost package: ${boostPackage}. Must be one of: 1-day, 3-day, 7-day`
+      };
+    }
+
+    if (durationHours !== expectedHours) {
+      return {
+        valid: false,
+        reason: `Boost package ${boostPackage} requires ${expectedHours} hours, but got ${durationHours} hours`
+      };
+    }
+
+    return { valid: true };
+  }
+
+  /**
+   * Calculate boost duration from package
+   * @param {string} boostPackage - Package type ('1-day', '3-day', '7-day')
+   * @returns {number} Duration in hours
+   */
+  static getDurationFromPackage(boostPackage) {
+    const packageMap = {
+      '1-day': 24,
+      '3-day': 72,
+      '7-day': 168
+    };
+
+    return packageMap[boostPackage] || 24;
+  }
+
+  /**
+   * Get boost package from duration
+   * @param {number} durationHours - Duration in hours
+   * @returns {string} Package type
+   */
+  static getPackageFromDuration(durationHours) {
+    if (durationHours === 24) return '1-day';
+    if (durationHours === 72) return '3-day';
+    if (durationHours === 168) return '7-day';
+    return '1-day'; // Default
+  }
+
+  /**
+   * Validate location target format
+   * @param {Object} locationTarget - Location target object
+   * @returns {Object} Validation result
+   */
+  static validateLocationTarget(locationTarget) {
+    if (!locationTarget) {
+      return { valid: true }; // Optional field
+    }
+
+    if (typeof locationTarget !== 'object') {
+      return {
+        valid: false,
+        reason: 'Location target must be an object'
+      };
+    }
+
+    // Expected format: { states: ['Lagos', 'Abuja'], cities: ['Ikeja', 'Victoria Island'] }
+    if (locationTarget.states && !Array.isArray(locationTarget.states)) {
+      return {
+        valid: false,
+        reason: 'Location target states must be an array'
+      };
+    }
+
+    if (locationTarget.cities && !Array.isArray(locationTarget.cities)) {
+      return {
+        valid: false,
+        reason: 'Location target cities must be an array'
+      };
+    }
+
+    return { valid: true };
+  }
+
+  /**
+   * Check if location matches target
+   * @param {Object} locationTarget - Location target from boost
+   * @param {string} userState - User's state
+   * @param {string} userCity - User's city
+   * @returns {boolean} Whether location matches
+   */
+  static matchesLocationTarget(locationTarget, userState, userCity) {
+    if (!locationTarget) {
+      return true; // No targeting means show to all
+    }
+
+    // Check state match
+    if (locationTarget.states && locationTarget.states.length > 0) {
+      if (!userState || !locationTarget.states.includes(userState)) {
+        return false;
+      }
+    }
+
+    // Check city match
+    if (locationTarget.cities && locationTarget.cities.length > 0) {
+      if (!userCity || !locationTarget.cities.includes(userCity)) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  /**
+   * Get boosted items with location filtering
+   * @param {string} boostType - Type of boost
+   * @param {Object} options - Query options
+   * @param {string} userState - User's state (optional)
+   * @param {string} userCity - User's city (optional)
+   * @returns {Array} Boosted items
+   */
+  static async getBoostedItemsWithLocation(boostType, options = {}, userState = null, userCity = null) {
+    try {
+      const items = await this.getBoostedItems(boostType, options);
+      
+      // If no location targeting, return all items
+      if (!userState && !userCity) {
+        return items;
+      }
+
+      // Filter by location target
+      const filteredItems = [];
+      for (const item of items) {
+        // Get the boost for this item
+        const boost = await PromotionalBoost.findOne({
+          where: {
+            id: item.boost_id,
+            boost_type: boostType,
+            target_id: item.id
+          }
+        });
+
+        if (!boost || !boost.location_target) {
+          // No location targeting, include item
+          filteredItems.push(item);
+        } else {
+          // Check if location matches
+          if (this.matchesLocationTarget(boost.location_target, userState, userCity)) {
+            filteredItems.push(item);
+          }
+        }
+      }
+
+      return filteredItems;
+    } catch (error) {
+      console.error('Error getting boosted items with location:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get boosts eligible for auto-reboost
+   * @returns {Array} Boosts that need reboosting
+   */
+  static async getBoostsForAutoReboost() {
+    try {
+      const now = new Date();
+      
+      // Find expired boosts with auto-reboost enabled
+      const expiredBoosts = await PromotionalBoost.findAll({
+        where: {
+          status: 'expired',
+          auto_reboost: true,
+          end_time: {
+            [Op.lte]: now
+          }
+        },
+        order: [['end_time', 'ASC']]
+      });
+
+      // Filter boosts that are due for reboost based on interval
+      const boostsToReboost = [];
+      for (const boost of expiredBoosts) {
+        if (!boost.reboost_interval_hours) {
+          continue;
+        }
+
+        const nextReboostTime = new Date(boost.end_time);
+        nextReboostTime.setHours(nextReboostTime.getHours() + boost.reboost_interval_hours);
+
+        // If it's time to reboost
+        if (now >= nextReboostTime) {
+          boostsToReboost.push(boost);
+        }
+      }
+
+      return boostsToReboost;
+    } catch (error) {
+      console.error('Error getting boosts for auto-reboost:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Create a new boost with enhanced features
+   * @param {string} userId - User ID
+   * @param {string} boostType - Type of boost
+   * @param {string} targetId - Target item ID
+   * @param {Object} options - Boost options
+   * @returns {Object} Created boost
+   */
+  static async createBoostWithOptions(userId, boostType, targetId, options = {}) {
+    try {
+      const {
+        durationHours = 24,
+        boostPackage = '1-day',
+        autoReboost = false,
+        reboostIntervalHours = null,
+        locationTarget = null,
+        isFree = false,
+        reason = ''
+      } = options;
+
+      // Validate package if provided
+      if (boostPackage) {
+        const packageValidation = this.validateBoostPackage(boostPackage, durationHours);
+        if (!packageValidation.valid) {
+          throw new Error(packageValidation.reason);
+        }
+      }
+
+      // Validate location target if provided
+      if (locationTarget) {
+        const locationValidation = this.validateLocationTarget(locationTarget);
+        if (!locationValidation.valid) {
+          throw new Error(locationValidation.reason);
+        }
+      }
+
+      // Calculate cost
+      const costInfo = await promotionGatingService.calculateBoostCost(userId, durationHours, isFree);
+
+      // Create boost
+      const startTime = new Date();
+      const endTime = new Date();
+      endTime.setHours(endTime.getHours() + durationHours);
+
+      const boost = await PromotionalBoost.create({
+        userId: userId,
+        subscriptionId: options.subscriptionId,
+        boostType: boostType,
+        targetId: targetId,
+        boostDurationHours: durationHours,
+        status: 'active',
+        startTime: startTime,
+        endTime: endTime,
+        boostReason: reason,
+        autoReboost: autoReboost,
+        reboostIntervalHours: reboostIntervalHours,
+        locationTarget: locationTarget,
+        boostPackage: boostPackage,
+        cost: costInfo.cost,
+        isFree: isFree
+      });
+
+      // Apply boost to item
+      await this.applyBoost(boost);
+
+      return boost;
+    } catch (error) {
+      console.error('Error creating boost with options:', error);
+      throw error;
+    }
   }
 }
 

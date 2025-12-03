@@ -1,4 +1,7 @@
 const subscriptionService = require('../services/subscriptionService');
+const BoostManagementService = require('../services/boostManagementService');
+const AutoReboostService = require('../services/autoReboostService');
+const promotionGatingService = require('../services/promotionGatingService');
 const { PromotionalBoost } = require('../../models');
 const { Op } = require('sequelize');
 
@@ -20,7 +23,17 @@ class PromotionalBoostController {
   static async createBoost(req, res) {
     try {
       const userId = req.user.id;
-      const { boostType, targetId, durationHours = 24, reason = '' } = req.body;
+      const { 
+        boostType, 
+        targetId, 
+        durationHours = 24,
+        boostPackage = null,
+        autoReboost = false,
+        reboostIntervalHours = null,
+        locationTarget = null,
+        isFree = false,
+        reason = '' 
+      } = req.body;
 
       if (!boostType || !targetId) {
         return res.status(400).json({
@@ -38,21 +51,94 @@ class PromotionalBoostController {
         });
       }
 
+      // Determine package if not provided
+      let finalPackage = boostPackage;
+      if (!finalPackage) {
+        finalPackage = BoostManagementService.getPackageFromDuration(durationHours);
+      }
+
       // Validate duration
-      if (durationHours < 1 || durationHours > 168) { // Max 1 week
+      if (durationHours < 1 || durationHours > 168) {
         return res.status(400).json({
           success: false,
           message: 'Duration must be between 1 and 168 hours (1 week)'
         });
       }
 
-      const boost = await subscriptionService.createPromotionalBoost(
-        userId, 
-        boostType, 
-        targetId, 
-        durationHours, 
-        reason
+      // Check eligibility
+      const eligibility = await promotionGatingService.checkBoostEligibility(
+        userId,
+        boostType,
+        durationHours,
+        isFree
       );
+
+      if (!eligibility.eligible) {
+        return res.status(403).json({
+          success: false,
+          message: eligibility.reason,
+          canUpgrade: eligibility.canUpgrade,
+          currentPlan: eligibility.currentPlan
+        });
+      }
+
+      // Check auto-reboost eligibility if requested
+      if (autoReboost) {
+        const autoReboostEligibility = await promotionGatingService.checkAutoReboostEligibility(userId);
+        if (!autoReboostEligibility.eligible) {
+          return res.status(403).json({
+            success: false,
+            message: autoReboostEligibility.reason,
+            canUpgrade: autoReboostEligibility.canUpgrade
+          });
+        }
+
+        // Validate interval
+        if (!reboostIntervalHours || ![6, 12, 24].includes(reboostIntervalHours)) {
+          return res.status(400).json({
+            success: false,
+            message: 'Reboost interval must be 6, 12, or 24 hours when auto-reboost is enabled'
+          });
+        }
+      }
+
+      // Check location targeting eligibility if requested
+      if (locationTarget) {
+        const locationEligibility = await promotionGatingService.checkLocationTargetingEligibility(userId);
+        if (!locationEligibility.eligible) {
+          return res.status(403).json({
+            success: false,
+            message: locationEligibility.reason,
+            canUpgrade: locationEligibility.canUpgrade
+          });
+        }
+      }
+
+      // Get subscription for boost creation
+      const subscription = eligibility.subscription;
+
+      // Calculate cost
+      const costInfo = await promotionGatingService.calculateBoostCost(userId, durationHours, isFree);
+
+      // Create boost with enhanced options
+      const boost = await BoostManagementService.createBoostWithOptions(
+        userId,
+        boostType,
+        targetId,
+        {
+          durationHours: durationHours,
+          boostPackage: finalPackage,
+          autoReboost: autoReboost,
+          reboostIntervalHours: reboostIntervalHours,
+          locationTarget: locationTarget,
+          isFree: isFree,
+          subscriptionId: subscription.id,
+          reason: reason
+        }
+      );
+
+      // Increment usage counter
+      await promotionGatingService.incrementPromotionUsage(userId, 'boost');
 
       res.status(201).json({
         success: true,
@@ -62,10 +148,16 @@ class PromotionalBoostController {
           boostType: boost.boost_type,
           targetId: boost.target_id,
           durationHours: boost.boost_duration_hours,
+          boostPackage: boost.boost_package,
           startTime: boost.start_time,
           endTime: boost.end_time,
           status: boost.status,
-          reason: boost.boost_reason
+          reason: boost.boost_reason,
+          autoReboost: boost.auto_reboost,
+          reboostIntervalHours: boost.reboost_interval_hours,
+          locationTarget: boost.location_target,
+          cost: boost.cost,
+          isFree: boost.is_free
         }
       });
     } catch (error) {
@@ -111,11 +203,18 @@ class PromotionalBoostController {
             boostType: boost.boost_type,
             targetId: boost.target_id,
             durationHours: boost.boost_duration_hours,
+            boostPackage: boost.boost_package,
             startTime: boost.start_time,
             endTime: boost.end_time,
             status: boost.status,
             reason: boost.boost_reason,
-            createdAt: boost.created_at
+            autoReboost: boost.auto_reboost,
+            reboostIntervalHours: boost.reboost_interval_hours,
+            locationTarget: boost.location_target,
+            cost: boost.cost,
+            isFree: boost.is_free,
+            createdAt: boost.created_at,
+            updatedAt: boost.updated_at
           })),
           pagination: {
             currentPage: parseInt(page),
@@ -166,11 +265,18 @@ class PromotionalBoostController {
           boostType: boost.boost_type,
           targetId: boost.target_id,
           durationHours: boost.boost_duration_hours,
+          boostPackage: boost.boost_package,
           startTime: boost.start_time,
           endTime: boost.end_time,
           status: boost.status,
           reason: boost.boost_reason,
-          createdAt: boost.created_at
+          autoReboost: boost.auto_reboost,
+          reboostIntervalHours: boost.reboost_interval_hours,
+          locationTarget: boost.location_target,
+          cost: boost.cost,
+          isFree: boost.is_free,
+          createdAt: boost.created_at,
+          updatedAt: boost.updated_at
         }
       });
     } catch (error) {
@@ -319,27 +425,14 @@ class PromotionalBoostController {
    */
   static async updateExpiredBoosts(req, res) {
     try {
-      const now = new Date();
-      
-      const expiredBoosts = await PromotionalBoost.findAll({
-        where: {
-          status: 'active',
-          end_time: { [Op.lt]: now }
-        }
-      });
-
-      let updatedCount = 0;
-      for (const boost of expiredBoosts) {
-        await boost.update({ status: 'expired' });
-        updatedCount++;
-      }
+      const updatedCount = await BoostManagementService.updateExpiredBoosts();
 
       res.json({
         success: true,
         message: `Updated ${updatedCount} expired boosts`,
         data: {
           updatedCount: updatedCount,
-          timestamp: now
+          timestamp: new Date()
         }
       });
     } catch (error) {
@@ -347,6 +440,146 @@ class PromotionalBoostController {
       res.status(500).json({
         success: false,
         message: 'Error updating expired boosts',
+        error: error.message
+      });
+    }
+  }
+
+  /**
+   * Enable/disable auto-reboost for a boost
+   * POST /api/boosts/:id/auto-reboost
+   */
+  static async toggleAutoReboost(req, res) {
+    try {
+      const userId = req.user.id;
+      const { id } = req.params;
+      const { enabled, intervalHours = 24 } = req.body;
+
+      if (typeof enabled !== 'boolean') {
+        return res.status(400).json({
+          success: false,
+          message: 'enabled must be a boolean'
+        });
+      }
+
+      if (enabled) {
+        await AutoReboostService.enableAutoReboost(id, userId, intervalHours);
+        res.json({
+          success: true,
+          message: 'Auto-reboost enabled successfully',
+          data: {
+            boostId: id,
+            autoReboost: true,
+            intervalHours: intervalHours
+          }
+        });
+      } else {
+        await AutoReboostService.disableAutoReboost(id, userId);
+        res.json({
+          success: true,
+          message: 'Auto-reboost disabled successfully',
+          data: {
+            boostId: id,
+            autoReboost: false
+          }
+        });
+      }
+    } catch (error) {
+      console.error('Error toggling auto-reboost:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error toggling auto-reboost',
+        error: error.message
+      });
+    }
+  }
+
+  /**
+   * Get available boosts for user (based on plan)
+   * GET /api/boosts/available
+   */
+  static async getAvailableBoosts(req, res) {
+    try {
+      const userId = req.user.id;
+
+      const availableBoosts = await promotionGatingService.getAvailableBoosts(userId);
+
+      res.json({
+        success: true,
+        message: 'Available boosts retrieved successfully',
+        data: availableBoosts
+      });
+    } catch (error) {
+      console.error('Error getting available boosts:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error retrieving available boosts',
+        error: error.message
+      });
+    }
+  }
+
+  /**
+   * Get boost pricing based on plan
+   * GET /api/boosts/pricing
+   */
+  static async getBoostPricing(req, res) {
+    try {
+      const userId = req.user.id;
+      const { durationHours = 24, isFree = false } = req.query;
+
+      const costInfo = await promotionGatingService.calculateBoostCost(
+        userId,
+        parseInt(durationHours),
+        isFree === 'true'
+      );
+
+      res.json({
+        success: true,
+        message: 'Boost pricing retrieved successfully',
+        data: costInfo
+      });
+    } catch (error) {
+      console.error('Error getting boost pricing:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error retrieving boost pricing',
+        error: error.message
+      });
+    }
+  }
+
+  /**
+   * Get enhanced boost analytics
+   * GET /api/boosts/analytics
+   */
+  static async getBoostAnalytics(req, res) {
+    try {
+      const userId = req.user.id;
+      const { days = 30 } = req.query;
+
+      const analytics = await BoostManagementService.getBoostPerformanceAnalytics(
+        userId,
+        parseInt(days)
+      );
+
+      if (!analytics) {
+        return res.status(500).json({
+          success: false,
+          message: 'Error retrieving boost analytics'
+        });
+      }
+
+      res.json({
+        success: true,
+        message: 'Boost analytics retrieved successfully',
+        data: analytics
+      });
+    } catch (error) {
+      console.error('Error getting boost analytics:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error retrieving boost analytics',
         error: error.message
       });
     }

@@ -152,6 +152,50 @@ module.exports = (sequelize, DataTypes) => {
     allowNull: true,
     comment: 'Reference to promotional boost'
   },
+  // Top Placement Engine fields
+  is_top_placed: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+    comment: 'Whether group buy is currently top placed'
+  },
+  top_placement_expires_at: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    comment: 'When top placement expires'
+  },
+  top_placement_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: 'Reference to top_placements table'
+  },
+  // Spotlight Engine fields (using is_featured as well, but adding explicit spotlight fields)
+  is_spotlighted: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+    comment: 'Whether group buy is currently in spotlight'
+  },
+  spotlight_expires_at: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    comment: 'When spotlight expires'
+  },
+  spotlight_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: 'Reference to spotlight_slots table'
+  },
+  // Ranking Engine fields
+  visibility_score: {
+    type: DataTypes.DECIMAL(10, 2),
+    defaultValue: 0.0,
+    allowNull: false,
+    comment: 'Calculated visibility score for ranking'
+  },
+  last_score_update: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    comment: 'When visibility score was last calculated'
+  },
   createdAt: {
     type: DataTypes.DATE,
     defaultValue: DataTypes.NOW

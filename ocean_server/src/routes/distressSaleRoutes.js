@@ -40,8 +40,12 @@ const upload = multer({
 
 // Public routes (no authentication required)
 router.get('/all', distressSaleController.getAllDistressSales);
+router.get('/trending', distressSaleController.getTrendingDistressSales);
+router.get('/spotlight', distressSaleController.getSpotlightDistressSales);
+router.get('/top-placement', distressSaleController.getTopPlacementDistressSales);
 router.get('/stats', distressSaleController.getDistressSaleStats);
 router.get('/:id', distressSaleController.getDistressSaleById);
+router.get('/:id/similar', distressSaleController.getSimilarDistressSales);
 
 // Protected routes (authentication required)
 router.post('/create', authMiddleware, upload.fields([{ name: 'images', maxCount: 10 }, { name: 'arModel', maxCount: 1 }]), distressSaleController.createDistressSale);

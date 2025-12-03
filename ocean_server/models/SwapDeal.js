@@ -121,6 +121,77 @@ module.exports = (sequelize, DataTypes) => {
     field: 'is_featured',
     comment: 'Whether this swap deal is featured'
   },
+  // Boost Engine fields
+  isBoosted: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+    field: 'is_boosted',
+    comment: 'Whether swap deal is currently boosted'
+  },
+  boostExpiresAt: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    field: 'boost_expires_at',
+    comment: 'When boost expires'
+  },
+  boostId: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    field: 'boost_id',
+    comment: 'Reference to promotional boost'
+  },
+  // Top Placement Engine fields
+  isTopPlaced: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+    field: 'is_top_placed',
+    comment: 'Whether swap deal is currently top placed'
+  },
+  topPlacementExpiresAt: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    field: 'top_placement_expires_at',
+    comment: 'When top placement expires'
+  },
+  topPlacementId: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    field: 'top_placement_id',
+    comment: 'Reference to top_placements table'
+  },
+  // Spotlight Engine fields (using is_featured as well, but adding explicit spotlight fields)
+  isSpotlighted: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+    field: 'is_spotlighted',
+    comment: 'Whether swap deal is currently in spotlight'
+  },
+  spotlightExpiresAt: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    field: 'spotlight_expires_at',
+    comment: 'When spotlight expires'
+  },
+  spotlightId: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    field: 'spotlight_id',
+    comment: 'Reference to spotlight_slots table'
+  },
+  // Ranking Engine fields
+  visibilityScore: {
+    type: DataTypes.DECIMAL(10, 2),
+    defaultValue: 0.0,
+    allowNull: false,
+    field: 'visibility_score',
+    comment: 'Calculated visibility score for ranking'
+  },
+  lastScoreUpdate: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    field: 'last_score_update',
+    comment: 'When visibility score was last calculated'
+  },
   expiresAt: {
     type: DataTypes.DATE,
     allowNull: true,

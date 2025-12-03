@@ -5,6 +5,10 @@ const { groupBuyCreationMiddleware } = require('../middleware/featureMiddleware'
 const SubscriptionAwareSearchService = require('../services/subscriptionAwareSearchService');
 const cloudinaryService = require('../services/cloudinaryService');
 const axios = require('axios');
+const PromotionHelperService = require('../services/promotionHelperService');
+const RankingService = require('../services/rankingService');
+const SpotlightService = require('../services/spotlightService');
+const TopPlacementService = require('../services/topPlacementService');
 
 // Helper function to map group buy field names for frontend
 const mapGroupBuyResponse = (groupBuy) => {
@@ -615,7 +619,10 @@ class GroupBuyController {
       }, currentUserId);
 
       // Map group buy field names for frontend compatibility
-      const mappedGroupBuys = searchResults.groupBuys.map(mapGroupBuyResponse);
+      let mappedGroupBuys = searchResults.groupBuys.map(mapGroupBuyResponse);
+
+      // Include promotion fields and sort by promotion priority
+      mappedGroupBuys = PromotionHelperService.processItemsForResponse(mappedGroupBuys);
 
       res.status(200).json({
         success: true,
@@ -807,7 +814,10 @@ class GroupBuyController {
       console.log('💬 Conversation ID:', groupBuyJson.conversation_id);
 
       // Map group buy response to include category name
-      const mappedResponse = mapGroupBuyResponse(groupBuyJson);
+      let mappedResponse = mapGroupBuyResponse(groupBuyJson);
+      
+      // Include promotion fields
+      mappedResponse = PromotionHelperService.includePromotionFields(mappedResponse);
       
       // Ensure conversation_id is included in response (also as conversationId for frontend compatibility)
       const responseData = {
@@ -1735,9 +1745,13 @@ class GroupBuyController {
         order: [['createdAt', 'DESC']]
       });
 
+      // Map group buy field names and include promotion fields
+      let mappedGroupBuys = groupBuys.map(mapGroupBuyResponse);
+      mappedGroupBuys = PromotionHelperService.processItemsForResponse(mappedGroupBuys);
+
       res.json({
         success: true,
-        data: groupBuys
+        data: mappedGroupBuys
       });
 
     } catch (error) {
@@ -1804,10 +1818,13 @@ class GroupBuyController {
       });
 
       // Map group buy field names for frontend
-      const mappedGroupBuys = groupBuys.rows.map(groupBuy => {
+      let mappedGroupBuys = groupBuys.rows.map(groupBuy => {
         const mapped = mapGroupBuyResponse(groupBuy);
         return mapped;
       });
+
+      // Include promotion fields and sort by promotion priority
+      mappedGroupBuys = PromotionHelperService.processItemsForResponse(mappedGroupBuys);
 
       res.json({
         success: true,
@@ -1999,6 +2016,266 @@ class GroupBuyController {
         success: false,
         message: 'Internal server error',
         error: error.message
+      });
+    }
+  }
+
+  // Get trending group buys
+  async getTrendingGroupBuys(req, res) {
+    try {
+      const { category = null, limit = 20, offset = 0 } = req.query;
+      const currentUserId = req.user?.id;
+
+      // Get user location if available
+      let buyerLocation = null;
+      if (currentUserId) {
+        const user = await db.UserTable.findByPk(currentUserId, {
+          attributes: ['location']
+        });
+        buyerLocation = user?.location || null;
+      }
+
+      // Get trending group buys using ranking service
+      const groupBuys = await RankingService.getTrendingItems('group_buy', {
+        category,
+        limit: parseInt(limit),
+        offset: parseInt(offset),
+        buyerLocation
+      });
+
+      // Map group buy field names and include promotion fields
+      let mappedGroupBuys = groupBuys.map(mapGroupBuyResponse);
+      mappedGroupBuys = PromotionHelperService.processItemsForResponse(mappedGroupBuys);
+
+      res.status(200).json({
+        success: true,
+        message: "Trending group buys retrieved successfully",
+        data: {
+          groupBuys: mappedGroupBuys,
+          pagination: {
+            currentPage: Math.floor(parseInt(offset) / parseInt(limit)) + 1,
+            limit: parseInt(limit),
+            totalGroupBuys: mappedGroupBuys.length,
+            hasNextPage: mappedGroupBuys.length === parseInt(limit)
+          }
+        }
+      });
+    } catch (error) {
+      console.error('Get trending group buys error:', error);
+      res.status(500).json({ 
+        success: false,
+        message: "Error retrieving trending group buys", 
+        error: error.message 
+      });
+    }
+  }
+
+  // Get similar group buys
+  async getSimilarGroupBuys(req, res) {
+    try {
+      const { id } = req.params;
+      const { limit = 10, offset = 0 } = req.query;
+
+      // Get similar group buys using ranking service
+      const groupBuys = await RankingService.getSimilarItems('group_buy', id, {
+        limit: parseInt(limit),
+        offset: parseInt(offset)
+      });
+
+      // Map group buy field names and include promotion fields
+      let mappedGroupBuys = groupBuys.map(mapGroupBuyResponse);
+      mappedGroupBuys = PromotionHelperService.processItemsForResponse(mappedGroupBuys);
+
+      res.status(200).json({
+        success: true,
+        message: "Similar group buys retrieved successfully",
+        data: {
+          groupBuys: mappedGroupBuys,
+          pagination: {
+            currentPage: Math.floor(parseInt(offset) / parseInt(limit)) + 1,
+            limit: parseInt(limit),
+            totalGroupBuys: mappedGroupBuys.length,
+            hasNextPage: mappedGroupBuys.length === parseInt(limit)
+          }
+        }
+      });
+    } catch (error) {
+      console.error('Get similar group buys error:', error);
+      res.status(500).json({ 
+        success: false,
+        message: "Error retrieving similar group buys", 
+        error: error.message 
+      });
+    }
+  }
+
+  // Get spotlight group buys
+  async getSpotlightGroupBuys(req, res) {
+    try {
+      const { slotType = 'homepage', category = null, limit = 20, offset = 0 } = req.query;
+
+      // Get spotlight slots
+      const spotlightSlots = await SpotlightService.getSpotlightsBySlotType(slotType, {
+        category,
+        limit: parseInt(limit),
+        offset: parseInt(offset)
+      });
+
+      // Extract group buy IDs from spotlight slots
+      const groupBuyIds = spotlightSlots
+        .filter(slot => slot.item_type === 'group_buy')
+        .map(slot => slot.item_id);
+
+      if (groupBuyIds.length === 0) {
+        return res.status(200).json({
+          success: true,
+          message: "Spotlight group buys retrieved successfully",
+          data: {
+            groupBuys: [],
+            pagination: {
+              currentPage: 1,
+              limit: parseInt(limit),
+              totalGroupBuys: 0,
+              hasNextPage: false
+            }
+          }
+        });
+      }
+
+      // Get group buys
+      const groupBuys = await db.GroupBuy.findAll({
+        where: {
+          id: { [Op.in]: groupBuyIds },
+          status: 'active'
+        },
+        include: [
+          {
+            model: db.UserTable,
+            as: 'creator',
+            attributes: ['id', 'fullName', 'username', 'profilePicture', 'email'],
+            include: [{
+              model: db.SellersTable,
+              as: 'seller',
+              attributes: ['id', 'businessName', 'country', 'state']
+            }]
+          }
+        ]
+      });
+
+      // Sort group buys to match spotlight slot order
+      const sortedGroupBuys = groupBuyIds
+        .map(id => groupBuys.find(gb => gb.id === id))
+        .filter(gb => gb !== undefined);
+
+      // Map group buy field names and include promotion fields
+      let mappedGroupBuys = sortedGroupBuys.map(mapGroupBuyResponse);
+      mappedGroupBuys = PromotionHelperService.processItemsForResponse(mappedGroupBuys);
+
+      res.status(200).json({
+        success: true,
+        message: "Spotlight group buys retrieved successfully",
+        data: {
+          groupBuys: mappedGroupBuys,
+          pagination: {
+            currentPage: Math.floor(parseInt(offset) / parseInt(limit)) + 1,
+            limit: parseInt(limit),
+            totalGroupBuys: mappedGroupBuys.length,
+            hasNextPage: mappedGroupBuys.length === parseInt(limit)
+          }
+        }
+      });
+    } catch (error) {
+      console.error('Get spotlight group buys error:', error);
+      res.status(500).json({ 
+        success: false,
+        message: "Error retrieving spotlight group buys", 
+        error: error.message 
+      });
+    }
+  }
+
+  // Get top placement group buys
+  async getTopPlacementGroupBuys(req, res) {
+    try {
+      const { category = null, placementType = null, limit = 20, offset = 0 } = req.query;
+
+      // Get top placements
+      const placements = await TopPlacementService.getTopPlacementsByType('group_buy', {
+        category,
+        placementType,
+        limit: parseInt(limit) + parseInt(offset) // Get more to handle offset
+      });
+
+      // Apply offset
+      const paginatedPlacements = placements.slice(parseInt(offset), parseInt(offset) + parseInt(limit));
+
+      // Extract group buy IDs from placements
+      const groupBuyIds = paginatedPlacements.map(placement => placement.item_id);
+
+      if (groupBuyIds.length === 0) {
+        return res.status(200).json({
+          success: true,
+          message: "Top placement group buys retrieved successfully",
+          data: {
+            groupBuys: [],
+            pagination: {
+              currentPage: Math.floor(parseInt(offset) / parseInt(limit)) + 1,
+              limit: parseInt(limit),
+              totalGroupBuys: 0,
+              hasNextPage: false
+            }
+          }
+        });
+      }
+
+      // Get group buys
+      const groupBuys = await db.GroupBuy.findAll({
+        where: {
+          id: { [Op.in]: groupBuyIds },
+          status: 'active'
+        },
+        include: [
+          {
+            model: db.UserTable,
+            as: 'creator',
+            attributes: ['id', 'fullName', 'username', 'profilePicture', 'email'],
+            include: [{
+              model: db.SellersTable,
+              as: 'seller',
+              attributes: ['id', 'businessName', 'country', 'state']
+            }]
+          }
+        ]
+      });
+
+      // Sort group buys to match placement order
+      const sortedGroupBuys = groupBuyIds
+        .map(id => groupBuys.find(gb => gb.id === id))
+        .filter(gb => gb !== undefined);
+
+      // Map group buy field names and include promotion fields
+      let mappedGroupBuys = sortedGroupBuys.map(mapGroupBuyResponse);
+      mappedGroupBuys = PromotionHelperService.processItemsForResponse(mappedGroupBuys);
+
+      res.status(200).json({
+        success: true,
+        message: "Top placement group buys retrieved successfully",
+        data: {
+          groupBuys: mappedGroupBuys,
+          pagination: {
+            currentPage: Math.floor(parseInt(offset) / parseInt(limit)) + 1,
+            limit: parseInt(limit),
+            totalGroupBuys: placements.length,
+            hasNextPage: parseInt(offset) + parseInt(limit) < placements.length
+          }
+        }
+      });
+    } catch (error) {
+      console.error('Get top placement group buys error:', error);
+      res.status(500).json({ 
+        success: false,
+        message: "Error retrieving top placement group buys", 
+        error: error.message 
       });
     }
   }

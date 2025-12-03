@@ -5,6 +5,10 @@ const { checkSubscriptionLimit, incrementUsage } = require('../middleware/subscr
 const { productListingMiddleware } = require('../middleware/featureMiddleware');
 const SubscriptionAwareSearchService = require('../services/subscriptionAwareSearchService');
 const { mapFullResponse, wrapProductsList } = require('../../utils/fieldMapper');
+const PromotionHelperService = require('../services/promotionHelperService');
+const RankingService = require('../services/rankingService');
+const SpotlightService = require('../services/spotlightService');
+const TopPlacementService = require('../services/topPlacementService');
 
 // Helper function to map product field names for frontend
 const mapProductResponse = (product) => {
@@ -71,7 +75,10 @@ const getProducts = async (req, res) => {
         }, currentUserId);
 
         // Map product field names for frontend (title → name)
-        const mappedProducts = searchResults.products.map(mapProductResponse);
+        let mappedProducts = searchResults.products.map(mapProductResponse);
+
+        // Include promotion fields and sort by promotion priority
+        mappedProducts = PromotionHelperService.processItemsForResponse(mappedProducts);
 
         // Track failed search if no results found and search query exists
         if (mappedProducts.length === 0 && search && search.trim().length > 0) {
@@ -214,7 +221,10 @@ const getProduct = async (req, res) => {
         }
 
         // Map product field names for frontend (title → name)
-        const mappedProductData = mapProductResponse(productData);
+        let mappedProductData = mapProductResponse(productData);
+
+        // Include promotion fields
+        mappedProductData = PromotionHelperService.includePromotionFields(mappedProductData);
 
         // Attach canonical sellerEntityId for frontend convenience
         if (mappedProductData?.seller?.id) {
@@ -1551,7 +1561,7 @@ const getSellerProducts = async (req, res) => {
         });
 
         // Add engagement status for current user
-        const productsWithEngagement = await Promise.all(
+        let productsWithEngagement = await Promise.all(
             products.rows.map(async (product) => {
                 const productData = product.toJSON();
                 
@@ -1573,6 +1583,9 @@ const getSellerProducts = async (req, res) => {
                 return productData;
             })
         );
+
+        // Include promotion fields and sort by promotion priority
+        productsWithEngagement = PromotionHelperService.processItemsForResponse(productsWithEngagement);
 
         res.status(200).json({
             message: "Seller products retrieved successfully",
@@ -1655,7 +1668,7 @@ const getUserProducts = async (req, res) => {
         });
 
         // Add engagement status for current user
-        const productsWithEngagement = await Promise.all(
+        let productsWithEngagement = await Promise.all(
             products.rows.map(async (product) => {
                 const productData = product.toJSON();
                 
@@ -1672,6 +1685,9 @@ const getUserProducts = async (req, res) => {
                 return productData;
             })
         );
+
+        // Include promotion fields and sort by promotion priority
+        productsWithEngagement = PromotionHelperService.processItemsForResponse(productsWithEngagement);
 
         res.status(200).json({
             message: "User products retrieved successfully",
@@ -1735,7 +1751,7 @@ const getMyProducts = async (req, res) => {
         });
 
         // Format products for frontend
-        const formattedProducts = products.rows.map((product) => {
+        let formattedProducts = products.rows.map((product) => {
             const productData = product.toJSON();
             
             return {
@@ -1763,6 +1779,9 @@ const getMyProducts = async (req, res) => {
                 discountPercentage: productData.discountPercentage
             };
         });
+
+        // Include promotion fields and sort by promotion priority
+        formattedProducts = PromotionHelperService.processItemsForResponse(formattedProducts);
 
         res.status(200).json({
             message: "My products retrieved successfully",
@@ -2244,6 +2263,284 @@ const extractLocationFromContent = (content) => {
     ) || 'Nigeria';
 };
 
+// Get trending products
+const getTrendingProducts = async (req, res) => {
+    try {
+        const { category = null, limit = 20, offset = 0 } = req.query;
+        const currentUserId = req.user?.id;
+
+        // Get user location if available
+        let buyerLocation = null;
+        if (currentUserId) {
+            const user = await UserTable.findByPk(currentUserId, {
+                attributes: ['location']
+            });
+            buyerLocation = user?.location || null;
+        }
+
+        // Get trending products using ranking service
+        const products = await RankingService.getTrendingItems('product', {
+            category,
+            limit: parseInt(limit),
+            offset: parseInt(offset),
+            buyerLocation
+        });
+
+        // Map product field names and include promotion fields
+        let mappedProducts = products.map(mapProductResponse);
+        mappedProducts = PromotionHelperService.processItemsForResponse(mappedProducts);
+
+        res.status(200).json({
+            message: "Trending products retrieved successfully",
+            data: {
+                products: mappedProducts,
+                pagination: {
+                    currentPage: Math.floor(parseInt(offset) / parseInt(limit)) + 1,
+                    limit: parseInt(limit),
+                    totalProducts: mappedProducts.length,
+                    hasNextPage: mappedProducts.length === parseInt(limit)
+                }
+            }
+        });
+    } catch (error) {
+        console.error('Get trending products error:', error);
+        res.status(500).json({ message: "Error retrieving trending products", error: error.message });
+    }
+};
+
+// Get recommended products
+const getRecommendedProducts = async (req, res) => {
+    try {
+        const { limit = 20, offset = 0 } = req.query;
+        const currentUserId = req.user?.id;
+
+        if (!currentUserId) {
+            return res.status(401).json({ message: "Authentication required for recommendations" });
+        }
+
+        // Get recommended products using ranking service
+        const products = await RankingService.getRecommendedItems(currentUserId, 'product', {
+            limit: parseInt(limit),
+            offset: parseInt(offset)
+        });
+
+        // Map product field names and include promotion fields
+        let mappedProducts = products.map(mapProductResponse);
+        mappedProducts = PromotionHelperService.processItemsForResponse(mappedProducts);
+
+        res.status(200).json({
+            message: "Recommended products retrieved successfully",
+            data: {
+                products: mappedProducts,
+                pagination: {
+                    currentPage: Math.floor(parseInt(offset) / parseInt(limit)) + 1,
+                    limit: parseInt(limit),
+                    totalProducts: mappedProducts.length,
+                    hasNextPage: mappedProducts.length === parseInt(limit)
+                }
+            }
+        });
+    } catch (error) {
+        console.error('Get recommended products error:', error);
+        res.status(500).json({ message: "Error retrieving recommended products", error: error.message });
+    }
+};
+
+// Get similar products
+const getSimilarProducts = async (req, res) => {
+    try {
+        const { productId } = req.params;
+        const { limit = 10, offset = 0 } = req.query;
+
+        // Get similar products using ranking service
+        const products = await RankingService.getSimilarItems('product', productId, {
+            limit: parseInt(limit),
+            offset: parseInt(offset)
+        });
+
+        // Map product field names and include promotion fields
+        let mappedProducts = products.map(mapProductResponse);
+        mappedProducts = PromotionHelperService.processItemsForResponse(mappedProducts);
+
+        res.status(200).json({
+            message: "Similar products retrieved successfully",
+            data: {
+                products: mappedProducts,
+                pagination: {
+                    currentPage: Math.floor(parseInt(offset) / parseInt(limit)) + 1,
+                    limit: parseInt(limit),
+                    totalProducts: mappedProducts.length,
+                    hasNextPage: mappedProducts.length === parseInt(limit)
+                }
+            }
+        });
+    } catch (error) {
+        console.error('Get similar products error:', error);
+        res.status(500).json({ message: "Error retrieving similar products", error: error.message });
+    }
+};
+
+// Get spotlight products
+const getSpotlightProducts = async (req, res) => {
+    try {
+        const { slotType = 'homepage', category = null, limit = 20, offset = 0 } = req.query;
+
+        // Get spotlight slots
+        const spotlightSlots = await SpotlightService.getSpotlightsBySlotType(slotType, {
+            category,
+            limit: parseInt(limit),
+            offset: parseInt(offset)
+        });
+
+        // Extract product IDs from spotlight slots
+        const productIds = spotlightSlots
+            .filter(slot => slot.item_type === 'product' || slot.item_type === 'distress_sale')
+            .map(slot => slot.item_id);
+
+        if (productIds.length === 0) {
+            return res.status(200).json({
+                message: "Spotlight products retrieved successfully",
+                data: {
+                    products: [],
+                    pagination: {
+                        currentPage: 1,
+                        limit: parseInt(limit),
+                        totalProducts: 0,
+                        hasNextPage: false
+                    }
+                }
+            });
+        }
+
+        // Get products
+        const products = await Product.findAll({
+            where: {
+                id: { [Op.in]: productIds },
+                status: 'active',
+                isAvailable: true
+            },
+            include: [
+                {
+                    model: SellersTable,
+                    as: 'seller',
+                    attributes: ['id', 'userId', 'businessName', 'country', 'state'],
+                    include: [{
+                        model: UserTable,
+                        as: 'user',
+                        attributes: ['id', 'fullName', 'profilePicture', 'accountStatus']
+                    }]
+                }
+            ]
+        });
+
+        // Sort products to match spotlight slot order
+        const sortedProducts = productIds
+            .map(id => products.find(p => p.id === id))
+            .filter(p => p !== undefined);
+
+        // Map product field names and include promotion fields
+        let mappedProducts = sortedProducts.map(mapProductResponse);
+        mappedProducts = PromotionHelperService.processItemsForResponse(mappedProducts);
+
+        res.status(200).json({
+            message: "Spotlight products retrieved successfully",
+            data: {
+                products: mappedProducts,
+                pagination: {
+                    currentPage: Math.floor(parseInt(offset) / parseInt(limit)) + 1,
+                    limit: parseInt(limit),
+                    totalProducts: mappedProducts.length,
+                    hasNextPage: mappedProducts.length === parseInt(limit)
+                }
+            }
+        });
+    } catch (error) {
+        console.error('Get spotlight products error:', error);
+        res.status(500).json({ message: "Error retrieving spotlight products", error: error.message });
+    }
+};
+
+// Get top placement products
+const getTopPlacementProducts = async (req, res) => {
+    try {
+        const { category = null, placementType = null, limit = 20, offset = 0 } = req.query;
+
+        // Get top placements
+        const placements = await TopPlacementService.getTopPlacementsByType('product', {
+            category,
+            placementType,
+            limit: parseInt(limit) + parseInt(offset) // Get more to handle offset
+        });
+
+        // Apply offset
+        const paginatedPlacements = placements.slice(parseInt(offset), parseInt(offset) + parseInt(limit));
+
+        // Extract product IDs from placements
+        const productIds = paginatedPlacements.map(placement => placement.item_id);
+
+        if (productIds.length === 0) {
+            return res.status(200).json({
+                message: "Top placement products retrieved successfully",
+                data: {
+                    products: [],
+                    pagination: {
+                        currentPage: Math.floor(parseInt(offset) / parseInt(limit)) + 1,
+                        limit: parseInt(limit),
+                        totalProducts: 0,
+                        hasNextPage: false
+                    }
+                }
+            });
+        }
+
+        // Get products
+        const products = await Product.findAll({
+            where: {
+                id: { [Op.in]: productIds },
+                status: 'active',
+                isAvailable: true
+            },
+            include: [
+                {
+                    model: SellersTable,
+                    as: 'seller',
+                    attributes: ['id', 'userId', 'businessName', 'country', 'state'],
+                    include: [{
+                        model: UserTable,
+                        as: 'user',
+                        attributes: ['id', 'fullName', 'profilePicture', 'accountStatus']
+                    }]
+                }
+            ]
+        });
+
+        // Sort products to match placement order
+        const sortedProducts = productIds
+            .map(id => products.find(p => p.id === id))
+            .filter(p => p !== undefined);
+
+        // Map product field names and include promotion fields
+        let mappedProducts = sortedProducts.map(mapProductResponse);
+        mappedProducts = PromotionHelperService.processItemsForResponse(mappedProducts);
+
+        res.status(200).json({
+            message: "Top placement products retrieved successfully",
+            data: {
+                products: mappedProducts,
+                pagination: {
+                    currentPage: Math.floor(parseInt(offset) / parseInt(limit)) + 1,
+                    limit: parseInt(limit),
+                    totalProducts: placements.length,
+                    hasNextPage: parseInt(offset) + parseInt(limit) < placements.length
+                }
+            }
+        });
+    } catch (error) {
+        console.error('Get top placement products error:', error);
+        res.status(500).json({ message: "Error retrieving top placement products", error: error.message });
+    }
+};
+
 module.exports = {
     getProducts,
     getProduct,
@@ -2265,5 +2562,10 @@ module.exports = {
     getSellerProducts,
     getUserProducts,
     getMyProducts,
-    getAllSavedItems
+    getAllSavedItems,
+    getTrendingProducts,
+    getRecommendedProducts,
+    getSimilarProducts,
+    getSpotlightProducts,
+    getTopPlacementProducts
 }; 
