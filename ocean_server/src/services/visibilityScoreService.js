@@ -12,7 +12,10 @@ const {
   SubscriptionPlan,
   PromotionalBoost,
   TopPlacement,
-  SpotlightSlot
+  SpotlightSlot,
+  AuctionBid,
+  SwapProposal,
+  GroupBuyParticipant
 } = require('../../models');
 const { Op } = require('sequelize');
 const promotionGatingService = require('./promotionGatingService');
@@ -242,15 +245,40 @@ class VisibilityScoreService {
       // score += messageCount * 1;
     } else if (itemType === 'auction') {
       // For auctions, use bid count as engagement
-      const bidCount = item.bidCount || 0;
+      const bidCount = await AuctionBid.count({
+        where: { auctionId: itemId }
+      });
       score += Math.min(bidCount * 2, 40);
     } else if (itemType === 'swap_deal') {
       // For swap deals, use proposal count
-      const proposalCount = item.proposalCount || 0;
+      const proposalCount = await SwapProposal.count({
+        where: { swapDealId: itemId }
+      });
       score += Math.min(proposalCount * 2, 40);
     } else if (itemType === 'group_buy') {
       // For group buys, use participant count
-      const participantCount = item.participantCount || 0;
+      // Try GroupBuyParticipant table first
+      let participantCount = 0;
+      try {
+        // Convert itemId to integer for group buys (GroupBuy uses INTEGER IDs)
+        const groupBuyId = parseInt(itemId, 10);
+        if (isNaN(groupBuyId)) {
+          throw new Error(`Invalid group buy ID: ${itemId}`);
+        }
+        participantCount = await GroupBuyParticipant.count({
+          where: { group_buy_id: groupBuyId }
+        });
+      } catch (error) {
+        // Fallback: get from GroupBuy.currentBuyers field if participant table query fails
+        try {
+          const groupBuyId = parseInt(itemId, 10);
+          const groupBuy = await GroupBuy.findByPk(isNaN(groupBuyId) ? itemId : groupBuyId);
+          participantCount = groupBuy?.currentBuyers || groupBuy?.current_buyers || 0;
+        } catch (err) {
+          console.error(`Error getting participant count for group_buy ${itemId}:`, err);
+          participantCount = 0;
+        }
+      }
       score += Math.min(participantCount * 1.5, 40);
     }
 
@@ -383,6 +411,7 @@ class VisibilityScoreService {
       const scoreResult = await this.calculateVisibilityScore(itemType, itemId, options);
 
       // Save or update visibility score
+      // Use database field names (snake_case) for MySQL compatibility
       const [visibilityScore, created] = await VisibilityScore.upsert({
         item_type: itemType,
         item_id: itemId,
@@ -425,8 +454,8 @@ class VisibilityScoreService {
     try {
       return await VisibilityScore.findOne({
         where: {
-          item_type: itemType,
-          item_id: itemId
+          itemType: itemType,
+          itemId: itemId
         }
       });
     } catch (error) {
@@ -453,9 +482,9 @@ class VisibilityScoreService {
       }
 
       return {
-        score: parseFloat(scoreRecord.visibility_score),
-        breakdown: scoreRecord.score_breakdown || {},
-        calculatedAt: scoreRecord.calculated_at
+        score: parseFloat(scoreRecord.visibilityScore),
+        breakdown: scoreRecord.scoreBreakdown || {},
+        calculatedAt: scoreRecord.calculatedAt
       };
     } catch (error) {
       console.error(`Error getting score breakdown for ${itemType} ${itemId}:`, error);
