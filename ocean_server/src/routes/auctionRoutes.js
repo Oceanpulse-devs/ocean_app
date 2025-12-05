@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const authMiddleware = require('../middleware/authMiddleware');
+const optionalAuthMiddleware = require('../middleware/optionalAuthMiddleware');
 const auctionController = require('../controllers/auctionController');
 
 // Configure multer for file uploads (supports both images and AR models)
@@ -41,6 +42,7 @@ const upload = multer({
 // Public routes (no authentication required)
 router.get('/api/auctions', auctionController.getAuctions);
 router.get('/api/auctions/trending', auctionController.getTrendingAuctions);
+router.get('/api/auctions/recommended', optionalAuthMiddleware, auctionController.getRecommendedAuctions);
 router.get('/api/auctions/spotlight', auctionController.getSpotlightAuctions);
 router.get('/api/auctions/top-placement', auctionController.getTopPlacementAuctions);
 router.get('/api/auctions/categories', auctionController.getAuctionCategories);

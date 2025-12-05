@@ -1254,6 +1254,52 @@ class SwapDealController {
     }
   }
 
+  // Get recommended swap deals
+  async getRecommendedSwapDeals(req, res) {
+    try {
+      const { limit = 20, offset = 0 } = req.query;
+      const currentUserId = req.user?.id;
+
+      if (!currentUserId) {
+        return res.status(401).json({ 
+          success: false,
+          message: "Authentication required for recommendations" 
+        });
+      }
+
+      // Get recommended swap deals using ranking service
+      const swapDeals = await RankingService.getRecommendedItems(currentUserId, 'swap_deal', {
+        limit: parseInt(limit),
+        offset: parseInt(offset)
+      });
+
+      // Map swap deal field names and include promotion fields
+      let mappedSwapDeals = swapDeals.map(mapSwapDealResponse);
+      mappedSwapDeals = PromotionHelperService.processItemsForResponse(mappedSwapDeals);
+
+      res.status(200).json({
+        success: true,
+        message: "Recommended swap deals retrieved successfully",
+        data: {
+          swapDeals: mappedSwapDeals,
+          pagination: {
+            currentPage: Math.floor(parseInt(offset) / parseInt(limit)) + 1,
+            limit: parseInt(limit),
+            totalSwapDeals: mappedSwapDeals.length,
+            hasNextPage: mappedSwapDeals.length === parseInt(limit)
+          }
+        }
+      });
+    } catch (error) {
+      console.error('Get recommended swap deals error:', error);
+      res.status(500).json({ 
+        success: false,
+        message: "Error retrieving recommended swap deals", 
+        error: error.message 
+      });
+    }
+  }
+
   // Get spotlight swap deals
   async getSpotlightSwapDeals(req, res) {
     try {

@@ -2109,6 +2109,52 @@ class GroupBuyController {
     }
   }
 
+  // Get recommended group buys
+  async getRecommendedGroupBuys(req, res) {
+    try {
+      const { limit = 20, offset = 0 } = req.query;
+      const currentUserId = req.user?.id;
+
+      if (!currentUserId) {
+        return res.status(401).json({ 
+          success: false,
+          message: "Authentication required for recommendations" 
+        });
+      }
+
+      // Get recommended group buys using ranking service
+      const groupBuys = await RankingService.getRecommendedItems(currentUserId, 'group_buy', {
+        limit: parseInt(limit),
+        offset: parseInt(offset)
+      });
+
+      // Map group buy field names and include promotion fields
+      let mappedGroupBuys = groupBuys.map(mapGroupBuyResponse);
+      mappedGroupBuys = PromotionHelperService.processItemsForResponse(mappedGroupBuys);
+
+      res.status(200).json({
+        success: true,
+        message: "Recommended group buys retrieved successfully",
+        data: {
+          groupBuys: mappedGroupBuys,
+          pagination: {
+            currentPage: Math.floor(parseInt(offset) / parseInt(limit)) + 1,
+            limit: parseInt(limit),
+            totalGroupBuys: mappedGroupBuys.length,
+            hasNextPage: mappedGroupBuys.length === parseInt(limit)
+          }
+        }
+      });
+    } catch (error) {
+      console.error('Get recommended group buys error:', error);
+      res.status(500).json({ 
+        success: false,
+        message: "Error retrieving recommended group buys", 
+        error: error.message 
+      });
+    }
+  }
+
   // Get spotlight group buys
   async getSpotlightGroupBuys(req, res) {
     try {

@@ -1137,6 +1137,52 @@ class DistressSaleController {
     }
   }
 
+  // Get recommended distress sales
+  async getRecommendedDistressSales(req, res) {
+    try {
+      const { limit = 20, offset = 0 } = req.query;
+      const currentUserId = req.user?.id;
+
+      if (!currentUserId) {
+        return res.status(401).json({ 
+          success: false,
+          message: "Authentication required for recommendations" 
+        });
+      }
+
+      // Get recommended distress sales using ranking service
+      const distressSales = await RankingService.getRecommendedItems(currentUserId, 'distress_sale', {
+        limit: parseInt(limit),
+        offset: parseInt(offset)
+      });
+
+      // Map distress sale field names and include promotion fields
+      let mappedDistressSales = distressSales.map(mapDistressSaleResponse);
+      mappedDistressSales = PromotionHelperService.processItemsForResponse(mappedDistressSales);
+
+      res.status(200).json({
+        success: true,
+        message: "Recommended distress sales retrieved successfully",
+        data: {
+          distressSales: mappedDistressSales,
+          pagination: {
+            currentPage: Math.floor(parseInt(offset) / parseInt(limit)) + 1,
+            limit: parseInt(limit),
+            totalDistressSales: mappedDistressSales.length,
+            hasNextPage: mappedDistressSales.length === parseInt(limit)
+          }
+        }
+      });
+    } catch (error) {
+      console.error('Get recommended distress sales error:', error);
+      res.status(500).json({ 
+        success: false,
+        message: "Error retrieving recommended distress sales", 
+        error: error.message 
+      });
+    }
+  }
+
   // Get spotlight distress sales
   async getSpotlightDistressSales(req, res) {
     try {

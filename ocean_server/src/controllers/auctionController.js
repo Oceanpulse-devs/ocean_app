@@ -3137,6 +3137,52 @@ const getSimilarAuctions = async (req, res) => {
   }
 };
 
+// Get recommended auctions
+const getRecommendedAuctions = async (req, res) => {
+  try {
+    const { limit = 20, offset = 0 } = req.query;
+    const currentUserId = req.user?.id;
+
+    if (!currentUserId) {
+      return res.status(401).json({ 
+        success: false,
+        message: "Authentication required for recommendations" 
+      });
+    }
+
+    // Get recommended auctions using ranking service
+    const auctions = await RankingService.getRecommendedItems(currentUserId, 'auction', {
+      limit: parseInt(limit),
+      offset: parseInt(offset)
+    });
+
+    // Map auction field names and include promotion fields
+    let mappedAuctions = auctions.map(mapAuctionResponse);
+    mappedAuctions = PromotionHelperService.processItemsForResponse(mappedAuctions);
+
+    res.status(200).json({
+      success: true,
+      message: "Recommended auctions retrieved successfully",
+      data: {
+        auctions: mappedAuctions,
+        pagination: {
+          currentPage: Math.floor(parseInt(offset) / parseInt(limit)) + 1,
+          limit: parseInt(limit),
+          totalAuctions: mappedAuctions.length,
+          hasNextPage: mappedAuctions.length === parseInt(limit)
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Get recommended auctions error:', error);
+    res.status(500).json({ 
+      success: false,
+      message: "Error retrieving recommended auctions", 
+      error: error.message 
+    });
+  }
+};
+
 // Get spotlight auctions
 const getSpotlightAuctions = async (req, res) => {
   try {
@@ -3328,6 +3374,7 @@ module.exports = {
   rejectBuyNowRequest,
   getBuyNowRequests,
   getTrendingAuctions,
+  getRecommendedAuctions,
   getSimilarAuctions,
   getSpotlightAuctions,
   getTopPlacementAuctions

@@ -45,6 +45,7 @@ router.post('/create', authMiddleware, upload.fields([{ name: 'images', maxCount
 router.use(authMiddleware);
 router.get('/all', groupBuyController.getAllGroupBuys);
 router.get('/trending', groupBuyController.getTrendingGroupBuys);
+router.get('/recommended', groupBuyController.getRecommendedGroupBuys);
 router.get('/spotlight', groupBuyController.getSpotlightGroupBuys);
 router.get('/top-placement', groupBuyController.getTopPlacementGroupBuys);
 router.get('/by-conversation/:conversationId', groupBuyController.getGroupBuyByConversationId);

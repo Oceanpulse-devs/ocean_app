@@ -3,6 +3,7 @@ const router = express.Router();
 const multer = require('multer');
 const distressSaleController = require('../controllers/distressSaleController');
 const authMiddleware = require('../middleware/authMiddleware');
+const optionalAuthMiddleware = require('../middleware/optionalAuthMiddleware');
 
 // Configure multer for file uploads (supports both images and AR models)
 const upload = multer({
@@ -41,6 +42,7 @@ const upload = multer({
 // Public routes (no authentication required)
 router.get('/all', distressSaleController.getAllDistressSales);
 router.get('/trending', distressSaleController.getTrendingDistressSales);
+router.get('/recommended', optionalAuthMiddleware, distressSaleController.getRecommendedDistressSales);
 router.get('/spotlight', distressSaleController.getSpotlightDistressSales);
 router.get('/top-placement', distressSaleController.getTopPlacementDistressSales);
 router.get('/stats', distressSaleController.getDistressSaleStats);

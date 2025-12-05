@@ -1,222 +1,374 @@
-✅ Phase 1: Foundation & core components [COMPLETED]
-Goal: Set up models and reusable promotion widgets
-Tasks:
-✅ Update Flutter Product model
-✅ Add promotion fields: isBoosted, boostExpiresAt, isTopPlaced, topPlacementExpiresAt, isSpotlighted, spotlightExpiresAt, visibilityScore, lastScoreUpdate
-✅ File: flutter-ocean/lib/core/models/product_model.dart
-✅ Create PromotionBadge widget
-✅ Reusable badge component
-✅ Types: Boosted, Top Placement, Featured, Trending
-✅ File: flutter-ocean/lib/core/widgets/promotion_badge.dart
-✅ Add badges to ProductCard
-✅ Overlay on product image (top-right)
-✅ Support all card types (grid, list, feed, etc.)
-✅ File: flutter-ocean/lib/core/widgets/product_card.dart
-Deliverables: ✅ Product model updated, ✅ PromotionBadge widget created, ✅ ProductCard shows badges
+# Frontend Integration Plan - Removing Dummy Data & Connecting to Backend
 
-⚠️ NOTE: Run `flutter pub run build_runner build --delete-conflicting-outputs` to regenerate product_model.g.dart
+This document outlines the plan to connect all frontend promotion features to the backend API and remove all dummy data.
 
-✅ Phase 2: Homepage promotion sections [COMPLETED]
-Goal: Add promotion sections to the homepage
-Tasks:
-✅ Featured Products Carousel (Spotlight Engine)
-✅ Horizontal scrolling carousel
-✅ File: flutter-ocean/lib/features/home/presentation/widgets/featured_products_carousel.dart
-✅ Integration: Add to home_page.dart after stories section
-✅ Service method: getFeaturedProducts() added to product_service.dart
-✅ Provider: featuredProductsProvider created
-✅ Trending Products Section (Ranking Engine)
-✅ Grid layout with "🔥 Trending Now" header
-✅ File: flutter-ocean/lib/features/home/presentation/widgets/trending_products_section.dart
-✅ Integration: Add to home_page.dart after tab switcher
-✅ Service method: getTrendingProducts() added to product_service.dart
-✅ Provider: trendingProductsProvider created
-✅ Recommended for You Section (Ranking Engine)
-✅ Personalized grid
-✅ File: flutter-ocean/lib/features/home/presentation/widgets/recommended_products_section.dart
-✅ Integration: Add to home_page.dart after trending section
-✅ Service method: getRecommendedProducts() added to product_service.dart
-✅ Provider: recommendedProductsProvider created
-✅ Promotion fields added to _mapBackendProductToModel
-Deliverables: ✅ 3 new homepage sections with promotion content, ✅ Service methods and providers created
+---
 
-✅ Phase 3: Products page enhancements [COMPLETED]
-Goal: Add promotion sections and sorting to the products page
-Tasks:
-✅ Top Placement Section
-✅ Premium section at top of grid (horizontal carousel)
-✅ File: flutter-ocean/lib/features/products/presentation/widgets/top_placement_section.dart
-✅ Integration: Add to products_page.dart before main grid
-✅ Provider: topPlacementProductsProvider created with dummy data
-✅ Sponsored Products Section
-✅ Category-specific sponsored block (grid layout)
-✅ File: flutter-ocean/lib/features/products/presentation/widgets/sponsored_products_section.dart
-✅ Integration: Add between top placement and main grid
-✅ Provider: sponsoredProductsProvider created with dummy data
-✅ Ranking-based sorting
-✅ Added ProductSortOption enum (relevance, price, newest, trending)
-✅ Sort dropdown with icons in products_page.dart
-✅ Default sort: "Relevance" (visibility score)
-✅ Sorting method _sortProducts() implemented
-✅ Promoted Search Results
-✅ Section for promoted search results (grid layout)
-✅ File: flutter-ocean/lib/features/products/presentation/widgets/promoted_search_results.dart
-✅ Integration: Add to search results view (shown when searching)
-✅ Provider: promotedSearchResultsProvider created with dummy data
-Deliverables: ✅ Top placement section, ✅ Sponsored section, ✅ Sorting dropdown, ✅ Promoted search results section
+## 📋 CURRENT STATE
 
-✅ Phase 4: Product detail page [COMPLETED]
-Goal: Add recommendation sections to product detail page
-Tasks:
-✅ Similar Products Section
-✅ Horizontal scroll of similar products
-✅ File: flutter-ocean/lib/features/products/presentation/widgets/similar_products_section.dart
-✅ Integration: Add after product details, before AR section
-✅ Provider: similarProductsProvider created with dummy data
-✅ Trending in Category Section
-✅ Grid of trending products in same category
-✅ File: flutter-ocean/lib/features/products/presentation/widgets/trending_category_section.dart
-✅ Integration: Add after similar products
-✅ Provider: trendingCategoryProductsProvider created with dummy data
-✅ Excludes current product from results
-✅ Recommended for You Section
-✅ Personalized recommendations (only for logged-in users)
-✅ File: flutter-ocean/lib/features/products/presentation/widgets/recommended_detail_section.dart
-✅ Integration: Add after AR section, before seller section
-✅ Provider: recommendedProductsProvider (reused from Phase 2)
-✅ Excludes current product from results
-Deliverables: ✅ 3 recommendation sections on product detail page
+### ✅ Already Implemented (Frontend):
+- All promotion UI components and widgets
+- All promotion sections on listing and detail pages
+- Promotion badges and visual indicators
+- Promotion analytics and management pages
+- All providers created (currently using dummy data)
 
-✅ Phase 5: Auction pages [COMPLETED]
-Goal: Add promotion sections to auction listing and detail pages
-Tasks:
-✅ Trending Auctions Section (Listing Page)
-✅ Horizontal carousel at top of auctions listing page
-✅ File: flutter-ocean/lib/features/market_survey/presentation/widgets/trending_auctions_listing_section.dart
-✅ Integration: Add to auctions_page.dart before main grid
-✅ Provider: trendingCategoryAuctionsProvider created with dummy data
-✅ Similar Auctions Section (Detail Page)
-✅ Horizontal scroll of similar auctions
-✅ File: flutter-ocean/lib/features/market_survey/presentation/widgets/similar_auctions_section.dart
-✅ Integration: Add after auction details, before AR section
-✅ Provider: similarAuctionsProvider created with dummy data
-✅ Converts Auction to Product for display using ProductCard
-✅ Recommended Auctions for You Section (Detail Page)
-✅ Grid layout of personalized recommendations
-✅ File: flutter-ocean/lib/features/market_survey/presentation/widgets/recommended_auctions_section.dart
-✅ Integration: Add after seller/feedback section
-✅ Provider: recommendedAuctionsProvider created with dummy data
-✅ Excludes current auction from results
-✅ Converts Auction to Product for display using ProductCard
-Deliverables: ✅ Trending section on listing page, ✅ Similar and Recommended sections on detail page
-✅ Phase 6: Swap deal pages [COMPLETED]
-Goal: Add promotion sections to swap deal listing and detail pages
-Tasks:
-✅ Trending Swap Deals Section (Listing Page)
-✅ Horizontal carousel at top of swap deals listing page
-✅ File: flutter-ocean/lib/features/market_survey/presentation/widgets/trending_swap_deals_listing_section.dart
-✅ Integration: Add to swap_deals_page.dart before main grid
-✅ Provider: trendingCategorySwapDealsProvider created with dummy data
-✅ Similar Swap Deals Section (Detail Page)
-✅ Horizontal carousel of similar swap deals
-✅ File: flutter-ocean/lib/features/market_survey/presentation/widgets/similar_swap_deals_section.dart
-✅ Integration: Add after product details, before AR section
-✅ Provider: similarSwapDealsProvider created with dummy data
-✅ Recommended Swap Deals Section (Detail Page)
-✅ Grid layout of recommended swap deals
-✅ File: flutter-ocean/lib/features/market_survey/presentation/widgets/recommended_swap_deals_section.dart
-✅ Integration: Add after seller/feedback section
-✅ Provider: recommendedSwapDealsProvider created with dummy data
-✅ Excludes current swap deal from results
-✅ Converts SwapDeal to Product for display using ProductCard
-Deliverables: ✅ Trending section on listing page, ✅ Similar and Recommended sections on detail page
-nice✅ Phase 7: Group buy & distress sale detail pages [COMPLETED]
-Goal: Add promotion sections to group buy and distress sale detail pages
-Tasks:
-✅ Similar Group Buys Section
-✅ File: flutter-ocean/lib/features/market_survey/presentation/widgets/similar_group_buys_section.dart
-✅ Integration: Add to bulk_purchase_detail_page.dart after product details, before AR section
-✅ Provider: similarGroupBuysProvider created with dummy data
-✅ Trending Group Buys Section (Listing Page)
-✅ File: flutter-ocean/lib/features/market_survey/presentation/widgets/trending_group_buys_listing_section.dart
-✅ Integration: Add to bulk_purchases_page.dart before main grid
-✅ Provider: trendingCategoryGroupBuysProvider created with dummy data
-✅ Recommended Group Buys Section
-✅ File: flutter-ocean/lib/features/market_survey/presentation/widgets/recommended_group_buys_section.dart
-✅ Integration: Add to bulk_purchase_detail_page.dart after seller/feedback section
-✅ Provider: recommendedGroupBuysProvider created with dummy data
-✅ Similar Distress Sales Section
-✅ File: flutter-ocean/lib/features/market_survey/presentation/widgets/similar_distress_sales_section.dart
-✅ Integration: Add to distress_sale_detail_page.dart after product details, before AR section
-✅ Provider: similarDistressSalesProvider created with dummy data
-✅ Trending Distress Sales Section (Listing Page)
-✅ File: flutter-ocean/lib/features/market_survey/presentation/widgets/trending_distress_sales_listing_section.dart
-✅ Integration: Add to distress_sales_page.dart before main grid
-✅ Provider: trendingCategoryDistressSalesProvider created with dummy data
-✅ Recommended Distress Sales Section
-✅ File: flutter-ocean/lib/features/market_survey/presentation/widgets/recommended_distress_sales_section.dart
-✅ Integration: Add to distress_sale_detail_page.dart after seller/feedback section
-✅ Provider: recommendedDistressSalesProvider created with dummy data
-✅ Fixed GridView aspect ratios (0.75 -> 0.65 for bulk purchases, 0.7 -> 0.65 for distress sales)
-✅ Added shrinkWrap and NeverScrollableScrollPhysics to GridViews in listing pages
-Deliverables: ✅ 6 sections across 2 listing pages and 2 detail pages, ✅ GridView fixes applied
-✅ Phase 8: Listing pages (auctions, swap deals, group buys, distress sales) [COMPLETED]
-Goal: Add top placement and sponsored sections to listing pages
-Tasks:
-✅ Top Placement Sections (4 widgets)
-✅ Auctions, Swap Deals, Group Buys, Distress Sales
-✅ Files: top_placement_auctions_section.dart, top_placement_swap_deals_section.dart, top_placement_group_buys_section.dart, top_placement_distress_sales_section.dart
-✅ Integration: Added to all 4 listing pages before trending sections
-✅ Providers: topPlacementAuctionsProvider, topPlacementSwapDealsProvider, topPlacementGroupBuysProvider, topPlacementDistressSalesProvider created with dummy data
-✅ Sponsored Sections (4 widgets)
-✅ Auctions, Swap Deals, Group Buys, Distress Sales
-✅ Files: sponsored_auctions_section.dart, sponsored_swap_deals_section.dart, sponsored_group_buys_section.dart, sponsored_distress_sales_section.dart
-✅ Integration: Added to all 4 listing pages between top placement and trending sections
-✅ Providers: sponsoredAuctionsProvider, sponsoredSwapDealsProvider, sponsoredGroupBuysProvider, sponsoredDistressSalesProvider created with dummy data
-✅ Promotion badges on item cards
-✅ Badges already showing on all card types from Phase 1 (ProductCard includes PromotionBadge overlay)
-✅ Badges display for: Boosted, Top Placement, Featured, Trending
-✅ Works on: auction cards, swap deal cards, group buy cards, distress sale cards, and all product cards
-Deliverables: ✅ Top placement and sponsored sections on all 4 listing pages, ✅ Badges verified on all item cards
-✅ Phase 9: Profile & management pages [COMPLETED]
-Goal: Add promotion management and analytics to seller profile
-Tasks:
-✅ Promotion Analytics Dashboard
-✅ File: flutter-ocean/lib/features/profile/presentation/pages/promotion_analytics_page.dart
-✅ Shows summary cards (Active Boosts, Top Placements, Spotlights, Total Spent)
-✅ Displays average performance metrics (Views, Clicks, Messages increase)
-✅ Lists recent promotions with performance data
-✅ Promotion Management Section
-✅ File: flutter-ocean/lib/features/profile/presentation/pages/promotion_management_page.dart
-✅ Three tabs: My Products, Active Promotions, Promotion Plans
-✅ Product grid with promotion status indicators
-✅ Filter products by promotion type
-✅ Manage active promotions (view analytics, cancel)
-✅ View subscription plan details and upgrade options
-✅ Visibility Score Display Widget
-✅ File: flutter-ocean/lib/features/profile/presentation/widgets/visibility_score_widget.dart
-✅ Compact and full view modes
-✅ Color-coded score display (Excellent, Very Good, Good, Fair, Low)
-✅ Optional score breakdown visualization
-✅ Progress indicator for score visualization
-✅ Promotion Providers
-✅ File: flutter-ocean/lib/features/profile/providers/promotion_provider.dart
-✅ promotionAnalyticsProvider for analytics data (dummy data)
-✅ promotionManagementProvider for management data (dummy data)
-✅ sellerPromotedProductsProvider placeholder for seller's promoted products
-✅ Integration
-✅ Promotion Management card added to seller Profile page (ProfilePage)
-✅ Routes added for seller promotion pages: /seller/promotion-analytics and /seller/promotion-management
-✅ Profile page buttons wired to new routes (Analytics & Manage)
-Deliverables: ✅ Promotion management and analytics in profile, ✅ Visibility score widget, ✅ All providers created, ✅ Routes and profile integration completed
-Summary
-Phase 1: Foundation (models + badges) — 1-2 days
-Phase 2: Homepage sections — 2-3 days
-Phase 3: Products page — 2-3 days
-Phase 4: Product detail page — 1-2 days
-Phase 5: Auction detail page — 1 day
-Phase 6: Swap deal detail page — 1 day
-Phase 7: Group buy & distress sale detail pages — 1-2 days
-Phase 8: Listing pages — 2-3 days
-Phase 9: Profile & management — 2-3 days
-Total estimated time: 13-20 days
+### ❌ Needs Implementation:
+- API service methods for all promotion endpoints
+- Replace all dummy data providers with real API calls
+- Connect to backend promotion endpoints
+
+---
+
+## 🎯 FRONTEND INTEGRATION PHASES
+
+### ✅ Phase 1: Create Promotion API Service [COMPLETED]
+**Goal:** Create a dedicated service for promotion-related API calls
+
+**Tasks:**
+1. ✅ Create `promotion_service.dart` in `flutter-ocean/lib/core/services/`
+   - ✅ `getPromotionAnalytics({int? days})` → `GET /api/promotions/analytics?days=30`
+   - ✅ `getPromotionManagement()` → Uses `/api/subscriptions/current` for subscription info
+   - ✅ `getSellerPromotedProducts(String sellerId)` → Uses `ProductService.getProducts()`
+   - ✅ `_getRecentPromotions()` → `GET /api/promotions/analytics/recent?limit=10`
+
+**Files:**
+- ✅ `flutter-ocean/lib/core/services/promotion_service.dart` (created)
+
+**Deliverables:**
+- ✅ PromotionService class created
+- ✅ All promotion analytics endpoints connected
+- ✅ Service provider created (`promotionServiceProvider`)
+- ✅ Maps backend responses to frontend models (PromotionAnalytics, PromotionPerformance)
+
+---
+
+### ✅ Phase 2: Update Product Service with Promotion Endpoints [COMPLETED]
+**Goal:** Add promotion endpoints to ProductService
+
+**Tasks:**
+1. ✅ Add methods to `product_service.dart`:
+   - ✅ `getTrendingProducts({String? category})` → Already existed
+   - ✅ `getSimilarProducts(String productId, {int limit = 10})` → `GET /api/products/:id/similar`
+   - ✅ `getRecommendedProducts(String userId)` → Already existed
+   - ✅ `getSpotlightProducts({String? category, String slotType = 'homepage', int limit = 20})` → `GET /api/products/spotlight`
+   - ✅ `getTopPlacementProducts({String? category, String? placementType, int limit = 20})` → `GET /api/products/top-placement`
+   - ✅ Updated `getFeaturedProducts()` to use `getSpotlightProducts()` internally
+
+**Files:**
+- ✅ `flutter-ocean/lib/core/services/product_service.dart`
+
+**Deliverables:**
+- ✅ All product promotion endpoints added
+- ✅ Methods return proper Product models with promotion fields
+- ✅ All methods use `_mapBackendProductToModel()` for consistent mapping
+- ✅ Error handling and logging implemented
+
+---
+
+### ✅ Phase 3: Update Auction Service with Promotion Endpoints [COMPLETED]
+**Goal:** Add promotion endpoints to AuctionService
+
+**Tasks:**
+1. ✅ Add methods to `auction_service.dart`:
+   - ✅ `getTrendingAuctions({String? category, int limit = 20})` → `GET /api/auctions/trending?category=X&limit=20`
+   - ✅ `getSimilarAuctions(String auctionId, {int limit = 10})` → `GET /api/auctions/:id/similar?limit=10`
+   - ✅ `getSpotlightAuctions({String? category, String slotType = 'homepage', int limit = 20})` → `GET /api/auctions/spotlight`
+   - ✅ `getTopPlacementAuctions({String? category, String? placementType, int limit = 20})` → `GET /api/auctions/top-placement`
+
+**Files:**
+- ✅ `flutter-ocean/lib/core/services/auction_service.dart`
+
+**Deliverables:**
+- ✅ All auction promotion endpoints added
+- ✅ Methods return proper Auction models with promotion fields
+- ✅ All methods use `_mapBackendAuctionToModel()` for consistent mapping
+- ✅ Error handling and logging implemented
+
+---
+
+### ✅ Phase 4: Update Swap Deal Service with Promotion Endpoints [COMPLETED]
+**Goal:** Add promotion endpoints to SwapDealService
+
+**Tasks:**
+1. ✅ Add methods to `swap_deal_service.dart`:
+   - ✅ `getTrendingSwapDeals({String? category, int limit = 20})` → `GET /api/swap-deals/trending?category=X&limit=20`
+   - ✅ `getSimilarSwapDeals(String swapDealId, {int limit = 10})` → `GET /api/swap-deals/:id/similar?limit=10`
+   - ✅ `getSpotlightSwapDeals({String? category, String slotType = 'homepage', int limit = 20})` → `GET /api/swap-deals/spotlight`
+   - ✅ `getTopPlacementSwapDeals({String? category, String? placementType, int limit = 20})` → `GET /api/swap-deals/top-placement`
+
+**Files:**
+- ✅ `flutter-ocean/lib/core/services/swap_deal_service.dart`
+
+**Deliverables:**
+- ✅ All swap deal promotion endpoints added
+- ✅ Methods return proper SwapDeal models with promotion fields
+- ✅ All methods use `SwapDeal.fromJson()` for consistent mapping
+- ✅ Error handling and logging implemented
+
+---
+
+### ✅ Phase 5: Update Group Buy Service with Promotion Endpoints [COMPLETED]
+**Goal:** Add promotion endpoints to GroupBuyService
+
+**Tasks:**
+1. ✅ Add methods to `group_buy_service.dart`:
+   - ✅ `getTrendingGroupBuys({String? category, int limit = 20})` → `GET /api/group-buys/trending?category=X&limit=20`
+   - ✅ `getSimilarGroupBuys(String groupBuyId, {int limit = 10})` → `GET /api/group-buys/:id/similar?limit=10`
+   - ✅ `getSpotlightGroupBuys({String? category, String slotType = 'homepage', int limit = 20})` → `GET /api/group-buys/spotlight`
+   - ✅ `getTopPlacementGroupBuys({String? category, String? placementType, int limit = 20})` → `GET /api/group-buys/top-placement`
+
+**Files:**
+- ✅ `flutter-ocean/lib/core/services/group_buy_service.dart`
+
+**Deliverables:**
+- ✅ All group buy promotion endpoints added
+- ✅ Methods return `List<Map<String, dynamic>>` (consistent with existing GroupBuyService pattern)
+- ✅ Providers will convert to GroupBuy models using `GroupBuy.fromJson()`
+- ✅ Error handling and logging implemented
+
+---
+
+### ✅ Phase 6: Update Distress Sale Service with Promotion Endpoints [COMPLETED]
+**Goal:** Add promotion endpoints to DistressSaleService
+
+**Tasks:**
+1. ✅ Add methods to `distress_sale_service.dart`:
+   - ✅ `getTrendingDistressSales({String? category, int limit = 20})` → `GET /api/distress-sales/trending?category=X&limit=20`
+   - ✅ `getSimilarDistressSales(String distressSaleId, {int limit = 10})` → `GET /api/distress-sales/:id/similar?limit=10`
+   - ✅ `getSpotlightDistressSales({String? category, String slotType = 'homepage', int limit = 20})` → `GET /api/distress-sales/spotlight`
+   - ✅ `getTopPlacementDistressSales({String? category, String? placementType, int limit = 20})` → `GET /api/distress-sales/top-placement`
+
+**Files:**
+- ✅ `flutter-ocean/lib/core/services/distress_sale_service.dart`
+
+**Deliverables:**
+- ✅ All distress sale promotion endpoints added
+- ✅ Methods return `List<Map<String, dynamic>>` (consistent with existing DistressSaleService pattern)
+- ✅ Providers will convert to DistressSale models using `DistressSale.fromJson()`
+- ✅ Error handling and logging implemented
+
+---
+
+### Phase 7: Replace Product Provider Dummy Data
+**Goal:** Connect product providers to real API
+
+**Tasks:**
+1. Update `products_provider.dart`:
+   - Replace `trendingProductsProvider` → use `ProductService.getTrendingProducts()`
+   - Replace `similarProductsProvider` → use `ProductService.getSimilarProducts()`
+   - Replace `recommendedProductsProvider` → use `ProductService.getRecommendedProducts()`
+   - Replace `topPlacementProductsProvider` → use `ProductService.getTopPlacementProducts()`
+   - Remove all `_dummyTrendingProducts`, `_dummySimilarProducts`, `_dummyRecommendedProducts`, `_dummyTopPlacementProducts`
+
+**Files:**
+- `flutter-ocean/lib/core/providers/products_provider.dart`
+
+**Deliverables:**
+- ✅ All product providers connected to API
+- ✅ All dummy data removed
+- ✅ Error handling and loading states maintained
+
+---
+
+### Phase 8: Replace Auction Provider Dummy Data
+**Goal:** Connect auction providers to real API
+
+**Tasks:**
+1. Update `auctions_provider.dart`:
+   - Replace `similarAuctionsProvider` → use `AuctionService.getSimilarAuctions()`
+   - Replace `trendingCategoryAuctionsProvider` → use `AuctionService.getTrendingAuctions()`
+   - Replace `recommendedAuctionsProvider` → use `AuctionService.getRecommendedAuctions()` (if exists)
+   - Replace `topPlacementAuctionsProvider` → use `AuctionService.getTopPlacementAuctions()`
+   - Remove all `_dummySimilarAuctions`, `_dummyTrendingAuctions`, `_dummyTopPlacementAuctions`
+
+**Files:**
+- `flutter-ocean/lib/core/providers/auctions_provider.dart`
+
+**Deliverables:**
+- ✅ All auction providers connected to API
+- ✅ All dummy data removed
+- ✅ Error handling and loading states maintained
+
+---
+
+### Phase 9: Replace Swap Deal Provider Dummy Data
+**Goal:** Connect swap deal providers to real API
+
+**Tasks:**
+1. Update `swap_deals_provider.dart`:
+   - Replace `similarSwapDealsProvider` → use `SwapDealService.getSimilarSwapDeals()`
+   - Replace `trendingCategorySwapDealsProvider` → use `SwapDealService.getTrendingSwapDeals()`
+   - Replace `recommendedSwapDealsProvider` → use `SwapDealService.getRecommendedSwapDeals()` (if exists)
+   - Replace `topPlacementSwapDealsProvider` → use `SwapDealService.getTopPlacementSwapDeals()`
+   - Replace `sponsoredSwapDealsProvider` → use `SwapDealService.getSpotlightSwapDeals()`
+   - Remove all `_dummySimilarSwapDeals`, `_dummyTrendingSwapDeals`, `_dummyTopPlacementSwapDeals`, `_dummySponsoredSwapDeals`
+
+**Files:**
+- `flutter-ocean/lib/features/market_survey/providers/swap_deals_provider.dart`
+
+**Deliverables:**
+- ✅ All swap deal providers connected to API
+- ✅ All dummy data removed
+- ✅ Error handling and loading states maintained
+
+---
+
+### Phase 10: Replace Group Buy Provider Dummy Data
+**Goal:** Connect group buy providers to real API
+
+**Tasks:**
+1. Update `group_buy_provider.dart`:
+   - Replace `similarGroupBuysProvider` → use `GroupBuyService.getSimilarGroupBuys()`
+   - Replace `trendingCategoryGroupBuysProvider` → use `GroupBuyService.getTrendingGroupBuys()`
+   - Replace `recommendedGroupBuysProvider` → use `GroupBuyService.getRecommendedGroupBuys()` (if exists)
+   - Replace `topPlacementGroupBuysProvider` → use `GroupBuyService.getTopPlacementGroupBuys()`
+   - Replace `sponsoredGroupBuysProvider` → use `GroupBuyService.getSpotlightGroupBuys()`
+   - Remove all `_dummySimilarGroupBuys`, `_dummyTrendingGroupBuys`, `_dummyTopPlacementGroupBuys`, `_dummySponsoredGroupBuys`
+
+**Files:**
+- `flutter-ocean/lib/features/market_survey/providers/group_buy_provider.dart`
+
+**Deliverables:**
+- ✅ All group buy providers connected to API
+- ✅ All dummy data removed
+- ✅ Error handling and loading states maintained
+
+---
+
+### Phase 11: Replace Distress Sale Provider Dummy Data
+**Goal:** Connect distress sale providers to real API
+
+**Tasks:**
+1. Update `distress_sales_provider.dart`:
+   - Replace `similarDistressSalesProvider` → use `DistressSaleService.getSimilarDistressSales()`
+   - Replace `trendingCategoryDistressSalesProvider` → use `DistressSaleService.getTrendingDistressSales()`
+   - Replace `recommendedDistressSalesProvider` → use `DistressSaleService.getRecommendedDistressSales()` (if exists)
+   - Replace `topPlacementDistressSalesProvider` → use `DistressSaleService.getTopPlacementDistressSales()`
+   - Replace `sponsoredDistressSalesProvider` → use `DistressSaleService.getSpotlightDistressSales()`
+   - Remove all `_dummySimilarDistressSales`, `_dummyTrendingDistressSales`, `_dummyTopPlacementDistressSales`, `_dummySponsoredDistressSales`
+
+**Files:**
+- `flutter-ocean/lib/core/providers/distress_sales_provider.dart`
+
+**Deliverables:**
+- ✅ All distress sale providers connected to API
+- ✅ All dummy data removed
+- ✅ Error handling and loading states maintained
+
+---
+
+### Phase 12: Replace Promotion Provider Dummy Data
+**Goal:** Connect promotion analytics and management to real API
+
+**Tasks:**
+1. Update `promotion_provider.dart`:
+   - Replace `promotionAnalyticsProvider` → use `PromotionService.getPromotionAnalytics()`
+   - Replace `promotionManagementProvider` → use `PromotionService.getPromotionManagement()`
+   - Replace `sellerPromotedProductsProvider` → use `PromotionService.getSellerPromotedProducts()` or `ProductService.getProducts(sellerId: X, promoted: true)`
+   - Remove all dummy data structures
+   - Update models to match backend response format
+
+**Files:**
+- `flutter-ocean/lib/features/profile/providers/promotion_provider.dart`
+
+**Deliverables:**
+- ✅ All promotion providers connected to API
+- ✅ All dummy data removed
+- ✅ Models updated to match backend format
+- ✅ Error handling and loading states maintained
+
+---
+
+## 📊 SUMMARY
+
+**Total Phases:** 12
+
+**Dummy Data to Remove:**
+- Products: `_dummyTrendingProducts`, `_dummySimilarProducts`, `_dummyRecommendedProducts`, `_dummyTopPlacementProducts`
+- Auctions: `_dummySimilarAuctions`, `_dummyTrendingAuctions`, `_dummyTopPlacementAuctions`
+- Swap Deals: `_dummySimilarSwapDeals`, `_dummyTrendingSwapDeals`, `_dummyTopPlacementSwapDeals`, `_dummySponsoredSwapDeals`
+- Group Buys: `_dummySimilarGroupBuys`, `_dummyTrendingGroupBuys`, `_dummyTopPlacementGroupBuys`, `_dummySponsoredGroupBuys`
+- Distress Sales: `_dummySimilarDistressSales`, `_dummyTrendingDistressSales`, `_dummyTopPlacementDistressSales`, `_dummySponsoredDistressSales`
+- Promotions: All dummy analytics data in `promotion_provider.dart`
+
+**New Services to Create:**
+- `promotion_service.dart` (new)
+
+**Services to Update:**
+- `product_service.dart`
+- `auction_service.dart`
+- `swap_deal_service.dart`
+- `group_buy_service.dart`
+- `distress_sale_service.dart`
+
+**Providers to Update:**
+- `products_provider.dart`
+- `auctions_provider.dart`
+- `swap_deals_provider.dart`
+- `group_buy_provider.dart`
+- `distress_sales_provider.dart`
+- `promotion_provider.dart`
+
+---
+
+## 🔗 BACKEND ENDPOINTS REFERENCE
+
+### Promotion Analytics
+- `GET /api/promotions/analytics` - Overall analytics
+- `GET /api/promotions/analytics/boost` - Boost analytics
+- `GET /api/promotions/analytics/top-placement` - Top placement analytics
+- `GET /api/promotions/analytics/spotlight` - Spotlight analytics
+- `GET /api/promotions/analytics/performance` - Performance comparison
+- `GET /api/promotions/analytics/recent` - Recent promotions
+
+### Products
+- `GET /api/products/trending?category=X` - Trending products
+- `GET /api/products/:id/similar` - Similar products
+- `GET /api/products/recommended?userId=X` - Recommended products
+- `GET /api/products/spotlight?category=X` - Spotlight products
+- `GET /api/products/top-placement?category=X` - Top placement products
+
+### Auctions
+- `GET /api/auctions/trending?category=X` - Trending auctions
+- `GET /api/auctions/:id/similar` - Similar auctions
+- `GET /api/auctions/spotlight?category=X` - Spotlight auctions
+- `GET /api/auctions/top-placement?category=X` - Top placement auctions
+
+### Swap Deals
+- `GET /api/swap-deals/trending?category=X` - Trending swap deals
+- `GET /api/swap-deals/:id/similar` - Similar swap deals
+- `GET /api/swap-deals/spotlight?category=X` - Spotlight swap deals
+- `GET /api/swap-deals/top-placement?category=X` - Top placement swap deals
+
+### Group Buys
+- `GET /api/group-buys/trending?category=X` - Trending group buys
+- `GET /api/group-buys/:id/similar` - Similar group buys
+- `GET /api/group-buys/spotlight?category=X` - Spotlight group buys
+- `GET /api/group-buys/top-placement?category=X` - Top placement group buys
+
+### Distress Sales
+- `GET /api/distress-sales/trending?category=X` - Trending distress sales
+- `GET /api/distress-sales/:id/similar` - Similar distress sales
+- `GET /api/distress-sales/spotlight?category=X` - Spotlight distress sales
+- `GET /api/distress-sales/top-placement?category=X` - Top placement distress sales
+
+---
+
+## ⚠️ NOTES
+
+- All API calls should include proper error handling
+- Loading states should be maintained during API calls
+- Empty states should be handled gracefully
+- Response models should match backend format exactly
+- Category parameters are optional (null = all categories)
+- User ID parameters are required for personalized recommendations
+
+---
+
+## 📝 ESTIMATED TIME
+
+- Phase 1: Promotion Service - 2-3 hours
+- Phase 2-6: Service Updates (5 phases) - 5-8 hours
+- Phase 7-12: Provider Updates (6 phases) - 6-10 hours
+- **Total estimated time: 13-21 hours (2-3 days)**
