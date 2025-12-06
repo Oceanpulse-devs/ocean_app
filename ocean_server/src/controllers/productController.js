@@ -2393,9 +2393,10 @@ const getSpotlightProducts = async (req, res) => {
         });
 
         // Extract product IDs from spotlight slots
+        // Use camelCase for Sequelize model attributes (not snake_case database columns)
         const productIds = spotlightSlots
-            .filter(slot => slot.item_type === 'product' || slot.item_type === 'distress_sale')
-            .map(slot => slot.item_id);
+            .filter(slot => (slot.itemType || slot.item_type) === 'product' || (slot.itemType || slot.item_type) === 'distress_sale')
+            .map(slot => slot.itemId || slot.item_id);
 
         if (productIds.length === 0) {
             return res.status(200).json({
@@ -2488,7 +2489,8 @@ const getTopPlacementProducts = async (req, res) => {
         const paginatedPlacements = placements.slice(parseInt(offset), parseInt(offset) + parseInt(limit));
 
         // Extract product IDs from placements
-        const productIds = paginatedPlacements.map(placement => placement.item_id);
+        // Use camelCase for Sequelize model attributes (not snake_case database columns)
+        const productIds = paginatedPlacements.map(placement => placement.itemId || placement.item_id);
 
         if (productIds.length === 0) {
             return res.status(200).json({
