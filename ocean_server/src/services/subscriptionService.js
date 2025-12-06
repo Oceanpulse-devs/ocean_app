@@ -1,6 +1,7 @@
 const { UserSubscription, SubscriptionPlan, SubscriptionUsage, PromotionalBoost, UserTable } = require('../../models');
 const { Op } = require('sequelize');
 const { resetUserUsageCounters, getTodayUsageFromRedis, incrementUsageInRedis } = require('../middleware/subscriptionMiddleware');
+const promotionGatingService = require('./promotionGatingService');
 
 /**
  * Subscription Service
@@ -313,26 +314,23 @@ class SubscriptionService {
    */
   async createPromotionalBoost(userId, boostType, targetId, durationHours = 24, reason = '') {
     try {
-      // Get user's active subscription
-      const subscription = await UserSubscription.findOne({
-        where: {
-          userId: userId,
-          status: 'active',
-          endDate: { [Op.gt]: new Date() }
-        },
-        include: [{ model: SubscriptionPlan, as: 'plan' }]
-      });
+      // Use promotion gating service for proper eligibility checking
+      // This includes subscription check, plan restrictions, and monthly limits
+      const eligibility = await promotionGatingService.checkBoostEligibility(
+        userId,
+        boostType,
+        durationHours,
+        false // isFree
+      );
 
-      if (!subscription) {
-        throw new Error('No active subscription found');
+      if (!eligibility.eligible) {
+        throw new Error(eligibility.reason || 'Not eligible for boost');
       }
 
-      // Check if user has remaining boosts using Redis
-      const usage = await getTodayUsageFromRedis(userId);
-      const usedBoosts = usage.promotionalBoostsUsed;
-      
-      if (usedBoosts >= subscription.plan.maxPromotionalBoosts) {
-        throw new Error(`You have reached your daily promotional boost limit of ${subscription.plan.maxPromotionalBoosts}`);
+      // Get subscription from eligibility result
+      const subscription = eligibility.subscription;
+      if (!subscription) {
+        throw new Error('No active subscription found');
       }
 
       // Validate target item exists and user owns it
@@ -355,8 +353,8 @@ class SubscriptionService {
         boostReason: reason
       });
 
-      // Update usage counter in Redis
-      await incrementUsageInRedis(userId, 'promotional_boosts');
+      // Increment usage counter (monthly tracking)
+      await promotionGatingService.incrementPromotionUsage(userId, 'boost');
 
       return boost;
     } catch (error) {
