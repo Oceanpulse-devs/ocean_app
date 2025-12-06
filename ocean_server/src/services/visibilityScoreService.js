@@ -411,13 +411,13 @@ class VisibilityScoreService {
       const scoreResult = await this.calculateVisibilityScore(itemType, itemId, options);
 
       // Save or update visibility score
-      // Use database field names (snake_case) for MySQL compatibility
+      // Use camelCase for Sequelize model attributes (not snake_case database columns)
       const [visibilityScore, created] = await VisibilityScore.upsert({
-        item_type: itemType,
-        item_id: itemId,
-        visibility_score: scoreResult.score,
-        score_breakdown: scoreResult.breakdown,
-        calculated_at: scoreResult.calculatedAt
+        itemType: itemType,
+        itemId: itemId,
+        visibilityScore: scoreResult.score,
+        scoreBreakdown: scoreResult.breakdown,
+        calculatedAt: scoreResult.calculatedAt
       }, {
         returning: true
       });

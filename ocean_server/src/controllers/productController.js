@@ -2433,6 +2433,18 @@ const getSpotlightProducts = async (req, res) => {
             ]
         });
 
+        console.log(`[Spotlight] Found ${spotlightSlots.length} slots, extracted ${productIds.length} product IDs:`, productIds);
+        console.log(`[Spotlight] Found ${products.length} products matching filters`);
+
+        // If no products found, try without status/isAvailable filters to debug
+        if (products.length === 0 && productIds.length > 0) {
+            const allProducts = await Product.findAll({
+                where: { id: { [Op.in]: productIds } },
+                attributes: ['id', 'status', 'isAvailable', 'title']
+            });
+            console.log(`[Spotlight] Products without filters:`, allProducts.map(p => ({ id: p.id, status: p.status, isAvailable: p.isAvailable, title: p.title })));
+        }
+
         // Sort products to match spotlight slot order
         const sortedProducts = productIds
             .map(id => products.find(p => p.id === id))
@@ -2513,6 +2525,18 @@ const getTopPlacementProducts = async (req, res) => {
                 }
             ]
         });
+
+        console.log(`[Top Placement] Found ${placements.length} placements, extracted ${productIds.length} product IDs:`, productIds);
+        console.log(`[Top Placement] Found ${products.length} products matching filters`);
+
+        // If no products found, try without status/isAvailable filters to debug
+        if (products.length === 0 && productIds.length > 0) {
+            const allProducts = await Product.findAll({
+                where: { id: { [Op.in]: productIds } },
+                attributes: ['id', 'status', 'isAvailable', 'title']
+            });
+            console.log(`[Top Placement] Products without filters:`, allProducts.map(p => ({ id: p.id, status: p.status, isAvailable: p.isAvailable, title: p.title })));
+        }
 
         // Sort products to match placement order
         const sortedProducts = productIds

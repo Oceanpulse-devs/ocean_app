@@ -153,7 +153,15 @@ class SpotlightService {
    */
   static async applySpotlight(spotlight) {
     try {
-      const { item_type, item_id, id: spotlightId, end_date } = spotlight;
+      // Use camelCase for Sequelize model attributes (not snake_case database columns)
+      const itemType = spotlight.itemType || spotlight.item_type;
+      const itemId = spotlight.itemId || spotlight.item_id;
+      const spotlightId = spotlight.id;
+      const endDate = spotlight.endDate || spotlight.end_date;
+
+      if (!itemType) {
+        throw new Error(`Invalid item type: ${itemType} (undefined)`);
+      }
 
       const modelMap = {
         'product': Product,
@@ -163,25 +171,25 @@ class SpotlightService {
         'distress_sale': Product
       };
 
-      const Model = modelMap[item_type];
+      const Model = modelMap[itemType];
       if (!Model) {
-        throw new Error(`Invalid item type: ${item_type}`);
+        throw new Error(`Invalid item type: ${itemType}`);
       }
 
       // Update item with spotlight information
       await Model.update({
         is_spotlighted: true,
-        spotlight_expires_at: end_date,
+        spotlight_expires_at: endDate,
         spotlight_id: spotlightId
       }, {
-        where: { id: item_id }
+        where: { id: itemId }
       });
 
-      console.log(`Applied spotlight ${spotlightId} to ${item_type} ${item_id}`);
+      console.log(`Applied spotlight ${spotlightId} to ${itemType} ${itemId}`);
       return true;
     } catch (error) {
       console.error('Error applying spotlight:', error);
-      return false;
+      throw error; // Changed from return false to throw error
     }
   }
 
@@ -192,7 +200,13 @@ class SpotlightService {
    */
   static async removeSpotlight(spotlight) {
     try {
-      const { item_type, item_id } = spotlight;
+      // Use camelCase for Sequelize model attributes (not snake_case database columns)
+      const itemType = spotlight.itemType || spotlight.item_type;
+      const itemId = spotlight.itemId || spotlight.item_id;
+
+      if (!itemType) {
+        throw new Error(`Invalid item type: ${itemType} (undefined)`);
+      }
 
       const modelMap = {
         'product': Product,
@@ -202,9 +216,9 @@ class SpotlightService {
         'distress_sale': Product
       };
 
-      const Model = modelMap[item_type];
+      const Model = modelMap[itemType];
       if (!Model) {
-        throw new Error(`Invalid item type: ${item_type}`);
+        throw new Error(`Invalid item type: ${itemType}`);
       }
 
       // Remove spotlight information from item
@@ -213,14 +227,14 @@ class SpotlightService {
         spotlight_expires_at: null,
         spotlight_id: null
       }, {
-        where: { id: item_id }
+        where: { id: itemId }
       });
 
-      console.log(`Removed spotlight from ${item_type} ${item_id}`);
+      console.log(`Removed spotlight from ${itemType} ${itemId}`);
       return true;
     } catch (error) {
       console.error('Error removing spotlight:', error);
-      return false;
+      throw error;
     }
   }
 
