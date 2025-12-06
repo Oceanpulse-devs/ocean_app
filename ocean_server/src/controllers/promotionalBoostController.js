@@ -43,7 +43,7 @@ class PromotionalBoostController {
       }
 
       // Validate boost type
-      const validBoostTypes = ['product', 'group_buy', 'swap_deal', 'auction', 'buyer_need'];
+      const validBoostTypes = ['product', 'group_buy', 'swap_deal', 'auction'];
       if (!validBoostTypes.includes(boostType)) {
         return res.status(400).json({
           success: false,

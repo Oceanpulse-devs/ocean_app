@@ -20,7 +20,7 @@ module.exports = (sequelize) => {
       comment: 'Reference to user_subscriptions table'
     },
     boostType: {
-      type: DataTypes.ENUM('product', 'group_buy', 'swap_deal', 'auction', 'buyer_need'),
+      type: DataTypes.ENUM('product', 'group_buy', 'swap_deal', 'auction'),
       allowNull: false,
       field: 'boost_type'
     },
