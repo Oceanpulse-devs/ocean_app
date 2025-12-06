@@ -32,7 +32,7 @@ module.exports = (sequelize) => {
       comment: 'ID of the item being featured (UUID as CHAR)'
     },
     slotType: {
-      type: DataTypes.ENUM('homepage', 'category', 'search'),
+      type: DataTypes.ENUM('homepage', 'category', 'search', 'sponsored'),
       allowNull: false,
       field: 'slot_type',
       comment: 'Where the spotlight appears'
