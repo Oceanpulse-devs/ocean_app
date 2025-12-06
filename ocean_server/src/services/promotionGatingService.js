@@ -49,23 +49,26 @@ class PromotionGatingService {
   async getOrCreatePromotionUsage(userId, subscriptionId) {
     try {
       const now = new Date();
-      const usagePeriod = new Date(now.getFullYear(), now.getMonth(), 1); // First day of month
+      // Format as DATEONLY string (YYYY-MM-DD) - first day of current month
+      const usagePeriod = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
 
+      // Use camelCase for Sequelize model attributes
       let usage = await PromotionUsage.findOne({
         where: {
-          user_id: userId,
-          usage_period: usagePeriod
+          userId: userId,
+          usagePeriod: usagePeriod
         }
       });
 
       if (!usage) {
+        // Use camelCase for Sequelize model attributes
         usage = await PromotionUsage.create({
-          user_id: userId,
-          subscription_id: subscriptionId,
-          usage_period: usagePeriod,
-          boosts_used: 0,
-          top_placements_used: 0,
-          spotlights_used: 0
+          userId: userId,
+          subscriptionId: subscriptionId,
+          usagePeriod: usagePeriod,
+          boostsUsed: 0,
+          topPlacementsUsed: 0,
+          spotlightsUsed: 0
         });
       }
 
@@ -113,13 +116,13 @@ class PromotionGatingService {
       const monthlyLimit = plan.max_promotional_boosts;
 
       // Check monthly limit (-1 means unlimited)
-      if (monthlyLimit !== -1 && usage.boosts_used >= monthlyLimit) {
+      if (monthlyLimit !== -1 && usage.boostsUsed >= monthlyLimit) {
         return {
           eligible: false,
           reason: `You have reached your monthly boost limit of ${monthlyLimit}. Upgrade to Surge for unlimited boosts.`,
           canUpgrade: plan.name !== 'surge',
           currentPlan: plan.name,
-          used: usage.boosts_used,
+          used: usage.boostsUsed,
           limit: monthlyLimit
         };
       }
@@ -140,8 +143,8 @@ class PromotionGatingService {
         reason: 'Eligible to create boost',
         currentPlan: plan.name,
         monthlyLimit: monthlyLimit,
-        used: usage.boosts_used,
-        remaining: monthlyLimit === -1 ? -1 : monthlyLimit - usage.boosts_used,
+        used: usage.boostsUsed,
+        remaining: monthlyLimit === -1 ? -1 : monthlyLimit - usage.boostsUsed,
         subscription: subscription
       };
     } catch (error) {
@@ -343,7 +346,7 @@ class PromotionGatingService {
       const usage = await this.getOrCreatePromotionUsage(userId, subscription.id);
 
       const monthlyLimit = plan.max_promotional_boosts;
-      const used = usage.boosts_used;
+      const used = usage.boostsUsed;
       const remaining = monthlyLimit === -1 ? -1 : monthlyLimit - used;
 
       return {
@@ -422,13 +425,13 @@ class PromotionGatingService {
       const monthlyLimit = plan.max_top_placements;
 
       // Check monthly limit (-1 means unlimited)
-      if (monthlyLimit !== -1 && usage.top_placements_used >= monthlyLimit) {
+      if (monthlyLimit !== -1 && usage.topPlacementsUsed >= monthlyLimit) {
         return {
           eligible: false,
           reason: `You have reached your monthly top placement limit of ${monthlyLimit}. Upgrade to Surge for unlimited.`,
           canUpgrade: plan.name !== 'surge',
           currentPlan: plan.name,
-          used: usage.top_placements_used,
+          used: usage.topPlacementsUsed,
           limit: monthlyLimit
         };
       }
@@ -457,8 +460,8 @@ class PromotionGatingService {
         reason: 'Eligible for top placement',
         currentPlan: plan.name,
         monthlyLimit: monthlyLimit,
-        used: usage.top_placements_used,
-        remaining: monthlyLimit === -1 ? -1 : monthlyLimit - usage.top_placements_used
+        used: usage.topPlacementsUsed,
+        remaining: monthlyLimit === -1 ? -1 : monthlyLimit - usage.topPlacementsUsed
       };
     } catch (error) {
       console.error('Error checking top placement eligibility:', error);
@@ -504,13 +507,13 @@ class PromotionGatingService {
       const monthlyLimit = plan.max_spotlights;
 
       // Check monthly limit (-1 means unlimited)
-      if (monthlyLimit !== -1 && usage.spotlights_used >= monthlyLimit) {
+      if (monthlyLimit !== -1 && usage.spotlightsUsed >= monthlyLimit) {
         return {
           eligible: false,
           reason: `You have reached your monthly spotlight limit of ${monthlyLimit}. Upgrade to Surge for unlimited.`,
           canUpgrade: plan.name !== 'surge',
           currentPlan: plan.name,
-          used: usage.spotlights_used,
+          used: usage.spotlightsUsed,
           limit: monthlyLimit
         };
       }
@@ -520,8 +523,8 @@ class PromotionGatingService {
         reason: 'Eligible for spotlight',
         currentPlan: plan.name,
         monthlyLimit: monthlyLimit,
-        used: usage.spotlights_used,
-        remaining: monthlyLimit === -1 ? -1 : monthlyLimit - usage.spotlights_used
+        used: usage.spotlightsUsed,
+        remaining: monthlyLimit === -1 ? -1 : monthlyLimit - usage.spotlightsUsed
       };
     } catch (error) {
       console.error('Error checking spotlight eligibility:', error);
@@ -547,10 +550,11 @@ class PromotionGatingService {
 
       const usage = await this.getOrCreatePromotionUsage(userId, subscription.id);
 
+      // Use camelCase for Sequelize model attributes
       const fieldMap = {
-        'boost': 'boosts_used',
-        'top_placement': 'top_placements_used',
-        'spotlight': 'spotlights_used'
+        'boost': 'boostsUsed',
+        'top_placement': 'topPlacementsUsed',
+        'spotlight': 'spotlightsUsed'
       };
 
       const field = fieldMap[promotionType];
@@ -596,8 +600,8 @@ class PromotionGatingService {
         },
         boosts: {
           monthlyLimit: plan.max_promotional_boosts,
-          used: usage.boosts_used,
-          remaining: plan.max_promotional_boosts === -1 ? -1 : plan.max_promotional_boosts - usage.boosts_used,
+          used: usage.boostsUsed,
+          remaining: plan.max_promotional_boosts === -1 ? -1 : plan.max_promotional_boosts - usage.boostsUsed,
           canAutoReboost: plan.can_auto_reboost,
           canLocationTarget: plan.can_location_target,
           multiplier: plan.boost_multiplier,
@@ -605,13 +609,13 @@ class PromotionGatingService {
         },
         topPlacements: {
           monthlyLimit: plan.max_top_placements,
-          used: usage.top_placements_used,
-          remaining: plan.max_top_placements === -1 ? -1 : plan.max_top_placements - usage.top_placements_used
+          used: usage.topPlacementsUsed,
+          remaining: plan.max_top_placements === -1 ? -1 : plan.max_top_placements - usage.topPlacementsUsed
         },
         spotlights: {
           monthlyLimit: plan.max_spotlights,
-          used: usage.spotlights_used,
-          remaining: plan.max_spotlights === -1 ? -1 : plan.max_spotlights - usage.spotlights_used
+          used: usage.spotlightsUsed,
+          remaining: plan.max_spotlights === -1 ? -1 : plan.max_spotlights - usage.spotlightsUsed
         }
       };
     } catch (error) {
