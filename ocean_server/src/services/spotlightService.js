@@ -63,7 +63,7 @@ class SpotlightService {
       }
 
       // Validate slot type
-      const validSlotTypes = ['homepage', 'category', 'search'];
+      const validSlotTypes = ['homepage', 'category', 'search', 'sponsored'];
       if (!validSlotTypes.includes(slotType)) {
         throw new Error(`Invalid slot type: ${slotType}`);
       }

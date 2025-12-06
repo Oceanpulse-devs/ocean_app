@@ -41,7 +41,7 @@ class SpotlightController {
       }
 
       // Validate slot type
-      const validSlotTypes = ['homepage', 'category', 'search'];
+      const validSlotTypes = ['homepage', 'category', 'search', 'sponsored'];
       if (!validSlotTypes.includes(slotType)) {
         return res.status(400).json({
           success: false,
@@ -145,7 +145,7 @@ class SpotlightController {
       const { category, limit = 20, offset = 0 } = req.query;
 
       // Validate slot type
-      const validSlotTypes = ['homepage', 'category', 'search'];
+      const validSlotTypes = ['homepage', 'category', 'search', 'sponsored'];
       if (!validSlotTypes.includes(slotType)) {
         return res.status(400).json({
           success: false,
@@ -198,7 +198,7 @@ class SpotlightController {
       const { limit = 20, offset = 0 } = req.query;
 
       // Validate slot type
-      const validSlotTypes = ['homepage', 'category', 'search'];
+      const validSlotTypes = ['homepage', 'category', 'search', 'sponsored'];
       if (!validSlotTypes.includes(slotType)) {
         return res.status(400).json({
           success: false,
