@@ -264,17 +264,27 @@ class SpotlightService {
     }
 
     // Check ownership
-    const ownerField = itemType === 'product' || itemType === 'distress_sale' ? 'sellerId' : 'userId';
-    let ownerId = item[ownerField];
-
-    // For products, check if seller belongs to user
-    if (itemType === 'product' || itemType === 'distress_sale') {
+    // Products, auctions, and distress sales use sellerId (seller account ID) - need to check seller ownership
+    // GroupBuy uses creator_id (user ID) - direct comparison
+    // SwapDeal uses sellerId but it's actually a user ID - direct comparison
+    
+    if (itemType === 'product' || itemType === 'auction' || itemType === 'distress_sale') {
+      // These use sellerId (seller account ID), need to check seller ownership
       const { SellersTable } = require('../../models');
-      const seller = await SellersTable.findByPk(ownerId);
+      const sellerId = item.sellerId;
+      const seller = await SellersTable.findByPk(sellerId);
       if (!seller || seller.userId !== userId) {
         throw new Error(`You can only spotlight your own ${itemType}`);
       }
-    } else {
+    } else if (itemType === 'group_buy') {
+      // GroupBuy uses creator_id (user ID)
+      const creatorId = item.creator_id;
+      if (creatorId !== userId) {
+        throw new Error(`You can only spotlight your own ${itemType}`);
+      }
+    } else if (itemType === 'swap_deal') {
+      // SwapDeal uses sellerId but it's actually a user ID (references UserTable)
+      const ownerId = item.sellerId;
       if (ownerId !== userId) {
         throw new Error(`You can only spotlight your own ${itemType}`);
       }

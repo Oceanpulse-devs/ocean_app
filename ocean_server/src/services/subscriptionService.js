@@ -531,26 +531,42 @@ class SubscriptionService {
       }
 
       // Check if user owns the item
-      const ownerField = boostType === 'product' ? 'sellerId' : 'userId';
-      let ownerId = targetItem[ownerField];
+      // Products and auctions use sellerId (seller account ID) - need to check seller ownership
+      // GroupBuy uses creator_id (user ID) - direct comparison
+      // SwapDeal uses sellerId but it's actually a user ID - direct comparison
+      // BuyerNeed uses buyer_id (user ID) - direct comparison
       
-      // For products, we need to check if the user owns the seller account
-      if (boostType === 'product') {
+      if (boostType === 'product' || boostType === 'auction') {
+        // These use sellerId (seller account ID), need to check seller ownership
+        const sellerId = targetItem.sellerId;
         const seller = await SellersTable.findOne({
-          where: { id: ownerId }
+          where: { id: sellerId }
         });
         
         if (!seller) {
-          throw new Error(`Seller account not found for product`);
+          throw new Error(`Seller account not found for ${modelName.toLowerCase()}`);
         }
         
         // Check if the seller account belongs to the current user
         if (seller.userId !== userId) {
           throw new Error(`You can only boost your own ${modelName.toLowerCase()}`);
         }
-      } else {
-        // For other items, check direct ownership
+      } else if (boostType === 'group_buy') {
+        // GroupBuy uses creator_id (user ID)
+        const creatorId = targetItem.creator_id;
+        if (creatorId !== userId) {
+          throw new Error(`You can only boost your own ${modelName.toLowerCase()}`);
+        }
+      } else if (boostType === 'swap_deal') {
+        // SwapDeal uses sellerId but it's actually a user ID (references UserTable)
+        const ownerId = targetItem.sellerId;
         if (ownerId !== userId) {
+          throw new Error(`You can only boost your own ${modelName.toLowerCase()}`);
+        }
+      } else if (boostType === 'buyer_need') {
+        // BuyerNeed uses buyer_id (user ID)
+        const buyerId = targetItem.buyer_id;
+        if (buyerId !== userId) {
           throw new Error(`You can only boost your own ${modelName.toLowerCase()}`);
         }
       }
