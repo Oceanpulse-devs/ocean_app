@@ -2168,9 +2168,10 @@ class GroupBuyController {
       });
 
       // Extract group buy IDs from spotlight slots
+      // Use camelCase for Sequelize model attributes (not snake_case database columns)
       const groupBuyIds = spotlightSlots
-        .filter(slot => slot.item_type === 'group_buy')
-        .map(slot => slot.item_id);
+        .filter(slot => (slot.itemType || slot.item_type) === 'group_buy')
+        .map(slot => slot.itemId || slot.item_id);
 
       if (groupBuyIds.length === 0) {
         return res.status(200).json({
@@ -2256,7 +2257,8 @@ class GroupBuyController {
       const paginatedPlacements = placements.slice(parseInt(offset), parseInt(offset) + parseInt(limit));
 
       // Extract group buy IDs from placements
-      const groupBuyIds = paginatedPlacements.map(placement => placement.item_id);
+      // Use camelCase for Sequelize model attributes (not snake_case database columns)
+      const groupBuyIds = paginatedPlacements.map(placement => placement.itemId || placement.item_id);
 
       if (groupBuyIds.length === 0) {
         return res.status(200).json({

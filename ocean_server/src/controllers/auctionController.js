@@ -3196,9 +3196,10 @@ const getSpotlightAuctions = async (req, res) => {
     });
 
     // Extract auction IDs from spotlight slots
+    // Use camelCase for Sequelize model attributes (not snake_case database columns)
     const auctionIds = spotlightSlots
-      .filter(slot => slot.item_type === 'auction')
-      .map(slot => slot.item_id);
+      .filter(slot => (slot.itemType || slot.item_type) === 'auction')
+      .map(slot => slot.itemId || slot.item_id);
 
     if (auctionIds.length === 0) {
       return res.status(200).json({
@@ -3284,7 +3285,8 @@ const getTopPlacementAuctions = async (req, res) => {
     const paginatedPlacements = placements.slice(parseInt(offset), parseInt(offset) + parseInt(limit));
 
     // Extract auction IDs from placements
-    const auctionIds = paginatedPlacements.map(placement => placement.item_id);
+    // Use camelCase for Sequelize model attributes (not snake_case database columns)
+    const auctionIds = paginatedPlacements.map(placement => placement.itemId || placement.item_id);
 
     if (auctionIds.length === 0) {
       return res.status(200).json({

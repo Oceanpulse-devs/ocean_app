@@ -1196,9 +1196,10 @@ class DistressSaleController {
       });
 
       // Extract distress sale IDs from spotlight slots
+      // Use camelCase for Sequelize model attributes (not snake_case database columns)
       const distressSaleIds = spotlightSlots
-        .filter(slot => slot.item_type === 'distress_sale')
-        .map(slot => slot.item_id);
+        .filter(slot => (slot.itemType || slot.item_type) === 'distress_sale')
+        .map(slot => slot.itemId || slot.item_id);
 
       if (distressSaleIds.length === 0) {
         return res.status(200).json({
@@ -1286,7 +1287,8 @@ class DistressSaleController {
       const paginatedPlacements = placements.slice(parseInt(offset), parseInt(offset) + parseInt(limit));
 
       // Extract distress sale IDs from placements
-      const distressSaleIds = paginatedPlacements.map(placement => placement.item_id);
+      // Use camelCase for Sequelize model attributes (not snake_case database columns)
+      const distressSaleIds = paginatedPlacements.map(placement => placement.itemId || placement.item_id);
 
       if (distressSaleIds.length === 0) {
         return res.status(200).json({
