@@ -2160,6 +2160,8 @@ class GroupBuyController {
     try {
       const { slotType = 'homepage', category = null, limit = 20, offset = 0 } = req.query;
 
+      console.log(`[Spotlight Group Buys] Requested slotType: ${slotType}, category: ${category}`);
+
       // Get spotlight slots
       const spotlightSlots = await SpotlightService.getSpotlightsBySlotType(slotType, {
         category,
@@ -2167,11 +2169,15 @@ class GroupBuyController {
         offset: parseInt(offset)
       });
 
+      console.log(`[Spotlight Group Buys] Found ${spotlightSlots.length} spotlight slots`);
+
       // Extract group buy IDs from spotlight slots
       // Use camelCase for Sequelize model attributes (not snake_case database columns)
       const groupBuyIds = spotlightSlots
         .filter(slot => (slot.itemType || slot.item_type) === 'group_buy')
         .map(slot => slot.itemId || slot.item_id);
+
+      console.log(`[Spotlight Group Buys] Extracted ${groupBuyIds.length} group buy IDs:`, groupBuyIds);
 
       if (groupBuyIds.length === 0) {
         return res.status(200).json({
@@ -2190,10 +2196,11 @@ class GroupBuyController {
       }
 
       // Get group buys
+      // Remove status filter - spotlights should show regardless of status (active, failed, etc.)
       const groupBuys = await db.GroupBuy.findAll({
         where: {
-          id: { [Op.in]: groupBuyIds },
-          status: 'active'
+          id: { [Op.in]: groupBuyIds }
+          // Removed status: 'active' filter to show spotlights even if group buy status is not active
         },
         include: [
           {
@@ -2208,6 +2215,9 @@ class GroupBuyController {
           }
         ]
       });
+
+      console.log(`[Spotlight Group Buys] Found ${groupBuys.length} group buys from database`);
+      console.log(`[Spotlight Group Buys] Group buy IDs found:`, groupBuys.map(gb => gb.id));
 
       // Sort group buys to match spotlight slot order
       const sortedGroupBuys = groupBuyIds
@@ -2253,12 +2263,16 @@ class GroupBuyController {
         limit: parseInt(limit) + parseInt(offset) // Get more to handle offset
       });
 
+      console.log(`[Top Placement Group Buys] Found ${placements.length} placements`);
+
       // Apply offset
       const paginatedPlacements = placements.slice(parseInt(offset), parseInt(offset) + parseInt(limit));
 
       // Extract group buy IDs from placements
       // Use camelCase for Sequelize model attributes (not snake_case database columns)
       const groupBuyIds = paginatedPlacements.map(placement => placement.itemId || placement.item_id);
+
+      console.log(`[Top Placement Group Buys] Extracted ${groupBuyIds.length} group buy IDs:`, groupBuyIds);
 
       if (groupBuyIds.length === 0) {
         return res.status(200).json({
@@ -2277,10 +2291,11 @@ class GroupBuyController {
       }
 
       // Get group buys
+      // Remove status filter - top placements should show regardless of status (active, failed, etc.)
       const groupBuys = await db.GroupBuy.findAll({
         where: {
-          id: { [Op.in]: groupBuyIds },
-          status: 'active'
+          id: { [Op.in]: groupBuyIds }
+          // Removed status: 'active' filter to show top placements even if group buy status is not active
         },
         include: [
           {
@@ -2295,6 +2310,10 @@ class GroupBuyController {
           }
         ]
       });
+
+      console.log(`[Top Placement Group Buys] Found ${groupBuys.length} group buys from database`);
+      console.log(`[Top Placement Group Buys] Group buy IDs found:`, groupBuys.map(gb => gb.id));
+      console.log(`[Top Placement Group Buys] Group buy statuses:`, groupBuys.map(gb => ({ id: gb.id, status: gb.status })));
 
       // Sort group buys to match placement order
       const sortedGroupBuys = groupBuyIds
