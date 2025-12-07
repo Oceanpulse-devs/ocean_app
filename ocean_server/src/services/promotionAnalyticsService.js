@@ -1304,14 +1304,20 @@ class PromotionAnalyticsService {
           let itemName = '';
           let itemImage = null;
 
+          console.log(`🔍 Fetching item details: itemType=${itemType}, itemId=${itemId}`);
+
           switch (itemType) {
             case 'product':
               item = await Product.findByPk(itemId, {
-                attributes: ['id', 'name', 'images']
+                attributes: ['id', 'name', 'title', 'images']
               });
               if (item) {
-                itemName = item.name || '';
+                // Try both name and title fields
+                itemName = item.name || item.title || '';
                 itemImage = item.images && item.images.length > 0 ? item.images[0] : null;
+                console.log(`✅ Product found: name="${itemName}", hasImage=${itemImage != null}, images.length=${item.images ? item.images.length : 0}`);
+              } else {
+                console.log(`⚠️ Product not found for ID: ${itemId}`);
               }
               break;
             case 'auction':
@@ -1321,6 +1327,9 @@ class PromotionAnalyticsService {
               if (item) {
                 itemName = item.title || '';
                 itemImage = item.images && item.images.length > 0 ? item.images[0] : null;
+                console.log(`✅ Auction found: title="${itemName}", hasImage=${itemImage != null}`);
+              } else {
+                console.log(`⚠️ Auction not found for ID: ${itemId}`);
               }
               break;
             case 'group_buy':
@@ -1336,6 +1345,9 @@ class PromotionAnalyticsService {
                     : item.product_image;
                   itemImage = Array.isArray(images) && images.length > 0 ? images[0] : null;
                 }
+                console.log(`✅ GroupBuy found: title="${itemName}", hasImage=${itemImage != null}`);
+              } else {
+                console.log(`⚠️ GroupBuy not found for ID: ${itemId}`);
               }
               break;
             case 'swap_deal':
@@ -1345,23 +1357,31 @@ class PromotionAnalyticsService {
               if (item) {
                 itemName = item.title || '';
                 itemImage = item.images && item.images.length > 0 ? item.images[0] : null;
+                console.log(`✅ SwapDeal found: title="${itemName}", hasImage=${itemImage != null}`);
+              } else {
+                console.log(`⚠️ SwapDeal not found for ID: ${itemId}`);
               }
               break;
             case 'distress_sale':
               // Distress sales are stored as products with is_distress_sale flag
               item = await Product.findByPk(itemId, {
-                attributes: ['id', 'name', 'images']
+                attributes: ['id', 'name', 'title', 'images']
               });
               if (item) {
-                itemName = item.name || '';
+                // Try both name and title fields
+                itemName = item.name || item.title || '';
                 itemImage = item.images && item.images.length > 0 ? item.images[0] : null;
+                console.log(`✅ DistressSale (Product) found: name="${itemName}", hasImage=${itemImage != null}`);
+              } else {
+                console.log(`⚠️ DistressSale (Product) not found for ID: ${itemId}`);
               }
               break;
           }
 
+          console.log(`📦 Returning item details: itemName="${itemName}", itemImage=${itemImage ? 'exists' : 'null'}`);
           return { itemName, itemImage };
         } catch (error) {
-          console.error(`Error fetching item details for ${itemType} ${itemId}:`, error);
+          console.error(`❌ Error fetching item details for ${itemType} ${itemId}:`, error);
           return { itemName: '', itemImage: null };
         }
       };
