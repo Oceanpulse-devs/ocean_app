@@ -1145,7 +1145,8 @@ class PromotionAnalyticsService {
       
       // Process boosts
       boosts.forEach(boost => {
-        const itemType = boost.boost_type;
+        // Sequelize models use camelCase, with fallback to snake_case
+        const itemType = boost.boostType || boost.boost_type;
         if (!itemTypeData[itemType]) {
           itemTypeData[itemType] = {
             count: 0,
@@ -1161,7 +1162,8 @@ class PromotionAnalyticsService {
 
       // Process placements
       placements.forEach(placement => {
-        const itemType = placement.item_type;
+        // Sequelize models use camelCase, with fallback to snake_case
+        const itemType = placement.itemType || placement.item_type;
         if (!itemTypeData[itemType]) {
           itemTypeData[itemType] = {
             count: 0,
@@ -1177,7 +1179,8 @@ class PromotionAnalyticsService {
 
       // Process spotlights
       spotlights.forEach(spotlight => {
-        const itemType = spotlight.item_type;
+        // Sequelize models use camelCase, with fallback to snake_case
+        const itemType = spotlight.itemType || spotlight.item_type;
         if (!itemTypeData[itemType]) {
           itemTypeData[itemType] = {
             count: 0,
@@ -1391,21 +1394,27 @@ class PromotionAnalyticsService {
 
       // Format boosts
       for (const boost of boosts) {
-        const itemDetails = await fetchItemDetails(boost.boost_type, boost.target_id);
-        const endDate = boost.end_time || boost.endTime;
+        // Sequelize models use camelCase, with fallback to snake_case
+        const itemType = boost.boostType || boost.boost_type;
+        const itemId = boost.targetId || boost.target_id;
+        const endDate = boost.endTime || boost.end_time;
+        
+        console.log(`🔍 Boost: boostType=${boost.boostType}, targetId=${boost.targetId}, itemType=${itemType}, itemId=${itemId}`);
+        
+        const itemDetails = await fetchItemDetails(itemType, itemId);
         
         recentPromotions.push({
           id: boost.id,
           type: 'boost',
-          itemType: boost.boost_type,
-          itemId: boost.target_id,
+          itemType: itemType,
+          itemId: itemId,
           itemName: itemDetails.itemName,
           itemImage: itemDetails.itemImage,
-          createdAt: boost.created_at || boost.createdAt,
+          createdAt: boost.createdAt || boost.created_at,
           endDate: endDate,
           status: boost.status,
           cost: parseFloat(boost.cost) || 0,
-          duration: boost.boost_duration_hours,
+          duration: boost.boostDurationHours || boost.boost_duration_hours,
           views: 0,
           clicks: 0,
           messages: 0
@@ -1414,24 +1423,30 @@ class PromotionAnalyticsService {
 
       // Format placements
       for (const placement of placements) {
-        const itemDetails = await fetchItemDetails(placement.item_type, placement.item_id);
-        // Calculate endDate from createdAt + duration_days
-        const createdAt = new Date(placement.created_at || placement.createdAt);
+        // Sequelize models use camelCase, with fallback to snake_case
+        const itemType = placement.itemType || placement.item_type;
+        const itemId = placement.itemId || placement.item_id;
+        
+        console.log(`🔍 Placement: itemType=${placement.itemType}, itemId=${placement.itemId}, itemType=${itemType}, itemId=${itemId}`);
+        
+        const itemDetails = await fetchItemDetails(itemType, itemId);
+        // Calculate endDate from createdAt + durationDays
+        const createdAt = new Date(placement.createdAt || placement.created_at);
         const endDate = new Date(createdAt);
-        endDate.setDate(endDate.getDate() + (placement.duration_days || 0));
+        endDate.setDate(endDate.getDate() + (placement.durationDays || placement.duration_days || 0));
         
         recentPromotions.push({
           id: placement.id,
           type: 'top_placement',
-          itemType: placement.item_type,
-          itemId: placement.item_id,
+          itemType: itemType,
+          itemId: itemId,
           itemName: itemDetails.itemName,
           itemImage: itemDetails.itemImage,
-          createdAt: placement.created_at || placement.createdAt,
+          createdAt: placement.createdAt || placement.created_at,
           endDate: endDate.toISOString(),
           status: placement.status,
           cost: 0,
-          duration: placement.duration_days,
+          duration: placement.durationDays || placement.duration_days,
           views: 0,
           clicks: 0,
           messages: 0
@@ -1440,24 +1455,30 @@ class PromotionAnalyticsService {
 
       // Format spotlights
       for (const spotlight of spotlights) {
-        const itemDetails = await fetchItemDetails(spotlight.item_type, spotlight.item_id);
-        // Calculate endDate from createdAt + duration_days
-        const createdAt = new Date(spotlight.created_at || spotlight.createdAt);
+        // Sequelize models use camelCase, with fallback to snake_case
+        const itemType = spotlight.itemType || spotlight.item_type;
+        const itemId = spotlight.itemId || spotlight.item_id;
+        
+        console.log(`🔍 Spotlight: itemType=${spotlight.itemType}, itemId=${spotlight.itemId}, itemType=${itemType}, itemId=${itemId}`);
+        
+        const itemDetails = await fetchItemDetails(itemType, itemId);
+        // Calculate endDate from createdAt + durationDays
+        const createdAt = new Date(spotlight.createdAt || spotlight.created_at);
         const endDate = new Date(createdAt);
-        endDate.setDate(endDate.getDate() + (spotlight.duration_days || 0));
+        endDate.setDate(endDate.getDate() + (spotlight.durationDays || spotlight.duration_days || 0));
         
         recentPromotions.push({
           id: spotlight.id,
           type: 'spotlight',
-          itemType: spotlight.item_type,
-          itemId: spotlight.item_id,
+          itemType: itemType,
+          itemId: itemId,
           itemName: itemDetails.itemName,
           itemImage: itemDetails.itemImage,
-          createdAt: spotlight.created_at || spotlight.createdAt,
+          createdAt: spotlight.createdAt || spotlight.created_at,
           endDate: endDate.toISOString(),
           status: spotlight.status,
           cost: 0,
-          duration: spotlight.duration_days,
+          duration: spotlight.durationDays || spotlight.duration_days,
           views: spotlight.impressions || 0,
           clicks: spotlight.clicks || 0,
           messages: 0
