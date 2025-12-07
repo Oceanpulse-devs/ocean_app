@@ -19,7 +19,7 @@ class BoostManagementService {
    */
   static async applyBoost(boost) {
     try {
-      const { boost_type, target_id, end_time, id: boostId } = boost;
+      const { boostType, targetId, endTime, id: boostId } = boost;
 
       // Map boost types to models
       const modelMap = {
@@ -29,21 +29,21 @@ class BoostManagementService {
         'auction': Auction
       };
 
-      const Model = modelMap[boost_type];
+      const Model = modelMap[boostType];
       if (!Model) {
-        throw new Error(`Invalid boost type: ${boost_type}`);
+        throw new Error(`Invalid boost type: ${boostType}`);
       }
 
       // Update the target item with boost information
       await Model.update({
         is_boosted: true,
-        boost_expires_at: end_time,
+        boost_expires_at: endTime,
         boost_id: boostId
       }, {
-        where: { id: target_id }
+        where: { id: targetId }
       });
 
-      console.log(`Applied boost ${boostId} to ${boost_type} ${target_id}`);
+      console.log(`Applied boost ${boostId} to ${boostType} ${targetId}`);
       return true;
     } catch (error) {
       console.error('Error applying boost:', error);
@@ -58,7 +58,7 @@ class BoostManagementService {
    */
   static async removeBoost(boost) {
     try {
-      const { boost_type, target_id } = boost;
+      const { boostType, targetId } = boost;
 
       // Map boost types to models
       const modelMap = {
@@ -68,9 +68,9 @@ class BoostManagementService {
         'auction': Auction
       };
 
-      const Model = modelMap[boost_type];
+      const Model = modelMap[boostType];
       if (!Model) {
-        throw new Error(`Invalid boost type: ${boost_type}`);
+        throw new Error(`Invalid boost type: ${boostType}`);
       }
 
       // Remove boost information from the target item
@@ -79,10 +79,10 @@ class BoostManagementService {
         boost_expires_at: null,
         boost_id: null
       }, {
-        where: { id: target_id }
+        where: { id: targetId }
       });
 
-      console.log(`Removed boost from ${boost_type} ${target_id}`);
+      console.log(`Removed boost from ${boostType} ${targetId}`);
       return true;
     } catch (error) {
       console.error('Error removing boost:', error);
@@ -182,7 +182,7 @@ class BoostManagementService {
         expiredBoosts,
         cancelledBoosts: totalBoosts - activeBoosts - expiredBoosts,
         byType: boostsByType.map(item => ({
-          boostType: item.boost_type,
+          boostType: item.boostType || item.get('boost_type'),
           status: item.status,
           count: parseInt(item.dataValues.count)
         })),
@@ -403,8 +403,8 @@ class BoostManagementService {
     const grouped = {};
     
     boosts.forEach(boost => {
-      if (!grouped[boost.boost_type]) {
-        grouped[boost.boost_type] = {
+      if (!grouped[boost.boostType]) {
+        grouped[boost.boostType] = {
           total: 0,
           active: 0,
           expired: 0,
@@ -412,8 +412,8 @@ class BoostManagementService {
         };
       }
       
-      grouped[boost.boost_type].total++;
-      grouped[boost.boost_type][boost.status]++;
+      grouped[boost.boostType].total++;
+      grouped[boost.boostType][boost.status]++;
     });
 
     return grouped;
