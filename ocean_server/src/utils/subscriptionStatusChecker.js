@@ -34,6 +34,28 @@ class SubscriptionStatusChecker {
       const plan = subscription.plan;
       const usage = await subscriptionMiddleware.getTodayUsage(userId, subscription.id);
 
+      // Get promotion usage (monthly, not daily) for top placements and spotlights
+      const { PromotionUsage } = require('../../models');
+      const { Op } = require('sequelize');
+      
+      const currentMonth = new Date();
+      currentMonth.setDate(1);
+      currentMonth.setHours(0, 0, 0, 0);
+      
+      const promotionUsage = await PromotionUsage.findOne({
+        where: {
+          userId: userId,
+          subscriptionId: subscription.id,
+          usagePeriod: {
+            [Op.gte]: currentMonth
+          }
+        }
+      });
+
+      // Get top placements and spotlights usage (handle both camelCase and snake_case)
+      const topPlacementsUsed = promotionUsage ? (promotionUsage.topPlacementsUsed || promotionUsage.top_placements_used || 0) : 0;
+      const spotlightsUsed = promotionUsage ? (promotionUsage.spotlightsUsed || promotionUsage.spotlights_used || 0) : 0;
+
       return {
         hasActiveSubscription: true,
         plan: {
@@ -54,7 +76,10 @@ class SubscriptionStatusChecker {
           maxDailyDms: plan.max_daily_dms,
           maxDailyNotifications: plan.max_daily_notifications,
           maxArProducts: plan.max_ar_products,
-          maxPromotionalBoosts: plan.max_promotional_boosts
+          maxPromotionalBoosts: plan.max_promotional_boosts,
+          // Add top placements and spotlights limits (default to 0 if not in plan model)
+          maxTopPlacements: plan.max_top_placements || 0,
+          maxSpotlights: plan.max_spotlights || 0
         },
         features: {
           canCreateGroupBuy: plan.can_create_group_buy,
@@ -77,8 +102,24 @@ class SubscriptionStatusChecker {
           dmsSent: usage.dms_sent,
           notificationsReceived: usage.notifications_received,
           arProductsUsed: usage.ar_products_used,
-          promotionalBoostsUsed: usage.promotional_boosts_used
-        } : null,
+          promotionalBoostsUsed: usage.promotional_boosts_used,
+          // Add top placements and spotlights usage from PromotionUsage
+          topPlacementsUsed: topPlacementsUsed,
+          spotlightsUsed: spotlightsUsed
+        } : {
+          // Return default usage object even if daily usage is null
+          listingsCreated: 0,
+          groupBuysCreated: 0,
+          swapDealsCreated: 0,
+          auctionsCreated: 0,
+          distressSalesCreated: 0,
+          dmsSent: 0,
+          notificationsReceived: 0,
+          arProductsUsed: 0,
+          promotionalBoostsUsed: 0,
+          topPlacementsUsed: topPlacementsUsed,
+          spotlightsUsed: spotlightsUsed
+        },
         expiresAt: subscription.end_date
       };
     } catch (error) {
@@ -330,7 +371,9 @@ class SubscriptionStatusChecker {
       maxDailyDms: 0,
       maxDailyNotifications: 0,
       maxArProducts: 0,
-      maxPromotionalBoosts: 0
+      maxPromotionalBoosts: 0,
+      maxTopPlacements: 0,
+      maxSpotlights: 0
     };
   }
 
