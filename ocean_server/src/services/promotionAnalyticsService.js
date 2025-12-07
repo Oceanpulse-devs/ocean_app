@@ -1309,13 +1309,13 @@ class PromotionAnalyticsService {
           switch (itemType) {
             case 'product':
               item = await Product.findByPk(itemId, {
-                attributes: ['id', 'name', 'title', 'images']
+                attributes: ['id', 'title', 'images']
               });
               if (item) {
-                // Try both name and title fields
-                itemName = item.name || item.title || '';
+                // Product model uses 'title' field
+                itemName = item.title || '';
                 itemImage = item.images && item.images.length > 0 ? item.images[0] : null;
-                console.log(`✅ Product found: name="${itemName}", hasImage=${itemImage != null}, images.length=${item.images ? item.images.length : 0}`);
+                console.log(`✅ Product found: title="${itemName}", hasImage=${itemImage != null}, images.length=${item.images ? item.images.length : 0}`);
               } else {
                 console.log(`⚠️ Product not found for ID: ${itemId}`);
               }
@@ -1365,13 +1365,13 @@ class PromotionAnalyticsService {
             case 'distress_sale':
               // Distress sales are stored as products with is_distress_sale flag
               item = await Product.findByPk(itemId, {
-                attributes: ['id', 'name', 'title', 'images']
+                attributes: ['id', 'title', 'images']
               });
               if (item) {
-                // Try both name and title fields
-                itemName = item.name || item.title || '';
+                // Product model uses 'title' field
+                itemName = item.title || '';
                 itemImage = item.images && item.images.length > 0 ? item.images[0] : null;
-                console.log(`✅ DistressSale (Product) found: name="${itemName}", hasImage=${itemImage != null}`);
+                console.log(`✅ DistressSale (Product) found: title="${itemName}", hasImage=${itemImage != null}`);
               } else {
                 console.log(`⚠️ DistressSale (Product) not found for ID: ${itemId}`);
               }
@@ -1469,7 +1469,15 @@ class PromotionAnalyticsService {
         new Date(b.createdAt) - new Date(a.createdAt)
       );
 
-      return recentPromotions.slice(0, limit);
+      const result = recentPromotions.slice(0, limit);
+      
+      // Log what we're returning
+      console.log(`📤 Returning ${result.length} promotions with item details:`);
+      result.forEach((promo, index) => {
+        console.log(`  [${index}] type=${promo.type}, itemName="${promo.itemName}", itemImage=${promo.itemImage ? 'exists' : 'null'}, itemType=${promo.itemType}, itemId=${promo.itemId}`);
+      });
+      
+      return result;
     } catch (error) {
       console.error('Error getting recent promotions:', error);
       return [];
