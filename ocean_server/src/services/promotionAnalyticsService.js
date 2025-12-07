@@ -1,7 +1,7 @@
 const BoostManagementService = require('./boostManagementService');
 const TopPlacementService = require('./topPlacementService');
 const SpotlightService = require('./spotlightService');
-const { PromotionalBoost, TopPlacement, SpotlightSlot } = require('../../models');
+const { PromotionalBoost, TopPlacement, SpotlightSlot, Product, Auction, GroupBuy, SwapDeal } = require('../../models');
 const { Op } = require('sequelize');
 
 /**
@@ -1297,60 +1297,152 @@ class PromotionAnalyticsService {
         })
       ]);
 
+      // Helper function to fetch item details
+      const fetchItemDetails = async (itemType, itemId) => {
+        try {
+          let item = null;
+          let itemName = '';
+          let itemImage = null;
+
+          switch (itemType) {
+            case 'product':
+              item = await Product.findByPk(itemId, {
+                attributes: ['id', 'name', 'images']
+              });
+              if (item) {
+                itemName = item.name || '';
+                itemImage = item.images && item.images.length > 0 ? item.images[0] : null;
+              }
+              break;
+            case 'auction':
+              item = await Auction.findByPk(itemId, {
+                attributes: ['id', 'title', 'images']
+              });
+              if (item) {
+                itemName = item.title || '';
+                itemImage = item.images && item.images.length > 0 ? item.images[0] : null;
+              }
+              break;
+            case 'group_buy':
+              item = await GroupBuy.findByPk(itemId, {
+                attributes: ['id', 'title', 'product_name', 'product_image']
+              });
+              if (item) {
+                itemName = item.title || item.product_name || '';
+                // product_image is JSON array, get first image
+                if (item.product_image) {
+                  const images = typeof item.product_image === 'string' 
+                    ? JSON.parse(item.product_image) 
+                    : item.product_image;
+                  itemImage = Array.isArray(images) && images.length > 0 ? images[0] : null;
+                }
+              }
+              break;
+            case 'swap_deal':
+              item = await SwapDeal.findByPk(itemId, {
+                attributes: ['id', 'title', 'images']
+              });
+              if (item) {
+                itemName = item.title || '';
+                itemImage = item.images && item.images.length > 0 ? item.images[0] : null;
+              }
+              break;
+            case 'distress_sale':
+              // Distress sales are stored as products with is_distress_sale flag
+              item = await Product.findByPk(itemId, {
+                attributes: ['id', 'name', 'images']
+              });
+              if (item) {
+                itemName = item.name || '';
+                itemImage = item.images && item.images.length > 0 ? item.images[0] : null;
+              }
+              break;
+          }
+
+          return { itemName, itemImage };
+        } catch (error) {
+          console.error(`Error fetching item details for ${itemType} ${itemId}:`, error);
+          return { itemName: '', itemImage: null };
+        }
+      };
+
       // Format promotions with metrics
       const recentPromotions = [];
 
       // Format boosts
-      boosts.forEach(boost => {
+      for (const boost of boosts) {
+        const itemDetails = await fetchItemDetails(boost.boost_type, boost.target_id);
+        const endDate = boost.end_time || boost.endTime;
+        
         recentPromotions.push({
           id: boost.id,
           type: 'boost',
           itemType: boost.boost_type,
           itemId: boost.target_id,
+          itemName: itemDetails.itemName,
+          itemImage: itemDetails.itemImage,
           createdAt: boost.created_at || boost.createdAt,
+          endDate: endDate,
           status: boost.status,
           cost: parseFloat(boost.cost) || 0,
           duration: boost.boost_duration_hours,
-          // Views, clicks, messages not tracked yet
           views: 0,
           clicks: 0,
           messages: 0
         });
-      });
+      }
 
       // Format placements
-      placements.forEach(placement => {
+      for (const placement of placements) {
+        const itemDetails = await fetchItemDetails(placement.item_type, placement.item_id);
+        // Calculate endDate from createdAt + duration_days
+        const createdAt = new Date(placement.created_at || placement.createdAt);
+        const endDate = new Date(createdAt);
+        endDate.setDate(endDate.getDate() + (placement.duration_days || 0));
+        
         recentPromotions.push({
           id: placement.id,
           type: 'top_placement',
           itemType: placement.item_type,
           itemId: placement.item_id,
+          itemName: itemDetails.itemName,
+          itemImage: itemDetails.itemImage,
           createdAt: placement.created_at || placement.createdAt,
+          endDate: endDate.toISOString(),
           status: placement.status,
-          cost: 0, // Not tracked yet
+          cost: 0,
           duration: placement.duration_days,
           views: 0,
           clicks: 0,
           messages: 0
         });
-      });
+      }
 
       // Format spotlights
-      spotlights.forEach(spotlight => {
+      for (const spotlight of spotlights) {
+        const itemDetails = await fetchItemDetails(spotlight.item_type, spotlight.item_id);
+        // Calculate endDate from createdAt + duration_days
+        const createdAt = new Date(spotlight.created_at || spotlight.createdAt);
+        const endDate = new Date(createdAt);
+        endDate.setDate(endDate.getDate() + (spotlight.duration_days || 0));
+        
         recentPromotions.push({
           id: spotlight.id,
           type: 'spotlight',
           itemType: spotlight.item_type,
           itemId: spotlight.item_id,
+          itemName: itemDetails.itemName,
+          itemImage: itemDetails.itemImage,
           createdAt: spotlight.created_at || spotlight.createdAt,
+          endDate: endDate.toISOString(),
           status: spotlight.status,
-          cost: 0, // Not tracked yet
+          cost: 0,
           duration: spotlight.duration_days,
           views: spotlight.impressions || 0,
           clicks: spotlight.clicks || 0,
           messages: 0
         });
-      });
+      }
 
       // Sort by creation date (most recent first) and limit
       recentPromotions.sort((a, b) => 
