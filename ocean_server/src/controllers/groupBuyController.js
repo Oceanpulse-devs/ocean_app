@@ -2220,8 +2220,12 @@ class GroupBuyController {
       console.log(`[Spotlight Group Buys] Group buy IDs found:`, groupBuys.map(gb => gb.id));
 
       // Sort group buys to match spotlight slot order
+      // Convert IDs to integers for proper comparison (IDs from spotlight slots are strings, DB IDs are integers)
       const sortedGroupBuys = groupBuyIds
-        .map(id => groupBuys.find(gb => gb.id === id))
+        .map(id => {
+          const numericId = typeof id === 'string' ? parseInt(id, 10) : id;
+          return groupBuys.find(gb => gb.id === numericId);
+        })
         .filter(gb => gb !== undefined);
 
       // Map group buy field names and include promotion fields
@@ -2316,8 +2320,12 @@ class GroupBuyController {
       console.log(`[Top Placement Group Buys] Group buy statuses:`, groupBuys.map(gb => ({ id: gb.id, status: gb.status })));
 
       // Sort group buys to match placement order
+      // Convert IDs to integers for proper comparison (IDs from placements are strings, DB IDs are integers)
       const sortedGroupBuys = groupBuyIds
-        .map(id => groupBuys.find(gb => gb.id === id))
+        .map(id => {
+          const numericId = typeof id === 'string' ? parseInt(id, 10) : id;
+          return groupBuys.find(gb => gb.id === numericId);
+        })
         .filter(gb => gb !== undefined);
 
       // Map group buy field names and include promotion fields
