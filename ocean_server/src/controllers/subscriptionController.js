@@ -102,12 +102,20 @@ class SubscriptionController {
   static async subscribeToPlan(req, res) {
     try {
       const userId = req.user.id;
-      const { planId, paymentMethod = 'manual' } = req.body;
+      const { planId, paymentMethod } = req.body;
 
       if (!planId) {
         return res.status(400).json({
           success: false,
           message: 'Plan ID is required'
+        });
+      }
+
+      // Require payment method to be explicitly provided
+      if (!paymentMethod) {
+        return res.status(400).json({
+          success: false,
+          message: 'Payment method is required. Please select a payment method.'
         });
       }
 
@@ -164,8 +172,18 @@ class SubscriptionController {
 
       // Get the appropriate payment provider based on payment method
       const { PaymentProviderFactory } = require('../providers/PaymentProvider');
-      const providerName = paymentMethod === 'flutterwave' || paymentMethod?.includes('flutterwave') ? 'flutterwave' : 
-                           paymentMethod === 'paystack' ? 'paystack' : 'mock';
+      // Only allow flutterwave or paystack - no default fallback
+      let providerName;
+      if (paymentMethod === 'flutterwave' || paymentMethod?.includes('flutterwave')) {
+        providerName = 'flutterwave';
+      } else if (paymentMethod === 'paystack') {
+        providerName = 'paystack';
+      } else {
+        return res.status(400).json({
+          success: false,
+          message: `Invalid payment method: ${paymentMethod}. Supported methods: flutterwave, paystack`
+        });
+      }
       const paymentProvider = PaymentProviderFactory.getProvider(providerName);
 
       // Extract actual payment method type (card, virtual_account, googlepay)

@@ -526,15 +526,25 @@ class FlutterwaveProvider extends PaymentProviderInterface {
       const txRef = `OCEAN_SUB_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
       // Prepare payment request
+      // Convert amount to number (Flutterwave requires number, not string)
+      const amount = typeof paymentData.amount === 'string' 
+        ? parseFloat(paymentData.amount) 
+        : (typeof paymentData.amount === 'number' ? paymentData.amount : 0);
+      
+      if (amount <= 0) {
+        throw new Error('Invalid payment amount. Amount must be greater than 0.');
+      }
+
       const paymentRequest = {
         tx_ref: txRef,
-        amount: paymentData.amount,
+        amount: amount, // Ensure it's a number
         currency: paymentData.currency || 'NGN',
         redirect_url: `${process.env.BASE_URL || 'http://localhost:5000'}/api/subscriptions/callback/flutterwave`,
         payment_options: 'card,googlepay', // Enable card and Google Pay
         customer: {
           email: paymentData.email,
-          name: paymentData.name || 'Customer'
+          name: paymentData.name || 'Customer',
+          phonenumber: paymentData.phone || '' // Add phone if available
         },
         customizations: {
           title: `Ocean Subscription - ${paymentData.planName || 'Plan'}`,
@@ -608,11 +618,35 @@ class FlutterwaveProvider extends PaymentProviderInterface {
         throw new Error(response.data.message || 'Failed to create payment intent');
       }
     } catch (error) {
-      console.error('Flutterwave payment intent error:', error.response?.data || error.message);
+      console.error('Flutterwave payment intent error:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        url: error.config?.url,
+        method: error.config?.method,
+        requestData: error.config?.data
+      });
+      
+      // Extract more detailed error message
+      let errorMessage = 'Error creating payment intent';
+      if (error.response?.data) {
+        if (error.response.data.message) {
+          errorMessage = error.response.data.message;
+        } else if (error.response.data.error) {
+          errorMessage = error.response.data.error;
+        } else if (typeof error.response.data === 'string') {
+          errorMessage = error.response.data;
+        }
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
       return {
         success: false,
-        message: error.response?.data?.message || error.message || 'Error creating payment intent',
-        error: error.message
+        message: errorMessage,
+        error: error.response?.data || error.message,
+        statusCode: error.response?.status
       };
     }
   }
