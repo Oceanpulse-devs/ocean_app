@@ -21,7 +21,7 @@ class SubscriptionService {
   async getUserById(userId) {
     try {
       const user = await UserTable.findByPk(userId, {
-        attributes: ['id', 'email', 'fullName', 'username', 'phoneNumber', 'phone']
+        attributes: ['id', 'email', 'fullName', 'username'] // phoneNumber and phone don't exist in UserTable
       });
       return user;
     } catch (error) {
