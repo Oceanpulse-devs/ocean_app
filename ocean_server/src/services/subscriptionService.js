@@ -91,8 +91,11 @@ class SubscriptionService {
         currency: plan.currency
       });
 
-      // Update user's subscription status
-      await this.updateUserSubscriptionStatus(userId, 'active', planId, endDate);
+      // DON'T update user subscription status to 'active' here
+      // Only update to 'active' after payment verification succeeds
+      // For pending subscriptions, keep user status as is or set to 'pending'
+      console.log('Subscription created with pending status. Will activate after payment verification.');
+      console.log('Payment reference:', paymentData.reference);
 
       return subscription;
     } catch (error) {
@@ -112,13 +115,14 @@ class SubscriptionService {
     try {
       const { UserTable, UserSubscription } = require('../../models');
       
-      // If activating a new subscription, cancel all existing active subscriptions first
+      // Only cancel existing subscriptions if setting to 'active'
+      // For 'pending', we might have multiple pending subscriptions
       if (status === 'active' && planId) {
         console.log('Cancelling existing active subscriptions for user:', userId);
         
         await UserSubscription.update({
           status: 'cancelled',
-          cancellationReason: 'Upgraded to new plan',
+          cancellationReason: 'Replaced by new active subscription',
           cancelledAt: new Date()
         }, {
           where: { 
@@ -134,18 +138,28 @@ class SubscriptionService {
         console.log('Reset usage counters for plan change');
       }
       
-      // Update users table
-      await UserTable.update({
-        subscription_status: status,
-        current_plan_id: planId,
-        subscription_expires_at: expiresAt
-      }, {
-        where: { id: userId }
-      });
-
-      // Also update user_subscriptions table if we have a planId
+      // Update users table - only for active subscriptions
       if (planId && status === 'active') {
-        // Find the most recent subscription for this user
+        // Only update users table when subscription is actually active
+        // For pending, we don't update the users table yet
+        await UserTable.update({
+          subscription_status: status,
+          current_plan_id: planId,
+          subscription_expires_at: expiresAt
+        }, {
+          where: { id: userId }
+        });
+        console.log('Updated users table with active subscription:', { userId, status, planId, expiresAt });
+      } else if (status === 'pending') {
+        // For pending subscriptions, don't update users table
+        // Keep existing subscription status until payment is verified
+        console.log('Subscription is pending payment. Not updating user subscription status yet.');
+        return; // Exit early for pending status
+      }
+
+      // Also update user_subscriptions table if we have a planId and status is active
+      if (planId && status === 'active') {
+        // Find the most recent subscription for this user with this plan
         const subscription = await UserSubscription.findOne({
           where: { 
             userId: userId,
@@ -155,11 +169,10 @@ class SubscriptionService {
         });
 
         if (subscription) {
-          await UserSubscription.update({
-            status: status,
+          await subscription.update({
+            status: 'active',
+            startDate: new Date(),
             endDate: expiresAt
-          }, {
-            where: { id: subscription.id }
           });
           
           console.log('Updated user_subscriptions table for subscription:', subscription.id);

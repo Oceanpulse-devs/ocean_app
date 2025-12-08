@@ -1060,8 +1060,8 @@ class SubscriptionController {
           
           if (user && plan) {
             // Check if this is a plan change or new subscription
-            const currentSubscriptionStatus = await SubscriptionStatusChecker.getUserSubscriptionStatus(paymentResult.userId);
-            const isPlanChange = currentSubscriptionStatus.hasActiveSubscription && currentSubscriptionStatus.plan && currentSubscriptionStatus.plan.id !== paymentResult.planId;
+            const currentSubscriptionStatus = await SubscriptionStatusChecker.getUserSubscriptionStatus(subscription.userId);
+            const isPlanChange = currentSubscriptionStatus.hasActiveSubscription && currentSubscriptionStatus.plan && currentSubscriptionStatus.plan.id !== subscription.planId;
             
             let emailTemplate;
             
@@ -1223,47 +1223,102 @@ class SubscriptionController {
    */
   static async handleFlutterwaveCallback(req, res) {
     try {
-      const { reference, status, tx_ref, flw_ref } = req.query;
+      // Flutterwave redirects with query parameters
+      // Check for both tx_ref and transaction_id
+      const { tx_ref, transaction_id, status, flw_ref, reference } = req.query;
       
-      console.log('Flutterwave callback received:', { reference, status, tx_ref, flw_ref });
+      console.log('Flutterwave callback received:', { 
+        tx_ref, 
+        transaction_id, 
+        status, 
+        flw_ref,
+        reference,
+        allParams: req.query 
+      });
       
-      // Use tx_ref or flw_ref for verification
-      const paymentReference = tx_ref || flw_ref || reference;
+      // Flutterwave sends tx_ref in the redirect URL
+      // Use tx_ref first, then transaction_id, then flw_ref, then reference
+      const paymentReference = tx_ref || transaction_id || flw_ref || reference;
       
       if (!paymentReference) {
+        console.error('No payment reference found in callback');
         return res.status(400).json({
           success: false,
-          message: 'Missing payment reference'
+          message: 'Payment reference not found in callback'
         });
       }
-      
+
       // Verify payment with Flutterwave
       const { PaymentProviderFactory } = require('../providers/PaymentProvider');
       const provider = PaymentProviderFactory.getProvider('flutterwave');
       
-      console.log('Verifying payment with Flutterwave API...');
+      console.log('Verifying payment with Flutterwave API using reference:', paymentReference);
       const paymentResult = await provider.verifyPayment(paymentReference);
       
       console.log('Payment verification result:', paymentResult);
       
       if (paymentResult.success && paymentResult.status === 'success') {
-        // Update subscription status
+        // Find pending subscription by payment reference
+        const { UserSubscription } = require('../../models');
+        let subscription = await UserSubscription.findOne({
+          where: {
+            paymentReference: paymentReference,
+            status: 'pending'
+          },
+          order: [['created_at', 'DESC']]
+        });
+
+        if (!subscription) {
+          console.error('Pending subscription not found for reference:', paymentReference);
+          // Try to find by userId and planId from verification result
+          if (paymentResult.userId && paymentResult.planId) {
+            const subscriptionByUser = await UserSubscription.findOne({
+              where: {
+                userId: paymentResult.userId,
+                planId: paymentResult.planId,
+                status: 'pending'
+              },
+              order: [['created_at', 'DESC']]
+            });
+            
+            if (subscriptionByUser) {
+              console.log('Found subscription by userId and planId, updating payment reference');
+              await subscriptionByUser.update({
+                paymentReference: paymentReference
+              });
+              // Use this subscription
+              subscription = subscriptionByUser;
+            }
+          }
+          
+          if (!subscription) {
+            return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/subscription/error?message=${encodeURIComponent('Subscription not found')}`);
+          }
+        }
+
+        // Activate subscription
+        await subscription.update({
+          status: 'active',
+          startDate: new Date()
+        });
+
+        // Update user subscription status
         await subscriptionService.updateUserSubscriptionStatus(
-          paymentResult.userId,
+          subscription.userId,
           'active',
-          paymentResult.planId,
-          new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days from now
+          subscription.planId,
+          subscription.endDate
         );
         
-        // Send subscription confirmation email (similar to Paystack callback)
+        // Send subscription confirmation email
         try {
-          const user = await subscriptionService.getUserById(paymentResult.userId);
-          const plan = await subscriptionService.getPlanById(paymentResult.planId);
+          const user = await subscriptionService.getUserById(subscription.userId);
+          const plan = await subscriptionService.getPlanById(subscription.planId);
           
           if (user && plan) {
             // Check if this is a plan change or new subscription
-            const currentSubscriptionStatus = await SubscriptionStatusChecker.getUserSubscriptionStatus(paymentResult.userId);
-            const isPlanChange = currentSubscriptionStatus.hasActiveSubscription && currentSubscriptionStatus.plan && currentSubscriptionStatus.plan.id !== paymentResult.planId;
+            const currentSubscriptionStatus = await SubscriptionStatusChecker.getUserSubscriptionStatus(subscription.userId);
+            const isPlanChange = currentSubscriptionStatus.hasActiveSubscription && currentSubscriptionStatus.plan && currentSubscriptionStatus.plan.id !== subscription.planId;
             
             let emailTemplate;
             
@@ -1300,17 +1355,12 @@ class SubscriptionController {
         // Redirect to success page (mobile app deep link or web page)
         return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/subscription/success?reference=${paymentReference}`);
       } else {
-        // Redirect to failure page
-        return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/subscription/failed?reference=${paymentReference}`);
+        console.error('Payment verification failed:', paymentResult);
+        return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/subscription/error?message=${encodeURIComponent(paymentResult.message || 'Payment verification failed')}`);
       }
-      
     } catch (error) {
       console.error('Error handling Flutterwave callback:', error);
-      res.status(500).json({
-        success: false,
-        message: 'Error processing callback',
-        error: error.message
-      });
+      return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/subscription/error?message=${encodeURIComponent(error.message || 'Error processing payment')}`);
     }
   }
 }

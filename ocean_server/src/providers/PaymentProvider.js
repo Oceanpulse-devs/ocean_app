@@ -704,19 +704,55 @@ class FlutterwaveProvider extends PaymentProviderInterface {
       }
 
       console.log('Verifying Flutterwave payment:', paymentReference);
+      console.log('Using base URL:', this.baseUrl);
 
-      const response = await axios.get(
-        `${this.baseUrl}/transactions/${paymentReference}/verify`,
-        {
-          headers: {
-            'Authorization': `Bearer ${this.secretKey}`, // Use SECRET_KEY directly
-            'Content-Type': 'application/json'
+      // Try to verify with the provided reference
+      // Flutterwave accepts both tx_ref and flw_ref
+      let response;
+      try {
+        response = await axios.get(
+          `${this.baseUrl}/transactions/${paymentReference}/verify`,
+          {
+            headers: {
+              'Authorization': `Bearer ${this.secretKey}`,
+              'Content-Type': 'application/json'
+            },
+            timeout: 30000 // 30 second timeout
           }
+        );
+      } catch (verifyError) {
+        // If verification fails, log detailed error
+        console.error('Flutterwave verification request failed:', {
+          message: verifyError.message,
+          response: verifyError.response?.data,
+          status: verifyError.response?.status,
+          statusText: verifyError.response?.statusText,
+          url: verifyError.config?.url
+        });
+        
+        // If it's a "not found" error, provide helpful message
+        if (verifyError.response?.status === 404) {
+          return {
+            success: false,
+            status: 'error',
+            message: `No transaction found for reference: ${paymentReference}. Please check the payment reference.`,
+            error: verifyError.response?.data || verifyError.message
+          };
         }
-      );
+        throw verifyError;
+      }
 
       if (response.data.status === 'success') {
         const transaction = response.data.data;
+        
+        console.log('Transaction verified successfully:', {
+          tx_ref: transaction.tx_ref,
+          flw_ref: transaction.flw_ref,
+          status: transaction.status,
+          amount: transaction.amount,
+          currency: transaction.currency,
+          hasMeta: !!transaction.meta
+        });
         
         return {
           success: true,
@@ -730,18 +766,26 @@ class FlutterwaveProvider extends PaymentProviderInterface {
           paidAt: transaction.created_at
         };
       } else {
+        console.warn('Flutterwave verification returned non-success status:', response.data);
         return {
           success: false,
           status: 'failed',
-          message: response.data.message || 'Payment verification failed'
+          message: response.data.message || 'Payment verification failed',
+          data: response.data
         };
       }
     } catch (error) {
-      console.error('Flutterwave payment verification error:', error.response?.data || error.message);
+      console.error('Flutterwave payment verification error:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        reference: paymentReference
+      });
       return {
         success: false,
-        status: 'failed',
-        message: error.response?.data?.message || error.message || 'Error verifying payment'
+        status: 'error',
+        message: error.response?.data?.message || error.message || 'Error verifying payment',
+        error: error.response?.data || error.message
       };
     }
   }
