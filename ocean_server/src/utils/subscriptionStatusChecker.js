@@ -76,7 +76,10 @@ class SubscriptionStatusChecker {
           maxDailyDms: plan.max_daily_dms,
           maxDailyNotifications: plan.max_daily_notifications,
           maxArProducts: plan.max_ar_products,
-          maxPromotionalBoosts: plan.max_promotional_boosts,
+          // Convert 999999 to -1 for unlimited boosts (frontend expects -1 for unlimited)
+          maxPromotionalBoosts: (plan.has_unlimited_features || plan.name === 'surge')
+            ? -1  // Unlimited for surge plan
+            : (plan.max_promotional_boosts === 999999 ? -1 : plan.max_promotional_boosts), // Also handle if DB has 999999
           // Handle top placements and spotlights limits
           // Since max_top_placements and max_spotlights columns don't exist in DB,
           // we determine limits based on plan name and has_unlimited_features flag
