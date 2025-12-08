@@ -235,6 +235,13 @@ class SubscriptionController {
           planName: plan.display_name || plan.name
         });
 
+        console.log('Payment intent created:', {
+          success: paymentIntent.success,
+          hasCheckoutUrl: !!paymentIntent.checkoutUrl,
+          checkoutUrl: paymentIntent.checkoutUrl,
+          reference: paymentIntent.reference
+        });
+
         // Check if payment intent creation failed
         if (!paymentIntent.success) {
           return res.status(400).json({
@@ -284,6 +291,13 @@ class SubscriptionController {
         // For Standard Checkout (Paystack)
         paymentResponse.checkoutUrl = paymentIntent.checkoutUrl;
       }
+
+      console.log('Sending subscription response to frontend:', {
+        hasCheckoutUrl: !!paymentResponse.checkoutUrl,
+        checkoutUrl: paymentResponse.checkoutUrl,
+        subscriptionId: subscription.id,
+        paymentReference: paymentResponse.reference
+      });
 
       res.status(201).json({
         success: true,

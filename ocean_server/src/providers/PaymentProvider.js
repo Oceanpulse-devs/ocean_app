@@ -589,12 +589,30 @@ class FlutterwaveProvider extends PaymentProviderInterface {
           headers: {
             'Authorization': `Bearer ${this.secretKey.trim()}`, // Trim any whitespace
             'Content-Type': 'application/json'
-          }
+          },
+          timeout: 30000 // 30 second timeout
         }
       );
 
+      console.log('Flutterwave API response received:', {
+        status: response.status,
+        dataStatus: response.data?.status,
+        hasData: !!response.data?.data,
+        responseKeys: Object.keys(response.data || {}),
+        link: response.data?.data?.link,
+        flwRef: response.data?.data?.flw_ref
+      });
+
       if (response.data.status === 'success') {
         const paymentResponse = response.data.data;
+        
+        console.log('Payment response data:', {
+          hasLink: !!paymentResponse.link,
+          link: paymentResponse.link,
+          flwRef: paymentResponse.flw_ref,
+          amount: paymentResponse.amount,
+          currency: paymentResponse.currency
+        });
         
         // Calculate expiration (24 hours from now)
         const expiresAt = new Date();
@@ -637,6 +655,7 @@ class FlutterwaveProvider extends PaymentProviderInterface {
           status: 'pending'
         };
       } else {
+        console.error('Flutterwave API returned non-success status:', response.data);
         throw new Error(response.data.message || 'Failed to create payment intent');
       }
     } catch (error) {
