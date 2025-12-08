@@ -511,8 +511,10 @@ class FlutterwaveProvider extends PaymentProviderInterface {
    */
   async createPaymentIntent(userId, planId, paymentData) {
     try {
-      // Get valid access token
-      const accessToken = await this.tokenManager.getAccessToken();
+      // Use SECRET_KEY directly (not OAuth token) as per Flutterwave documentation
+      if (!this.secretKey) {
+        throw new Error('Flutterwave SECRET_KEY not configured. Please set FLW_SECRET_KEY in environment variables.');
+      }
 
       console.log('Creating Flutterwave payment intent:', {
         userId,
@@ -525,8 +527,7 @@ class FlutterwaveProvider extends PaymentProviderInterface {
       // Generate unique transaction reference
       const txRef = `OCEAN_SUB_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
-      // Prepare payment request
-      // Convert amount to number (Flutterwave requires number, not string)
+      // Convert amount to number
       const amount = typeof paymentData.amount === 'string' 
         ? parseFloat(paymentData.amount) 
         : (typeof paymentData.amount === 'number' ? paymentData.amount : 0);
@@ -535,21 +536,25 @@ class FlutterwaveProvider extends PaymentProviderInterface {
         throw new Error('Invalid payment amount. Amount must be greater than 0.');
       }
 
+      // Fix redirect URL to prevent double slashes
+      const baseUrl = (process.env.BASE_URL || 'http://localhost:5000').replace(/\/$/, '');
+      const redirectUrl = `${baseUrl}/api/subscriptions/callback/flutterwave`;
+
+      // Prepare payment request (simplified structure as per guide)
       const paymentRequest = {
         tx_ref: txRef,
-        amount: amount, // Ensure it's a number
+        amount: amount,
         currency: paymentData.currency || 'NGN',
-        redirect_url: `${process.env.BASE_URL || 'http://localhost:5000'}/api/subscriptions/callback/flutterwave`,
-        payment_options: 'card,googlepay', // Enable card and Google Pay
+        redirect_url: redirectUrl,
         customer: {
           email: paymentData.email,
           name: paymentData.name || 'Customer',
-          phonenumber: paymentData.phone || '' // Add phone if available
+          ...(paymentData.phone && { phonenumber: paymentData.phone })
         },
         customizations: {
           title: `Ocean Subscription - ${paymentData.planName || 'Plan'}`,
           description: `Subscription payment for ${paymentData.planName || 'plan'}`,
-          logo: process.env.APP_LOGO_URL || ''
+          ...(process.env.APP_LOGO_URL && { logo: process.env.APP_LOGO_URL })
         },
         meta: {
           userId: userId,
@@ -559,13 +564,19 @@ class FlutterwaveProvider extends PaymentProviderInterface {
         }
       };
 
-      // Make API request to Flutterwave
+      console.log('Making Flutterwave API request:', {
+        url: `${this.baseUrl}/payments`,
+        method: 'POST',
+        hasSecretKey: !!this.secretKey
+      });
+
+      // Make API request using SECRET_KEY (not OAuth token)
       const response = await axios.post(
         `${this.baseUrl}/payments`,
         paymentRequest,
         {
           headers: {
-            'Authorization': `Bearer ${accessToken}`,
+            'Authorization': `Bearer ${this.secretKey}`, // Use SECRET_KEY directly
             'Content-Type': 'application/json'
           }
         }
@@ -658,7 +669,9 @@ class FlutterwaveProvider extends PaymentProviderInterface {
    */
   async verifyPayment(paymentReference) {
     try {
-      const accessToken = await this.tokenManager.getAccessToken();
+      if (!this.secretKey) {
+        throw new Error('Flutterwave SECRET_KEY not configured');
+      }
 
       console.log('Verifying Flutterwave payment:', paymentReference);
 
@@ -666,7 +679,7 @@ class FlutterwaveProvider extends PaymentProviderInterface {
         `${this.baseUrl}/transactions/${paymentReference}/verify`,
         {
           headers: {
-            'Authorization': `Bearer ${accessToken}`,
+            'Authorization': `Bearer ${this.secretKey}`, // Use SECRET_KEY directly
             'Content-Type': 'application/json'
           }
         }
@@ -712,7 +725,7 @@ class FlutterwaveProvider extends PaymentProviderInterface {
    */
   async verifyWebhookSignature(provider, webhookData, headers) {
     try {
-      // Flutterwave webhook verification
+      // Flutterwave webhook verification uses verif-hash header
       const signature = headers['verif-hash'];
       
       if (!signature || !this.encryptionKey) {
@@ -721,18 +734,8 @@ class FlutterwaveProvider extends PaymentProviderInterface {
       }
 
       // Flutterwave sends the signature in the verif-hash header
-      // The signature should match your encryption key
-      // For production, you can also verify by hashing the payload
-      // For now, we do a direct comparison (Flutterwave's recommended approach)
-      const isValid = signature === this.encryptionKey;
-      
-      if (!isValid) {
-        console.warn('⚠️ Flutterwave webhook signature verification failed');
-        console.log('Expected:', this.encryptionKey?.substring(0, 10) + '...');
-        console.log('Received:', signature?.substring(0, 10) + '...');
-      }
-      
-      return isValid;
+      // It should match your encryption key (FLW_SECRET_HASH)
+      return signature === this.encryptionKey;
     } catch (error) {
       console.error('Flutterwave webhook signature verification error:', error);
       return false;
@@ -818,7 +821,9 @@ class FlutterwaveProvider extends PaymentProviderInterface {
    */
   async createVirtualAccount(userId, planId, paymentData) {
     try {
-      const accessToken = await this.tokenManager.getAccessToken();
+      if (!this.secretKey) {
+        throw new Error('Flutterwave SECRET_KEY not configured');
+      }
 
       console.log('Creating Flutterwave virtual account:', {
         userId,
@@ -850,7 +855,7 @@ class FlutterwaveProvider extends PaymentProviderInterface {
         request,
         {
           headers: {
-            'Authorization': `Bearer ${accessToken}`,
+            'Authorization': `Bearer ${this.secretKey}`, // Use SECRET_KEY directly
             'Content-Type': 'application/json'
           }
         }
@@ -887,7 +892,9 @@ class FlutterwaveProvider extends PaymentProviderInterface {
    */
   async checkVirtualAccountStatus(accountNumber, bankName) {
     try {
-      const accessToken = await this.tokenManager.getAccessToken();
+      if (!this.secretKey) {
+        throw new Error('Flutterwave SECRET_KEY not configured');
+      }
 
       console.log('Checking Flutterwave virtual account status:', {
         accountNumber,
