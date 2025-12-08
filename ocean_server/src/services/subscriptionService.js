@@ -21,7 +21,7 @@ class SubscriptionService {
   async getUserById(userId) {
     try {
       const user = await UserTable.findByPk(userId, {
-        attributes: ['id', 'email', 'fullName', 'username']
+        attributes: ['id', 'email', 'fullName', 'username', 'phoneNumber', 'phone']
       });
       return user;
     } catch (error) {

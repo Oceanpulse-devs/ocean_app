@@ -1,6 +1,6 @@
 const subscriptionService = require('../services/subscriptionService');
 const SubscriptionStatusChecker = require('../utils/subscriptionStatusChecker');
-const { PaymentProvider } = require('../providers/PaymentProvider');
+const { PaymentProvider, PaymentProviderFactory } = require('../providers/PaymentProvider');
 const { SellersTable } = require('../../models');
 const { sendEmail, emailTemplates } = require('../services/emailService');
 
@@ -162,22 +162,69 @@ class SubscriptionController {
         });
       }
 
-      // Create payment intent
-      const paymentIntent = await PaymentProvider.createPaymentIntent(userId, plan.id, {
-        email: user.email,
-        paystackPlanCode: plan.paystackPlanCode,
-        amount: plan.price,
-        currency: plan.currency,
-        billingPeriod: plan.billingPeriod
-      });
+      // Get the appropriate payment provider based on payment method
+      const { PaymentProviderFactory } = require('../providers/PaymentProvider');
+      const providerName = paymentMethod === 'flutterwave' || paymentMethod?.includes('flutterwave') ? 'flutterwave' : 
+                           paymentMethod === 'paystack' ? 'paystack' : 'mock';
+      const paymentProvider = PaymentProviderFactory.getProvider(providerName);
 
-      // Check if payment intent creation failed
-      if (!paymentIntent.success) {
-        return res.status(400).json({
-          success: false,
-          message: 'Failed to create payment intent',
-          error: paymentIntent.message
+      // Extract actual payment method type (card, virtual_account, googlepay)
+      const actualPaymentMethod = req.body.actualPaymentMethod || 'card'; // Default to card
+      const isVirtualAccount = actualPaymentMethod === 'virtual_account';
+
+      let paymentIntent;
+      let virtualAccountDetails = null;
+
+      if (isVirtualAccount && providerName === 'flutterwave') {
+        // Create virtual account for payment
+        virtualAccountDetails = await paymentProvider.createVirtualAccount(userId, plan.id, {
+          email: user.email,
+          name: user.fullName || user.username || 'Customer',
+          firstname: (user.fullName || user.username || 'Customer').split(' ')[0],
+          lastname: (user.fullName || user.username || 'Customer').split(' ').slice(1).join(' ') || '',
+          phone: user.phoneNumber || user.phone || '',
+          amount: plan.price,
+          currency: plan.currency,
+          planName: plan.display_name || plan.name
         });
+
+        if (!virtualAccountDetails.success) {
+          return res.status(400).json({
+            success: false,
+            message: 'Failed to create virtual account',
+            error: virtualAccountDetails.message
+          });
+        }
+
+        // Create a payment intent-like structure for virtual account
+        paymentIntent = {
+          success: true,
+          reference: virtualAccountDetails.reference,
+          amount: plan.price,
+          currency: plan.currency,
+          expiresAt: virtualAccountDetails.expiresAt ? new Date(virtualAccountDetails.expiresAt) : new Date(Date.now() + 24 * 60 * 60 * 1000)
+        };
+      } else {
+        // Create payment intent with plan details (for card/Google Pay)
+        paymentIntent = await paymentProvider.createPaymentIntent(userId, plan.id, {
+          email: user.email,
+          name: user.fullName || user.username || 'Customer',
+          phone: user.phoneNumber || user.phone || '',
+          paystackPlanCode: plan.paystackPlanCode, // For Paystack
+          amount: plan.price,
+          currency: plan.currency,
+          billingPeriod: plan.billingPeriod,
+          planName: plan.display_name || plan.name
+        });
+
+        // Check if payment intent creation failed
+        if (!paymentIntent.success) {
+          return res.status(400).json({
+            success: false,
+            message: 'Failed to create payment intent',
+            error: paymentIntent.message
+          });
+        }
       }
 
       // Create pending subscription
@@ -185,6 +232,40 @@ class SubscriptionController {
         reference: paymentIntent.reference,
         method: paymentMethod
       });
+
+      // Prepare payment response
+      const paymentResponse = {
+        reference: paymentIntent.reference,
+        amount: paymentIntent.amount,
+        currency: paymentIntent.currency,
+        expiresAt: paymentIntent.expiresAt
+      };
+
+      // Add provider-specific payment data
+      if (providerName === 'flutterwave') {
+        if (isVirtualAccount && virtualAccountDetails) {
+          // Include virtual account details
+          paymentResponse.virtualAccount = {
+            accountNumber: virtualAccountDetails.accountNumber,
+            bankName: virtualAccountDetails.bankName,
+            reference: virtualAccountDetails.reference,
+            flwRef: virtualAccountDetails.flwRef,
+            expiresAt: virtualAccountDetails.expiresAt
+          };
+        } else {
+          // For card/Google Pay - include both checkoutUrl (for WebView) and paymentData (for future SDK)
+          if (paymentIntent.checkoutUrl) {
+            paymentResponse.checkoutUrl = paymentIntent.checkoutUrl;
+          }
+          if (paymentIntent.paymentData) {
+            paymentResponse.paymentData = paymentIntent.paymentData;
+            paymentResponse.publicKey = paymentIntent.paymentData.publicKey;
+          }
+        }
+      } else if (paymentIntent.checkoutUrl) {
+        // For Standard Checkout (Paystack)
+        paymentResponse.checkoutUrl = paymentIntent.checkoutUrl;
+      }
 
       res.status(201).json({
         success: true,
@@ -201,13 +282,7 @@ class SubscriptionController {
             startDate: subscription.start_date,
             endDate: subscription.end_date
           },
-          payment: {
-            reference: paymentIntent.reference,
-            amount: paymentIntent.amount,
-            currency: paymentIntent.currency,
-            checkoutUrl: paymentIntent.checkoutUrl,
-            expiresAt: paymentIntent.expiresAt
-          }
+          payment: paymentResponse
         }
       });
     } catch (error) {
@@ -215,6 +290,140 @@ class SubscriptionController {
       res.status(500).json({
         success: false,
         message: 'Error creating subscription',
+        error: error.message
+      });
+    }
+  }
+
+  /**
+   * Verify payment and update subscription status
+   * POST /api/subscriptions/verify-payment
+   */
+  static async verifyPayment(req, res) {
+    try {
+      const userId = req.user.id;
+      const { paymentReference, paymentMethod = 'flutterwave' } = req.body;
+
+      if (!paymentReference) {
+        return res.status(400).json({
+          success: false,
+          message: 'Payment reference is required'
+        });
+      }
+
+      console.log('Verifying payment:', {
+        userId,
+        paymentReference,
+        paymentMethod
+      });
+
+      // Get payment provider
+      const { PaymentProviderFactory } = require('../providers/PaymentProvider');
+      const providerName = paymentMethod === 'flutterwave' ? 'flutterwave' : 
+                           paymentMethod === 'paystack' ? 'paystack' : 'mock';
+      const provider = PaymentProviderFactory.getProvider(providerName);
+
+      // Verify payment
+      const verificationResult = await provider.verifyPayment(paymentReference);
+
+      console.log('Payment verification result:', verificationResult);
+
+      if (verificationResult.success && verificationResult.status === 'success') {
+        // Get plan ID from verification result or find active subscription
+        let planId = verificationResult.planId;
+        
+        if (!planId) {
+          // Find pending subscription for this user with this payment reference
+          const { UserSubscription } = require('../../models');
+          const subscription = await UserSubscription.findOne({
+            where: {
+              userId: userId,
+              paymentReference: paymentReference,
+              status: 'pending'
+            },
+            order: [['createdAt', 'DESC']]
+          });
+
+          if (subscription) {
+            planId = subscription.planId;
+          }
+        }
+
+        if (planId) {
+          // Update subscription status
+          await subscriptionService.updateUserSubscriptionStatus(
+            userId,
+            'active',
+            planId,
+            new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days from now
+          );
+
+          // Update subscription record
+          const { UserSubscription } = require('../../models');
+          await UserSubscription.update(
+            {
+              status: 'active',
+              startDate: new Date(),
+              endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+            },
+            {
+              where: {
+                userId: userId,
+                paymentReference: paymentReference,
+                status: 'pending'
+              }
+            }
+          );
+
+          // Get updated subscription
+          const subscription = await UserSubscription.findOne({
+            where: {
+              userId: userId,
+              paymentReference: paymentReference,
+              status: 'active'
+            },
+            include: [{
+              model: require('../../models').SubscriptionPlan,
+              as: 'plan'
+            }]
+          });
+
+          return res.json({
+            success: true,
+            message: 'Payment verified successfully',
+            data: {
+              status: 'success',
+              subscription: subscription ? {
+                id: subscription.id,
+                planId: subscription.planId,
+                status: subscription.status,
+                plan: subscription.plan ? {
+                  name: subscription.plan.name,
+                  displayName: subscription.plan.display_name,
+                  price: subscription.plan.price,
+                  currency: subscription.plan.currency
+                } : null
+              } : null
+            }
+          });
+        } else {
+          return res.status(404).json({
+            success: false,
+            message: 'Subscription not found for this payment'
+          });
+        }
+      }
+
+      return res.status(400).json({
+        success: false,
+        message: 'Payment verification failed',
+        data: verificationResult
+      });
+    } catch (error) {
+      console.error('Error verifying payment:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error verifying payment',
         error: error.message
       });
     }
@@ -902,6 +1111,169 @@ class SubscriptionController {
       res.status(500).json({
         success: false,
         message: 'Error processing payment callback',
+        error: error.message
+      });
+    }
+  }
+
+  /**
+   * Handle Flutterwave payment webhook
+   * POST /api/subscriptions/webhooks/flutterwave
+   */
+  static async handleFlutterwaveWebhook(req, res) {
+    try {
+      const { PaymentProviderFactory } = require('../providers/PaymentProvider');
+      const provider = PaymentProviderFactory.getProvider('flutterwave');
+      
+      // Verify webhook signature
+      const isValid = await provider.verifyWebhookSignature(
+        'flutterwave',
+        req.body,
+        req.headers
+      );
+      
+      if (!isValid) {
+        console.log('Invalid Flutterwave webhook signature');
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid webhook signature'
+        });
+      }
+      
+      console.log('Valid Flutterwave webhook signature received');
+      console.log('Webhook event:', req.body.event);
+      
+      // Process webhook
+      const result = await provider.processWebhook('flutterwave', req.body);
+      
+      if (result.success && result.paymentStatus === 'success') {
+        // Update subscription status
+        await SubscriptionController.handleSuccessfulPayment({
+          reference: result.reference,
+          flwRef: result.flwRef,
+          metadata: {
+            userId: result.userId,
+            planId: result.planId
+          },
+          amount: result.amount,
+          currency: result.currency,
+          created_at: result.paidAt
+        });
+      } else if (!result.success && result.paymentStatus === 'failed') {
+        // Handle failed payment
+        await SubscriptionController.handleFailedPayment({
+          reference: result.reference,
+          message: result.message
+        });
+      }
+      
+      res.status(200).json({
+        success: true,
+        message: 'Webhook processed successfully'
+      });
+      
+    } catch (error) {
+      console.error('Error handling Flutterwave webhook:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error processing webhook',
+        error: error.message
+      });
+    }
+  }
+
+  /**
+   * Handle Flutterwave payment callback (redirect after payment)
+   * GET /api/subscriptions/callback/flutterwave
+   */
+  static async handleFlutterwaveCallback(req, res) {
+    try {
+      const { reference, status, tx_ref, flw_ref } = req.query;
+      
+      console.log('Flutterwave callback received:', { reference, status, tx_ref, flw_ref });
+      
+      // Use tx_ref or flw_ref for verification
+      const paymentReference = tx_ref || flw_ref || reference;
+      
+      if (!paymentReference) {
+        return res.status(400).json({
+          success: false,
+          message: 'Missing payment reference'
+        });
+      }
+      
+      // Verify payment with Flutterwave
+      const { PaymentProviderFactory } = require('../providers/PaymentProvider');
+      const provider = PaymentProviderFactory.getProvider('flutterwave');
+      
+      console.log('Verifying payment with Flutterwave API...');
+      const paymentResult = await provider.verifyPayment(paymentReference);
+      
+      console.log('Payment verification result:', paymentResult);
+      
+      if (paymentResult.success && paymentResult.status === 'success') {
+        // Update subscription status
+        await subscriptionService.updateUserSubscriptionStatus(
+          paymentResult.userId,
+          'active',
+          paymentResult.planId,
+          new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days from now
+        );
+        
+        // Send subscription confirmation email (similar to Paystack callback)
+        try {
+          const user = await subscriptionService.getUserById(paymentResult.userId);
+          const plan = await subscriptionService.getPlanById(paymentResult.planId);
+          
+          if (user && plan) {
+            // Check if this is a plan change or new subscription
+            const currentSubscriptionStatus = await SubscriptionStatusChecker.getUserSubscriptionStatus(paymentResult.userId);
+            const isPlanChange = currentSubscriptionStatus.hasActiveSubscription && currentSubscriptionStatus.plan && currentSubscriptionStatus.plan.id !== paymentResult.planId;
+            
+            let emailTemplate;
+            
+            if (isPlanChange && currentSubscriptionStatus.hasActiveSubscription) {
+              // Plan change email
+              emailTemplate = emailTemplates.subscriptionChanged(
+                user.fullName,
+                currentSubscriptionStatus.plan.displayName,
+                plan.displayName,
+                plan.price,
+                plan.currency,
+                new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+              );
+              console.log('📈 Sending plan change email');
+            } else {
+              // New subscription email
+              emailTemplate = emailTemplates.subscriptionCreated(
+                user.fullName,
+                plan.displayName,
+                plan.price,
+                plan.currency,
+                new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+              );
+              console.log('🎉 Sending new subscription email');
+            }
+            
+            await sendEmail(user.email, emailTemplate.subject, emailTemplate.html, 'subscription');
+            console.log('✅ Subscription email sent to:', user.email);
+          }
+        } catch (emailError) {
+          console.error('Error sending subscription email:', emailError);
+        }
+        
+        // Redirect to success page (mobile app deep link or web page)
+        return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/subscription/success?reference=${paymentReference}`);
+      } else {
+        // Redirect to failure page
+        return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/subscription/failed?reference=${paymentReference}`);
+      }
+      
+    } catch (error) {
+      console.error('Error handling Flutterwave callback:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error processing callback',
         error: error.message
       });
     }

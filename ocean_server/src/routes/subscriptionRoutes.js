@@ -49,6 +49,14 @@ router.post('/change-plan', authMiddleware, SubscriptionController.changePlan);
  */
 router.post('/cancel', authMiddleware, SubscriptionController.cancelSubscription);
 
+/**
+ * POST /api/subscriptions/verify-payment
+ * Verify payment and update subscription status
+ * Body: { paymentReference, paymentMethod }
+ * Requires authentication
+ */
+router.post('/verify-payment', authMiddleware, SubscriptionController.verifyPayment);
+
 // =============================================
 // USAGE & ANALYTICS ROUTES
 // =============================================
@@ -282,6 +290,33 @@ router.post('/cancel-all-active', async (req, res) => {
  * No authentication required
  */
 router.get('/callback/paystack', SubscriptionController.handlePaymentCallback);
+
+/**
+ * POST /api/subscriptions/webhooks/flutterwave
+ * Handle payment webhook from Flutterwave
+ * No authentication required (uses webhook signature verification)
+ */
+router.post('/webhooks/flutterwave', SubscriptionController.handleFlutterwaveWebhook);
+
+/**
+ * GET /api/subscriptions/webhooks/flutterwave
+ * Test endpoint to verify webhook URL is accessible
+ * No authentication required
+ */
+router.get('/webhooks/flutterwave', (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: 'Flutterwave webhook endpoint is accessible',
+    timestamp: new Date().toISOString()
+  });
+});
+
+/**
+ * GET /api/subscriptions/callback/flutterwave
+ * Handle payment callback from Flutterwave (redirect after payment)
+ * No authentication required
+ */
+router.get('/callback/flutterwave', SubscriptionController.handleFlutterwaveCallback);
 
 // =============================================
 // ADMIN ROUTES (Future Implementation)

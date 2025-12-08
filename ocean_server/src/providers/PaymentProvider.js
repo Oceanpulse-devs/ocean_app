@@ -487,6 +487,422 @@ class PaystackPaymentProvider extends PaymentProviderInterface {
 }
 
 /**
+ * Flutterwave Payment Provider Implementation
+ * 
+ * Implements payment processing using Flutterwave API
+ * Supports: Card payments, Virtual Accounts, Google Pay
+ */
+class FlutterwaveProvider extends PaymentProviderInterface {
+  constructor() {
+    super();
+    this.tokenManager = require('../utils/flutterwaveTokenManager');
+    this.baseUrl = process.env.FLW_BASE_URL || 'https://api.flutterwave.com/v3';
+    this.publicKey = process.env.FLW_PUBLIC_KEY;
+    this.secretKey = process.env.FLW_SECRET_KEY;
+    this.encryptionKey = process.env.FLW_ENCRYPTION_KEY;
+  }
+
+  /**
+   * Create a payment intent with Flutterwave
+   * @param {string} userId - User ID
+   * @param {string} planId - Plan ID
+   * @param {Object} paymentData - Payment details
+   * @returns {Object} Payment intent with reference and checkout URL
+   */
+  async createPaymentIntent(userId, planId, paymentData) {
+    try {
+      // Get valid access token
+      const accessToken = await this.tokenManager.getAccessToken();
+
+      console.log('Creating Flutterwave payment intent:', {
+        userId,
+        planId,
+        email: paymentData.email,
+        amount: paymentData.amount,
+        currency: paymentData.currency
+      });
+
+      // Generate unique transaction reference
+      const txRef = `OCEAN_SUB_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+      // Prepare payment request
+      const paymentRequest = {
+        tx_ref: txRef,
+        amount: paymentData.amount,
+        currency: paymentData.currency || 'NGN',
+        redirect_url: `${process.env.BASE_URL || 'http://localhost:5000'}/api/subscriptions/callback/flutterwave`,
+        payment_options: 'card,googlepay', // Enable card and Google Pay
+        customer: {
+          email: paymentData.email,
+          name: paymentData.name || 'Customer'
+        },
+        customizations: {
+          title: `Ocean Subscription - ${paymentData.planName || 'Plan'}`,
+          description: `Subscription payment for ${paymentData.planName || 'plan'}`,
+          logo: process.env.APP_LOGO_URL || ''
+        },
+        meta: {
+          userId: userId,
+          planId: planId,
+          planName: paymentData.planName || '',
+          billingPeriod: paymentData.billingPeriod || 'monthly'
+        }
+      };
+
+      // Make API request to Flutterwave
+      const response = await axios.post(
+        `${this.baseUrl}/payments`,
+        paymentRequest,
+        {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      if (response.data.status === 'success') {
+        const paymentResponse = response.data.data;
+        
+        // Calculate expiration (24 hours from now)
+        const expiresAt = new Date();
+        expiresAt.setHours(expiresAt.getHours() + 24);
+
+        // Return SDK-ready payment data
+        return {
+          success: true,
+          reference: txRef,
+          flwRef: paymentResponse.flw_ref, // Flutterwave reference
+          amount: paymentResponse.amount,
+          currency: paymentResponse.currency,
+          // SDK payment data (for inline payment form)
+          paymentData: {
+            tx_ref: txRef,
+            amount: paymentResponse.amount,
+            currency: paymentResponse.currency,
+            publicKey: this.publicKey, // Public key for SDK initialization
+            customer: {
+              email: paymentData.email,
+              name: paymentData.name || 'Customer',
+              phone_number: paymentData.phone || ''
+            },
+            paymentOptions: 'card,googlepay',
+            customizations: {
+              title: `Ocean Subscription - ${paymentData.planName || 'Plan'}`,
+              description: `Subscription payment for ${paymentData.planName || 'plan'}`,
+              logo: process.env.APP_LOGO_URL || ''
+            },
+            meta: {
+              userId: userId,
+              planId: planId,
+              planName: paymentData.planName || '',
+              billingPeriod: paymentData.billingPeriod || 'monthly'
+            }
+          },
+          // Fallback: Standard Checkout URL (for web or if SDK fails)
+          checkoutUrl: paymentResponse.link,
+          expiresAt: expiresAt,
+          status: 'pending'
+        };
+      } else {
+        throw new Error(response.data.message || 'Failed to create payment intent');
+      }
+    } catch (error) {
+      console.error('Flutterwave payment intent error:', error.response?.data || error.message);
+      return {
+        success: false,
+        message: error.response?.data?.message || error.message || 'Error creating payment intent',
+        error: error.message
+      };
+    }
+  }
+
+  /**
+   * Verify payment with Flutterwave
+   * @param {string} paymentReference - Payment reference (tx_ref or flw_ref)
+   * @returns {Object} Payment verification result
+   */
+  async verifyPayment(paymentReference) {
+    try {
+      const accessToken = await this.tokenManager.getAccessToken();
+
+      console.log('Verifying Flutterwave payment:', paymentReference);
+
+      const response = await axios.get(
+        `${this.baseUrl}/transactions/${paymentReference}/verify`,
+        {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      if (response.data.status === 'success') {
+        const transaction = response.data.data;
+        
+        return {
+          success: true,
+          status: transaction.status === 'successful' ? 'success' : transaction.status,
+          reference: transaction.tx_ref,
+          flwRef: transaction.flw_ref,
+          amount: transaction.amount,
+          currency: transaction.currency,
+          userId: transaction.meta?.userId,
+          planId: transaction.meta?.planId,
+          paidAt: transaction.created_at
+        };
+      } else {
+        return {
+          success: false,
+          status: 'failed',
+          message: response.data.message || 'Payment verification failed'
+        };
+      }
+    } catch (error) {
+      console.error('Flutterwave payment verification error:', error.response?.data || error.message);
+      return {
+        success: false,
+        status: 'failed',
+        message: error.response?.data?.message || error.message || 'Error verifying payment'
+      };
+    }
+  }
+
+  /**
+   * Verify webhook signature
+   * @param {string} provider - Provider name
+   * @param {Object} webhookData - Webhook payload
+   * @param {Object} headers - Request headers
+   * @returns {boolean} Signature validity
+   */
+  async verifyWebhookSignature(provider, webhookData, headers) {
+    try {
+      // Flutterwave webhook verification
+      const signature = headers['verif-hash'];
+      
+      if (!signature || !this.encryptionKey) {
+        console.warn('⚠️ Flutterwave webhook signature or encryption key missing');
+        return false;
+      }
+
+      // Flutterwave sends the signature in the verif-hash header
+      // The signature should match your encryption key
+      // For production, you can also verify by hashing the payload
+      // For now, we do a direct comparison (Flutterwave's recommended approach)
+      const isValid = signature === this.encryptionKey;
+      
+      if (!isValid) {
+        console.warn('⚠️ Flutterwave webhook signature verification failed');
+        console.log('Expected:', this.encryptionKey?.substring(0, 10) + '...');
+        console.log('Received:', signature?.substring(0, 10) + '...');
+      }
+      
+      return isValid;
+    } catch (error) {
+      console.error('Flutterwave webhook signature verification error:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Process webhook
+   * @param {string} provider - Provider name
+   * @param {Object} webhookData - Webhook payload
+   * @returns {Object} Processing result
+   */
+  async processWebhook(provider, webhookData) {
+    try {
+      console.log('Processing Flutterwave webhook:', {
+        event: webhookData.event,
+        dataKeys: webhookData.data ? Object.keys(webhookData.data) : []
+      });
+
+      const event = webhookData.event;
+      const data = webhookData.data;
+
+      // Handle charge.completed events (card payments, Google Pay, etc.)
+      if (event === 'charge.completed' && data.status === 'successful') {
+        return {
+          success: true,
+          paymentStatus: 'success',
+          reference: data.tx_ref,
+          flwRef: data.flw_ref,
+          userId: data.meta?.userId,
+          planId: data.meta?.planId,
+          amount: data.amount,
+          currency: data.currency,
+          paidAt: data.created_at
+        };
+      } else if (event === 'charge.completed' && data.status === 'failed') {
+        return {
+          success: false,
+          paymentStatus: 'failed',
+          reference: data.tx_ref,
+          message: data.processor_response || 'Payment failed'
+        };
+      }
+
+      // Handle virtual account payment events
+      if (event === 'virtual-account-credit' || event === 'transfer.completed') {
+        // Virtual account received payment
+        return {
+          success: true,
+          paymentStatus: 'success',
+          reference: data.tx_ref || data.reference,
+          flwRef: data.flw_ref,
+          userId: data.meta?.userId,
+          planId: data.meta?.planId,
+          amount: data.amount,
+          currency: data.currency || 'NGN',
+          paidAt: data.created_at || new Date().toISOString(),
+          paymentMethod: 'virtual_account'
+        };
+      }
+
+      // Handle other events
+      console.log(`Unhandled Flutterwave webhook event: ${event}`);
+      return {
+        success: false,
+        message: `Unhandled webhook event: ${event}`
+      };
+    } catch (error) {
+      console.error('Flutterwave webhook processing error:', error);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+
+  /**
+   * Create virtual account for payment
+   * @param {string} userId - User ID
+   * @param {string} planId - Plan ID
+   * @param {Object} paymentData - Payment details
+   * @returns {Object} Virtual account details
+   */
+  async createVirtualAccount(userId, planId, paymentData) {
+    try {
+      const accessToken = await this.tokenManager.getAccessToken();
+
+      console.log('Creating Flutterwave virtual account:', {
+        userId,
+        planId,
+        email: paymentData.email
+      });
+
+      // Generate unique reference
+      const txRef = `OCEAN_VA_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+      const request = {
+        email: paymentData.email,
+        is_permanent: false, // Temporary account for this subscription
+        tx_ref: txRef,
+        firstname: paymentData.firstname || 'Customer',
+        lastname: paymentData.lastname || '',
+        phonenumber: paymentData.phone || '',
+        amount: paymentData.amount,
+        currency: paymentData.currency || 'NGN',
+        meta: {
+          userId: userId,
+          planId: planId,
+          planName: paymentData.planName || ''
+        }
+      };
+
+      const response = await axios.post(
+        `${this.baseUrl}/virtual-account-numbers`,
+        request,
+        {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      if (response.data.status === 'success') {
+        const accountData = response.data.data;
+        
+        return {
+          success: true,
+          accountNumber: accountData.account_number,
+          bankName: accountData.bank_name,
+          reference: txRef,
+          flwRef: accountData.flw_ref,
+          expiresAt: accountData.expires_at
+        };
+      } else {
+        throw new Error(response.data.message || 'Failed to create virtual account');
+      }
+    } catch (error) {
+      console.error('Flutterwave virtual account creation error:', error.response?.data || error.message);
+      return {
+        success: false,
+        message: error.response?.data?.message || error.message || 'Error creating virtual account'
+      };
+    }
+  }
+
+  /**
+   * Check virtual account payment status
+   * @param {string} accountNumber - Virtual account number
+   * @param {string} bankName - Bank name
+   * @returns {Object} Payment status and transaction details
+   */
+  async checkVirtualAccountStatus(accountNumber, bankName) {
+    try {
+      const accessToken = await this.tokenManager.getAccessToken();
+
+      console.log('Checking Flutterwave virtual account status:', {
+        accountNumber,
+        bankName
+      });
+
+      // Flutterwave doesn't have a direct API to check virtual account status
+      // Instead, we check transactions for the account
+      // We'll use the virtual account webhook events, but also provide a manual check method
+      // This method can be used for polling or manual verification
+
+      // For now, return a structure that indicates we need to rely on webhooks
+      // In production, you might want to query transactions by account number
+      return {
+        success: true,
+        accountNumber: accountNumber,
+        bankName: bankName,
+        status: 'pending', // Status will be updated via webhook
+        message: 'Virtual account status should be monitored via webhooks. Use webhook events for real-time updates.'
+      };
+    } catch (error) {
+      console.error('Flutterwave virtual account status check error:', error.response?.data || error.message);
+      return {
+        success: false,
+        message: error.response?.data?.message || error.message || 'Error checking virtual account status'
+      };
+    }
+  }
+
+  /**
+   * Verify virtual account transaction
+   * @param {string} txRef - Transaction reference
+   * @returns {Object} Transaction verification result
+   */
+  async verifyVirtualAccountTransaction(txRef) {
+    try {
+      // Use the standard verifyPayment method
+      return await this.verifyPayment(txRef);
+    } catch (error) {
+      console.error('Flutterwave virtual account transaction verification error:', error);
+      return {
+        success: false,
+        message: error.message || 'Error verifying virtual account transaction'
+      };
+    }
+  }
+}
+
+/**
  * Payment Provider Factory
  * 
  * Factory class to get the appropriate payment provider based on configuration
@@ -499,6 +915,8 @@ class PaymentProviderFactory {
         return new StripePaymentProvider();
       case 'paystack':
         return new PaystackProvider();
+      case 'flutterwave':
+        return new FlutterwaveProvider();
       case 'mock':
       default:
         return new MockPaymentProvider();
@@ -519,5 +937,6 @@ module.exports = {
   PaymentProviderInterface,
   MockPaymentProvider,
   StripePaymentProvider,
-  PaystackProvider
+  PaystackProvider,
+  FlutterwaveProvider
 };

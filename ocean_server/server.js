@@ -501,6 +501,11 @@ console.log('✅ Score recalculation cron job initialized (runs every hour at :0
 // Initialize monthly promotion reset cron job
 MonthlyPromotionResetJob.start();
 console.log('✅ Monthly promotion reset cron job initialized (runs on 1st of each month at 00:00)');
+
+// Initialize virtual account monitoring cron job (for Flutterwave virtual account payments)
+const VirtualAccountMonitoringJob = require('./src/jobs/virtualAccountMonitoringJob');
+VirtualAccountMonitoringJob.start();
+console.log('✅ Virtual account monitoring cron job initialized (runs every 15 minutes)');
 }
 
 // Only start server if not in test environment and file is run directly
