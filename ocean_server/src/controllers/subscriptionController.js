@@ -182,16 +182,14 @@ class SubscriptionController {
 
       // Get the appropriate payment provider based on payment method
       const { PaymentProviderFactory } = require('../providers/PaymentProvider');
-      // Only allow flutterwave or paystack - no default fallback
+      // Only allow flutterwave - Paystack removed
       let providerName;
       if (paymentMethod === 'flutterwave' || paymentMethod?.includes('flutterwave')) {
         providerName = 'flutterwave';
-      } else if (paymentMethod === 'paystack') {
-        providerName = 'paystack';
       } else {
         return res.status(400).json({
           success: false,
-          message: `Invalid payment method: ${paymentMethod}. Supported methods: flutterwave, paystack`
+          message: `Invalid payment method: ${paymentMethod}. Only Flutterwave is supported.`
         });
       }
       const paymentProvider = PaymentProviderFactory.getProvider(providerName);
@@ -238,7 +236,6 @@ class SubscriptionController {
           email: user.email,
           name: user.fullName || user.username || 'Customer',
           phone: user.phoneNumber || user.phone || '',
-          paystackPlanCode: plan.paystackPlanCode, // For Paystack
           amount: plan.price,
           currency: plan.currency,
           billingPeriod: plan.billingPeriod,
@@ -297,9 +294,6 @@ class SubscriptionController {
             paymentResponse.publicKey = paymentIntent.paymentData.publicKey;
           }
         }
-      } else if (paymentIntent.checkoutUrl) {
-        // For Standard Checkout (Paystack)
-        paymentResponse.checkoutUrl = paymentIntent.checkoutUrl;
       }
 
       console.log('Sending subscription response to frontend:', {
@@ -361,8 +355,7 @@ class SubscriptionController {
 
       // Get payment provider
       const { PaymentProviderFactory } = require('../providers/PaymentProvider');
-      const providerName = paymentMethod === 'flutterwave' ? 'flutterwave' : 
-                           paymentMethod === 'paystack' ? 'paystack' : 'mock';
+      const providerName = paymentMethod === 'flutterwave' ? 'flutterwave' : 'mock';
       const provider = PaymentProviderFactory.getProvider(providerName);
 
       // Verify payment
@@ -1039,8 +1032,8 @@ class SubscriptionController {
       console.log('Payment callback received:', { reference, status, trxref });
       console.log('All query parameters:', req.query);
       
-      // Always verify payment with Paystack since callback URL doesn't include status
-      console.log('Verifying payment with Paystack API...');
+      // Verify payment with Flutterwave (Paystack removed)
+      console.log('Verifying payment with Flutterwave API...');
       const paymentResult = await PaymentProvider.verifyPayment(reference || trxref);
       
       console.log('Payment verification result:', paymentResult);

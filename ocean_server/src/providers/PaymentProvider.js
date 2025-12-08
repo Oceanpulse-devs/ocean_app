@@ -980,17 +980,16 @@ class FlutterwaveProvider extends PaymentProviderInterface {
  */
 class PaymentProviderFactory {
   
-  static getProvider(providerName = 'mock') {
+  static getProvider(providerName = 'flutterwave') {
     switch (providerName.toLowerCase()) {
-      case 'stripe':
-        return new StripePaymentProvider();
-      case 'paystack':
-        return new PaystackProvider();
       case 'flutterwave':
         return new FlutterwaveProvider();
       case 'mock':
-      default:
         return new MockPaymentProvider();
+      default:
+        // Default to Flutterwave if unknown provider
+        console.warn(`Unknown payment provider: ${providerName}. Defaulting to Flutterwave.`);
+        return new FlutterwaveProvider();
     }
   }
 }
@@ -1000,14 +999,12 @@ class PaymentProviderFactory {
  * 
  * Default export that uses the configured provider
  */
-const PaymentProvider = PaymentProviderFactory.getProvider(process.env.PAYMENT_PROVIDER || 'paystack');
+const PaymentProvider = PaymentProviderFactory.getProvider(process.env.PAYMENT_PROVIDER || 'flutterwave');
 
 module.exports = {
   PaymentProvider,
   PaymentProviderFactory,
   PaymentProviderInterface,
   MockPaymentProvider,
-  StripePaymentProvider,
-  PaystackProvider,
   FlutterwaveProvider
 };
