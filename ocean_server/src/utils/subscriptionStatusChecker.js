@@ -77,9 +77,19 @@ class SubscriptionStatusChecker {
           maxDailyNotifications: plan.max_daily_notifications,
           maxArProducts: plan.max_ar_products,
           maxPromotionalBoosts: plan.max_promotional_boosts,
-          // Add top placements and spotlights limits (default to 0 if not in plan model)
-          maxTopPlacements: plan.max_top_placements || 0,
-          maxSpotlights: plan.max_spotlights || 0
+          // Handle top placements and spotlights limits
+          // Since max_top_placements and max_spotlights columns don't exist in DB,
+          // we determine limits based on plan name and has_unlimited_features flag
+          maxTopPlacements: (plan.has_unlimited_features || plan.name === 'surge')
+            ? -1  // Unlimited for surge plan
+            : plan.name === 'tide'
+              ? 1  // TIDE: 1 top placement/month
+              : 0, // DRIFT/WAVE: Not available
+          maxSpotlights: (plan.has_unlimited_features || plan.name === 'surge')
+            ? -1  // Unlimited for surge plan
+            : plan.name === 'tide'
+              ? 1  // TIDE: 1 spotlight/month
+              : 0  // DRIFT/WAVE: Not available
         },
         features: {
           canCreateGroupBuy: plan.can_create_group_buy,
