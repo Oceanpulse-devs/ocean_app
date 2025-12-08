@@ -51,6 +51,27 @@ class SubscriptionService {
         throw new Error('Invalid or inactive subscription plan');
       }
 
+      // Cancel any existing active subscriptions for this user (plan change/upgrade)
+      const existingSubscriptions = await UserSubscription.findAll({
+        where: {
+          userId: userId,
+          status: 'active'
+        }
+      });
+
+      if (existingSubscriptions.length > 0) {
+        console.log(`Found ${existingSubscriptions.length} existing active subscription(s). Cancelling them...`);
+        for (const existingSub of existingSubscriptions) {
+          await existingSub.update({
+            status: 'cancelled',
+            cancellation_reason: 'Replaced by new subscription',
+            cancelled_at: new Date(),
+            auto_renew: false
+          });
+          console.log(`Cancelled existing subscription ${existingSub.id} for user ${userId}`);
+        }
+      }
+
       // Calculate subscription dates
       const startDate = new Date();
       const endDate = new Date();

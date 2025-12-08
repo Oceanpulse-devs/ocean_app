@@ -163,11 +163,21 @@ class SubscriptionController {
       // Check if user already has an active subscription
       const currentStatus = await SubscriptionStatusChecker.getUserSubscriptionStatus(userId);
       if (currentStatus.hasActiveSubscription) {
-        return res.status(400).json({
-          success: false,
-          message: 'You already have an active subscription. Please cancel it first or change your plan.',
-          currentSubscription: currentStatus
-        });
+        // Allow plan changes/upgrades - only block if trying to subscribe to the same plan
+        if (currentStatus.plan && currentStatus.plan.id === plan.id) {
+          return res.status(400).json({
+            success: false,
+            message: 'You already have an active subscription for this plan. Please cancel it first or choose a different plan.',
+            currentSubscription: currentStatus
+          });
+        } else {
+          // Different plan - allow subscription change (will cancel old one)
+          console.log('Plan change detected. Will cancel old subscription and create new one.', {
+            oldPlanId: currentStatus.plan?.id,
+            newPlanId: plan.id
+          });
+          // The old subscription will be cancelled in the subscription service
+        }
       }
 
       // Get the appropriate payment provider based on payment method
