@@ -516,12 +516,21 @@ class FlutterwaveProvider extends PaymentProviderInterface {
         throw new Error('Flutterwave SECRET_KEY not configured. Please set FLW_SECRET_KEY in environment variables.');
       }
 
+      // Validate SECRET_KEY format (should start with FLWSECK_TEST- or FLWSECK-)
+      if (!this.secretKey.startsWith('FLWSECK_TEST-') && !this.secretKey.startsWith('FLWSECK-')) {
+        console.error('⚠️ Invalid SECRET_KEY format. Should start with FLWSECK_TEST- (sandbox) or FLWSECK- (production)');
+        console.error('Current key format:', this.secretKey.substring(0, 15) + '...');
+        throw new Error('Invalid Flutterwave SECRET_KEY format. Please check your FLW_SECRET_KEY environment variable.');
+      }
+
       console.log('Creating Flutterwave payment intent:', {
         userId,
         planId,
         email: paymentData.email,
         amount: paymentData.amount,
-        currency: paymentData.currency
+        currency: paymentData.currency,
+        secretKeyFormat: this.secretKey.substring(0, 15) + '...', // Log first 15 chars only
+        secretKeyLength: this.secretKey.length
       });
 
       // Generate unique transaction reference
@@ -567,7 +576,9 @@ class FlutterwaveProvider extends PaymentProviderInterface {
       console.log('Making Flutterwave API request:', {
         url: `${this.baseUrl}/payments`,
         method: 'POST',
-        hasSecretKey: !!this.secretKey
+        hasSecretKey: !!this.secretKey,
+        secretKeyPrefix: this.secretKey.substring(0, 15) + '...',
+        baseUrl: this.baseUrl
       });
 
       // Make API request using SECRET_KEY (not OAuth token)
@@ -576,7 +587,7 @@ class FlutterwaveProvider extends PaymentProviderInterface {
         paymentRequest,
         {
           headers: {
-            'Authorization': `Bearer ${this.secretKey}`, // Use SECRET_KEY directly
+            'Authorization': `Bearer ${this.secretKey.trim()}`, // Trim any whitespace
             'Content-Type': 'application/json'
           }
         }
