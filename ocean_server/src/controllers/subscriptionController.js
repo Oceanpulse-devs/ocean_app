@@ -1236,16 +1236,13 @@ class SubscriptionController {
         allParams: req.query 
       });
       
-      // Flutterwave sends tx_ref in the redirect URL
-      // Use tx_ref first, then transaction_id, then flw_ref, then reference
-      const paymentReference = tx_ref || transaction_id || flw_ref || reference;
+      // Flutterwave sends tx_ref in the redirect URL, but verification needs transaction_id
+      // Use transaction_id first (Flutterwave's actual transaction ID), then tx_ref, then flw_ref
+      const paymentReference = transaction_id || tx_ref || flw_ref || reference;
       
       if (!paymentReference) {
         console.error('No payment reference found in callback');
-        return res.status(400).json({
-          success: false,
-          message: 'Payment reference not found in callback'
-        });
+        return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/subscription/error?message=${encodeURIComponent('Payment reference not found')}`);
       }
 
       // Verify payment with Flutterwave
@@ -1253,16 +1250,18 @@ class SubscriptionController {
       const provider = PaymentProviderFactory.getProvider('flutterwave');
       
       console.log('Verifying payment with Flutterwave API using reference:', paymentReference);
+      console.log('Available references:', { transaction_id, tx_ref, flw_ref, reference });
       const paymentResult = await provider.verifyPayment(paymentReference);
       
       console.log('Payment verification result:', paymentResult);
       
       if (paymentResult.success && paymentResult.status === 'success') {
-        // Find pending subscription by payment reference
+        // Find pending subscription by tx_ref (our custom reference)
+        // We use tx_ref to find the subscription because that's what we stored
         const { UserSubscription } = require('../../models');
         let subscription = await UserSubscription.findOne({
           where: {
-            paymentReference: paymentReference,
+            paymentReference: tx_ref || paymentReference, // Use tx_ref to find subscription
             status: 'pending'
           },
           order: [['created_at', 'DESC']]

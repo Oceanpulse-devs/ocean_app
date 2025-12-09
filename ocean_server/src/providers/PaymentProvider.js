@@ -730,8 +730,8 @@ class FlutterwaveProvider extends PaymentProviderInterface {
           url: verifyError.config?.url
         });
         
-        // If it's a "not found" error, provide helpful message
-        if (verifyError.response?.status === 404) {
+        // If it's a "not found" error (404 or 400), provide helpful message
+        if (verifyError.response?.status === 404 || verifyError.response?.status === 400) {
           return {
             success: false,
             status: 'error',
