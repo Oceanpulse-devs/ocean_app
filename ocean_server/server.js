@@ -883,6 +883,16 @@ console.log('✅ Monthly promotion reset cron job initialized (runs on 1st of ea
 const VirtualAccountMonitoringJob = require('./src/jobs/virtualAccountMonitoringJob');
 VirtualAccountMonitoringJob.start();
 console.log('✅ Virtual account monitoring cron job initialized (runs every 15 minutes)');
+
+// Initialize subscription reminder cron job (sends 3-day expiration reminders)
+const SubscriptionReminderJob = require('./src/jobs/subscriptionReminderJob');
+SubscriptionReminderJob.start();
+console.log('✅ Subscription reminder cron job initialized (runs daily at 9:00 AM)');
+
+// Initialize subscription expiration cron job (marks expired subscriptions and sends emails)
+const SubscriptionExpirationJob = require('./src/jobs/subscriptionExpirationJob');
+SubscriptionExpirationJob.start();
+console.log('✅ Subscription expiration cron job initialized (runs daily at 10:00 AM)');
 }
 
 // Only start server if not in test environment and file is run directly

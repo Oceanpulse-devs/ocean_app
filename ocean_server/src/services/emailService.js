@@ -471,6 +471,58 @@ const emailTemplates = {
     `
   }),
 
+  subscriptionExpiringReminder: (userName, planName, expiresAt) => ({
+    subject: `⏰ Your ${planName} Plan Expires in 3 Days - Ocean App`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #f59e0b;">Hello ${userName}!</h2>
+        <p>⏰ This is a friendly reminder that your <strong>${planName}</strong> subscription will expire in <strong>3 days</strong>.</p>
+        
+        <div style="background-color: #fff3cd; padding: 20px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #f59e0b;">
+          <h3 style="color: #856404;">Subscription Details</h3>
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr>
+              <td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Current Plan:</strong></td>
+              <td style="padding: 8px; border-bottom: 1px solid #ddd;">${planName}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px;"><strong>Expires On:</strong></td>
+              <td style="padding: 8px;">${new Date(expiresAt).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</td>
+            </tr>
+          </table>
+        </div>
+
+        <div style="background-color: #e7f3ff; padding: 20px; border-radius: 5px; margin: 20px 0;">
+          <h3 style="color: #0066cc;">Renew Now to Keep Your Premium Features</h3>
+          <p>Don't lose access to these valuable features:</p>
+          <ul>
+            <li>🚀 Unlimited product listings</li>
+            <li>📈 Advanced analytics and insights</li>
+            <li>🎯 Promotional boosts and top placements</li>
+            <li>👀 Access to Buyer Needs</li>
+            <li>⚡ Priority customer support</li>
+          </ul>
+          <div style="text-align: center; margin: 20px 0;">
+            <a href="${process.env.FRONTEND_URL || 'https://yourapp.com'}/subscription" 
+               style="background-color: #3498db; color: white; padding: 15px 30px; 
+                      text-decoration: none; border-radius: 5px; font-size: 16px; font-weight: bold; display: inline-block;">
+              Renew Subscription Now
+            </a>
+          </div>
+        </div>
+
+        <div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin: 20px 0;">
+          <p style="margin: 0; color: #6c757d; font-size: 14px;">
+            💡 <strong>Tip:</strong> Renew before expiration to ensure uninterrupted access to all premium features.
+          </p>
+        </div>
+
+        <p>Thank you for being a valued Ocean App user!</p>
+        <p>Best regards,<br>The Ocean App Team</p>
+      </div>
+    `
+  }),
+
   subscriptionExpired: (userName, planName) => ({
     subject: `⏰ Subscription Expired - Ocean App`,
     html: `

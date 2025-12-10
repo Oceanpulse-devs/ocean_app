@@ -3,6 +3,7 @@ const SubscriptionStatusChecker = require('../utils/subscriptionStatusChecker');
 const { PaymentProvider, PaymentProviderFactory } = require('../providers/PaymentProvider');
 const { SellersTable } = require('../../models');
 const { sendEmail, emailTemplates } = require('../services/emailService');
+const { getSellerCurrency } = require('../utils/sellerCountryDetector');
 
 /**
  * Subscription Controller
@@ -22,44 +23,58 @@ class SubscriptionController {
    */
   static async getAvailablePlans(req, res) {
     try {
+      const userId = req.user?.id; // Get user ID from auth
+      const currency = userId ? await getSellerCurrency(userId) : 'NGN';
+      
       const plans = await subscriptionService.getAvailablePlans();
       
       res.json({
         success: true,
         message: 'Subscription plans retrieved successfully',
-        data: plans.map(plan => ({
-          id: plan.id,
-          name: plan.name,
-          displayName: plan.display_name,
-          price: plan.price,
-          currency: plan.currency,
-          billingPeriod: plan.billing_period,
-          features: plan.features,
-          description: plan.description,
-          limits: {
-            maxListings: plan.max_listings,
-            maxGroupBuys: plan.max_group_buys,
-            maxSwapDeals: plan.max_swap_deals,
-            maxAuctions: plan.max_auctions,
-            maxDistressSales: plan.max_distress_sales,
-            maxDailyDms: plan.max_daily_dms,
-            maxDailyNotifications: plan.max_daily_notifications,
-            maxArProducts: plan.max_ar_products,
-            maxPromotionalBoosts: plan.max_promotional_boosts
-          },
-          capabilities: {
-            canCreateGroupBuy: plan.can_create_group_buy,
-            canCreateSwapDeals: plan.can_create_swap_deals,
-            canCreateAuctions: plan.can_create_auctions,
-            canCreateDistressSales: plan.can_create_distress_sales,
-            canUseAr: plan.can_use_ar,
-            canCustomizeShopfront: plan.can_customize_shopfront,
-            hasVerifiedBadge: plan.has_verified_badge,
-            hasPrioritySearch: plan.has_priority_search,
-            hasBuyerInsights: plan.has_buyer_insights,
-            hasUnlimitedFeatures: plan.has_unlimited_features
-          }
-        }))
+        currency, // Include detected currency in response
+        data: plans.map(plan => {
+          // Use price_usd if currency is USD, otherwise use price (NGN)
+          const price = currency === 'USD' && plan.priceUsd 
+            ? parseFloat(plan.priceUsd) 
+            : parseFloat(plan.price);
+          const planCurrency = currency === 'USD' ? 'USD' : 'NGN';
+          
+          return {
+            id: plan.id,
+            name: plan.name,
+            displayName: plan.display_name,
+            price: price,
+            priceNgn: parseFloat(plan.price), // Always include NGN price
+            priceUsd: plan.priceUsd ? parseFloat(plan.priceUsd) : null, // Always include USD price
+            currency: planCurrency,
+            billingPeriod: plan.billing_period,
+            features: plan.features,
+            description: plan.description,
+            limits: {
+              maxListings: plan.max_listings,
+              maxGroupBuys: plan.max_group_buys,
+              maxSwapDeals: plan.max_swap_deals,
+              maxAuctions: plan.max_auctions,
+              maxDistressSales: plan.max_distress_sales,
+              maxDailyDms: plan.max_daily_dms,
+              maxDailyNotifications: plan.max_daily_notifications,
+              maxArProducts: plan.max_ar_products,
+              maxPromotionalBoosts: plan.max_promotional_boosts
+            },
+            capabilities: {
+              canCreateGroupBuy: plan.can_create_group_buy,
+              canCreateSwapDeals: plan.can_create_swap_deals,
+              canCreateAuctions: plan.can_create_auctions,
+              canCreateDistressSales: plan.can_create_distress_sales,
+              canUseAr: plan.can_use_ar,
+              canCustomizeShopfront: plan.can_customize_shopfront,
+              hasVerifiedBadge: plan.has_verified_badge,
+              hasPrioritySearch: plan.has_priority_search,
+              hasBuyerInsights: plan.has_buyer_insights,
+              hasUnlimitedFeatures: plan.has_unlimited_features
+            }
+          };
+        })
       });
     } catch (error) {
       console.error('Error getting available plans:', error);
@@ -132,6 +147,9 @@ class SubscriptionController {
         });
       }
 
+      // Determine currency based on seller country
+      const currency = await getSellerCurrency(userId);
+
       // Get user details from database
       const user = await subscriptionService.getUserById(userId);
       if (!user || !user.email) {
@@ -150,12 +168,20 @@ class SubscriptionController {
         });
       }
 
+      // Get correct price based on currency
+      const price = currency === 'USD' && plan.priceUsd 
+        ? parseFloat(plan.priceUsd) 
+        : parseFloat(plan.price);
+
       // Debug: Plan found
       console.log('Plan found:', {
         id: plan.id,
         name: plan.name,
         display_name: plan.displayName,
-        price: plan.price,
+        price: price,
+        currency: currency,
+        priceNgn: plan.price,
+        priceUsd: plan.priceUsd,
         paystack_plan_code: plan.paystackPlanCode,
         is_active: plan.isActive
       });
@@ -209,8 +235,8 @@ class SubscriptionController {
           firstname: (user.fullName || user.username || 'Customer').split(' ')[0],
           lastname: (user.fullName || user.username || 'Customer').split(' ').slice(1).join(' ') || '',
           phone: user.phoneNumber || user.phone || '',
-          amount: plan.price,
-          currency: plan.currency,
+          amount: price,
+          currency: currency,
           planName: plan.display_name || plan.name
         });
 
@@ -226,8 +252,8 @@ class SubscriptionController {
         paymentIntent = {
           success: true,
           reference: virtualAccountDetails.reference,
-          amount: plan.price,
-          currency: plan.currency,
+          amount: price,
+          currency: currency,
           expiresAt: virtualAccountDetails.expiresAt ? new Date(virtualAccountDetails.expiresAt) : new Date(Date.now() + 24 * 60 * 60 * 1000)
         };
       } else {
@@ -236,8 +262,8 @@ class SubscriptionController {
           email: user.email,
           name: user.fullName || user.username || 'Customer',
           phone: user.phoneNumber || user.phone || '',
-          amount: plan.price,
-          currency: plan.currency,
+          amount: price,
+          currency: currency,
           billingPeriod: plan.billingPeriod,
           planName: plan.display_name || plan.name
         });

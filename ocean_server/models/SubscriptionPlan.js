@@ -28,6 +28,12 @@ module.exports = (sequelize) => {
       type: DataTypes.STRING(3),
       defaultValue: 'NGN'
     },
+    priceUsd: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: true,
+      field: 'price_usd',
+      comment: 'Price in USD for international sellers'
+    },
     billingPeriod: {
       type: DataTypes.ENUM('monthly', 'yearly'),
       defaultValue: 'monthly',

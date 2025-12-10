@@ -228,32 +228,88 @@ class SubscriptionService {
 
   /**
    * Check and update expired subscriptions
+   * Sends expiration emails and marks subscriptions as expired
    * @returns {number} Number of subscriptions updated
    */
   async updateExpiredSubscriptions() {
     try {
+      const { SubscriptionPlan, UserTable } = require('../../models');
+      const { sendEmail, emailTemplates } = require('./emailService');
+
       const expiredSubscriptions = await UserSubscription.findAll({
         where: {
           status: 'active',
           end_date: {
             [Op.lt]: new Date()
           }
-        }
+        },
+        include: [
+          {
+            model: SubscriptionPlan,
+            as: 'plan',
+            attributes: ['id', 'name', 'displayName']
+          },
+          {
+            model: UserTable,
+            as: 'user',
+            attributes: ['id', 'fullName', 'email', 'username']
+          }
+        ]
       });
 
       let updatedCount = 0;
+      let emailsSent = 0;
+
       for (const subscription of expiredSubscriptions) {
-        await subscription.update({ status: 'expired' });
-        await this.updateUserSubscriptionStatus(
-          subscription.user_id, 
-          'expired', 
-          null, 
-          null
-        );
-        updatedCount++;
+        try {
+          // Update subscription status
+          await subscription.update({ status: 'expired' });
+          await this.updateUserSubscriptionStatus(
+            subscription.user_id, 
+            'expired', 
+            null, 
+            null
+          );
+          updatedCount++;
+
+          // Send expiration email if user and plan data available
+          if (subscription.user && subscription.plan) {
+            try {
+              const user = subscription.user;
+              const plan = subscription.plan;
+              const planName = plan.displayName || plan.name || 'Premium';
+
+              console.log(`Sending expiration email to ${user.email} for ${planName} subscription`);
+
+              const emailTemplate = emailTemplates.subscriptionExpired(
+                user.fullName || user.username || 'Valued User',
+                planName
+              );
+
+              await sendEmail(
+                user.email,
+                emailTemplate.subject,
+                emailTemplate.html,
+                'subscription'
+              );
+
+              emailsSent++;
+              console.log(`✅ Expiration email sent to ${user.email}`);
+
+              // Add a small delay to avoid rate limiting
+              await new Promise(resolve => setTimeout(resolve, 500));
+            } catch (emailError) {
+              console.error(`Error sending expiration email for subscription ${subscription.id}:`, emailError);
+              // Continue processing other subscriptions even if email fails
+            }
+          }
+        } catch (error) {
+          console.error(`Error updating subscription ${subscription.id}:`, error);
+          // Continue processing other subscriptions
+        }
       }
 
-      console.log(`Updated ${updatedCount} expired subscriptions`);
+      console.log(`Updated ${updatedCount} expired subscriptions, sent ${emailsSent} expiration emails`);
       return updatedCount;
     } catch (error) {
       console.error('Error updating expired subscriptions:', error);
