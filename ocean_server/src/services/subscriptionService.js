@@ -1,4 +1,4 @@
-const { UserSubscription, SubscriptionPlan, SubscriptionUsage, PromotionalBoost, UserTable } = require('../../models');
+const { UserSubscription, SubscriptionPlan, SubscriptionUsage, PromotionalBoost, UserTable, SellersTable } = require('../../models');
 const { Op } = require('sequelize');
 const { resetUserUsageCounters, getTodayUsageFromRedis, incrementUsageInRedis } = require('../middleware/subscriptionMiddleware');
 const promotionGatingService = require('./promotionGatingService');
@@ -181,6 +181,24 @@ class SubscriptionService {
         }
       }
       
+      // Update seller verification badge if plan has verified badge feature
+      if (planId && status === 'active') {
+        try {
+          const plan = await SubscriptionPlan.findByPk(planId);
+          if (plan) {
+            await this.updateSellerVerificationFromSubscription(
+              userId, 
+              plan, 
+              'grant', 
+              expiresAt
+            );
+          }
+        } catch (error) {
+          // Don't fail subscription activation if verification update fails
+          console.error('Error updating seller verification during subscription activation:', error);
+        }
+      }
+      
       console.log('Updated user subscription status:', { userId, status, planId, expiresAt });
     } catch (error) {
       console.error('Error updating user subscription status:', error);
@@ -219,6 +237,21 @@ class SubscriptionService {
       // Update user's subscription status
       await this.updateUserSubscriptionStatus(userId, 'cancelled', null, null);
 
+      // Revoke verified badge if plan had verified badge feature
+      try {
+        const plan = await SubscriptionPlan.findByPk(subscription.planId);
+        if (plan && plan.hasVerifiedBadge) {
+          await this.updateSellerVerificationFromSubscription(
+            userId,
+            plan,
+            'revoke'
+          );
+        }
+      } catch (error) {
+        // Don't fail cancellation if verification update fails
+        console.error('Error revoking verified badge during cancellation:', error);
+      }
+
       return true;
     } catch (error) {
       console.error('Error cancelling subscription:', error);
@@ -247,7 +280,7 @@ class SubscriptionService {
           {
             model: SubscriptionPlan,
             as: 'plan',
-            attributes: ['id', 'name', 'displayName']
+            attributes: ['id', 'name', 'displayName', 'hasVerifiedBadge']
           },
           {
             model: UserTable,
@@ -271,6 +304,20 @@ class SubscriptionService {
             null
           );
           updatedCount++;
+
+          // Revoke verified badge if plan had verified badge feature
+          try {
+            if (subscription.plan && subscription.plan.hasVerifiedBadge) {
+              await this.updateSellerVerificationFromSubscription(
+                subscription.user_id,
+                subscription.plan,
+                'revoke'
+              );
+            }
+          } catch (error) {
+            // Don't fail expiration process if verification update fails
+            console.error(`Error revoking verified badge for expired subscription ${subscription.id}:`, error);
+          }
 
           // Send expiration email if user and plan data available
           if (subscription.user && subscription.plan) {
@@ -670,6 +717,116 @@ class SubscriptionService {
     } catch (error) {
       console.error('Error resetting usage counters:', error);
       // Don't throw error - this shouldn't block plan changes
+    }
+  }
+
+  /**
+   * Update seller verification status based on subscription plan
+   * Only grants/revokes subscription-based verification, preserves manual verification
+   * @param {string} userId - User ID
+   * @param {Object} plan - Subscription plan object
+   * @param {string} action - 'grant' or 'revoke'
+   * @param {Date} expiresAt - When verification expires (for grant action)
+   * @returns {Promise<boolean>} Success status
+   */
+  async updateSellerVerificationFromSubscription(userId, plan, action, expiresAt = null) {
+    try {
+      // Find seller by userId
+      const seller = await SellersTable.findOne({
+        where: { userId }
+      });
+      
+      if (!seller) {
+        console.log(`⚠️ Seller not found for user ${userId}, skipping verification update`);
+        return false;
+      }
+      
+      // Check if plan has verified badge feature
+      const hasVerifiedBadge = plan.hasVerifiedBadge === true || plan.has_verified_badge === true;
+      
+      if (!hasVerifiedBadge) {
+        // Plan doesn't have verified badge, nothing to do
+        return true;
+      }
+      
+      if (action === 'grant') {
+        // Only grant if seller doesn't already have manual verification
+        // Check if verification was manually approved (not subscription-based)
+        const isManualVerification = seller.verificationStatus === 'approved' && 
+                                      seller.verificationNotes && 
+                                      !seller.verificationNotes.includes('Subscription-based verification');
+        
+        if (isManualVerification) {
+          console.log(`ℹ️ Seller ${seller.id} has manual verification, preserving it`);
+          return true; // Don't override manual verification
+        }
+        
+        // Determine verification level based on plan
+        let verificationLevel = 'premium'; // Default for Tide
+        if (plan.name === 'surge' || plan.name === 'Surge') {
+          verificationLevel = 'enterprise';
+        }
+        
+        // Update seller verification
+        await seller.update({
+          isVerified: true,
+          verificationStatus: 'active',
+          verifiedAt: new Date(),
+          verificationExpiresAt: expiresAt,
+          verificationLevel: verificationLevel,
+          verificationNotes: `Subscription-based verification from ${plan.displayName || plan.name} plan`,
+          lastVerificationCheck: new Date()
+        });
+        
+        // Add verified badge to benefits if not already present
+        const benefits = seller.verifiedSellerBenefits || [];
+        if (!benefits.includes('Verified Seller Badge')) {
+          benefits.push('Verified Seller Badge');
+          await seller.update({
+            verifiedSellerBenefits: benefits
+          });
+        }
+        
+        console.log(`✅ Granted verified badge to seller ${seller.id} for ${plan.name} subscription`);
+        return true;
+        
+      } else if (action === 'revoke') {
+        // Only revoke if verification was subscription-based
+        const isSubscriptionBased = seller.verificationNotes && 
+                                     seller.verificationNotes.includes('Subscription-based verification');
+        
+        if (!isSubscriptionBased) {
+          console.log(`ℹ️ Seller ${seller.id} has manual verification, not revoking`);
+          return true; // Don't revoke manual verification
+        }
+        
+        // Revoke subscription-based verification
+        await seller.update({
+          isVerified: false,
+          verificationStatus: 'expired',
+          verificationExpiresAt: null,
+          verificationNotes: seller.verificationNotes ? 
+            seller.verificationNotes.replace('Subscription-based verification', 'Subscription expired') : 
+            'Subscription expired',
+          lastVerificationCheck: new Date()
+        });
+        
+        // Remove verified badge from benefits
+        const benefits = seller.verifiedSellerBenefits || [];
+        const updatedBenefits = benefits.filter(b => b !== 'Verified Seller Badge');
+        await seller.update({
+          verifiedSellerBenefits: updatedBenefits
+        });
+        
+        console.log(`✅ Revoked verified badge from seller ${seller.id} (subscription expired/cancelled)`);
+        return true;
+      }
+      
+      return false;
+    } catch (error) {
+      // Log error but don't throw - we don't want verification issues to break subscriptions
+      console.error(`❌ Error updating seller verification for user ${userId}:`, error);
+      return false;
     }
   }
 }
