@@ -23,8 +23,41 @@ class SubscriptionController {
    */
   static async getAvailablePlans(req, res) {
     try {
-      const userId = req.user?.id; // Get user ID from auth
+      // Try to get user ID from token if present (optional auth)
+      let userId = req.user?.id;
+      
+      // If no user from middleware, try to decode token manually (for public route)
+      if (!userId) {
+        try {
+          const jwt = require('jsonwebtoken');
+          const JWT_SECRET = process.env.JWT_SECRET;
+          let token = req.headers.authorization;
+          if (token && token.startsWith('Bearer ')) {
+            token = token.substring(7);
+          } else {
+            token = req.cookies?.token;
+          }
+          
+          if (token) {
+            const decoded = jwt.verify(token, JWT_SECRET);
+            userId = decoded.id;
+            console.log('✅ Decoded user from token for currency detection:', userId);
+          }
+        } catch (tokenError) {
+          // Token invalid or not present - that's okay, will default to NGN
+          console.log('ℹ️ No valid token found, defaulting to NGN');
+        }
+      }
+      
       const currency = userId ? await getSellerCurrency(userId) : 'NGN';
+      
+      // Add logging for debugging
+      console.log('📋 getAvailablePlans - userId:', userId, 'currency:', currency);
+      if (userId) {
+        const { getSellerCountry } = require('../utils/sellerCountryDetector');
+        const country = await getSellerCountry(userId);
+        console.log('📋 Seller country:', country);
+      }
       
       const plans = await subscriptionService.getAvailablePlans();
       
