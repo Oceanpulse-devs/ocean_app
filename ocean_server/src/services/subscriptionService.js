@@ -87,8 +87,8 @@ class SubscriptionService {
         autoRenew: true,
         paymentReference: paymentData.reference || null,
         paymentMethod: paymentData.method || null,
-        amountPaid: plan.price,
-        currency: plan.currency
+        amountPaid: paymentData.amount || plan.price,  // Use passed amount, fallback to plan.price
+        currency: paymentData.currency || plan.currency // Use passed currency, fallback to plan.currency
       });
 
       // DON'T update user subscription status to 'active' here

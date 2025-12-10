@@ -288,7 +288,9 @@ class SubscriptionController {
       // Create pending subscription
       const subscription = await subscriptionService.createSubscription(userId, plan.id, {
         reference: paymentIntent.reference,
-        method: paymentMethod
+        method: paymentMethod,
+        amount: price,        // Use calculated price (USD or NGN)
+        currency: currency   // Use detected currency (USD or NGN)
       });
 
       // Prepare payment response
