@@ -1,7 +1,20 @@
 const BoostManagementService = require('./boostManagementService');
 const TopPlacementService = require('./topPlacementService');
 const SpotlightService = require('./spotlightService');
-const { PromotionalBoost, TopPlacement, SpotlightSlot, Product, Auction, GroupBuy, SwapDeal } = require('../../models');
+const { 
+  PromotionalBoost, 
+  TopPlacement, 
+  SpotlightSlot, 
+  Product, 
+  Auction, 
+  GroupBuy, 
+  SwapDeal,
+  ProductView,
+  AuctionView,
+  GroupBuyView,
+  SwapDealView,
+  Conversation
+} = require('../../models');
 const { Op } = require('sequelize');
 
 /**
@@ -608,6 +621,121 @@ class PromotionAnalyticsService {
   }
 
   /**
+   * Get views count for a promoted item during a specific time period
+   * @param {string} itemType - Type of item ('product', 'auction', 'swap_deal', 'group_buy')
+   * @param {string} itemId - Item ID
+   * @param {Date} startDate - Start date of promotion period
+   * @param {Date} endDate - End date of promotion period
+   * @returns {number} Count of views
+   */
+  static async getItemViews(itemType, itemId, startDate, endDate) {
+    try {
+      if (!itemType || !itemId || !startDate || !endDate) {
+        return 0;
+      }
+
+      // Map item types to their corresponding View models
+      const viewModelMap = {
+        'product': ProductView,
+        'auction': AuctionView,
+        'swap_deal': SwapDealView,
+        'group_buy': GroupBuyView
+      };
+
+      const ViewModel = viewModelMap[itemType];
+      if (!ViewModel) {
+        console.warn(`Unknown item type for views: ${itemType}`);
+        return 0;
+      }
+
+      // Map item types to their field names in the view models
+      const fieldNameMap = {
+        'product': 'productId',
+        'auction': 'auctionId',
+        'swap_deal': 'swapDealId',
+        'group_buy': 'groupBuyId'
+      };
+
+      const fieldName = fieldNameMap[itemType];
+      if (!fieldName) {
+        return 0;
+      }
+
+      // Build where clause
+      const whereClause = {
+        [fieldName]: itemId,
+        viewedAt: {
+          [Op.between]: [startDate, endDate]
+        }
+      };
+
+      // Count views
+      const viewCount = await ViewModel.count({
+        where: whereClause
+      });
+
+      return viewCount || 0;
+    } catch (error) {
+      console.error(`Error getting views for ${itemType} ${itemId}:`, error);
+      return 0; // Return 0 on error to prevent breaking analytics
+    }
+  }
+
+  /**
+   * Get messages count for a promoted item during a specific time period
+   * Messages are tracked via conversations created with metadata.productId matching the item
+   * @param {string} itemType - Type of item ('product', 'auction', 'swap_deal', 'group_buy')
+   * @param {string} itemId - Item ID
+   * @param {Date} startDate - Start date of promotion period
+   * @param {Date} endDate - End date of promotion period
+   * @returns {number} Count of conversations (messages)
+   */
+  static async getItemMessages(itemType, itemId, startDate, endDate) {
+    try {
+      if (!itemType || !itemId || !startDate || !endDate) {
+        return 0;
+      }
+
+      // Map item types to productType values used in conversation metadata
+      // Note: Some item types might use different names in metadata
+      const productTypeMap = {
+        'product': 'product',
+        'auction': 'auction',
+        'swap_deal': 'swap_deal',
+        'group_buy': 'group_buy'
+      };
+
+      const metadataProductType = productTypeMap[itemType] || itemType;
+
+      // Query conversations where:
+      // 1. createdAt is between startDate and endDate
+      // 2. metadata.productId matches itemId
+      // 3. metadata.productType matches itemType (if available)
+      // Use Sequelize escape to prevent SQL injection
+      const escapedItemId = Conversation.sequelize.escape(itemId);
+      const escapedProductType = Conversation.sequelize.escape(metadataProductType);
+      
+      const messageCount = await Conversation.count({
+        where: {
+          createdAt: {
+            [Op.between]: [startDate, endDate]
+          },
+          // Use Sequelize JSON functions for MySQL JSON field querying
+          [Op.and]: [
+            Conversation.sequelize.literal(`JSON_EXTRACT(metadata, '$.productId') = ${escapedItemId}`),
+            Conversation.sequelize.literal(`JSON_EXTRACT(metadata, '$.productType') = ${escapedProductType}`)
+          ]
+        }
+      });
+
+      return messageCount || 0;
+    } catch (error) {
+      console.error(`Error getting messages for ${itemType} ${itemId}:`, error);
+      return 0; // Return 0 on error to prevent breaking analytics
+    }
+  }
+
+  /**
    * Get boost analytics
    * @param {string} userId - User ID
    * @param {number} days - Number of days to analyze (default: 30)
@@ -635,12 +763,36 @@ class PromotionAnalyticsService {
       // Calculate cost metrics
       const costMetrics = this.calculateCostMetrics(boosts);
 
-      // For now, we'll estimate views/clicks/messages from boost data
-      // In a real implementation, you'd query item views during boost period
-      // For now, we'll use placeholder values or calculate from item data if available
-      const totalViews = 0; // TODO: Query item views during boost periods
-      const totalClicks = 0; // TODO: Query item clicks during boost periods
-      const totalMessages = 0; // TODO: Query messages during boost periods
+      // Query views and messages for all boosts in parallel
+      let totalViews = 0;
+      let totalClicks = 0;
+      let totalMessages = 0;
+
+      if (boosts.length > 0) {
+        // Create promises for all boosts to run queries in parallel
+        const metricsPromises = boosts.map(async (boost) => {
+          const itemType = boost.boostType; // 'product', 'auction', 'swap_deal', 'group_buy'
+          const itemId = boost.targetId;
+          const startDate = boost.startTime;
+          const endDate = boost.endTime;
+
+          // Run both queries in parallel for this boost
+          const [views, messages] = await Promise.all([
+            this.getItemViews(itemType, itemId, startDate, endDate),
+            this.getItemMessages(itemType, itemId, startDate, endDate)
+          ]);
+
+          return { views, messages };
+        });
+
+        // Wait for all boosts to complete in parallel
+        const metricsResults = await Promise.all(metricsPromises);
+
+        // Aggregate totals
+        totalViews = metricsResults.reduce((sum, m) => sum + (m.views || 0), 0);
+        totalClicks = totalViews; // Using views as clicks for now
+        totalMessages = metricsResults.reduce((sum, m) => sum + (m.messages || 0), 0);
+      }
 
       // Calculate ROI metrics
       const roiMetrics = this.calculateROIFromMetrics(
@@ -723,11 +875,36 @@ class PromotionAnalyticsService {
         maxCost: 0
       };
 
-      // For now, we'll estimate views/clicks/messages
-      // In a real implementation, you'd query item views during placement period
-      const totalViews = 0; // TODO: Query item views during placement periods
-      const totalClicks = 0; // TODO: Query item clicks during placement periods
-      const totalMessages = 0; // TODO: Query messages during placement periods
+      // Query views and messages for all placements in parallel
+      let totalViews = 0;
+      let totalClicks = 0;
+      let totalMessages = 0;
+
+      if (placements.length > 0) {
+        // Create promises for all placements to run queries in parallel
+        const metricsPromises = placements.map(async (placement) => {
+          const itemType = placement.itemType; // 'product', 'auction', 'swap_deal', 'group_buy', 'distress_sale'
+          const itemId = placement.itemId;
+          const startDate = placement.startDate;
+          const endDate = placement.endDate;
+
+          // Run both queries in parallel for this placement
+          const [views, messages] = await Promise.all([
+            this.getItemViews(itemType, itemId, startDate, endDate),
+            this.getItemMessages(itemType, itemId, startDate, endDate)
+          ]);
+
+          return { views, messages };
+        });
+
+        // Wait for all placements to complete in parallel
+        const metricsResults = await Promise.all(metricsPromises);
+
+        // Aggregate totals
+        totalViews = metricsResults.reduce((sum, m) => sum + (m.views || 0), 0);
+        totalClicks = totalViews; // Using views as clicks for now
+        totalMessages = metricsResults.reduce((sum, m) => sum + (m.messages || 0), 0);
+      }
 
       // Calculate ROI metrics (will be 0 if cost is 0)
       const roiMetrics = this.calculateROIFromMetrics(
@@ -813,7 +990,27 @@ class PromotionAnalyticsService {
       // Spotlight already tracks impressions and clicks
       const totalViews = baseAnalytics.summary.totalImpressions || 0;
       const totalClicks = baseAnalytics.summary.totalClicks || 0;
-      const totalMessages = 0; // TODO: Query messages during spotlight periods
+      
+      // Query messages for all spotlights in parallel
+      let totalMessages = 0;
+      if (spotlights.length > 0) {
+        // Create promises for all spotlights to run queries in parallel
+        const messagesPromises = spotlights.map(async (spotlight) => {
+          const itemType = spotlight.itemType; // 'product', 'auction', 'swap_deal', 'group_buy', 'distress_sale'
+          const itemId = spotlight.itemId;
+          const startDate = spotlight.startDate;
+          const endDate = spotlight.endDate;
+
+          // Get messages for this spotlight period
+          return await this.getItemMessages(itemType, itemId, startDate, endDate);
+        });
+
+        // Wait for all spotlights to complete in parallel
+        const messagesResults = await Promise.all(messagesPromises);
+
+        // Aggregate totals
+        totalMessages = messagesResults.reduce((sum, m) => sum + (m || 0), 0);
+      }
 
       // Calculate ROI metrics (will be 0 if cost is 0)
       const roiMetrics = this.calculateROIFromMetrics(
