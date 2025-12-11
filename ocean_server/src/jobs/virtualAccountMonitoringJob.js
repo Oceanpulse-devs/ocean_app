@@ -29,10 +29,12 @@ class VirtualAccountMonitoringJob {
           verified: 0,
           activated: 0,
           failed: 0,
+          expired: 0,
           errors: []
         };
 
         // Find all pending subscriptions with Flutterwave virtual account payment method
+        // Virtual accounts typically expire within 24-48 hours, so only check recent ones
         const pendingSubscriptions = await UserSubscription.findAll({
           where: {
             status: 'pending',
@@ -41,8 +43,8 @@ class VirtualAccountMonitoringJob {
               [Op.like]: 'OCEAN_VA_%' // Virtual account references start with OCEAN_VA_
             },
             created_at: {
-              // Only check subscriptions created in the last 7 days
-              [Op.gte]: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+              // Only check subscriptions created in the last 48 hours (virtual accounts expire quickly)
+              [Op.gte]: new Date(Date.now() - 48 * 60 * 60 * 1000)
             }
           },
           order: [['created_at', 'DESC']],
@@ -67,6 +69,9 @@ class VirtualAccountMonitoringJob {
             }
 
             console.log(`Checking payment for subscription ${subscription.id}, reference: ${paymentReference}`);
+
+            // Calculate hours since subscription creation
+            const hoursSinceCreation = (Date.now() - new Date(subscription.created_at).getTime()) / (1000 * 60 * 60);
 
             // Verify payment with Flutterwave
             const paymentResult = await provider.verifyPayment(paymentReference);
@@ -121,21 +126,48 @@ class VirtualAccountMonitoringJob {
               console.log(`❌ Payment failed for subscription ${subscription.id}`);
               results.failed++;
 
-              // Optionally update subscription to failed status
-              // await subscription.update({ status: 'failed' });
+              // Mark as failed
+              await subscription.update({ status: 'failed' });
             } else {
-              console.log(`⏳ Payment still pending for subscription ${subscription.id}`);
+              // Payment still pending - check if virtual account has expired
+              if (hoursSinceCreation > 48) {
+                console.log(`⏰ Subscription ${subscription.id} expired (older than 48 hours), marking as cancelled`);
+                await subscription.update({ status: 'cancelled' });
+                results.expired++;
+              } else {
+                console.log(`⏳ Payment still pending for subscription ${subscription.id}`);
+              }
             }
 
             // Add a small delay to avoid rate limiting
             await new Promise(resolve => setTimeout(resolve, 500));
 
           } catch (error) {
-            console.error(`Error checking subscription ${subscription.id}:`, error);
-            results.errors.push({
-              subscriptionId: subscription.id,
-              error: error.message
-            });
+            // Handle "No transaction was found" error specifically
+            const errorMessage = error.message || '';
+            const errorResponse = error.response || {};
+            const isTransactionNotFound = 
+              errorMessage.includes('No transaction was found') ||
+              (errorResponse.message && errorResponse.message.includes('No transaction was found'));
+
+            if (isTransactionNotFound) {
+              // Calculate hours since subscription creation
+              const hoursSinceCreation = (Date.now() - new Date(subscription.created_at).getTime()) / (1000 * 60 * 60);
+
+              if (hoursSinceCreation > 48) {
+                console.log(`⏰ Subscription ${subscription.id} - transaction not found and older than 48 hours, marking as cancelled`);
+                await subscription.update({ status: 'cancelled' });
+                results.expired++;
+              } else {
+                console.log(`⚠️ Subscription ${subscription.id} - transaction not found yet (may be too early, ${hoursSinceCreation.toFixed(1)} hours old)`);
+              }
+            } else {
+              console.error(`Error checking subscription ${subscription.id}:`, error);
+              results.errors.push({
+                subscriptionId: subscription.id,
+                error: error.message
+              });
+            }
           }
         }
 
@@ -162,10 +194,12 @@ class VirtualAccountMonitoringJob {
         verified: 0,
         activated: 0,
         failed: 0,
+        expired: 0,
         errors: []
       };
 
       // Find pending subscriptions
+      // Virtual accounts typically expire within 24-48 hours, so only check recent ones
       const pendingSubscriptions = await UserSubscription.findAll({
         where: {
           status: 'pending',
@@ -174,7 +208,8 @@ class VirtualAccountMonitoringJob {
             [Op.like]: 'OCEAN_VA_%'
           },
           created_at: {
-            [Op.gte]: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+            // Only check subscriptions created in the last 48 hours (virtual accounts expire quickly)
+            [Op.gte]: new Date(Date.now() - 48 * 60 * 60 * 1000)
           }
         },
         order: [['created_at', 'DESC']],
@@ -197,6 +232,9 @@ class VirtualAccountMonitoringJob {
 
           console.log(`Checking payment for subscription ${subscription.id}, reference: ${paymentReference}`);
 
+          // Calculate hours since subscription creation
+          const hoursSinceCreation = (Date.now() - new Date(subscription.created_at).getTime()) / (1000 * 60 * 60);
+
           const paymentResult = await provider.verifyPayment(paymentReference);
           results.verified++;
 
@@ -218,17 +256,48 @@ class VirtualAccountMonitoringJob {
             console.log(`✅ Subscription ${subscription.id} activated`);
 
           } else if (paymentResult.status === 'failed') {
+            console.log(`❌ Payment failed for subscription ${subscription.id}`);
             results.failed++;
+            await subscription.update({ status: 'failed' });
+          } else {
+            // Payment still pending - check if virtual account has expired
+            if (hoursSinceCreation > 48) {
+              console.log(`⏰ Subscription ${subscription.id} expired (older than 48 hours), marking as cancelled`);
+              await subscription.update({ status: 'cancelled' });
+              results.expired++;
+            } else {
+              console.log(`⏳ Payment still pending for subscription ${subscription.id}`);
+            }
           }
 
           await new Promise(resolve => setTimeout(resolve, 500));
 
         } catch (error) {
-          console.error(`Error checking subscription ${subscription.id}:`, error);
-          results.errors.push({
-            subscriptionId: subscription.id,
-            error: error.message
-          });
+          // Handle "No transaction was found" error specifically
+          const errorMessage = error.message || '';
+          const errorResponse = error.response || {};
+          const isTransactionNotFound = 
+            errorMessage.includes('No transaction was found') ||
+            (errorResponse.message && errorResponse.message.includes('No transaction was found'));
+
+          if (isTransactionNotFound) {
+            // Calculate hours since subscription creation
+            const hoursSinceCreation = (Date.now() - new Date(subscription.created_at).getTime()) / (1000 * 60 * 60);
+
+            if (hoursSinceCreation > 48) {
+              console.log(`⏰ Subscription ${subscription.id} - transaction not found and older than 48 hours, marking as cancelled`);
+              await subscription.update({ status: 'cancelled' });
+              results.expired++;
+            } else {
+              console.log(`⚠️ Subscription ${subscription.id} - transaction not found yet (may be too early, ${hoursSinceCreation.toFixed(1)} hours old)`);
+            }
+          } else {
+            console.error(`Error checking subscription ${subscription.id}:`, error);
+            results.errors.push({
+              subscriptionId: subscription.id,
+              error: error.message
+            });
+          }
         }
       }
 
