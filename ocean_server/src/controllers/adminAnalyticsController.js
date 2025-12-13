@@ -822,13 +822,32 @@ class AdminAnalyticsController {
   }
 
   async getRevenueChart(dateRange) {
-    // Mock revenue chart data
+    // Get real revenue from subscription payments
     const days = Math.ceil((dateRange.end - dateRange.start) / (24 * 60 * 60 * 1000));
     const data = [];
 
     for (let i = 0; i < days; i++) {
       const date = new Date(dateRange.start.getTime() + i * 24 * 60 * 60 * 1000);
-      const revenue = Math.random() * 5000 + 2000; // Mock revenue
+      const nextDate = new Date(date.getTime() + 24 * 60 * 60 * 1000);
+
+      // Sum revenue from active subscriptions created on this day
+      const revenueResult = await db.sequelize.query(
+        `SELECT COALESCE(SUM(amount_paid), 0) as total
+         FROM user_subscriptions
+         WHERE status = 'active'
+         AND created_at >= :date
+         AND created_at < :nextDate
+         AND amount_paid IS NOT NULL`,
+        {
+          replacements: { 
+            date: date.toISOString().split('T')[0] + ' 00:00:00',
+            nextDate: nextDate.toISOString().split('T')[0] + ' 00:00:00'
+          },
+          type: db.sequelize.QueryTypes.SELECT
+        }
+      );
+
+      const revenue = parseFloat(revenueResult[0]?.total || 0);
       data.push({ date: date.toISOString().split('T')[0], revenue });
     }
 
