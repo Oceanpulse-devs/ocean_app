@@ -8,7 +8,7 @@ class FinanceController {
    */
   async getFinancialSummary(req, res) {
     try {
-      const { period = 'all' } = req.query; // 'all', 'month', 'year'
+      const { period = 'all', currency = 'NGN' } = req.query; // 'all', 'month', 'year' and 'NGN' or 'USD'
 
       // Calculate date range
       let dateFilter = {};
@@ -32,17 +32,21 @@ class FinanceController {
         };
       }
 
-      // Get total revenue (sum of all active subscriptions)
+      // Get total revenue (filtered by currency)
       const totalRevenueResult = await db.sequelize.query(
         `SELECT COALESCE(SUM(amount_paid), 0) as total
          FROM user_subscriptions
          WHERE status = 'active'
-         AND amount_paid IS NOT NULL`,
-        { type: db.sequelize.QueryTypes.SELECT }
+         AND amount_paid IS NOT NULL
+         AND currency = :currency`,
+        {
+          replacements: { currency },
+          type: db.sequelize.QueryTypes.SELECT
+        }
       );
       const totalRevenue = parseFloat(totalRevenueResult[0]?.total || 0);
 
-      // Get monthly revenue (this month)
+      // Get monthly revenue (this month) - filtered by currency
       const startOfMonth = new Date();
       startOfMonth.setDate(1);
       startOfMonth.setHours(0, 0, 0, 0);
@@ -51,29 +55,38 @@ class FinanceController {
          FROM user_subscriptions
          WHERE status = 'active'
          AND created_at >= :startOfMonth
-         AND amount_paid IS NOT NULL`,
+         AND amount_paid IS NOT NULL
+         AND currency = :currency`,
         {
-          replacements: { startOfMonth: startOfMonth.toISOString() },
+          replacements: { 
+            startOfMonth: startOfMonth.toISOString(),
+            currency
+          },
           type: db.sequelize.QueryTypes.SELECT
         }
       );
       const monthlyRevenue = parseFloat(monthlyRevenueResult[0]?.total || 0);
 
-      // Get transaction count
+      // Get transaction count (filtered by currency)
       const transactionCount = await db.UserSubscription.count({
         where: {
           ...dateFilter,
-          status: { [Op.in]: ['active', 'expired', 'cancelled'] }
+          status: { [Op.in]: ['active', 'expired', 'cancelled'] },
+          currency: currency
         }
       });
 
-      // Get average transaction amount
+      // Get average transaction amount (filtered by currency)
       const avgTransactionResult = await db.sequelize.query(
         `SELECT COALESCE(AVG(amount_paid), 0) as avg
          FROM user_subscriptions
          WHERE status = 'active'
-         AND amount_paid IS NOT NULL`,
-        { type: db.sequelize.QueryTypes.SELECT }
+         AND amount_paid IS NOT NULL
+         AND currency = :currency`,
+        {
+          replacements: { currency },
+          type: db.sequelize.QueryTypes.SELECT
+        }
       );
       const avgTransaction = parseFloat(avgTransactionResult[0]?.avg || 0);
 
@@ -88,11 +101,13 @@ class FinanceController {
          WHERE status = 'active'
          AND created_at >= :startOfLastMonth
          AND created_at < :endOfLastMonth
-         AND amount_paid IS NOT NULL`,
+         AND amount_paid IS NOT NULL
+         AND currency = :currency`,
         {
           replacements: {
             startOfLastMonth: startOfLastMonth.toISOString(),
-            endOfLastMonth: endOfLastMonth.toISOString()
+            endOfLastMonth: endOfLastMonth.toISOString(),
+            currency
           },
           type: db.sequelize.QueryTypes.SELECT
         }
@@ -110,7 +125,7 @@ class FinanceController {
           transactionCount,
           avgTransaction,
           growth: parseFloat(growth),
-          currency: 'NGN'
+          currency: currency
         }
       });
     } catch (error) {
@@ -248,7 +263,7 @@ class FinanceController {
    */
   async getRevenueBreakdown(req, res) {
     try {
-      const { period = '30d' } = req.query; // '7d', '30d', '90d', '1y'
+      const { period = '30d', currency = 'NGN' } = req.query; // '7d', '30d', '90d', '1y' and 'NGN' or 'USD'
 
       // Calculate date range
       const endDate = new Date();
@@ -285,11 +300,13 @@ class FinanceController {
            WHERE status = 'active'
            AND created_at >= :date
            AND created_at < :nextDate
-           AND amount_paid IS NOT NULL`,
+           AND amount_paid IS NOT NULL
+           AND currency = :currency`,
           {
             replacements: {
               date: date.toISOString().split('T')[0] + ' 00:00:00',
-              nextDate: nextDate.toISOString().split('T')[0] + ' 00:00:00'
+              nextDate: nextDate.toISOString().split('T')[0] + ' 00:00:00',
+              currency
             },
             type: db.sequelize.QueryTypes.SELECT
           }
@@ -301,7 +318,7 @@ class FinanceController {
         });
       }
 
-      // Get revenue by plan
+      // Get revenue by plan - filtered by currency
       const revenueByPlanResult = await db.sequelize.query(
         `SELECT 
            sp.name as plan_name,
@@ -312,11 +329,15 @@ class FinanceController {
          LEFT JOIN user_subscriptions us ON sp.id = us.plan_id
          WHERE us.status = 'active'
          AND us.amount_paid IS NOT NULL
+         AND us.currency = :currency
          AND us.created_at >= :startDate
          GROUP BY sp.id, sp.name
          ORDER BY total_revenue DESC`,
         {
-          replacements: { startDate: startDate.toISOString() },
+          replacements: { 
+            startDate: startDate.toISOString(),
+            currency
+          },
           type: db.sequelize.QueryTypes.SELECT
         }
       );
