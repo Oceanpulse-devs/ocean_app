@@ -620,9 +620,16 @@ class AdminAnalyticsController {
       limit: 5,
       include: [
         {
-          model: db.UserTable,
+          model: db.SellersTable,
           as: 'seller',
-          attributes: ['id', 'fullName']
+          attributes: ['id'],
+          include: [
+            {
+              model: db.UserTable,
+              as: 'user',
+              attributes: ['id', 'fullName']
+            }
+          ]
         }
       ]
     });
