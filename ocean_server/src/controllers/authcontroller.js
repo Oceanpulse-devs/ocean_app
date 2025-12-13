@@ -1011,40 +1011,69 @@ const resendVerificationEmail = async (req, res) => {
 };
 
 // Google Mobile Authentication - for mobile apps using Google Sign-In SDK
+// Also supports web authentication with access tokens
 const googleMobileAuth = async (req, res) => {
-    const { idToken } = req.body;
+    const { idToken, accessToken, userInfo } = req.body;
 
     try {
-        // Validate input
-        if (!idToken) {
-            return res.status(400).json({ 
-                message: "Google ID token is required" 
-            });
-        }
-
-        // Verify the Google ID token with Google's tokeninfo API
-        const tokenInfoUrl = `https://www.googleapis.com/oauth2/v3/tokeninfo?id_token=${idToken}`;
-        
         let googleUserInfo;
-        try {
-            const response = await axios.get(tokenInfoUrl);
-            googleUserInfo = response.data;
+        
+        // Handle ID token (mobile) or access token (web)
+        if (idToken) {
+            // Mobile: Verify ID token
+            const tokenInfoUrl = `https://www.googleapis.com/oauth2/v3/tokeninfo?id_token=${idToken}`;
+            
+            try {
+                const response = await axios.get(tokenInfoUrl);
+                googleUserInfo = response.data;
 
-            // Verify the token was issued for our app
-            if (googleUserInfo.aud !== process.env.GOOGLE_CLIENT_ID) {
+                // Verify the token was issued for our app
+                if (googleUserInfo.aud !== process.env.GOOGLE_CLIENT_ID) {
+                    return res.status(401).json({ 
+                        message: "Invalid token: token was not issued for this application" 
+                    });
+                }
+            } catch (verifyError) {
+                console.error('Google token verification error:', verifyError);
                 return res.status(401).json({ 
-                    message: "Invalid token: token was not issued for this application" 
+                    message: "Invalid or expired Google ID token",
+                    error: verifyError.response?.data?.error_description || verifyError.message
                 });
             }
-        } catch (verifyError) {
-            console.error('Google token verification error:', verifyError);
-            return res.status(401).json({ 
-                message: "Invalid or expired Google ID token",
-                error: verifyError.response?.data?.error_description || verifyError.message
+        } else if (accessToken && userInfo) {
+            // Web: Verify access token and use provided user info
+            try {
+                const verifyUrl = `https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=${accessToken}`;
+                const verifyResponse = await axios.get(verifyUrl);
+                
+                // Verify the token was issued for our app
+                if (verifyResponse.data.audience !== process.env.GOOGLE_CLIENT_ID) {
+                    return res.status(401).json({ 
+                        message: "Invalid token: token was not issued for this application" 
+                    });
+                }
+                
+                // Use provided user info (already verified by Google Sign-In SDK)
+                googleUserInfo = {
+                    sub: userInfo.id,
+                    email: userInfo.email,
+                    name: userInfo.displayName,
+                    picture: userInfo.photoUrl,
+                };
+            } catch (verifyError) {
+                console.error('Google access token verification error:', verifyError);
+                return res.status(401).json({ 
+                    message: "Invalid or expired Google access token",
+                    error: verifyError.response?.data?.error_description || verifyError.message
+                });
+            }
+        } else {
+            return res.status(400).json({ 
+                message: "Either Google ID token or access token with user info is required" 
             });
         }
 
-        // Extract user information from verified token
+        // Extract user information
         const googleId = googleUserInfo.sub;
         const email = googleUserInfo.email;
         const fullName = googleUserInfo.name || email.split('@')[0];
