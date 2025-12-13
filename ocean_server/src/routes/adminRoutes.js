@@ -8,6 +8,7 @@ const systemAdminController = require('../controllers/systemAdminController');
 const securityModerationController = require('../controllers/securityModerationController');
 const contentAdminController = require('../controllers/contentAdminController');
 const ReportController = require('../controllers/reportController');
+const financeController = require('../controllers/financeController');
 const authMiddleware = require('../middleware/authMiddleware');
 
 // Apply authentication middleware to all routes
@@ -86,6 +87,13 @@ router.get('/stats', adminAnalyticsController.getPlatformStats.bind(adminAnalyti
 router.post('/reports', adminAnalyticsController.generateReports.bind(adminAnalyticsController));
 router.get('/activity', adminAnalyticsController.getSystemActivity.bind(adminAnalyticsController));
 router.get('/performance', adminAnalyticsController.getPerformanceMetrics.bind(adminAnalyticsController));
+
+// ==================== FINANCE MANAGEMENT ROUTES ====================
+
+// Finance Operations
+router.get('/finances/summary', financeController.getFinancialSummary.bind(financeController));
+router.get('/finances/transactions', financeController.getTransactions.bind(financeController));
+router.get('/finances/revenue-breakdown', financeController.getRevenueBreakdown.bind(financeController));
 
 // ==================== SYSTEM ADMINISTRATION ROUTES ====================
 
