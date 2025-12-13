@@ -55,9 +55,6 @@ class AdminAnalyticsController {
         this.getRevenueStats(dateRange)
       ]);
 
-      // Get recent activity
-      const recentActivity = await this.getRecentActivity();
-
       // Get top performing categories
       const topCategories = await this.getTopCategories(dateRange);
 
@@ -93,7 +90,6 @@ class AdminAnalyticsController {
             bounceRate: engagementStats.bounceRate
           },
           topCategories,
-          recentActivity,
           systemHealth,
           charts: {
             userGrowth: await this.getUserGrowthChart(dateRange),
@@ -343,7 +339,7 @@ class AdminAnalyticsController {
       }
 
       // Get recent system activity from existing models
-      const [recentPosts, recentUsers, recentSellers] = await Promise.all([
+      const [recentPosts, recentUsers, recentSellers, recentProducts, recentAuctions, recentGroupBuys, recentSwapDeals] = await Promise.all([
         db.Post.findAll({
           order: [['createdAt', 'DESC']],
           limit: 5,
@@ -368,6 +364,64 @@ class AdminAnalyticsController {
               model: db.UserTable,
               as: 'user',
               attributes: ['id', 'fullName', 'username']
+            }
+          ]
+        }),
+        db.Product.findAll({
+          order: [['createdAt', 'DESC']],
+          limit: 5,
+          include: [
+            {
+              model: db.SellersTable,
+              as: 'seller',
+              attributes: ['id'],
+              include: [
+                {
+                  model: db.UserTable,
+                  as: 'user',
+                  attributes: ['id', 'fullName']
+                }
+              ]
+            }
+          ]
+        }),
+        db.Auction.findAll({
+          order: [['createdAt', 'DESC']],
+          limit: 5,
+          include: [
+            {
+              model: db.SellersTable,
+              as: 'seller',
+              attributes: ['id'],
+              include: [
+                {
+                  model: db.UserTable,
+                  as: 'user',
+                  attributes: ['id', 'fullName']
+                }
+              ]
+            }
+          ]
+        }),
+        db.GroupBuy.findAll({
+          order: [['createdAt', 'DESC']],
+          limit: 5,
+          include: [
+            {
+              model: db.UserTable,
+              as: 'seller',
+              attributes: ['id', 'fullName']
+            }
+          ]
+        }),
+        db.SwapDeal.findAll({
+          order: [['createdAt', 'DESC']],
+          limit: 5,
+          include: [
+            {
+              model: db.UserTable,
+              as: 'seller',
+              attributes: ['id', 'fullName']
             }
           ]
         })
@@ -396,9 +450,37 @@ class AdminAnalyticsController {
             description: `New seller registered: ${seller.businessName}`,
             user: seller.user,
             createdAt: seller.createdAt
+          })),
+          ...recentProducts.map(product => ({
+            id: `product-${product.id}`,
+            type: 'product_created',
+            description: `New product listed: "${product.title?.substring(0, 50)}..."`,
+            user: product.seller?.user,
+            createdAt: product.createdAt
+          })),
+          ...recentAuctions.map(auction => ({
+            id: `auction-${auction.id}`,
+            type: 'auction_created',
+            description: `New auction: "${auction.title?.substring(0, 50)}..."`,
+            user: auction.seller?.user,
+            createdAt: auction.createdAt
+          })),
+          ...recentGroupBuys.map(groupBuy => ({
+            id: `groupbuy-${groupBuy.id}`,
+            type: 'groupbuy_created',
+            description: `New group buy: "${groupBuy.title?.substring(0, 50)}..."`,
+            user: groupBuy.seller,
+            createdAt: groupBuy.createdAt
+          })),
+          ...recentSwapDeals.map(swapDeal => ({
+            id: `swapdeal-${swapDeal.id}`,
+            type: 'swapdeal_created',
+            description: `New swap deal: "${swapDeal.title?.substring(0, 50)}..."`,
+            user: swapDeal.seller,
+            createdAt: swapDeal.createdAt
           }))
         ].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, parseInt(limit)),
-        count: recentPosts.length + recentUsers.length + recentSellers.length
+        count: recentPosts.length + recentUsers.length + recentSellers.length + recentProducts.length + recentAuctions.length + recentGroupBuys.length + recentSwapDeals.length
       };
 
       res.json({
@@ -544,21 +626,75 @@ class AdminAnalyticsController {
   }
 
   async getProductStats(dateRange) {
-    const total = await db.Product.count();
-    const newProducts = await db.Product.count({
-      where: {
-        createdAt: {
-          [Op.gte]: dateRange.start
-        }
-      }
-    });
-    const active = await db.Product.count({
-      where: {
-        status: 'active'
-      }
-    });
+    // Count all product types: Product, Auction, GroupBuy, SwapDeal
+    const [productCount, auctionCount, groupBuyCount, swapDealCount] = await Promise.all([
+      db.Product.count(),
+      db.Auction.count(),
+      db.GroupBuy.count(),
+      db.SwapDeal.count()
+    ]);
 
-    return { total, new: newProducts, active };
+    const total = productCount + auctionCount + groupBuyCount + swapDealCount;
+
+    const [newProducts, newAuctions, newGroupBuys, newSwapDeals] = await Promise.all([
+      db.Product.count({
+        where: {
+          createdAt: {
+            [Op.gte]: dateRange.start
+          }
+        }
+      }),
+      db.Auction.count({
+        where: {
+          createdAt: {
+            [Op.gte]: dateRange.start
+          }
+        }
+      }),
+      db.GroupBuy.count({
+        where: {
+          createdAt: {
+            [Op.gte]: dateRange.start
+          }
+        }
+      }),
+      db.SwapDeal.count({
+        where: {
+          createdAt: {
+            [Op.gte]: dateRange.start
+          }
+        }
+      })
+    ]);
+
+    const newTotal = newProducts + newAuctions + newGroupBuys + newSwapDeals;
+
+    const [activeProducts, activeAuctions, activeGroupBuys, activeSwapDeals] = await Promise.all([
+      db.Product.count({
+        where: {
+          status: 'active'
+        }
+      }),
+      db.Auction.count({
+        where: {
+          status: 'active'
+        }
+      }),
+      db.GroupBuy.count({
+        where: {
+          status: 'active'
+        }
+      }),
+      db.SwapDeal.count({
+        where: {
+          status: 'active'
+        }
+      })
+    ]);
+
+    const active = activeProducts + activeAuctions + activeGroupBuys + activeSwapDeals;
+
+    return { total, new: newTotal, active };
   }
 
   async getTransactionStats(dateRange) {
