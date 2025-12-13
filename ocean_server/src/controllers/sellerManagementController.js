@@ -51,10 +51,20 @@ class SellerManagementController {
         offset: parseInt(offset)
       });
 
+      // Map sellers to include category from selectedCategories
+      const sellersWithCategory = sellers.rows.map(seller => {
+        const sellerData = seller.toJSON();
+        // Get first category from selectedCategories array if category field is empty
+        if (!sellerData.category && sellerData.selectedCategories && Array.isArray(sellerData.selectedCategories) && sellerData.selectedCategories.length > 0) {
+          sellerData.category = sellerData.selectedCategories[0];
+        }
+        return sellerData;
+      });
+
       res.json({
         success: true,
         data: {
-          sellers: sellers.rows,
+          sellers: sellersWithCategory,
           pagination: {
             currentPage: parseInt(page),
             totalPages: Math.ceil(sellers.count / limit),
@@ -99,10 +109,20 @@ class SellerManagementController {
         offset: parseInt(offset)
       });
 
+      // Map sellers to include category from selectedCategories
+      const sellersWithCategory = sellers.rows.map(seller => {
+        const sellerData = seller.toJSON();
+        // Get first category from selectedCategories array if category field is empty
+        if (!sellerData.category && sellerData.selectedCategories && Array.isArray(sellerData.selectedCategories) && sellerData.selectedCategories.length > 0) {
+          sellerData.category = sellerData.selectedCategories[0];
+        }
+        return sellerData;
+      });
+
       res.json({
         success: true,
         data: {
-          sellers: sellers.rows,
+          sellers: sellersWithCategory,
           pagination: {
             currentPage: parseInt(page),
             totalPages: Math.ceil(sellers.count / limit),
@@ -149,9 +169,16 @@ class SellerManagementController {
         });
       }
 
+      // Map seller to include category from selectedCategories
+      const sellerData = seller.toJSON();
+      // Get first category from selectedCategories array if category field is empty
+      if (!sellerData.category && sellerData.selectedCategories && Array.isArray(sellerData.selectedCategories) && sellerData.selectedCategories.length > 0) {
+        sellerData.category = sellerData.selectedCategories[0];
+      }
+
       res.json({
         success: true,
-        data: seller
+        data: sellerData
       });
 
     } catch (error) {
@@ -232,10 +259,17 @@ class SellerManagementController {
         ]
       });
 
+      // Map seller to include category from selectedCategories
+      const sellerData = updatedSeller.toJSON();
+      // Get first category from selectedCategories array if category field is empty
+      if (!sellerData.category && sellerData.selectedCategories && Array.isArray(sellerData.selectedCategories) && sellerData.selectedCategories.length > 0) {
+        sellerData.category = sellerData.selectedCategories[0];
+      }
+
       res.json({
         success: true,
         message: 'Seller approved successfully',
-        data: updatedSeller
+        data: sellerData
       });
 
     } catch (error) {
@@ -507,10 +541,20 @@ class SellerManagementController {
         offset: parseInt(offset)
       });
 
+      // Map sellers to include category from selectedCategories
+      const sellersWithCategory = sellers.rows.map(seller => {
+        const sellerData = seller.toJSON();
+        // Get first category from selectedCategories array if category field is empty
+        if (!sellerData.category && sellerData.selectedCategories && Array.isArray(sellerData.selectedCategories) && sellerData.selectedCategories.length > 0) {
+          sellerData.category = sellerData.selectedCategories[0];
+        }
+        return sellerData;
+      });
+
       res.json({
         success: true,
         data: {
-          sellers: sellers.rows,
+          sellers: sellersWithCategory,
           pagination: {
             currentPage: parseInt(page),
             totalPages: Math.ceil(sellers.count / limit),
@@ -632,6 +676,10 @@ class SellerManagementController {
         .slice(0, parseInt(limit))
         .map(item => {
           const sellerData = item.seller.toJSON();
+          // Get first category from selectedCategories array if category field is empty
+          if (!sellerData.category && sellerData.selectedCategories && Array.isArray(sellerData.selectedCategories) && sellerData.selectedCategories.length > 0) {
+            sellerData.category = sellerData.selectedCategories[0];
+          }
           return {
             ...sellerData,
             conversationCount: item.conversationCount
