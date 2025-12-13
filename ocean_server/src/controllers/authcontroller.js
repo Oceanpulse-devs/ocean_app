@@ -1077,7 +1077,13 @@ const googleMobileAuth = async (req, res) => {
         const googleId = googleUserInfo.sub;
         const email = googleUserInfo.email;
         const fullName = googleUserInfo.name || email.split('@')[0];
-        const profilePicture = googleUserInfo.picture || null;
+        // Remove size parameter from Google profile picture URL to get full-size image
+        // This prevents rate limiting issues and provides better quality
+        let profilePicture = googleUserInfo.picture || null;
+        if (profilePicture && profilePicture.includes('=s')) {
+            // Remove size parameter (e.g., =s100) to get full-size image
+            profilePicture = profilePicture.split('=s')[0];
+        }
 
         if (!email) {
             return res.status(400).json({ 
