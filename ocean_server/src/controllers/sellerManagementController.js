@@ -581,6 +581,79 @@ class SellerManagementController {
       });
     }
   }
+
+  // Get top sellers by conversation/message count
+  async getTopSellers(req, res) {
+    try {
+      const { limit = 3 } = req.query;
+
+      // Get all approved sellers
+      const sellers = await db.SellersTable.findAll({
+        where: { verificationStatus: 'approved' },
+        include: [
+          {
+            model: db.UserTable,
+            as: 'user',
+            attributes: ['id', 'fullName', 'username', 'profilePicture', 'email']
+          }
+        ]
+      });
+
+      // Count conversations for each seller (via ConversationParticipant)
+      const sellersWithCounts = await Promise.all(
+        sellers.map(async (seller) => {
+          // Count active conversation participants for this seller's userId
+          // Join with Conversation to ensure conversation is also active
+          const conversationCount = await db.sequelize.query(
+            `SELECT COUNT(DISTINCT cp.conversationId) as count
+             FROM conversationparticipants cp
+             INNER JOIN conversations c ON cp.conversationId = c.id
+             WHERE cp.userId = :userId 
+             AND cp.isActive = true 
+             AND c.isActive = true`,
+            {
+              replacements: { userId: seller.userId },
+              type: db.sequelize.QueryTypes.SELECT
+            }
+          );
+
+          const count = conversationCount[0]?.count || 0;
+
+          return {
+            seller: seller,
+            conversationCount: parseInt(count)
+          };
+        })
+      );
+
+      // Sort by conversation count and get top N
+      const topSellers = sellersWithCounts
+        .sort((a, b) => b.conversationCount - a.conversationCount)
+        .slice(0, parseInt(limit))
+        .map(item => {
+          const sellerData = item.seller.toJSON();
+          return {
+            ...sellerData,
+            conversationCount: item.conversationCount
+          };
+        });
+
+      res.json({
+        success: true,
+        data: {
+          sellers: topSellers
+        }
+      });
+
+    } catch (error) {
+      console.error('Error getting top sellers:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error',
+        error: error.message
+      });
+    }
+  }
 }
 
 module.exports = new SellerManagementController();

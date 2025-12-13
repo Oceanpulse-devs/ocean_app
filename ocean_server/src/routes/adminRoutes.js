@@ -51,6 +51,7 @@ router.get('/sellers', sellerManagementController.getAllSellers);
 router.get('/sellers/pending', sellerManagementController.getPendingSellers);
 router.get('/sellers/search', sellerManagementController.searchSellers);
 router.get('/sellers/stats', sellerManagementController.getSellerStats);
+router.get('/sellers/top', sellerManagementController.getTopSellers);
 router.get('/sellers/:id', sellerManagementController.getSellerById);
 
 // Seller Actions
