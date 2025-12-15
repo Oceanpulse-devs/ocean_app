@@ -120,7 +120,7 @@ app.use(passport.session());
 // Apply response wrapper middleware to all routes
 app.use(responseWrapper);
 
-// Health check endpoint (Railway / monitoring / browser)
+// Health check endpoint (Railway / monitoring / browsers)
 app.get('/health', (req, res) => {
     const health = {
         status: 'OK',
