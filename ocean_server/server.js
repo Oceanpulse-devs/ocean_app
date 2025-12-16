@@ -121,8 +121,8 @@ app.use(passport.session());
 app.use(responseWrapper);
 
 // Health check endpoint (Railway / monitoring / browsers)
-app.get('/health', (req, res) => {
-    const health = {
+app.get('/health', async (req, res) => {
+    const baseHealth = {
         status: 'OK',
         service: 'Ocean Backend API',
         environment: process.env.NODE_ENV || 'development',
@@ -133,6 +133,43 @@ app.get('/health', (req, res) => {
         nodeVersion: process.version,
         platform: process.platform,
         memory: process.memoryUsage()
+    };
+
+    const dbStatus = { status: 'unknown' };
+    const redisStatus = { status: 'unknown' };
+
+    // Quick DB health check (non-fatal, best-effort)
+    try {
+        if (db && db.sequelize && typeof db.sequelize.authenticate === 'function') {
+            await db.sequelize.authenticate();
+            dbStatus.status = 'up';
+        } else {
+            dbStatus.status = 'not_configured';
+        }
+    } catch (err) {
+        dbStatus.status = 'down';
+        dbStatus.error = err.message || String(err);
+        baseHealth.status = 'DEGRADED';
+    }
+
+    // Quick Redis health check (non-fatal, best-effort)
+    try {
+        if (redisClient && typeof redisClient.ping === 'function') {
+            const pong = await redisClient.ping();
+            redisStatus.status = pong === 'PONG' ? 'up' : 'degraded';
+        } else {
+            redisStatus.status = 'not_configured';
+        }
+    } catch (err) {
+        redisStatus.status = 'down';
+        redisStatus.error = err.message || String(err);
+        baseHealth.status = 'DEGRADED';
+    }
+
+    const health = {
+        ...baseHealth,
+        db: dbStatus,
+        redis: redisStatus
     };
 
     const wantsHtml =
