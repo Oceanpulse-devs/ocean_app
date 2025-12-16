@@ -186,6 +186,33 @@ app.get('/health', async (req, res) => {
     const uptimeHours = Math.floor(uptimeMinutes / 60);
     const memMb = (health.memory.rss / 1024 / 1024).toFixed(1);
 
+    // Helper mappers for status display in HTML
+    const getStatusBadge = (status) => {
+        const isHealthy = status === 'OK';
+        return {
+            badgeClass: isHealthy ? 'status-badge' : 'status-badge-degraded',
+            dotClass: isHealthy ? 'status-dot' : 'status-dot-degraded',
+            label: isHealthy ? 'Healthy' : 'Degraded'
+        };
+    };
+
+    const getStatusDisplay = (status) => {
+        if (status === 'up') {
+            return { text: 'Up', color: '#22c55e', cssClass: 'status-up' };
+        }
+        if (status === 'down') {
+            return { text: 'Down', color: '#ef4444', cssClass: 'status-down' };
+        }
+        if (status === 'degraded') {
+            return { text: 'Degraded', color: '#eab308', cssClass: 'status-degraded' };
+        }
+        return { text: 'Not Configured', color: '#9ca3af', cssClass: 'status-unknown' };
+    };
+
+    const statusBadge = getStatusBadge(health.status);
+    const dbStatusDisplay = getStatusDisplay(health.db.status);
+    const redisStatusDisplay = getStatusDisplay(health.redis.status);
+
     const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -290,6 +317,42 @@ app.get('/health', async (req, res) => {
       background: var(--ok);
       box-shadow: 0 0 12px rgba(34,197,94,0.9);
     }
+    .status-badge-degraded {
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(234,179,8,0.09);
+      border: 1px solid rgba(234,179,8,0.4);
+      color: var(--warn);
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+    }
+    .status-dot-degraded {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: var(--warn);
+      box-shadow: 0 0 12px rgba(234,179,8,0.9);
+    }
+    .status-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.78rem;
+    }
+    .status-indicator-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 999px;
+      box-shadow: 0 0 8px currentColor;
+    }
+    .status-up { color: var(--ok); }
+    .status-down { color: var(--error); }
+    .status-degraded { color: var(--warn); }
+    .status-unknown { color: var(--muted); }
     .grid {
       margin-top: 20px;
       display: grid;
@@ -428,9 +491,9 @@ app.get('/health', async (req, res) => {
         </p>
       </div>
       <div>
-        <div class="status-badge">
-          <span class="status-dot"></span>
-          <span>Healthy</span>
+        <div class="${statusBadge.badgeClass}">
+          <span class="${statusBadge.dotClass}"></span>
+          <span>${statusBadge.label}</span>
         </div>
       </div>
     </header>
@@ -484,14 +547,46 @@ app.get('/health', async (req, res) => {
           <span class="card-badge">Status</span>
         </div>
         <p class="metric-main">Status: ${health.status}</p>
-        <p class="metric-sub">All core checks are passing.</p>
+        <p class="metric-sub">
+          ${health.status === 'OK'
+            ? 'All core checks are passing.'
+            : 'Some services are experiencing issues.'}
+        </p>
         <div class="key-value">
           <span>API</span>
-          <span>Online</span>
+          <span class="status-indicator status-up">
+            <span
+              class="status-indicator-dot"
+              style="background: #22c55e;"
+            ></span>
+            <span>Online</span>
+          </span>
         </div>
         <div class="key-value">
           <span>Database</span>
-          <span>Connected (basic connectivity)</span>
+          <span class="status-indicator ${dbStatusDisplay.cssClass}">
+            <span
+              class="status-indicator-dot"
+              style="background: ${dbStatusDisplay.color};"
+            ></span>
+            <span>
+              ${dbStatusDisplay.text}
+              ${health.db.error ? `(${health.db.error})` : ''}
+            </span>
+          </span>
+        </div>
+        <div class="key-value">
+          <span>Redis</span>
+          <span class="status-indicator ${redisStatusDisplay.cssClass}">
+            <span
+              class="status-indicator-dot"
+              style="background: ${redisStatusDisplay.color};"
+            ></span>
+            <span>
+              ${redisStatusDisplay.text}
+              ${health.redis.error ? `(${health.redis.error})` : ''}
+            </span>
+          </span>
         </div>
         <div class="key-value">
           <span>Last Updated</span>
