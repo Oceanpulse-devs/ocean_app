@@ -49,6 +49,9 @@ jspm_packages/
 # Uploads directory
 uploads/
 
+# Temporary files (video compression)
+temp/
+
 # IDE files
 .vscode/
 .idea/

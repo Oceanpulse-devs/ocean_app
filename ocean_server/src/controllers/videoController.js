@@ -2,6 +2,7 @@ const { Video, VideoLike, VideoView, VideoComment, VideoCommentLike, UserTable, 
 const { Op } = require('sequelize');
 const { v4: uuidv4 } = require('uuid');
 const cloudinaryService = require('../services/cloudinaryService');
+const videoCompressionService = require('../services/videoCompressionService');
 const redisClient = require('../config/redisdb');
 
 class VideoController {
@@ -51,6 +52,34 @@ class VideoController {
                 });
             }
 
+            // Cloudinary free tier limit: 40MB for synchronous processing
+            const cloudinaryFreeLimit = 40 * 1024 * 1024; // 40MB
+            const fileSizeMB = videoFile.size / (1024 * 1024);
+            
+            // Compress video if it exceeds Cloudinary free tier limit
+            // This maintains 720p/1080p quality while reducing file size
+            let videoBuffer = videoFile.buffer;
+            
+            if (videoFile.size > cloudinaryFreeLimit) {
+                try {
+                    console.log(`📹 Video size (${fileSizeMB.toFixed(2)}MB) exceeds Cloudinary free tier limit (40MB)`);
+                    console.log('📹 Compressing video while maintaining quality...');
+                    
+                    // Compress to 35MB target (safety margin under 40MB limit)
+                    videoBuffer = await videoCompressionService.compressVideoSmart(videoFile.buffer, 35);
+                    
+                    const compressedSizeMB = (videoBuffer.length / (1024 * 1024)).toFixed(2);
+                    console.log(`✅ Compression complete: ${fileSizeMB.toFixed(2)}MB → ${compressedSizeMB}MB`);
+                } catch (compressionError) {
+                    console.error('❌ Video compression failed:', compressionError);
+                    return res.status(500).json({
+                        success: false,
+                        message: 'Failed to compress video. Please try uploading a smaller file or contact support.',
+                        error: compressionError.message
+                    });
+                }
+            }
+
             // Upload video to Cloudinary with eager transformations for thumbnail
             const folder = `ocean-app/videos/${userId}`;
             
@@ -75,7 +104,7 @@ class VideoController {
             };
 
             let uploadResult = await cloudinaryService.uploadFile(
-                videoFile.buffer,
+                videoBuffer, // Use compressed buffer if compression was applied
                 folder,
                 uploadOptions
             );
@@ -100,7 +129,7 @@ class VideoController {
                 };
                 
                 uploadResult = await cloudinaryService.uploadFile(
-                    videoFile.buffer,
+                    videoBuffer, // Use compressed buffer if compression was applied
                     folder,
                     uploadOptions
                 );
