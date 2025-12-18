@@ -6,7 +6,7 @@ const videoCompressionService = require('../services/videoCompressionService');
 const redisClient = require('../config/redisdb');
 
 class VideoController {
-    // Create a new video (async/background version)
+    // Create a new video
     static async createVideo(req, res) {
         try {
             console.log('📹 Video creation request received');
@@ -52,152 +52,42 @@ class VideoController {
                 });
             }
 
-            // Generate unique upload job ID
-            const uploadJobId = uuidv4();
-            
-            // Store upload metadata in Redis (expires in 1 hour)
-            const uploadMetadata = {
-                status: 'processing',
-                userId,
-                fileSize: videoFile.size,
-                fileSizeMB: (videoFile.size / (1024 * 1024)).toFixed(2),
-                mimeType: videoFile.mimetype,
-                description: description || null,
-                cta_enabled: cta_enabled === 'true' || cta_enabled === true,
-                cta_type: cta_type || 'none',
-                cta_label: cta_label || null,
-                video_role: video_role || 'seller',
-                createdAt: new Date().toISOString(),
-                progress: 0,
-                stage: 'initializing'
-            };
-
-            await redisClient.setex(
-                `video_upload:${uploadJobId}`,
-                3600, // 1 hour expiry
-                JSON.stringify(uploadMetadata)
-            );
-
-            // Process upload in background (non-blocking)
-            // Use setImmediate to ensure it doesn't block the response
-            setImmediate(() => {
-                VideoController.processVideoUploadAsync(
-                    uploadJobId,
-                    userId,
-                    videoFile.buffer,
-                    videoFile.size,
-                    videoFile.mimetype,
-                    {
-                        description,
-                        cta_enabled,
-                        cta_type,
-                        cta_label,
-                        video_role
-                    }
-                ).catch(error => {
-                    console.error(`❌ Background video upload error for job ${uploadJobId}:`, error);
-                    // Update Redis with error status
-                    redisClient.setex(
-                        `video_upload:${uploadJobId}`,
-                        3600,
-                        JSON.stringify({
-                            ...uploadMetadata,
-                            status: 'failed',
-                            error: error.message,
-                            failedAt: new Date().toISOString()
-                        })
-                    ).catch(redisErr => {
-                        console.error('Failed to update Redis with error status:', redisErr);
-                    });
-                });
-            });
-
-            // Return immediately with job ID
-            return res.status(202).json({
-                success: true,
-                message: 'Video upload started. Processing in background.',
-                data: {
-                    uploadJobId,
-                    status: 'processing',
-                    checkStatusUrl: `/api/videos/upload/${uploadJobId}/status`
-                }
-            });
-        } catch (error) {
-            console.error('Video upload initialization error:', error);
-            return res.status(500).json({
-                success: false,
-                message: 'Failed to start video upload',
-                error: error.message
-            });
-        }
-    }
-
-    // Background video processing (non-blocking)
-    static async processVideoUploadAsync(uploadJobId, userId, videoBuffer, fileSize, mimeType, bodyData) {
-        const updateStatus = async (status, progress, stage, additionalData = {}) => {
-            try {
-                const currentData = await redisClient.get(`video_upload:${uploadJobId}`);
-                const metadata = currentData ? JSON.parse(currentData) : {};
-                await redisClient.setex(
-                    `video_upload:${uploadJobId}`,
-                    3600,
-                    JSON.stringify({
-                        ...metadata,
-                        status,
-                        progress,
-                        stage,
-                        updatedAt: new Date().toISOString(),
-                        ...additionalData
-                    })
-                );
-            } catch (error) {
-                console.error('Failed to update upload status:', error);
-            }
-        };
-
-        try {
-            await updateStatus('processing', 10, 'compressing');
-
             // Cloudinary free tier limit: 40MB for synchronous processing
             const cloudinaryFreeLimit = 40 * 1024 * 1024; // 40MB
-            const fileSizeMB = fileSize / (1024 * 1024);
+            const fileSizeMB = videoFile.size / (1024 * 1024);
             
             // Compress video if it exceeds Cloudinary free tier limit
-            let processedBuffer = videoBuffer;
+            // This maintains 720p/1080p quality while reducing file size
+            let videoBuffer = videoFile.buffer;
             
-            if (fileSize > cloudinaryFreeLimit) {
+            if (videoFile.size > cloudinaryFreeLimit) {
                 try {
-                    console.log(`📹 [Job ${uploadJobId}] Video size (${fileSizeMB.toFixed(2)}MB) exceeds Cloudinary free tier limit (40MB)`);
-                    console.log(`📹 [Job ${uploadJobId}] Compressing video while maintaining quality...`);
-                    
-                    await updateStatus('processing', 20, 'compressing');
+                    console.log(`📹 Video size (${fileSizeMB.toFixed(2)}MB) exceeds Cloudinary free tier limit (40MB)`);
+                    console.log('📹 Compressing video while maintaining quality...');
                     
                     // Compress to 35MB target (safety margin under 40MB limit)
-                    processedBuffer = await videoCompressionService.compressVideoSmart(videoBuffer, 35);
+                    videoBuffer = await videoCompressionService.compressVideoSmart(videoFile.buffer, 35);
                     
-                    const compressedSizeMB = (processedBuffer.length / (1024 * 1024)).toFixed(2);
-                    console.log(`✅ [Job ${uploadJobId}] Compression complete: ${fileSizeMB.toFixed(2)}MB → ${compressedSizeMB}MB`);
-                    
-                    await updateStatus('processing', 50, 'compressed', {
-                        originalSizeMB: fileSizeMB.toFixed(2),
-                        compressedSizeMB
-                    });
+                    const compressedSizeMB = (videoBuffer.length / (1024 * 1024)).toFixed(2);
+                    console.log(`✅ Compression complete: ${fileSizeMB.toFixed(2)}MB → ${compressedSizeMB}MB`);
                 } catch (compressionError) {
-                    console.error(`❌ [Job ${uploadJobId}] Video compression failed:`, compressionError);
-                    throw new Error(`Compression failed: ${compressionError.message}`);
+                    console.error('❌ Video compression failed:', compressionError);
+                    return res.status(500).json({
+                        success: false,
+                        message: 'Failed to compress video. Please try uploading a smaller file or contact support.',
+                        error: compressionError.message
+                    });
                 }
-            } else {
-                await updateStatus('processing', 40, 'ready_to_upload');
             }
 
-            // Upload video to Cloudinary
-            await updateStatus('processing', 60, 'uploading');
-            
+            // Upload video to Cloudinary with eager transformations for thumbnail
             const folder = `ocean-app/videos/${userId}`;
             
+            // First attempt: Try with eager transformations (thumbnail generation)
             let uploadOptions = {
                 resource_type: 'video',
-                quality: 'auto',
+                quality: 'auto', // Preserves quality while optimizing file size
+                // Generate thumbnail as eager transformation (extract frame at 5 seconds)
                 eager: [
                     {
                         format: 'jpg',
@@ -205,80 +95,108 @@ class VideoController {
                         height: 300,
                         crop: 'fill',
                         quality: 'auto:good',
-                        start_offset: '5'
+                        start_offset: '5' // Extract frame at 5 seconds (or 'auto' for middle frame)
                     }
                 ],
-                eager_async: true
+                eager_async: true // Use async processing to handle large videos from modern phones
+                // Note: Modern phone cameras record high-resolution videos that exceed Cloudinary's
+                // synchronous processing limits, so async is required for reliable uploads
             };
 
             let uploadResult = await cloudinaryService.uploadFile(
-                processedBuffer,
+                videoBuffer, // Use compressed buffer if compression was applied
                 folder,
                 uploadOptions
             );
 
             // If upload fails due to eager transformation processing issues, retry without eager
+            // Thumbnail will be generated on-demand using URL transformations
             if (!uploadResult.success && 
                 uploadResult.error && 
                 (uploadResult.error.toLowerCase().includes('too large') ||
                  uploadResult.error.toLowerCase().includes('eager_async') ||
                  uploadResult.error.toLowerCase().includes('synchronously'))) {
                 
-                console.log(`⚠️ [Job ${uploadJobId}] Video upload failed with eager transformations, retrying without eager...`);
+                console.log('⚠️ Video upload failed with eager transformations, retrying without eager...');
+                console.log('   Original error:', uploadResult.error);
+                console.log('   File size:', (videoFile.size / (1024 * 1024)).toFixed(2), 'MB');
                 
+                // Retry without eager transformations - thumbnail will be generated on-demand
                 uploadOptions = {
                     resource_type: 'video',
                     quality: 'auto'
+                    // No eager transformations - thumbnail will be generated using URL transformation
                 };
                 
                 uploadResult = await cloudinaryService.uploadFile(
-                    processedBuffer,
+                    videoBuffer, // Use compressed buffer if compression was applied
                     folder,
                     uploadOptions
                 );
+                
+                if (uploadResult.success) {
+                    console.log('✅ Video uploaded successfully without eager transformations');
+                }
             }
 
             if (!uploadResult.success) {
+                // Check for specific Cloudinary errors and provide user-friendly messages
                 let errorMessage = 'Failed to upload video';
+                let statusCode = 500;
                 
                 if (uploadResult.error) {
                     const errorLower = uploadResult.error.toLowerCase();
                     
+                    // Check for "too large" error (even with async, there might be other size limits)
                     if (errorLower.includes('too large') || 
                         errorLower.includes('eager_async') ||
                         errorLower.includes('synchronously')) {
                         errorMessage = 'Video file is too large to process. Please try uploading a smaller or compressed video.';
+                        statusCode = 400;
                     } else if (errorLower.includes('file size') || errorLower.includes('size limit')) {
                         errorMessage = 'Video file size exceeds the maximum allowed limit. Please upload a smaller video.';
+                        statusCode = 400;
                     } else if (errorLower.includes('format') || errorLower.includes('not supported')) {
                         errorMessage = 'Video format is not supported. Please use a supported video format (MP4, MOV, etc.).';
+                        statusCode = 400;
                     }
                 }
                 
-                throw new Error(errorMessage);
+                return res.status(statusCode).json({
+                    success: false,
+                    message: errorMessage,
+                    error: uploadResult.error // Include technical error for debugging
+                });
             }
 
-            await updateStatus('processing', 80, 'finalizing');
-
             // Validate video duration (max 2 minutes = 120 seconds)
-            const maxDuration = 120;
+            const maxDuration = 120; // 2 minutes in seconds
             const videoDuration = uploadResult.duration ? Math.round(uploadResult.duration) : null;
 
             if (videoDuration && videoDuration > maxDuration) {
+                // Delete the uploaded video from Cloudinary since it exceeds limit
                 try {
                     await cloudinaryService.deleteFile(uploadResult.publicId);
+                    console.log('🗑️ Deleted video exceeding duration limit from Cloudinary');
                 } catch (deleteError) {
                     console.error('Error deleting video from Cloudinary:', deleteError);
                 }
                 
-                throw new Error(`Video duration exceeds 2 minute limit. Your video is ${Math.round(videoDuration)} seconds long.`);
+                return res.status(400).json({
+                    success: false,
+                    message: `Video duration exceeds 2 minute limit. Your video is ${Math.round(videoDuration)} seconds long.`
+                });
             }
 
             // Get thumbnail from eager transformations (preferred) or fallback
             let thumbnailUrl = uploadResult.thumbnailUrl || uploadResult.url;
             
+            // If eager transformations were generated, use the first one as thumbnail
             if (uploadResult.eager && uploadResult.eager.length > 0) {
                 thumbnailUrl = uploadResult.eager[0].secure_url || uploadResult.eager[0].url;
+                console.log('✅ Using eager transformation thumbnail:', thumbnailUrl);
+            } else {
+                console.log('⚠️ No eager transformations found, using fallback thumbnail URL');
             }
 
             // Create video record
@@ -287,14 +205,14 @@ class VideoController {
                 userId,
                 videoUrl: uploadResult.url,
                 thumbnailUrl: thumbnailUrl,
-                description: bodyData.description || null,
-                ctaEnabled: bodyData.cta_enabled === 'true' || bodyData.cta_enabled === true,
-                ctaType: bodyData.cta_type || 'none',
-                ctaLabel: bodyData.cta_label || null,
-                videoRole: bodyData.video_role || 'seller',
-                duration: videoDuration,
-                fileSize: fileSize,
-                mimeType: mimeType,
+                description: description || null,
+                ctaEnabled: cta_enabled === 'true' || cta_enabled === true,
+                ctaType: cta_type || 'none',
+                ctaLabel: cta_label || null,
+                videoRole: video_role || 'seller',
+                duration: uploadResult.duration ? Math.round(uploadResult.duration) : null,
+                fileSize: videoFile.size,
+                mimeType: videoFile.mimetype,
                 likeCount: 0,
                 commentCount: 0,
                 shareCount: 0,
@@ -327,9 +245,10 @@ class VideoController {
 
             const videoData = createdVideo.toJSON();
 
-            await updateStatus('completed', 100, 'completed', {
-                videoId: video.id,
-                video: {
+            res.status(201).json({
+                success: true,
+                message: 'Video uploaded successfully',
+                data: {
                     id: videoData.id,
                     videoUrl: videoData.videoUrl,
                     thumbnailUrl: videoData.thumbnailUrl,
@@ -345,60 +264,19 @@ class VideoController {
                     creatorAvatar: videoData.user?.profilePicture || null,
                     category: videoData.videoRole === 'seller' ? 'seller' : 'buyer',
                     isBuyerNeed: videoData.videoRole === 'buyer',
+                    ctaType: videoData.ctaType,
                     businessPhone: videoData.user?.seller?.businessPhone || null,
                     likeCount: videoData.likeCount,
                     commentCount: videoData.commentCount,
                     shareCount: videoData.shareCount,
                     isSponsored: videoData.isSponsored
-                },
-                completedAt: new Date().toISOString()
-            });
-
-            console.log(`✅ [Job ${uploadJobId}] Video upload completed successfully. Video ID: ${video.id}`);
-        } catch (error) {
-            console.error(`❌ [Job ${uploadJobId}] Video upload processing failed:`, error);
-            await updateStatus('failed', 0, 'failed', {
-                error: error.message,
-                failedAt: new Date().toISOString()
-            });
-            throw error;
-        }
-    }
-
-    // Check video upload status
-    static async getUploadStatus(req, res) {
-        try {
-            const { uploadJobId } = req.params;
-            const userId = req.user.id;
-            
-            const statusData = await redisClient.get(`video_upload:${uploadJobId}`);
-            
-            if (!statusData) {
-                return res.status(404).json({
-                    success: false,
-                    message: 'Upload job not found or expired'
-                });
-            }
-            
-            const status = JSON.parse(statusData);
-            
-            // Verify the upload belongs to the requesting user
-            if (status.userId !== userId) {
-                return res.status(403).json({
-                    success: false,
-                    message: 'Access denied'
-                });
-            }
-            
-            return res.status(200).json({
-                success: true,
-                data: status
+                }
             });
         } catch (error) {
-            console.error('Error fetching upload status:', error);
-            return res.status(500).json({
+            console.error('Error creating video:', error);
+            res.status(500).json({
                 success: false,
-                message: 'Failed to fetch upload status',
+                message: 'Error creating video',
                 error: error.message
             });
         }

@@ -22,7 +22,6 @@ const upload = multer({
 
 // Video routes
 router.post('/', authMiddleware, upload.single('video'), VideoController.createVideo);
-router.get('/upload/:uploadJobId/status', authMiddleware, VideoController.getUploadStatus);
 router.get('/', authMiddleware, VideoController.getVideos);
 router.get('/user/:userId', authMiddleware, VideoController.getUserVideos);
 router.get('/:id', authMiddleware, VideoController.getVideoById);
