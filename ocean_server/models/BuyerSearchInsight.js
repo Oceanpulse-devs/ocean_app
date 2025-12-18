@@ -11,7 +11,7 @@ module.exports = (sequelize, DataTypes) => {
       comment: 'The product name or search query that returned no results'
     },
     user_id: {
-      type: DataTypes.CHAR(36),
+      type: DataTypes.UUID,
       allowNull: true,
       comment: 'User ID who performed the search (null for anonymous)'
     },

@@ -161,8 +161,9 @@ const setupAssociations = () => {
   db.UserTable.hasMany(db.UserFollows, { foreignKey: 'followsUserId', as: 'followers' });
   
   // UserFollows associations
-  db.UserFollows.belongsTo(db.UserTable, { foreignKey: 'userId', as: 'user' });
-  db.UserFollows.belongsTo(db.UserTable, { foreignKey: 'followsUserId', as: 'followedUser' });
+  // Use actual database column names (user_id, follows_user_id) not model property names (userId, followsUserId)
+  db.UserFollows.belongsTo(db.UserTable, { foreignKey: 'user_id', targetKey: 'id', as: 'user' });
+  db.UserFollows.belongsTo(db.UserTable, { foreignKey: 'follows_user_id', targetKey: 'id', as: 'followedUser' });
   
   // Post associations
   db.Post.belongsTo(db.UserTable, { foreignKey: 'userId', as: 'user' });
