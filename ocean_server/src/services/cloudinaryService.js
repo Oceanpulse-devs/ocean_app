@@ -28,6 +28,23 @@ class CloudinaryService {
                 ...options
             };
 
+            // For video uploads with eager transformations, ensure async processing is enabled
+            if (options.resource_type === 'video' && options.eager && !options.eager_async) {
+                console.warn('⚠️ Video with eager transformations should use eager_async: true. Auto-enabling...');
+                uploadOptions.eager_async = true;
+            }
+
+            // Debug logging for video uploads to verify options are correctly set
+            if (options.resource_type === 'video') {
+                console.log('📹 Cloudinary video upload options:', {
+                    resource_type: uploadOptions.resource_type,
+                    eager_async: uploadOptions.eager_async,
+                    has_eager: !!uploadOptions.eager,
+                    eager_count: uploadOptions.eager?.length || 0,
+                    folder: uploadOptions.folder
+                });
+            }
+
             let uploadResult;
             
             if (Buffer.isBuffer(file)) {
@@ -69,7 +86,24 @@ class CloudinaryService {
                 duration: uploadResult.duration // for videos
             };
         } catch (error) {
-            console.error('Cloudinary upload error:', error);
+            // Enhanced error logging with context for debugging
+            const errorContext = {
+                message: error.message,
+                http_code: error.http_code,
+                name: error.name
+            };
+
+            // Add video-specific context if applicable
+            if (options.resource_type === 'video') {
+                errorContext.videoOptions = {
+                    resource_type: options.resource_type,
+                    eager_async: options.eager_async,
+                    has_eager: !!options.eager
+                };
+            }
+
+            console.error('Cloudinary upload error:', errorContext);
+            
             return {
                 success: false,
                 error: error.message,

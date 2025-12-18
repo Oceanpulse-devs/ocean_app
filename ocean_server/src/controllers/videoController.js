@@ -53,7 +53,9 @@ class VideoController {
 
             // Upload video to Cloudinary with eager transformations for thumbnail
             const folder = `ocean-app/videos/${userId}`;
-            const uploadOptions = {
+            
+            // First attempt: Try with eager transformations (thumbnail generation)
+            let uploadOptions = {
                 resource_type: 'video',
                 quality: 'auto', // Preserves quality while optimizing file size
                 // Generate thumbnail as eager transformation (extract frame at 5 seconds)
@@ -72,11 +74,41 @@ class VideoController {
                 // synchronous processing limits, so async is required for reliable uploads
             };
 
-            const uploadResult = await cloudinaryService.uploadFile(
+            let uploadResult = await cloudinaryService.uploadFile(
                 videoFile.buffer,
                 folder,
                 uploadOptions
             );
+
+            // If upload fails due to eager transformation processing issues, retry without eager
+            // Thumbnail will be generated on-demand using URL transformations
+            if (!uploadResult.success && 
+                uploadResult.error && 
+                (uploadResult.error.toLowerCase().includes('too large') ||
+                 uploadResult.error.toLowerCase().includes('eager_async') ||
+                 uploadResult.error.toLowerCase().includes('synchronously'))) {
+                
+                console.log('⚠️ Video upload failed with eager transformations, retrying without eager...');
+                console.log('   Original error:', uploadResult.error);
+                console.log('   File size:', (videoFile.size / (1024 * 1024)).toFixed(2), 'MB');
+                
+                // Retry without eager transformations - thumbnail will be generated on-demand
+                uploadOptions = {
+                    resource_type: 'video',
+                    quality: 'auto'
+                    // No eager transformations - thumbnail will be generated using URL transformation
+                };
+                
+                uploadResult = await cloudinaryService.uploadFile(
+                    videoFile.buffer,
+                    folder,
+                    uploadOptions
+                );
+                
+                if (uploadResult.success) {
+                    console.log('✅ Video uploaded successfully without eager transformations');
+                }
+            }
 
             if (!uploadResult.success) {
                 // Check for specific Cloudinary errors and provide user-friendly messages
