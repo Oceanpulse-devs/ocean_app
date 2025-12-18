@@ -1325,18 +1325,45 @@ async function syncDatabase() {
         await db.sequelize.query('SET FOREIGN_KEY_CHECKS = 0');
         console.log('🔓 Foreign key checks disabled for sync');
         
-        // Sync all models - creates tables from Sequelize model definitions
-        await db.sequelize.sync({ 
-            force: false,  // Don't drop existing tables
-            alter: false,  // Don't alter existing tables
-            logging: false  // Set to true for detailed SQL logging
-        });
+        // Sync models individually to handle errors gracefully
+        // This allows us to continue even if some models fail
+        let successCount = 0;
+        let failCount = 0;
+        const failedModels = [];
+        
+        console.log('🔄 Syncing models individually...');
+        for (const modelName of modelNames) {
+            try {
+                const model = sequelizeModels[modelName];
+                // Sync individual model
+                await model.sync({ force: false, alter: false });
+                successCount++;
+                if (successCount % 10 === 0) {
+                    console.log(`   ✅ Synced ${successCount}/${modelNames.length} models...`);
+                }
+            } catch (error) {
+                failCount++;
+                failedModels.push({ model: modelName, error: error.message });
+                console.log(`   ⚠️  Failed to sync ${modelName}: ${error.message.substring(0, 60)}...`);
+                // Continue with next model
+            }
+        }
         
         // Re-enable foreign key checks after sync
         await db.sequelize.query('SET FOREIGN_KEY_CHECKS = 1');
         console.log('🔒 Foreign key checks re-enabled');
         
-        console.log('✅ Database synchronized successfully');
+        console.log(`\n✅ Sync completed: ${successCount} succeeded, ${failCount} failed`);
+        
+        if (failedModels.length > 0) {
+            console.log('\n⚠️  Failed models:');
+            failedModels.slice(0, 10).forEach(({ model, error }) => {
+                console.log(`   - ${model}: ${error.substring(0, 60)}`);
+            });
+            if (failedModels.length > 10) {
+                console.log(`   ... and ${failedModels.length - 10} more`);
+            }
+        }
         
         // Verify which tables were created
         const [tables] = await db.sequelize.query(`
@@ -1412,7 +1439,14 @@ async function syncDatabase() {
             StoryCleanupService.scheduleCleanup();
         }
         
-        return { success: true, tablesCreated: createdTables.length, missingTables };
+        return { 
+            success: successCount > 0, 
+            tablesCreated: createdTables.length, 
+            missingTables,
+            successCount,
+            failCount,
+            failedModels
+        };
         
     } catch (error) {
         // Re-enable foreign key checks even if sync failed
@@ -1432,7 +1466,7 @@ async function syncDatabase() {
         } else if (error.message.includes('syntax')) {
             console.error('💡 Check your model definitions for syntax errors');
         } else if (error.message.includes("doesn't exist") || error.message.includes("Key column")) {
-            console.error('💡 Foreign key constraint issue - this should be fixed by disabling FK checks');
+            console.error('💡 Foreign key constraint issue - syncing models individually should help');
         }
         
         // Don't exit - let server start anyway (some tables might exist)
