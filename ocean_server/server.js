@@ -1304,24 +1304,37 @@ async function syncDatabase() {
         }
     }
     
-    // Get all model names
-    const modelNames = Object.keys(db).filter(key => 
-        key !== 'sequelize' && 
-        key !== 'Sequelize' && 
-        db[key] && 
-        typeof db[key] === 'object' &&
-        db[key].tableName
-    );
+    // Get all models from Sequelize's internal registry (works everywhere)
+    // This is more reliable than checking db object properties
+    const sequelizeModels = db.sequelize.models || {};
+    const modelNames = Object.keys(sequelizeModels);
     
     console.log(`📊 Found ${modelNames.length} models to sync`);
     
+    // Debug: Show some model names if found
+    if (modelNames.length > 0) {
+        console.log(`   Sample models: ${modelNames.slice(0, 5).join(', ')}...`);
+    } else {
+        console.log('⚠️  Warning: No models found in Sequelize registry');
+        console.log('   This might indicate models are not loaded yet');
+    }
+    
     try {
+        // CRITICAL: Disable foreign key checks during sync to avoid constraint errors
+        // This allows tables to be created in any order
+        await db.sequelize.query('SET FOREIGN_KEY_CHECKS = 0');
+        console.log('🔓 Foreign key checks disabled for sync');
+        
         // Sync all models - creates tables from Sequelize model definitions
         await db.sequelize.sync({ 
             force: false,  // Don't drop existing tables
             alter: false,  // Don't alter existing tables
             logging: false  // Set to true for detailed SQL logging
         });
+        
+        // Re-enable foreign key checks after sync
+        await db.sequelize.query('SET FOREIGN_KEY_CHECKS = 1');
+        console.log('🔒 Foreign key checks re-enabled');
         
         console.log('✅ Database synchronized successfully');
         
@@ -1342,8 +1355,9 @@ async function syncDatabase() {
         const modelTableMap = {};
         
         modelNames.forEach(modelName => {
-            const model = db[modelName];
-            const expectedTableName = (model.tableName || model.name).toLowerCase();
+            const model = sequelizeModels[modelName];
+            // Get table name from Sequelize model
+            const expectedTableName = (model.tableName || model.name || modelName).toLowerCase();
             modelTableMap[modelName] = expectedTableName;
             
             if (!createdTables.includes(expectedTableName)) {
@@ -1388,7 +1402,7 @@ async function syncDatabase() {
             console.log('✅ Timestamps updated for existing users');
         } catch (error) {
             // Users table might not exist yet, that's okay
-            if (!error.message.includes("doesn't exist")) {
+            if (!error.message.includes("doesn't exist") && !error.message.includes("Unknown column")) {
                 console.log('⚠️  Could not update timestamps:', error.message);
             }
         }
@@ -1401,6 +1415,13 @@ async function syncDatabase() {
         return { success: true, tablesCreated: createdTables.length, missingTables };
         
     } catch (error) {
+        // Re-enable foreign key checks even if sync failed
+        try {
+            await db.sequelize.query('SET FOREIGN_KEY_CHECKS = 1');
+        } catch (e) {
+            // Ignore if this fails
+        }
+        
         console.error('\n❌ Database sync error:', error.message);
         
         // Provide helpful error context
@@ -1410,6 +1431,8 @@ async function syncDatabase() {
             console.error('💡 Database might not be ready yet, check Railway logs');
         } else if (error.message.includes('syntax')) {
             console.error('💡 Check your model definitions for syntax errors');
+        } else if (error.message.includes("doesn't exist") || error.message.includes("Key column")) {
+            console.error('💡 Foreign key constraint issue - this should be fixed by disabling FK checks');
         }
         
         // Don't exit - let server start anyway (some tables might exist)
@@ -1425,9 +1448,22 @@ syncDatabase()
             if (result.missingTables && result.missingTables.length > 0) {
                 console.log(`⚠️  ${result.missingTables.length} tables missing, but continuing...`);
             }
+            
+            // Initialize auction scheduler AFTER sync completes
+            // This ensures tables exist before scheduler tries to query them
+            const AuctionScheduler = require('./src/services/auctionScheduler');
+            AuctionScheduler.scheduleChecks();
+            console.log('✅ Auction scheduler initialized');
         } else {
             console.log('\n⚠️  Database sync had issues, but continuing...');
             console.log(`   Error: ${result.error}`);
+            // Still initialize scheduler, but it might fail if tables don't exist
+            try {
+                const AuctionScheduler = require('./src/services/auctionScheduler');
+                AuctionScheduler.scheduleChecks();
+            } catch (e) {
+                console.log('⚠️  Could not initialize auction scheduler:', e.message);
+            }
         }
         console.log('🚀 Starting server...\n');
     })
@@ -1470,9 +1506,8 @@ setInterval(async () => {
   }
 }, 24 * 60 * 60 * 1000); // 24 hours
 
-// Initialize auction scheduler
-const AuctionScheduler = require('./src/services/auctionScheduler');
-AuctionScheduler.scheduleChecks();
+// Initialize auction scheduler AFTER database sync completes
+// (Moved to syncDatabase().then() to ensure tables exist first)
 
 // Initialize promotion expiration cron job (handles boosts, top placements, spotlights, and auto-reboosts)
 const PromotionExpirationJob = require('./src/jobs/promotionExpirationJob');
