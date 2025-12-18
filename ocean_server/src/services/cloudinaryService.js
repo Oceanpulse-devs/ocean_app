@@ -12,7 +12,7 @@ class CloudinaryService {
     }
 
     /**
-     * Upload a single file to Cloudinary
+     * Upload a single, file to Cloudinary
      * @param {Buffer|string} file - File buffer or base64 string
      * @param {string} folder - Folder path in Cloudinary
      * @param {Object} options - Additional upload options
