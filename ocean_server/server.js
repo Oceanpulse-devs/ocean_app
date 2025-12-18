@@ -1283,30 +1283,158 @@ app.use('/api/promotions/analytics', require('./src/routes/promotionAnalyticsRou
 
 
 
-// Database sync with safe options - won't drop existing tables
-db.sequelize.sync({ 
-    force: false,  // Don't drop tables
-    alter: false   // Don't alter existing tables - just ensure they exist
-}).then(() => {
-    console.log('✅ Database synchronized safely');
+// Enhanced database sync with verification
+async function syncDatabase() {
+    console.log('🔄 Starting database synchronization...');
     
-    // After sync, update any NULL timestamps to current time
-    return db.sequelize.query(`
-        UPDATE users 
-        SET createdAt = NOW(), updatedAt = NOW() 
-        WHERE createdAt IS NULL OR updatedAt IS NULL
-    `);
-}).then(() => {
-    console.log('✅ Timestamps updated for existing users');
-    
-    // Initialize story cleanup service (only if not in test mode)
-    if (process.env.NODE_ENV !== 'test') {
-    StoryCleanupService.scheduleCleanup();
+    // Wait for database to be ready (Railway MySQL might take a moment)
+    let retries = 5;
+    while (retries > 0) {
+        try {
+            await db.sequelize.authenticate();
+            console.log('✅ Database connection established');
+            break;
+        } catch (error) {
+            retries--;
+            if (retries === 0) {
+                throw new Error('Database connection failed after retries');
+            }
+            console.log(`⏳ Waiting for database... (${retries} retries left)`);
+            await new Promise(resolve => setTimeout(resolve, 2000));
+        }
     }
     
-}).catch((error) => {
-    console.error('❌ Database sync error:', error);
-});
+    // Get all model names
+    const modelNames = Object.keys(db).filter(key => 
+        key !== 'sequelize' && 
+        key !== 'Sequelize' && 
+        db[key] && 
+        typeof db[key] === 'object' &&
+        db[key].tableName
+    );
+    
+    console.log(`📊 Found ${modelNames.length} models to sync`);
+    
+    try {
+        // Sync all models - creates tables from Sequelize model definitions
+        await db.sequelize.sync({ 
+            force: false,  // Don't drop existing tables
+            alter: false,  // Don't alter existing tables
+            logging: false  // Set to true for detailed SQL logging
+        });
+        
+        console.log('✅ Database synchronized successfully');
+        
+        // Verify which tables were created
+        const [tables] = await db.sequelize.query(`
+            SELECT TABLE_NAME 
+            FROM INFORMATION_SCHEMA.TABLES 
+            WHERE TABLE_SCHEMA = DATABASE()
+            AND TABLE_TYPE = 'BASE TABLE'
+            ORDER BY TABLE_NAME
+        `);
+        
+        const createdTables = tables.map(t => t.TABLE_NAME.toLowerCase());
+        console.log(`\n📊 Total tables created: ${createdTables.length}`);
+        
+        // Check if all models have corresponding tables
+        const missingTables = [];
+        const modelTableMap = {};
+        
+        modelNames.forEach(modelName => {
+            const model = db[modelName];
+            const expectedTableName = (model.tableName || model.name).toLowerCase();
+            modelTableMap[modelName] = expectedTableName;
+            
+            if (!createdTables.includes(expectedTableName)) {
+                missingTables.push({
+                    model: modelName,
+                    expectedTable: expectedTableName
+                });
+            }
+        });
+        
+        if (missingTables.length > 0) {
+            console.log(`\n⚠️  Warning: ${missingTables.length} models don't have tables:`);
+            missingTables.forEach(({ model, expectedTable }) => {
+                console.log(`   ❌ ${model} → ${expectedTable}`);
+            });
+            console.log('\n💡 Possible causes:');
+            console.log('   - Model syntax errors');
+            console.log('   - Foreign key dependency issues');
+            console.log('   - Model not properly initialized');
+        } else {
+            console.log(`\n✅ All ${modelNames.length} models have corresponding tables!`);
+        }
+        
+        // Log first 10 tables as sample
+        if (createdTables.length > 0) {
+            console.log('\n📋 Sample tables created:');
+            createdTables.slice(0, 10).forEach((table, idx) => {
+                console.log(`   ${idx + 1}. ${table}`);
+            });
+            if (createdTables.length > 10) {
+                console.log(`   ... and ${createdTables.length - 10} more`);
+            }
+        }
+        
+        // After sync, update any NULL timestamps to current time
+        try {
+            await db.sequelize.query(`
+                UPDATE users 
+                SET createdAt = NOW(), updatedAt = NOW() 
+                WHERE createdAt IS NULL OR updatedAt IS NULL
+            `);
+            console.log('✅ Timestamps updated for existing users');
+        } catch (error) {
+            // Users table might not exist yet, that's okay
+            if (!error.message.includes("doesn't exist")) {
+                console.log('⚠️  Could not update timestamps:', error.message);
+            }
+        }
+        
+        // Initialize story cleanup service (only if not in test mode)
+        if (process.env.NODE_ENV !== 'test') {
+            StoryCleanupService.scheduleCleanup();
+        }
+        
+        return { success: true, tablesCreated: createdTables.length, missingTables };
+        
+    } catch (error) {
+        console.error('\n❌ Database sync error:', error.message);
+        
+        // Provide helpful error context
+        if (error.message.includes('ER_ACCESS_DENIED')) {
+            console.error('💡 Check your database credentials in environment variables');
+        } else if (error.message.includes('ECONNREFUSED')) {
+            console.error('💡 Database might not be ready yet, check Railway logs');
+        } else if (error.message.includes('syntax')) {
+            console.error('💡 Check your model definitions for syntax errors');
+        }
+        
+        // Don't exit - let server start anyway (some tables might exist)
+        return { success: false, error: error.message };
+    }
+}
+
+// Run sync before starting server
+syncDatabase()
+    .then((result) => {
+        if (result.success) {
+            console.log('\n✅ Database ready!');
+            if (result.missingTables && result.missingTables.length > 0) {
+                console.log(`⚠️  ${result.missingTables.length} tables missing, but continuing...`);
+            }
+        } else {
+            console.log('\n⚠️  Database sync had issues, but continuing...');
+            console.log(`   Error: ${result.error}`);
+        }
+        console.log('🚀 Starting server...\n');
+    })
+    .catch((error) => {
+        console.error('❌ Fatal database error:', error);
+        console.log('⚠️  Server will start anyway, but database might not be ready');
+    });
 
 // Only run scheduled tasks if not in test environment
 if (process.env.NODE_ENV !== 'test') {
@@ -1378,11 +1506,15 @@ console.log('✅ Subscription expiration cron job initialized (runs daily at 10:
 }
 
 // Only start server if not in test environment and file is run directly
+// Start server AFTER sync completes (with delay to ensure sync finishes)
 if (process.env.NODE_ENV !== 'test' && require.main === module) {
-server.listen(port , ()=>{
-    console.log(`● Server running on port ${port} ✅`)
-    console.log(`● WebSocket server initialized for real-time auction updates ✅`)
-})
+    // Give sync time to complete (it's async, so this ensures server starts after)
+    setTimeout(() => {
+        server.listen(port, () => {
+            console.log(`● Server running on port ${port} ✅`);
+            console.log(`● WebSocket server initialized for real-time auction updates ✅`);
+        });
+    }, 2000); // 2 second delay to ensure sync completes
 }
 
 // Export app and server for testing
