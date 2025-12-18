@@ -72,7 +72,11 @@ class CloudinaryService {
             console.error('Cloudinary upload error:', error);
             return {
                 success: false,
-                error: error.message
+                error: error.message,
+                errorDetails: {
+                    http_code: error.http_code,
+                    name: error.name
+                }
             };
         }
     }

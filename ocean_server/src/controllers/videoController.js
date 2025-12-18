@@ -67,7 +67,9 @@ class VideoController {
                         start_offset: '5' // Extract frame at 5 seconds (or 'auto' for middle frame)
                     }
                 ],
-                eager_async: false // Generate synchronously so thumbnail is available immediately
+                eager_async: true // Use async processing to handle large videos from modern phones
+                // Note: Modern phone cameras record high-resolution videos that exceed Cloudinary's
+                // synchronous processing limits, so async is required for reliable uploads
             };
 
             const uploadResult = await cloudinaryService.uploadFile(
@@ -77,10 +79,32 @@ class VideoController {
             );
 
             if (!uploadResult.success) {
-                return res.status(500).json({
+                // Check for specific Cloudinary errors and provide user-friendly messages
+                let errorMessage = 'Failed to upload video';
+                let statusCode = 500;
+                
+                if (uploadResult.error) {
+                    const errorLower = uploadResult.error.toLowerCase();
+                    
+                    // Check for "too large" error (even with async, there might be other size limits)
+                    if (errorLower.includes('too large') || 
+                        errorLower.includes('eager_async') ||
+                        errorLower.includes('synchronously')) {
+                        errorMessage = 'Video file is too large to process. Please try uploading a smaller or compressed video.';
+                        statusCode = 400;
+                    } else if (errorLower.includes('file size') || errorLower.includes('size limit')) {
+                        errorMessage = 'Video file size exceeds the maximum allowed limit. Please upload a smaller video.';
+                        statusCode = 400;
+                    } else if (errorLower.includes('format') || errorLower.includes('not supported')) {
+                        errorMessage = 'Video format is not supported. Please use a supported video format (MP4, MOV, etc.).';
+                        statusCode = 400;
+                    }
+                }
+                
+                return res.status(statusCode).json({
                     success: false,
-                    message: 'Failed to upload video',
-                    error: uploadResult.error
+                    message: errorMessage,
+                    error: uploadResult.error // Include technical error for debugging
                 });
             }
 
