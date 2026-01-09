@@ -1469,11 +1469,12 @@ class PromotionAnalyticsService {
     try {
       const dateRange = this.calculateDateRange(90); // Look back 90 days
       
-      // Get recent promotions from all types
+      // Get recent ACTIVE promotions from all types (exclude cancelled and expired)
       const [boosts, placements, spotlights] = await Promise.all([
         PromotionalBoost.findAll({
           where: {
             user_id: userId,
+            status: 'active', // Only active boosts
             created_at: { [Op.gte]: dateRange.startDate }
           },
           order: [['created_at', 'DESC']],
@@ -1482,6 +1483,7 @@ class PromotionAnalyticsService {
         TopPlacement.findAll({
           where: {
             user_id: userId,
+            status: 'active', // Only active placements
             created_at: { [Op.gte]: dateRange.startDate }
           },
           order: [['created_at', 'DESC']],
@@ -1490,6 +1492,7 @@ class PromotionAnalyticsService {
         SpotlightSlot.findAll({
           where: {
             user_id: userId,
+            status: 'active', // Only active spotlights
             created_at: { [Op.gte]: dateRange.startDate }
           },
           order: [['created_at', 'DESC']],

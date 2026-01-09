@@ -435,16 +435,27 @@ class SpotlightService {
    */
   static async cancelSpotlight(spotlightId, userId) {
     try {
+      // First check if spotlight exists (regardless of status)
       const spotlight = await SpotlightSlot.findOne({
         where: {
           id: spotlightId,
-          user_id: userId,
-          status: 'active'
+          user_id: userId
         }
       });
 
       if (!spotlight) {
-        throw new Error('Active spotlight not found');
+        throw new Error('Spotlight not found');
+      }
+
+      // If already cancelled, just return success (idempotent)
+      if (spotlight.status === 'cancelled') {
+        console.log(`Spotlight ${spotlightId} is already cancelled`);
+        return true;
+      }
+
+      // If not active, can't cancel
+      if (spotlight.status !== 'active') {
+        throw new Error(`Cannot cancel spotlight with status: ${spotlight.status}`);
       }
 
       // Remove from item

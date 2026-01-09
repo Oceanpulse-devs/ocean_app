@@ -360,16 +360,27 @@ class TopPlacementService {
    */
   static async cancelTopPlacement(placementId, userId) {
     try {
+      // First check if placement exists (regardless of status)
       const placement = await TopPlacement.findOne({
         where: {
           id: placementId,
-          user_id: userId,
-          status: 'active'
+          user_id: userId
         }
       });
 
       if (!placement) {
-        throw new Error('Active top placement not found');
+        throw new Error('Top placement not found');
+      }
+
+      // If already cancelled, just return success (idempotent)
+      if (placement.status === 'cancelled') {
+        console.log(`Top placement ${placementId} is already cancelled`);
+        return true;
+      }
+
+      // If not active, can't cancel
+      if (placement.status !== 'active') {
+        throw new Error(`Cannot cancel top placement with status: ${placement.status}`);
       }
 
       // Remove from item
