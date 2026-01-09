@@ -123,7 +123,7 @@ app.use(responseWrapper);
 // Health check endpoint (Railway / monitoring / browsers)
 app.get('/health', async (req, res) => {
     const baseHealth = {
-        status: 'OK',
+        status: 'OK', 
         service: 'Ocean Backend API',
         environment: process.env.NODE_ENV || 'development',
         version: process.env.APP_VERSION || process.env.MOBILE_API_VERSION || 'v1',
@@ -1418,27 +1418,27 @@ async function syncDatabase() {
                 console.log(`   ... and ${createdTables.length - 10} more`);
             }
         }
-        
-        // After sync, update any NULL timestamps to current time
+    
+    // After sync, update any NULL timestamps to current time
         try {
             await db.sequelize.query(`
-                UPDATE users 
-                SET createdAt = NOW(), updatedAt = NOW() 
-                WHERE createdAt IS NULL OR updatedAt IS NULL
-            `);
-            console.log('✅ Timestamps updated for existing users');
+        UPDATE users 
+        SET createdAt = NOW(), updatedAt = NOW() 
+        WHERE createdAt IS NULL OR updatedAt IS NULL
+    `);
+    console.log('✅ Timestamps updated for existing users');
         } catch (error) {
             // Users table might not exist yet, that's okay
             if (!error.message.includes("doesn't exist") && !error.message.includes("Unknown column")) {
                 console.log('⚠️  Could not update timestamps:', error.message);
             }
         }
-        
-        // Initialize story cleanup service (only if not in test mode)
-        if (process.env.NODE_ENV !== 'test') {
-            StoryCleanupService.scheduleCleanup();
-        }
-        
+    
+    // Initialize story cleanup service (only if not in test mode)
+    if (process.env.NODE_ENV !== 'test') {
+    StoryCleanupService.scheduleCleanup();
+    }
+    
         return { 
             success: successCount > 0, 
             tablesCreated: createdTables.length, 
@@ -1504,7 +1504,7 @@ syncDatabase()
     .catch((error) => {
         console.error('❌ Fatal database error:', error);
         console.log('⚠️  Server will start anyway, but database might not be ready');
-    });
+});
 
 // Only run scheduled tasks if not in test environment
 if (process.env.NODE_ENV !== 'test') {

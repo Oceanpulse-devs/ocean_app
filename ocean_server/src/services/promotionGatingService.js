@@ -28,10 +28,16 @@ class PromotionGatingService {
         },
         include: [{
           model: SubscriptionPlan,
-          as: 'plan'
+          as: 'plan',
+          required: false // LEFT JOIN - return subscription even if plan is missing
         }],
         order: [['created_at', 'DESC']]
       });
+
+      // Log warning if plan is missing
+      if (subscription && !subscription.plan) {
+        console.error(`⚠️ Subscription ${subscription.id} for user ${userId} has invalid plan_id: ${subscription.planId}`);
+      }
 
       return subscription;
     } catch (error) {
@@ -111,6 +117,16 @@ class PromotionGatingService {
       }
 
       const plan = subscription.plan;
+
+      // Add null check for plan
+      if (!plan) {
+        console.error(`⚠️ Subscription ${subscription.id} has no associated plan (plan_id: ${subscription.planId})`);
+        return {
+          eligible: false,
+          reason: 'Your subscription plan could not be found. Please contact support.',
+          canUpgrade: false
+        };
+      }
 
       // DRIFT plan: No boosts allowed
       if (plan.name === 'drift') {
@@ -217,10 +233,20 @@ class PromotionGatingService {
 
       const plan = subscription.plan;
 
+      // Add null check for plan
+      if (!plan) {
+        console.error(`⚠️ Subscription ${subscription.id} has no associated plan (plan_id: ${subscription.planId})`);
+        return {
+          eligible: false,
+          reason: 'Your subscription plan could not be found. Please contact support.',
+          canUpgrade: false
+        };
+      }
+
       if (!plan.can_auto_reboost) {
         return {
           eligible: false,
-          reason: `Auto-reboost is not available on the ${plan.display_name} plan. Upgrade to Tide or Surge.`,
+          reason: `Auto-reboost is not available on the ${plan.display_name || plan.name} plan. Upgrade to Tide or Surge.`,
           canUpgrade: true,
           currentPlan: plan.name
         };
@@ -258,10 +284,20 @@ class PromotionGatingService {
 
       const plan = subscription.plan;
 
+      // Add null check for plan
+      if (!plan) {
+        console.error(`⚠️ Subscription ${subscription.id} has no associated plan (plan_id: ${subscription.planId})`);
+        return {
+          eligible: false,
+          reason: 'Your subscription plan could not be found. Please contact support.',
+          canUpgrade: false
+        };
+      }
+
       if (!plan.can_location_target) {
         return {
           eligible: false,
-          reason: `Location targeting is not available on the ${plan.display_name} plan. Upgrade to Tide or Surge.`,
+          reason: `Location targeting is not available on the ${plan.display_name || plan.name} plan. Upgrade to Tide or Surge.`,
           canUpgrade: true,
           currentPlan: plan.name
         };
@@ -306,6 +342,11 @@ class PromotionGatingService {
       }
 
       const plan = subscription.plan;
+
+      // Add null check for plan
+      if (!plan) {
+        throw new Error('Your subscription plan could not be found. Please contact support.');
+      }
 
       // Base pricing (can be customized)
       const basePricePerDay = 500; // NGN per day
@@ -354,6 +395,17 @@ class PromotionGatingService {
       }
 
       const plan = subscription.plan;
+
+      // Add null check for plan
+      if (!plan) {
+        console.error(`⚠️ Subscription ${subscription.id} has no associated plan (plan_id: ${subscription.planId})`);
+        return {
+          available: false,
+          reason: 'Your subscription plan could not be found. Please contact support.',
+          canUpgrade: false
+        };
+      }
+
       const usage = await this.getOrCreatePromotionUsage(userId, subscription.id);
 
       const monthlyLimit = plan.max_promotional_boosts;
@@ -421,11 +473,21 @@ class PromotionGatingService {
 
       const plan = subscription.plan;
 
+      // Add null check for plan
+      if (!plan) {
+        console.error(`⚠️ Subscription ${subscription.id} has no associated plan (plan_id: ${subscription.planId})`);
+        return {
+          eligible: false,
+          reason: 'Your subscription plan could not be found. Please contact support.',
+          canUpgrade: false
+        };
+      }
+
       // DRIFT and WAVE: No top placement
       if (plan.name === 'drift' || plan.name === 'wave') {
         return {
           eligible: false,
-          reason: `Top placement is not available on the ${plan.display_name} plan. Upgrade to Tide or Surge.`,
+          reason: `Top placement is not available on the ${plan.display_name || plan.name} plan. Upgrade to Tide or Surge.`,
           canUpgrade: true,
           currentPlan: plan.name
         };
@@ -433,7 +495,13 @@ class PromotionGatingService {
 
       // Get monthly usage
       const usage = await this.getOrCreatePromotionUsage(userId, subscription.id);
-      const monthlyLimit = plan.max_top_placements;
+      
+      // Calculate limit based on plan name (since max_top_placements column doesn't exist in DB)
+      const monthlyLimit = (plan.has_unlimited_features || plan.name === 'surge')
+        ? -1  // Unlimited for surge plan
+        : plan.name === 'tide'
+          ? 1  // TIDE: 1 top placement/month
+          : 0; // DRIFT/WAVE: Not available
 
       // Check monthly limit (-1 means unlimited)
       if (monthlyLimit !== -1 && usage.topPlacementsUsed >= monthlyLimit) {
@@ -503,11 +571,21 @@ class PromotionGatingService {
 
       const plan = subscription.plan;
 
+      // Add null check for plan
+      if (!plan) {
+        console.error(`⚠️ Subscription ${subscription.id} has no associated plan (plan_id: ${subscription.planId})`);
+        return {
+          eligible: false,
+          reason: 'Your subscription plan could not be found. Please contact support.',
+          canUpgrade: false
+        };
+      }
+
       // DRIFT and WAVE: No spotlight
       if (plan.name === 'drift' || plan.name === 'wave') {
         return {
           eligible: false,
-          reason: `Spotlight is not available on the ${plan.display_name} plan. Upgrade to Tide or Surge.`,
+          reason: `Spotlight is not available on the ${plan.display_name || plan.name} plan. Upgrade to Tide or Surge.`,
           canUpgrade: true,
           currentPlan: plan.name
         };
@@ -515,7 +593,13 @@ class PromotionGatingService {
 
       // Get monthly usage
       const usage = await this.getOrCreatePromotionUsage(userId, subscription.id);
-      const monthlyLimit = plan.max_spotlights;
+      
+      // Calculate limit based on plan name (since max_spotlights column doesn't exist in DB)
+      const monthlyLimit = (plan.has_unlimited_features || plan.name === 'surge')
+        ? -1  // Unlimited for surge plan
+        : plan.name === 'tide'
+          ? 1  // TIDE: 1 spotlight/month
+          : 0; // DRIFT/WAVE: Not available
 
       // Check monthly limit (-1 means unlimited)
       if (monthlyLimit !== -1 && usage.spotlightsUsed >= monthlyLimit) {
@@ -599,7 +683,30 @@ class PromotionGatingService {
       }
 
       const plan = subscription.plan;
+
+      // Add null check for plan
+      if (!plan) {
+        console.error(`⚠️ Subscription ${subscription.id} has no associated plan (plan_id: ${subscription.planId})`);
+        return {
+          hasSubscription: false,
+          message: 'Your subscription plan could not be found. Please contact support.'
+        };
+      }
+
       const usage = await this.getOrCreatePromotionUsage(userId, subscription.id);
+
+      // Calculate limits based on plan name (since max_top_placements and max_spotlights columns don't exist in DB)
+      const topPlacementsLimit = (plan.has_unlimited_features || plan.name === 'surge')
+        ? -1  // Unlimited for surge plan
+        : plan.name === 'tide'
+          ? 1  // TIDE: 1 top placement/month
+          : 0; // DRIFT/WAVE: Not available
+
+      const spotlightsLimit = (plan.has_unlimited_features || plan.name === 'surge')
+        ? -1  // Unlimited for surge plan
+        : plan.name === 'tide'
+          ? 1  // TIDE: 1 spotlight/month
+          : 0; // DRIFT/WAVE: Not available
 
       return {
         hasSubscription: true,
@@ -619,14 +726,14 @@ class PromotionGatingService {
           durationOptions: this.getDurationOptions(plan.name)
         },
         topPlacements: {
-          monthlyLimit: plan.max_top_placements,
+          monthlyLimit: topPlacementsLimit,
           used: usage.topPlacementsUsed,
-          remaining: plan.max_top_placements === -1 ? -1 : plan.max_top_placements - usage.topPlacementsUsed
+          remaining: topPlacementsLimit === -1 ? -1 : topPlacementsLimit - usage.topPlacementsUsed
         },
         spotlights: {
-          monthlyLimit: plan.max_spotlights,
+          monthlyLimit: spotlightsLimit,
           used: usage.spotlightsUsed,
-          remaining: plan.max_spotlights === -1 ? -1 : plan.max_spotlights - usage.spotlightsUsed
+          remaining: spotlightsLimit === -1 ? -1 : spotlightsLimit - usage.spotlightsUsed
         }
       };
     } catch (error) {

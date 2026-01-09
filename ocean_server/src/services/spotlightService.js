@@ -93,6 +93,11 @@ class SpotlightService {
 
       // Get subscription for priority calculation
       const subscription = await promotionGatingService.getUserSubscription(userId);
+      
+      if (!subscription || !subscription.plan) {
+        throw new Error('No active subscription with valid plan found');
+      }
+      
       const plan = subscription.plan;
 
       // Calculate display order (SURGE gets priority - lower number = shown first)
