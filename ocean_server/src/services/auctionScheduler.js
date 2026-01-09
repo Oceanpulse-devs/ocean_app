@@ -24,7 +24,15 @@ const createAuctionNotification = async (userId, title, message, type = 'auction
 const createAuctionWinnerDM = async (sellerId, winnerId, auction, winningBidAmount) => {
   try {
     let messageServerUrl = process.env.MESSAGE_SERVER_URL || 'https://messageserver-production-88ba.up.railway.app';
-    messageServerUrl = messageServerUrl.replace(/\/$/, '');
+    
+    // Trim whitespace and remove trailing slashes
+    messageServerUrl = messageServerUrl.trim().replace(/\/$/, '');
+    
+    // Auto-add https:// if protocol is missing
+    if (messageServerUrl && !messageServerUrl.startsWith('http://') && !messageServerUrl.startsWith('https://')) {
+      messageServerUrl = `https://${messageServerUrl}`;
+      console.log(`⚠️ Auto-added https:// to MESSAGE_SERVER_URL`);
+    }
     
     // Get auction image
     const auctionImage = auction.images && Array.isArray(auction.images) && auction.images.length > 0

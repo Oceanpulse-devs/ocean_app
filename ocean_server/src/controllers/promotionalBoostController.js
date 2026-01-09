@@ -177,11 +177,12 @@ class PromotionalBoostController {
   static async getUserBoosts(req, res) {
     try {
       const userId = req.user.id;
-      const { status, boostType, page = 1, limit = 10 } = req.query;
+      const { status = 'active', boostType, page = 1, limit = 10 } = req.query; // Default to 'active'
 
       // Build where clause
       const whereClause = { user_id: userId };
-      if (status) whereClause.status = status;
+      // Only filter by status if it's not 'all' (which means show everything)
+      if (status && status !== 'all') whereClause.status = status; // This will now default to 'active'
       if (boostType) whereClause.boost_type = boostType;
 
       // Calculate pagination
@@ -313,6 +314,10 @@ class PromotionalBoostController {
         });
       }
 
+      // Remove boost from target item
+      await BoostManagementService.removeBoost(boost);
+
+      // Update boost status
       await boost.update({
         status: 'cancelled'
       });

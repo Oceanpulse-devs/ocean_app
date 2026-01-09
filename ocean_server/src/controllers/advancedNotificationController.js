@@ -111,7 +111,7 @@ const createNotification = async (req, res) => {
 // Get user notifications with filtering and pagination
 const getUserNotifications = async (req, res) => {
   try {
-    const { userId } = req.params;
+    const userId = req.user.id; // Use authenticated user ID from token (security fix)
     const {
       page = 1,
       limit = 20,
@@ -164,7 +164,7 @@ const getUserNotifications = async (req, res) => {
 const markAsRead = async (req, res) => {
   try {
     const { notificationId } = req.params;
-    const { userId } = req.body;
+    const userId = req.user.id; // Use authenticated user ID from token (security fix)
 
     const notification = await db.AdvancedNotification.findOne({
       where: {
@@ -196,7 +196,8 @@ const markAsRead = async (req, res) => {
 // Mark multiple notifications as read
 const markMultipleAsRead = async (req, res) => {
   try {
-    const { notificationIds, userId } = req.body;
+    const { notificationIds } = req.body;
+    const userId = req.user.id; // Use authenticated user ID from token (security fix)
 
     if (!notificationIds || !Array.isArray(notificationIds)) {
       return res.status(400).json({
@@ -232,7 +233,7 @@ const markMultipleAsRead = async (req, res) => {
 const deleteNotification = async (req, res) => {
   try {
     const { notificationId } = req.params;
-    const { userId } = req.body;
+    const userId = req.user.id; // Use authenticated user ID from token (security fix)
 
     const notification = await db.AdvancedNotification.findOne({
       where: {
@@ -263,7 +264,7 @@ const deleteNotification = async (req, res) => {
 // Get notification statistics
 const getNotificationStats = async (req, res) => {
   try {
-    const { userId } = req.params;
+    const userId = req.user.id; // Use authenticated user ID from token (security fix)
 
     const stats = await db.AdvancedNotification.findAll({
       where: { user_id: userId },

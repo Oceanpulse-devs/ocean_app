@@ -61,7 +61,7 @@ class PromotionGatingService {
       });
 
       if (!usage) {
-        // Use camelCase for Sequelize model attributes
+        // Create new usage record
         usage = await PromotionUsage.create({
           userId: userId,
           subscriptionId: subscriptionId,
@@ -70,6 +70,17 @@ class PromotionGatingService {
           topPlacementsUsed: 0,
           spotlightsUsed: 0
         });
+      } else if (usage.subscriptionId !== subscriptionId) {
+        // User changed subscriptions mid-month - reset counters and update subscriptionId
+        console.log(`⚠️ User ${userId} changed subscriptions mid-month. Resetting promotion usage counters.`);
+        await usage.update({
+          subscriptionId: subscriptionId,
+          boostsUsed: 0,
+          topPlacementsUsed: 0,
+          spotlightsUsed: 0
+        });
+        // Reload to get updated values
+        await usage.reload();
       }
 
       return usage;

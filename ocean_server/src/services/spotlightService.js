@@ -299,10 +299,11 @@ class SpotlightService {
    */
   static async getUserSpotlights(userId, options = {}) {
     try {
-      const { status = null, slotType = null, itemType = null } = options;
+      const { status = 'active', slotType = null, itemType = null } = options; // Default to 'active'
 
       const whereClause = { user_id: userId };
-      if (status) whereClause.status = status;
+      // Only filter by status if it's not 'all' (which means show everything)
+      if (status && status !== 'all') whereClause.status = status; // This will now default to 'active'
       if (slotType) whereClause.slot_type = slotType;
       if (itemType) whereClause.item_type = itemType;
 

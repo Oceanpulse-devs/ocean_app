@@ -134,7 +134,8 @@ class TopPlacementService {
    */
   static async applyTopPlacement(placement) {
     try {
-      const { item_type, item_id, id: placementId, end_date } = placement;
+      // Use camelCase property names (Sequelize model uses camelCase, not snake_case)
+      const { itemType, itemId, id: placementId, endDate } = placement;
 
       const modelMap = {
         'product': Product,
@@ -144,21 +145,21 @@ class TopPlacementService {
         'distress_sale': Product
       };
 
-      const Model = modelMap[item_type];
+      const Model = modelMap[itemType];
       if (!Model) {
-        throw new Error(`Invalid item type: ${item_type}`);
+        throw new Error(`Invalid item type: ${itemType}`);
       }
 
       // Update item with top placement information
       await Model.update({
         is_top_placed: true,
-        top_placement_expires_at: end_date,
+        top_placement_expires_at: endDate,
         top_placement_id: placementId
       }, {
-        where: { id: item_id }
+        where: { id: itemId }
       });
 
-      console.log(`Applied top placement ${placementId} to ${item_type} ${item_id}`);
+      console.log(`Applied top placement ${placementId} to ${itemType} ${itemId}`);
       return true;
     } catch (error) {
       console.error('Error applying top placement:', error);
@@ -173,7 +174,8 @@ class TopPlacementService {
    */
   static async removeTopPlacement(placement) {
     try {
-      const { item_type, item_id } = placement;
+      // Use camelCase property names (Sequelize model uses camelCase, not snake_case)
+      const { itemType, itemId } = placement;
 
       const modelMap = {
         'product': Product,
@@ -183,9 +185,9 @@ class TopPlacementService {
         'distress_sale': Product
       };
 
-      const Model = modelMap[item_type];
+      const Model = modelMap[itemType];
       if (!Model) {
-        throw new Error(`Invalid item type: ${item_type}`);
+        throw new Error(`Invalid item type: ${itemType}`);
       }
 
       // Remove top placement information from item
@@ -194,14 +196,14 @@ class TopPlacementService {
         top_placement_expires_at: null,
         top_placement_id: null
       }, {
-        where: { id: item_id }
+        where: { id: itemId }
       });
 
-      console.log(`Removed top placement from ${item_type} ${item_id}`);
+      console.log(`Removed top placement from ${itemType} ${itemId}`);
       return true;
     } catch (error) {
       console.error('Error removing top placement:', error);
-      return false;
+      throw error; // Re-throw so caller can handle it
     }
   }
 
@@ -266,10 +268,11 @@ class TopPlacementService {
    */
   static async getUserTopPlacements(userId, options = {}) {
     try {
-      const { status = null, itemType = null } = options;
+      const { status = 'active', itemType = null } = options; // Default to 'active'
 
       const whereClause = { user_id: userId };
-      if (status) whereClause.status = status;
+      // Only filter by status if it's not 'all' (which means show everything)
+      if (status && status !== 'all') whereClause.status = status; // This will now default to 'active'
       if (itemType) whereClause.item_type = itemType;
 
       const placements = await TopPlacement.findAll({
