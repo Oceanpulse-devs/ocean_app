@@ -67,5 +67,13 @@ router.get('/recent', PromotionAnalyticsController.getRecentPromotions);
  */
 router.get('/time-series', PromotionAnalyticsController.getTimeSeriesData);
 
+/**
+ * GET /api/promotions/analytics/:type/:id
+ * Get detailed analytics for a single promotion
+ * @param {string} type - Promotion type ('boost', 'top-placement', 'spotlight')
+ * @param {string} id - Promotion ID
+ */
+router.get('/:type/:id', PromotionAnalyticsController.getPromotionDetails);
+
 module.exports = router;
 

@@ -1979,6 +1979,224 @@ class PromotionAnalyticsService {
       return null;
     }
   }
+
+  /**
+   * Get detailed analytics for a single promotion
+   * @param {string} userId - User ID
+   * @param {string} promotionType - Promotion type ('boost', 'top-placement', 'spotlight')
+   * @param {string} promotionId - Promotion ID
+   * @returns {Object} Detailed analytics data
+   */
+  static async getPromotionDetails(userId, promotionType, promotionId) {
+    try {
+      let promotion = null;
+      let itemType = null;
+      let itemId = null;
+      let startDate = null;
+      let endDate = null;
+      let cost = 0;
+
+      // Helper function to fetch item details
+      const fetchItemDetails = async (itemType, itemId) => {
+        try {
+          let item = null;
+          let itemName = '';
+          let itemImage = null;
+
+          switch (itemType) {
+            case 'product':
+              item = await Product.findByPk(itemId, {
+                attributes: ['id', 'title', 'images']
+              });
+              if (item) {
+                itemName = item.title || '';
+                itemImage = item.images && item.images.length > 0 ? item.images[0] : null;
+              }
+              break;
+            case 'auction':
+              item = await Auction.findByPk(itemId, {
+                attributes: ['id', 'title', 'images']
+              });
+              if (item) {
+                itemName = item.title || '';
+                itemImage = item.images && item.images.length > 0 ? item.images[0] : null;
+              }
+              break;
+            case 'group_buy':
+              item = await GroupBuy.findByPk(itemId, {
+                attributes: ['id', 'title', 'product_name', 'product_image']
+              });
+              if (item) {
+                itemName = item.title || item.product_name || '';
+                if (item.product_image) {
+                  const images = typeof item.product_image === 'string' 
+                    ? JSON.parse(item.product_image) 
+                    : item.product_image;
+                  itemImage = Array.isArray(images) && images.length > 0 ? images[0] : null;
+                }
+              }
+              break;
+            case 'swap_deal':
+              item = await SwapDeal.findByPk(itemId, {
+                attributes: ['id', 'title', 'images']
+              });
+              if (item) {
+                itemName = item.title || '';
+                itemImage = item.images && item.images.length > 0 ? item.images[0] : null;
+              }
+              break;
+            case 'distress_sale':
+              item = await Product.findByPk(itemId, {
+                attributes: ['id', 'title', 'images']
+              });
+              if (item) {
+                itemName = item.title || '';
+                itemImage = item.images && item.images.length > 0 ? item.images[0] : null;
+              }
+              break;
+          }
+
+          return { itemName, itemImage };
+        } catch (error) {
+          console.error(`Error fetching item details for ${itemType} ${itemId}:`, error);
+          return { itemName: '', itemImage: null };
+        }
+      };
+
+      // Fetch promotion based on type
+      switch (promotionType.toLowerCase()) {
+        case 'boost':
+          promotion = await PromotionalBoost.findOne({
+            where: {
+              id: promotionId,
+              user_id: userId
+            }
+          });
+          if (promotion) {
+            itemType = promotion.boostType || promotion.boost_type;
+            itemId = promotion.targetId || promotion.target_id;
+            startDate = promotion.startTime || promotion.start_time;
+            endDate = promotion.endTime || promotion.end_time;
+            cost = parseFloat(promotion.cost) || 0;
+          }
+          break;
+        case 'top-placement':
+        case 'topplacement':
+          promotion = await TopPlacement.findOne({
+            where: {
+              id: promotionId,
+              user_id: userId
+            }
+          });
+          if (promotion) {
+            itemType = promotion.itemType || promotion.item_type;
+            itemId = promotion.itemId || promotion.item_id;
+            startDate = promotion.startDate || promotion.start_date;
+            const createdAt = new Date(promotion.createdAt || promotion.created_at);
+            const durationDays = promotion.durationDays || promotion.duration_days || 0;
+            endDate = new Date(createdAt);
+            endDate.setDate(endDate.getDate() + durationDays);
+            cost = 0;
+          }
+          break;
+        case 'spotlight':
+          promotion = await SpotlightSlot.findOne({
+            where: {
+              id: promotionId,
+              user_id: userId
+            }
+          });
+          if (promotion) {
+            itemType = promotion.itemType || promotion.item_type;
+            itemId = promotion.itemId || promotion.item_id;
+            startDate = promotion.startDate || promotion.start_date;
+            const createdAt = new Date(promotion.createdAt || promotion.created_at);
+            const durationDays = promotion.durationDays || promotion.duration_days || 0;
+            endDate = new Date(createdAt);
+            endDate.setDate(endDate.getDate() + durationDays);
+            cost = 0;
+          }
+          break;
+        default:
+          return null;
+      }
+
+      if (!promotion) {
+        return null;
+      }
+
+      // Get item details
+      const itemDetails = await fetchItemDetails(itemType, itemId);
+
+      // Calculate metrics during promotion period
+      const [views, messages] = await Promise.all([
+        this.getItemViews(itemType, itemId, startDate, endDate),
+        this.getItemMessages(itemType, itemId, startDate, endDate)
+      ]);
+
+      // For spotlights, get impressions and clicks from the record
+      let clicks = views;
+      let impressions = views;
+      if (promotionType.toLowerCase() === 'spotlight') {
+        impressions = promotion.impressions || 0;
+        clicks = promotion.clicks || 0;
+      }
+
+      // Calculate ROI metrics
+      const roiMetrics = this.calculateROIFromMetrics(
+        cost,
+        views,
+        clicks,
+        messages,
+        0
+      );
+
+      // Calculate performance metrics
+      const performanceMetrics = this.calculatePerformanceMetrics(
+        views,
+        clicks,
+        messages,
+        0
+      );
+
+      // Format response
+      return {
+        promotion: {
+          id: promotion.id,
+          type: promotionType.toLowerCase(),
+          status: promotion.status,
+          createdAt: promotion.createdAt || promotion.created_at,
+          startDate: startDate,
+          endDate: endDate,
+          cost: cost
+        },
+        item: {
+          id: itemId,
+          type: itemType,
+          name: itemDetails.itemName,
+          image: itemDetails.itemImage
+        },
+        metrics: {
+          views,
+          clicks,
+          impressions: impressions,
+          messages,
+          ...roiMetrics,
+          ...performanceMetrics
+        },
+        period: {
+          startDate: startDate ? startDate.toISOString() : null,
+          endDate: endDate ? endDate.toISOString() : null,
+          duration: startDate && endDate 
+            ? Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)) 
+            : 0
+        }
+      };
+    } catch (error) {
+      console.error('Error getting promotion details:', error);
+      return null;
+    }
+  }
 }
 
 module.exports = PromotionAnalyticsService;

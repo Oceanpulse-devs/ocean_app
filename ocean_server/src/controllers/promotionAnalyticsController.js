@@ -327,6 +327,43 @@ class PromotionAnalyticsController {
       });
     }
   }
+
+  /**
+   * Get detailed analytics for a single promotion
+   * GET /api/promotions/analytics/:type/:id
+   */
+  static async getPromotionDetails(req, res) {
+    try {
+      const userId = req.user.id;
+      const { type, id } = req.params;
+
+      const analytics = await PromotionAnalyticsService.getPromotionDetails(
+        userId,
+        type,
+        id
+      );
+
+      if (!analytics) {
+        return res.status(404).json({
+          success: false,
+          message: 'Promotion not found or you do not have access to it'
+        });
+      }
+
+      res.status(200).json({
+        success: true,
+        message: 'Promotion details retrieved successfully',
+        data: analytics
+      });
+    } catch (error) {
+      console.error('Get promotion details error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error retrieving promotion details',
+        error: error.message
+      });
+    }
+  }
 }
 
 module.exports = PromotionAnalyticsController;
