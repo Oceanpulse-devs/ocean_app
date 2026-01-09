@@ -105,6 +105,14 @@ router.post('/boosts', authMiddleware, SubscriptionController.createPromotionalB
  */
 router.get('/boosts', authMiddleware, SubscriptionController.getPromotionalBoosts);
 
+/**
+ * DELETE /api/subscriptions/boosts/:id
+ * Cancel a promotional boost
+ * Requires authentication
+ */
+const PromotionalBoostController = require('../controllers/promotionalBoostController');
+router.delete('/boosts/:id', authMiddleware, PromotionalBoostController.cancelBoost);
+
 // =============================================
 // PAYMENT PROCESSING ROUTES
 // =============================================

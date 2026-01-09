@@ -140,7 +140,26 @@ class PromotionGatingService {
 
       // Get monthly usage
       const usage = await this.getOrCreatePromotionUsage(userId, subscription.id);
-      const monthlyLimit = plan.max_promotional_boosts;
+      let monthlyLimit = plan.max_promotional_boosts;
+
+      // Validate monthlyLimit - if null/undefined/0, use plan-name-based logic
+      if (monthlyLimit == null || monthlyLimit === 0) {
+        // Calculate limit based on plan name (fallback if DB value is missing/invalid)
+        if (plan.has_unlimited_features || plan.name === 'surge') {
+          monthlyLimit = -1; // Unlimited for surge plan
+        } else if (plan.name === 'tide') {
+          monthlyLimit = 3; // TIDE: 3 boosts/month
+        } else if (plan.name === 'wave') {
+          monthlyLimit = 1; // WAVE: 1 boost/month
+        } else {
+          monthlyLimit = 0; // DRIFT: No boosts
+        }
+        
+        // Log warning if DB value was missing
+        if (plan.max_promotional_boosts == null || plan.max_promotional_boosts === 0) {
+          console.warn(`⚠️ Plan ${plan.name} has invalid max_promotional_boosts (${plan.max_promotional_boosts}). Using fallback: ${monthlyLimit}`);
+        }
+      }
 
       // Check monthly limit (-1 means unlimited)
       if (monthlyLimit !== -1 && usage.boostsUsed >= monthlyLimit) {
@@ -408,7 +427,21 @@ class PromotionGatingService {
 
       const usage = await this.getOrCreatePromotionUsage(userId, subscription.id);
 
-      const monthlyLimit = plan.max_promotional_boosts;
+      let monthlyLimit = plan.max_promotional_boosts;
+
+      // Validate monthlyLimit - if null/undefined/0, use plan-name-based logic
+      if (monthlyLimit == null || monthlyLimit === 0) {
+        if (plan.has_unlimited_features || plan.name === 'surge') {
+          monthlyLimit = -1; // Unlimited for surge plan
+        } else if (plan.name === 'tide') {
+          monthlyLimit = 3; // TIDE: 3 boosts/month
+        } else if (plan.name === 'wave') {
+          monthlyLimit = 1; // WAVE: 1 boost/month
+        } else {
+          monthlyLimit = 0; // DRIFT: No boosts
+        }
+      }
+
       const used = usage.boostsUsed;
       const remaining = monthlyLimit === -1 ? -1 : monthlyLimit - used;
 
@@ -695,6 +728,20 @@ class PromotionGatingService {
 
       const usage = await this.getOrCreatePromotionUsage(userId, subscription.id);
 
+      // Calculate boost limit with fallback
+      let boostsLimit = plan.max_promotional_boosts;
+      if (boostsLimit == null || boostsLimit === 0) {
+        if (plan.has_unlimited_features || plan.name === 'surge') {
+          boostsLimit = -1; // Unlimited for surge plan
+        } else if (plan.name === 'tide') {
+          boostsLimit = 3; // TIDE: 3 boosts/month
+        } else if (plan.name === 'wave') {
+          boostsLimit = 1; // WAVE: 1 boost/month
+        } else {
+          boostsLimit = 0; // DRIFT: No boosts
+        }
+      }
+
       // Calculate limits based on plan name (since max_top_placements and max_spotlights columns don't exist in DB)
       const topPlacementsLimit = (plan.has_unlimited_features || plan.name === 'surge')
         ? -1  // Unlimited for surge plan
@@ -717,9 +764,9 @@ class PromotionGatingService {
           currency: plan.currency
         },
         boosts: {
-          monthlyLimit: plan.max_promotional_boosts,
+          monthlyLimit: boostsLimit, // Use calculated limit instead of plan.max_promotional_boosts
           used: usage.boostsUsed,
-          remaining: plan.max_promotional_boosts === -1 ? -1 : plan.max_promotional_boosts - usage.boostsUsed,
+          remaining: boostsLimit === -1 ? -1 : boostsLimit - usage.boostsUsed,
           canAutoReboost: plan.can_auto_reboost,
           canLocationTarget: plan.can_location_target,
           multiplier: plan.boost_multiplier,
