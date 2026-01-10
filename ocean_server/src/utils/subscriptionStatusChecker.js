@@ -56,6 +56,29 @@ class SubscriptionStatusChecker {
       const topPlacementsUsed = promotionUsage ? (promotionUsage.topPlacementsUsed || promotionUsage.top_placements_used || 0) : 0;
       const spotlightsUsed = promotionUsage ? (promotionUsage.spotlightsUsed || promotionUsage.spotlights_used || 0) : 0;
 
+      // Calculate boost limit with fallback logic (handle both camelCase and snake_case property access)
+      // Sequelize returns camelCase properties, but we try both for compatibility
+      let boostsLimit = plan.maxPromotionalBoosts || plan.max_promotional_boosts;
+      if (boostsLimit == null || boostsLimit === 0) {
+        if (plan.has_unlimited_features || plan.name === 'surge') {
+          boostsLimit = -1; // Unlimited for surge plan
+        } else if (plan.name === 'tide') {
+          boostsLimit = 3; // TIDE: 3 boosts/month
+        } else if (plan.name === 'wave') {
+          boostsLimit = 1; // WAVE: 1 boost/month
+        } else {
+          boostsLimit = 0; // DRIFT: No boosts
+        }
+        // Log warning if we had to use fallback
+        if (plan.maxPromotionalBoosts == null && plan.max_promotional_boosts == null) {
+          console.warn(`⚠️ Plan ${plan.name} has invalid max_promotional_boosts (undefined). Using fallback: ${boostsLimit}`);
+        }
+      }
+      // Convert 999999 to -1 for unlimited (frontend expects -1 for unlimited)
+      if (boostsLimit === 999999) {
+        boostsLimit = -1;
+      }
+
       return {
         hasActiveSubscription: true,
         plan: {
@@ -76,10 +99,8 @@ class SubscriptionStatusChecker {
           maxDailyDms: plan.max_daily_dms,
           maxDailyNotifications: plan.max_daily_notifications,
           maxArProducts: plan.max_ar_products,
-          // Convert 999999 to -1 for unlimited boosts (frontend expects -1 for unlimited)
-          maxPromotionalBoosts: (plan.has_unlimited_features || plan.name === 'surge')
-            ? -1  // Unlimited for surge plan
-            : (plan.max_promotional_boosts === 999999 ? -1 : plan.max_promotional_boosts), // Also handle if DB has 999999
+          // Use calculated boost limit (with fallback logic)
+          maxPromotionalBoosts: boostsLimit,
           // Handle top placements and spotlights limits
           // Since max_top_placements and max_spotlights columns don't exist in DB,
           // we determine limits based on plan name and has_unlimited_features flag
@@ -349,7 +370,7 @@ class SubscriptionStatusChecker {
       'dms': plan.max_daily_dms,
       'notifications': plan.max_daily_notifications,
       'ar_products': plan.max_ar_products,
-      'promotional_boosts': plan.max_promotional_boosts
+      'promotional_boosts': plan.maxPromotionalBoosts || plan.max_promotional_boosts || 0
     };
 
     const usageMap = {
