@@ -14,7 +14,7 @@ const createNotification = async (userId, title, message, type = 'info', categor
             category,
             metadata
         });
-        console.log(`📧 Notification created for user ${userId}: ${title}`);
+        // Removed verbose logging to reduce Railway log rate limiting
         return notification;
     } catch (error) {
         console.error('Error creating notification:', error);

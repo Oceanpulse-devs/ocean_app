@@ -307,13 +307,8 @@ const getAuctions = async (req, res) => {
       sortOrder = 'ASC'
     } = req.query;
 
-    console.log('🔍 GET AUCTIONS: Fetching auctions...');
-    console.log('   Status:', status);
-    console.log('   Category:', category);
-    console.log('   Subcategory:', subcategory);
-    console.log('   Search:', search);
-    console.log('   Page:', page);
-    console.log('   Limit:', limit);
+    // Removed verbose logging to reduce Railway log rate limiting
+    // Only log errors in production
 
     // Build where clause
     const whereClause = {};
@@ -408,8 +403,7 @@ const getAuctions = async (req, res) => {
       orderClause.push(['endTime', 'ASC']); // Default
     }
 
-    console.log('   Where clause:', JSON.stringify(whereClause, null, 2));
-    console.log('   Order clause:', orderClause);
+    // Removed verbose query logging
 
     // Simple query with seller information included
     const { count, rows: auctions } = await Auction.findAndCountAll({
@@ -432,7 +426,7 @@ const getAuctions = async (req, res) => {
       ]
     });
 
-    console.log('✅ GET AUCTIONS: Found', count, 'auctions');
+    // Removed verbose success logging
 
     // Map auction field names for frontend compatibility
     let mappedAuctions = auctions.map(mapAuctionResponse);

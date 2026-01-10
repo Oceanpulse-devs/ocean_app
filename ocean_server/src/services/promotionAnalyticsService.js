@@ -1692,11 +1692,8 @@ class PromotionAnalyticsService {
 
       const result = recentPromotions.slice(0, limit);
       
-      // Log what we're returning
-      console.log(`📤 Returning ${result.length} promotions with item details:`);
-      result.forEach((promo, index) => {
-        console.log(`  [${index}] type=${promo.type}, itemName="${promo.itemName}", itemImage=${promo.itemImage ? 'exists' : 'null'}, itemType=${promo.itemType}, itemId=${promo.itemId}`);
-      });
+      // Removed verbose forEach logging to reduce Railway log rate limiting
+      // Only log errors in production
       
       return result;
     } catch (error) {

@@ -2338,9 +2338,7 @@ class GroupBuyController {
         ]
       });
 
-      console.log(`[Top Placement Group Buys] Found ${groupBuys.length} group buys from database`);
-      console.log(`[Top Placement Group Buys] Group buy IDs found:`, groupBuys.map(gb => gb.id));
-      console.log(`[Top Placement Group Buys] Group buy statuses:`, groupBuys.map(gb => ({ id: gb.id, status: gb.status })));
+      // Removed verbose logging to reduce Railway log rate limiting
 
       // Sort group buys to match placement order
       // Convert IDs to integers for proper comparison (IDs from placements are strings, DB IDs are integers)

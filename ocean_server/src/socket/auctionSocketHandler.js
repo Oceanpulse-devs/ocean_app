@@ -1,4 +1,5 @@
 const { Auction, AuctionWatcher, SellersTable } = require('../../models');
+const logger = require('../utils/logger');
 
 // Store Socket.IO instance globally (will be set from server.js)
 let ioInstance = null;
@@ -11,14 +12,14 @@ const setIOInstance = (io) => {
 // Get the Socket.IO instance
 const getIO = () => {
   if (!ioInstance) {
-    console.warn('⚠️ Socket.IO instance not initialized. Events will not be emitted.');
+    logger.warn('⚠️ Socket.IO instance not initialized. Events will not be emitted.');
   }
   return ioInstance;
 };
 
 // Socket handler for auction events
 const auctionSocketHandler = (io, socket) => {
-  console.log(`🔌 Auction socket handler initialized for user: ${socket.userId}`);
+  logger.debug(`🔌 Auction socket handler initialized for user: ${socket.userId}`);
 
   // Join user to their personal room for notifications
   socket.join(`user:${socket.userId}`);
@@ -37,7 +38,7 @@ const auctionSocketHandler = (io, socket) => {
       activeViewerCount
     });
     
-    console.log(`👁️ Active viewers for auction ${auctionId}: ${activeViewerCount}`);
+    // Removed verbose logging to reduce Railway log rate limiting
   };
 
   // Handle joining an auction room (when user views auction detail page)
@@ -95,7 +96,7 @@ const auctionSocketHandler = (io, socket) => {
 
       if (auctionId) {
         socket.leave(`auction:${auctionId}`);
-        console.log(`👋 User ${socket.userId} left auction room: ${auctionId}`);
+        logger.debug(`👋 User ${socket.userId} left auction room: ${auctionId}`);
         
         // Emit updated viewer count after leaving - use a small delay to ensure room is updated
         setTimeout(() => {
@@ -103,7 +104,7 @@ const auctionSocketHandler = (io, socket) => {
         }, 100); // Small delay to ensure room is fully updated
       }
     } catch (error) {
-      console.error('Error leaving auction room:', error);
+      logger.error('Error leaving auction room:', error);
     }
   });
 
@@ -116,34 +117,33 @@ const auctionSocketHandler = (io, socket) => {
 
       if (seller) {
         socket.join(`seller:${seller.id}`);
-        console.log(`👤 Seller ${socket.userId} joined seller room: ${seller.id}`);
+        logger.debug(`👤 Seller ${socket.userId} joined seller room: ${seller.id}`);
         socket.emit('joined_seller_room', { sellerId: seller.id });
       } else {
         socket.emit('error', { message: 'User is not a seller' });
       }
     } catch (error) {
-      console.error('Error joining seller room:', error);
+      logger.error('Error joining seller room:', error);
       socket.emit('error', { message: 'Failed to join seller room' });
     }
   });
 
   // Handle disconnecting (fires BEFORE socket is removed from rooms)
   socket.on('disconnecting', () => {
-    console.log(`🔌 User ${socket.userId} is disconnecting from auction socket`);
+    logger.debug(`🔌 User ${socket.userId} is disconnecting from auction socket`);
     
     // Get all rooms this socket is in BEFORE it's removed
     // socket.rooms is still populated at this point
     const rooms = Array.from(socket.rooms);
     const auctionRooms = rooms.filter(room => room.startsWith('auction:'));
     
-    console.log(`📋 User ${socket.userId} was in ${auctionRooms.length} auction room(s): ${auctionRooms.join(', ')}`);
+    // Removed verbose logging to reduce Railway log rate limiting
     
     // Emit viewer count updates for all auction rooms after a short delay
     // This ensures the socket is fully removed from rooms before we count
     setTimeout(() => {
       auctionRooms.forEach(room => {
         const auctionId = room.replace('auction:', '');
-        console.log(`📤 Emitting viewer count update for auction ${auctionId} after user ${socket.userId} disconnected`);
         emitActiveViewerCount(auctionId);
       });
     }, 100);
@@ -151,7 +151,7 @@ const auctionSocketHandler = (io, socket) => {
 
   // Handle disconnection (fires AFTER socket is removed from rooms)
   socket.on('disconnect', () => {
-    console.log(`🔌 User ${socket.userId} disconnected from auction socket`);
+    logger.debug(`🔌 User ${socket.userId} disconnected from auction socket`);
     // Note: socket.rooms is empty here, so we handle it in 'disconnecting' instead
   });
 };
@@ -161,7 +161,7 @@ const emitToAuction = (auctionId, event, data) => {
   const io = getIO();
   if (io) {
     io.to(`auction:${auctionId}`).emit(event, data);
-    console.log(`📡 Emitted ${event} to auction:${auctionId}`);
+    logger.debug(`📡 Emitted ${event} to auction:${auctionId}`);
   }
 };
 
@@ -169,7 +169,7 @@ const emitToUser = (userId, event, data) => {
   const io = getIO();
   if (io) {
     io.to(`user:${userId}`).emit(event, data);
-    console.log(`📡 Emitted ${event} to user:${userId}`);
+    logger.debug(`📡 Emitted ${event} to user:${userId}`);
   }
 };
 
@@ -177,7 +177,7 @@ const emitToSeller = (sellerId, event, data) => {
   const io = getIO();
   if (io) {
     io.to(`seller:${sellerId}`).emit(event, data);
-    console.log(`📡 Emitted ${event} to seller:${sellerId}`);
+    logger.debug(`📡 Emitted ${event} to seller:${sellerId}`);
   }
 };
 
@@ -185,7 +185,7 @@ const emitToAll = (event, data) => {
   const io = getIO();
   if (io) {
     io.emit(event, data);
-    console.log(`📡 Emitted ${event} to all connected clients`);
+    logger.debug(`📡 Emitted ${event} to all connected clients`);
   }
 };
 

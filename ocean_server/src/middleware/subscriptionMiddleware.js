@@ -82,7 +82,7 @@ async function incrementUsageInRedis(userId, actionType) {
     const ttlSeconds = Math.floor((tomorrow.getTime() - Date.now()) / 1000);
     await redisClient.expire(usageKey, ttlSeconds);
     
-    console.log(`Incremented ${actionType} usage for user ${userId}: ${newValue}`);
+    // Removed verbose logging to reduce Railway log rate limiting
     return true;
   } catch (error) {
     console.error('Error incrementing usage in Redis:', error);
@@ -104,7 +104,7 @@ async function incrementUsageInRedis(userId, actionType) {
  */
 async function getUserActiveSubscription(userId) {
   try {
-    console.log('Getting active subscription for user:', userId);
+    // Removed verbose logging to reduce Railway log rate limiting
     
     const activeSubscription = await UserSubscription.findOne({
       where: {
@@ -122,15 +122,6 @@ async function getUserActiveSubscription(userId) {
       order: [['created_at', 'DESC']] // Get most recent subscription
     });
 
-    console.log('Active subscription found:', activeSubscription ? {
-      id: activeSubscription.id,
-      userId: activeSubscription.userId,
-      planId: activeSubscription.planId,
-      status: activeSubscription.status,
-      endDate: activeSubscription.endDate,
-      planName: activeSubscription.plan?.name
-    } : 'null');
-
     return activeSubscription;
   } catch (error) {
     console.error('Error getting user active subscription:', error);
@@ -147,7 +138,7 @@ async function getUserActiveSubscription(userId) {
 async function getTodayUsage(userId, subscriptionId) {
   try {
     const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
-    console.log('Getting usage for user:', userId, 'subscription:', subscriptionId, 'date:', today);
+    // Removed verbose logging to reduce Railway log rate limiting
     
     let usage = await SubscriptionUsage.findOne({
       where: {
@@ -157,23 +148,18 @@ async function getTodayUsage(userId, subscriptionId) {
       }
     });
 
-    console.log('Existing usage found:', usage ? 'yes' : 'no');
-
     // Create usage record if it doesn't exist
     if (!usage) {
       try {
-        console.log('Creating new usage record...');
         usage = await SubscriptionUsage.create({
           userId: userId,
           subscriptionId: subscriptionId,
           usagePeriod: today
         });
-        console.log('Usage record created successfully:', usage.id);
       } catch (error) {
         console.error('Error creating usage record:', error);
         // Handle duplicate entry error - another process might have created it
         if (error.name === 'SequelizeUniqueConstraintError' || error.code === 'ER_DUP_ENTRY') {
-          console.log('Usage record already exists, fetching it...');
           usage = await SubscriptionUsage.findOne({
             where: {
               userId: userId,
@@ -181,7 +167,6 @@ async function getTodayUsage(userId, subscriptionId) {
               usagePeriod: today
             }
           });
-          console.log('Fetched existing usage record:', usage ? 'yes' : 'no');
         } else {
           console.error('Error creating usage record:', error);
           throw error;
@@ -189,7 +174,6 @@ async function getTodayUsage(userId, subscriptionId) {
       }
     }
 
-    console.log('Returning usage record:', usage ? `ID: ${usage.id}` : 'null');
     return usage;
   } catch (error) {
     console.error('Error getting today usage:', error);
@@ -218,11 +202,10 @@ async function checkSubscriptionLimit(userId, actionType) {
     }
 
     const plan = subscription.plan;
-    console.log('Getting usage for user:', userId, 'subscription:', subscription.id, 'plan:', plan.name);
+    // Removed verbose logging to reduce Railway log rate limiting
     
     // Use Redis usage tracking (more reliable than database)
     const usage = await getTodayUsageFromRedis(userId);
-    console.log('Usage result from Redis:', usage);
 
     // Map action types to plan limits and usage fields
     const limitMap = {
