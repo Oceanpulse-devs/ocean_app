@@ -616,7 +616,10 @@ const placeBid = async (req, res) => {
       });
     }
 
-    const minimumBid = auction.currentPrice + auction.minimumBidIncrement;
+    // Parse DECIMAL values to ensure numeric comparison
+    const currentPrice = parseFloat(auction.currentPrice);
+    const minIncrement = parseFloat(auction.minimumBidIncrement);
+    const minimumBid = currentPrice + minIncrement;
     if (bidAmount < minimumBid) {
       return res.status(400).json({
         message: `Minimum bid amount is ${minimumBid}`
@@ -928,9 +931,16 @@ const getUserBids = async (req, res) => {
           as: 'auction',
           include: [
             {
-              model: UserTable,
+              model: SellersTable,
               as: 'seller',
-              attributes: ['id', 'fullName', 'profilePicture']
+              attributes: ['id', 'businessName', 'verificationStatus'],
+              include: [
+                {
+                  model: UserTable,
+                  as: 'user',
+                  attributes: ['id', 'fullName', 'profilePicture']
+                }
+              ]
             }
           ]
         }

@@ -47,7 +47,7 @@ router.get('/api/auctions/spotlight', auctionController.getSpotlightAuctions);
 router.get('/api/auctions/top-placement', auctionController.getTopPlacementAuctions);
 router.get('/api/auctions/categories', auctionController.getAuctionCategories);
 router.get('/api/users/:userId/auctions', auctionController.getUserAuctionsById);
-router.get('/api/auction/:auctionId', auctionController.getAuction);
+router.get('/api/auction/:auctionId', optionalAuthMiddleware, auctionController.getAuction);
 router.get('/api/auction/:auctionId/similar', auctionController.getSimilarAuctions);
 router.get('/api/auction/:auctionId/bids', auctionController.getAuctionBids);
 

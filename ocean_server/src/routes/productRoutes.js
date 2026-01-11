@@ -48,7 +48,7 @@ router.get('/api/products/top-placement', optionalAuthMiddleware, productControl
 router.get('/api/categories', productController.getCategories);
 router.get('/api/products/seller/:sellerId', productController.getSellerProducts);
 router.get('/api/users/:userId/products', productController.getUserProducts);
-router.get('/api/product/:productId', productController.getProduct);
+router.get('/api/product/:productId', optionalAuthMiddleware, productController.getProduct);
 router.get('/api/product/:productId/similar', optionalAuthMiddleware, productController.getSimilarProducts);
 
 // System categories route (public)

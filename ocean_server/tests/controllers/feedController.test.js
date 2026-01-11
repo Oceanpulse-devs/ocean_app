@@ -1,5 +1,5 @@
 const request = require('supertest');
-const app = require('../../server');
+const { app } = require('../../server');
 const db = require('../../models');
 const { Post, PostMedia, PostLike, PostComment, SavedPost, UserTable, SellersTable, ProductCategory } = require('../../models');
 const bcrypt = require('bcrypt');

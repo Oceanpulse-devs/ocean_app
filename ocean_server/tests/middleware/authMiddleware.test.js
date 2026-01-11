@@ -1,5 +1,5 @@
 const request = require('supertest');
-const app = require('../../server');
+const { app } = require('../../server');
 const jwt = require('jsonwebtoken');
 const redisClient = require('../../src/config/redisdb');
 const { UserTable } = require('../../models');

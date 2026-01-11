@@ -1,4 +1,5 @@
 const { Product, ProductCategory, SavedProduct, SavedPost, Post, PostMedia, UserTable, SellersTable, UserFollows, Notification, ProductLike, Auction, SwapDeal, GroupBuy } = require('../../models');
+const db = require('../../models');
 const { Op, Sequelize } = require('sequelize');
 const cloudinaryService = require('../services/cloudinaryService');
 const { checkSubscriptionLimit, incrementUsage } = require('../middleware/subscriptionMiddleware');
@@ -324,6 +325,14 @@ const createProduct = async (req, res) => {
         if (!productTitle || !description || !price || !category || !productLocation) {
             return res.status(400).json({
                 message: "Title/Name, description, price, category, and location are required"
+            });
+        }
+
+        // Validate price is greater than 0
+        const priceValue = parseFloat(price);
+        if (isNaN(priceValue) || priceValue <= 0) {
+            return res.status(400).json({
+                message: "Price must be greater than 0"
             });
         }
 

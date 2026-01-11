@@ -63,10 +63,11 @@ module.exports = {
     '^@tests/(.*)$': '<rootDir>/tests/$1'
   },
   
-  // Transform files
-  transform: {
-    '^.+\\.js$': 'babel-jest'
-  },
+  // Transform files - Not needed for modern Node.js (supports ES6+ natively)
+  // If you need babel-jest in the future, install it and uncomment:
+  // transform: {
+  //   '^.+\\.js$': 'babel-jest'
+  // },
   
   // Ignore patterns
   testPathIgnorePatterns: [

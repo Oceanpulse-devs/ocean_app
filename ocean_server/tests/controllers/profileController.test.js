@@ -1,5 +1,5 @@
 const request = require('supertest');
-const app = require('../../server');
+const { app } = require('../../server');
 const db = require('../../models');
 const { UserTable, SellersTable, UserFollows, Post, Product, Auction, GroupBuy, SwapDeal } = require('../../models');
 const bcrypt = require('bcrypt');
@@ -120,8 +120,7 @@ describe('Profile Controller', () => {
       country: 'Nigeria',
       businessName: 'Test Business',
       businessAddress: '123 Test Street',
-      verificationStatus: 'approved',
-      category: 'Electronics'
+      verificationStatus: 'approved'
     });
 
     // Create test buyer user

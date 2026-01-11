@@ -12,7 +12,12 @@
     "test:admin:security": "node scripts/testAdmin.js --security",
     "test:admin:all": "node scripts/testAdmin.js --all",
     "test:coverage": "jest --coverage",
-    "test:watch": "jest --watch"
+    "test:watch": "jest --watch",
+    "test:auction": "node scripts/runTestWithLog.js auctionController",
+    "test:product": "node scripts/runTestWithLog.js productController",
+    "test:groupbuy": "node scripts/runTestWithLog.js groupBuyController",
+    "test:subscription": "node scripts/runTestWithLog.js subscriptionController",
+    "test:clear-logs": "node -e \"require('fs').rmSync('test-logs', {recursive: true, force: true}); console.log('✅ Logs cleared')\""
   },
   "author": "",
   "license": "ISC",
