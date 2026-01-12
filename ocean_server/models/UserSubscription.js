@@ -74,6 +74,31 @@ module.exports = (sequelize) => {
       allowNull: true,
       field: 'cancelled_at',
       comment: 'When subscription was cancelled'
+    },
+    // Free Trial Fields
+    isTrial: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+      field: 'is_trial',
+      comment: 'Is this a free trial subscription'
+    },
+    trialStartDate: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      field: 'trial_start_date',
+      comment: 'When trial started'
+    },
+    trialEndDate: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      field: 'trial_end_date',
+      comment: 'When trial expires (30 days)'
+    },
+    hasUsedTrial: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+      field: 'has_used_trial',
+      comment: 'User already used trial for this subscription'
     }
   }, {
     tableName: 'user_subscriptions',

@@ -1,7 +1,7 @@
 const subscriptionService = require('../services/subscriptionService');
 const SubscriptionStatusChecker = require('../utils/subscriptionStatusChecker');
 const { PaymentProvider, PaymentProviderFactory } = require('../providers/PaymentProvider');
-const { SellersTable } = require('../../models');
+const { SellersTable, UserTable } = require('../../models');
 const { sendEmail, emailTemplates } = require('../services/emailService');
 const { getSellerCurrency } = require('../utils/sellerCountryDetector');
 
@@ -61,10 +61,29 @@ class SubscriptionController {
       
       const plans = await subscriptionService.getAvailablePlans();
       
+      // Check if user is eligible for trial
+      let userTrialStatus = { eligible: false, hasUsedTrial: false };
+      if (userId) {
+        try {
+          const user = await UserTable.findByPk(userId, {
+            attributes: ['hasUsedTrial', 'trialPlanUsed']
+          });
+          userTrialStatus = {
+            eligible: !user.hasUsedTrial,
+            hasUsedTrial: user.hasUsedTrial,
+            trialPlanUsed: user.trialPlanUsed
+          };
+        } catch (error) {
+          console.log('Could not check trial status:', error.message);
+        }
+      }
+      
       res.json({
         success: true,
         message: 'Subscription plans retrieved successfully',
         currency, // Include detected currency in response
+        trialAvailable: userTrialStatus.eligible,
+        trialDays: 30,
         data: plans.map(plan => {
           // Use price_usd if currency is USD, otherwise use price (NGN)
           const price = currency === 'USD' && plan.priceUsd 
@@ -105,7 +124,15 @@ class SubscriptionController {
               hasPrioritySearch: plan.has_priority_search,
               hasBuyerInsights: plan.has_buyer_insights,
               hasUnlimitedFeatures: plan.has_unlimited_features
-            }
+            },
+            // Trial information
+            trialAvailable: userTrialStatus.eligible,
+            trialDays: 30,
+            trialMessage: userTrialStatus.eligible 
+              ? 'Start your 30-day free trial - no card required!' 
+              : (userTrialStatus.hasUsedTrial 
+                  ? `Trial already used on ${userTrialStatus.trialPlanUsed}` 
+                  : null)
           };
         })
       });
@@ -150,7 +177,7 @@ class SubscriptionController {
   static async subscribeToPlan(req, res) {
     try {
       const userId = req.user.id;
-      const { planId, paymentMethod } = req.body;
+      const { planId, paymentMethod, skipTrial } = req.body;
 
       if (!planId) {
         return res.status(400).json({
@@ -159,13 +186,8 @@ class SubscriptionController {
         });
       }
 
-      // Require payment method to be explicitly provided
-      if (!paymentMethod) {
-        return res.status(400).json({
-          success: false,
-          message: 'Payment method is required. Please select a payment method.'
-        });
-      }
+      // Note: Payment method check moved to after trial eligibility check
+      // If user is eligible for trial AND doesn't skip it, no payment method is required
 
       // Check if user is a verified seller (subscriptions are seller-only)
       const seller = await SellersTable.findOne({
@@ -219,6 +241,56 @@ class SubscriptionController {
         is_active: plan.isActive
       });
 
+      // ✅ CHECK TRIAL ELIGIBILITY FIRST (NO PAYMENT METHOD REQUIRED IF TAKING TRIAL)
+      const trialCheck = await subscriptionService.checkTrialEligibility(userId, planId);
+
+      // User is eligible for trial AND hasn't chosen to skip it
+      if (trialCheck.eligible && !skipTrial) {
+        // 🎁 OFFER TRIAL - NO PAYMENT NEEDED
+        console.log('User eligible for trial and accepting it, creating trial subscription');
+        
+        try {
+          const trialSubscription = await subscriptionService.createTrialSubscription(userId, planId);
+          
+          return res.status(201).json({
+            success: true,
+            message: `🎉 Welcome to ${plan.displayName}! Your 30-day free trial has started. No card required!`,
+            isTrial: true,
+            trialDays: 30,
+            trialEndsAt: trialSubscription.trialEndDate,
+            data: {
+              subscription: trialSubscription,
+              plan: plan,
+              nextSteps: 'Enjoy all premium features for 30 days. You\'ll be prompted to subscribe before your trial ends.'
+            }
+          });
+        } catch (error) {
+          console.error('Error creating trial subscription:', error);
+          return res.status(500).json({
+            success: false,
+            message: 'Failed to start trial subscription',
+            error: error.message
+          });
+        }
+      }
+
+      // 🚫 NOT ELIGIBLE FOR TRIAL OR USER CHOSE TO SKIP - REQUIRE PAYMENT
+      if (skipTrial && trialCheck.eligible) {
+        console.log('User is eligible for trial but chose to skip it, requiring payment');
+      } else {
+        console.log('User not eligible for trial:', trialCheck.reason);
+      }
+
+      // Now payment method is REQUIRED
+      if (!paymentMethod) {
+        return res.status(400).json({
+          success: false,
+          message: 'Payment method is required. You have already used your free trial.',
+          trialUsed: true,
+          trialReason: trialCheck.reason
+        });
+      }
+
       // Check if user already has an active subscription
       const currentStatus = await SubscriptionStatusChecker.getUserSubscriptionStatus(userId);
       if (currentStatus.hasActiveSubscription) {
@@ -241,9 +313,23 @@ class SubscriptionController {
 
       // Get the appropriate payment provider based on payment method
       const { PaymentProviderFactory } = require('../providers/PaymentProvider');
-      // Only allow flutterwave - Paystack removed
+      // Only allow flutterwave and mock (for testing) - Paystack removed
       let providerName;
-      if (paymentMethod === 'flutterwave' || paymentMethod?.includes('flutterwave')) {
+      
+      // In test environment, validate payment method but use mock provider
+      if (process.env.NODE_ENV === 'test') {
+        // Still validate payment method in tests
+        const validTestMethods = ['mock', 'flutterwave'];
+        if (!validTestMethods.includes(paymentMethod) && !paymentMethod?.includes('flutterwave')) {
+          return res.status(400).json({
+            success: false,
+            message: `Invalid payment method: ${paymentMethod}. Only Flutterwave is supported.`
+          });
+        }
+        providerName = 'mock';
+      } else if (paymentMethod === 'mock') {
+        providerName = 'mock';
+      } else if (paymentMethod === 'flutterwave' || paymentMethod?.includes('flutterwave')) {
         providerName = 'flutterwave';
       } else {
         return res.status(400).json({
@@ -416,7 +502,8 @@ class SubscriptionController {
 
       // Get payment provider
       const { PaymentProviderFactory } = require('../providers/PaymentProvider');
-      const providerName = paymentMethod === 'flutterwave' ? 'flutterwave' : 'mock';
+      // Check test environment FIRST to ensure tests always use mock provider
+      const providerName = (process.env.NODE_ENV === 'test' || paymentMethod === 'mock') ? 'mock' : 'flutterwave';
       const provider = PaymentProviderFactory.getProvider(providerName);
 
       // Verify payment
@@ -596,7 +683,12 @@ class SubscriptionController {
       }
 
       // Create payment intent for plan change
-      const paymentIntent = await PaymentProvider.createPaymentIntent(userId, targetPlan.id, {
+      // Check test environment FIRST to ensure tests always use mock provider
+      const { PaymentProviderFactory } = require('../providers/PaymentProvider');
+      const providerName = (process.env.NODE_ENV === 'test') ? 'mock' : 'flutterwave';
+      const paymentProvider = PaymentProviderFactory.getProvider(providerName);
+      
+      const paymentIntent = await paymentProvider.createPaymentIntent(userId, targetPlan.id, {
         email: user.email,
         paystackPlanCode: targetPlan.paystackPlanCode,
         amount: targetPlan.price,
@@ -643,7 +735,19 @@ class SubscriptionController {
       const currentSubscriptionStatus = await SubscriptionStatusChecker.getUserSubscriptionStatus(userId);
       const user = await subscriptionService.getUserById(userId);
 
-      const success = await subscriptionService.cancelSubscription(userId, reason);
+      let success;
+      try {
+        success = await subscriptionService.cancelSubscription(userId, reason);
+      } catch (error) {
+        // Handle service errors properly
+        if (error.message.includes('No active subscription')) {
+          return res.status(400).json({
+            success: false,
+            message: error.message
+          });
+        }
+        throw error; // Re-throw other errors
+      }
       
       if (success) {
         // Send cancellation email

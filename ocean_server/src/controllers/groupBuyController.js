@@ -1620,7 +1620,7 @@ class GroupBuyController {
       const { reason } = req.body;
       const userId = req.user.id;
 
-      if (!reason || reason.trim().isEmpty()) {
+      if (!reason || !reason.trim() || reason.trim().length === 0) {
         return res.status(400).json({
           success: false,
           message: 'Cancellation reason is required'

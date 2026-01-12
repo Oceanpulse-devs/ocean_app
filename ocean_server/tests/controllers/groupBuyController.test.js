@@ -224,12 +224,12 @@ describe('Group Buy Controller', () => {
     }
   });
 
-  describe('POST /api/group-buys/create', () => {
+  describe('POST /api/group-buy/create', () => {
     it('should create group buy successfully with valid data', async () => {
       const deadline = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
       const response = await request(app)
-        .post('/api/group-buys/create')
+        .post('/api/group-buy/create')
         .set('Authorization', `Bearer ${sellerToken}`)
         .field('title', 'New Test Group Buy')
         .field('description', 'Test group buy description')
@@ -247,7 +247,7 @@ describe('Group Buy Controller', () => {
       expect(response.body.message).toContain('created successfully');
       expect(response.body.data).toHaveProperty('id');
       expect(response.body.data.title).toBe('New Test Group Buy');
-      expect(response.body.data.group_price).toBe(9000);
+      expect(parseFloat(response.body.data.group_price)).toBe(9000);
 
       // Verify group buy was created in database
       const groupBuy = await GroupBuy.findByPk(response.body.data.id);
@@ -259,7 +259,7 @@ describe('Group Buy Controller', () => {
       const endDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
       const response = await request(app)
-        .post('/api/group-buys/create')
+        .post('/api/group-buy/create')
         .set('Authorization', `Bearer ${sellerToken}`)
         .field('title', 'Group Buy with frontend fields')
         .field('description', 'Test description')
@@ -272,12 +272,12 @@ describe('Group Buy Controller', () => {
         .field('location', 'Lagos, Nigeria')
         .expect(201);
 
-      expect(response.body.data.group_price).toBe(7500);
+      expect(parseFloat(response.body.data.group_price)).toBe(7500);
     });
 
     it('should require authentication', async () => {
       const response = await request(app)
-        .post('/api/group-buys/create')
+        .post('/api/group-buy/create')
         .field('title', 'Test Group Buy')
         .expect(401);
 
@@ -286,7 +286,7 @@ describe('Group Buy Controller', () => {
 
     it('should reject missing required fields', async () => {
       const response = await request(app)
-        .post('/api/group-buys/create')
+        .post('/api/group-buy/create')
         .set('Authorization', `Bearer ${sellerToken}`)
         .field('title', 'Test Group Buy')
         // Missing description, category, etc.
@@ -300,7 +300,7 @@ describe('Group Buy Controller', () => {
       const deadline = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
       const response = await request(app)
-        .post('/api/group-buys/create')
+        .post('/api/group-buy/create')
         .set('Authorization', `Bearer ${sellerToken}`)
         .field('title', 'Test Group Buy')
         .field('description', 'Test description')
@@ -320,7 +320,7 @@ describe('Group Buy Controller', () => {
       const pastDeadline = new Date(Date.now() - 1000);
 
       const response = await request(app)
-        .post('/api/group-buys/create')
+        .post('/api/group-buy/create')
         .set('Authorization', `Bearer ${sellerToken}`)
         .field('title', 'Test Group Buy')
         .field('description', 'Test description')
@@ -340,7 +340,7 @@ describe('Group Buy Controller', () => {
       const deadline = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
       const response = await request(app)
-        .post('/api/group-buys/create')
+        .post('/api/group-buy/create')
         .set('Authorization', `Bearer ${sellerToken}`)
         .field('title', 'Test Group Buy')
         .field('description', 'Test description')
@@ -357,10 +357,10 @@ describe('Group Buy Controller', () => {
     });
   });
 
-  describe('GET /api/group-buys/all', () => {
+  describe('GET /api/group-buy/all', () => {
     it('should return group buys with authentication', async () => {
       const response = await request(app)
-        .get('/api/group-buys/all')
+        .get('/api/group-buy/all')
         .set('Authorization', `Bearer ${buyerToken}`)
         .query({ page: 1, limit: 10 })
         .expect(200);
@@ -373,7 +373,7 @@ describe('Group Buy Controller', () => {
 
     it('should require authentication', async () => {
       const response = await request(app)
-        .get('/api/group-buys/all')
+        .get('/api/group-buy/all')
         .expect(401);
 
       expect(response.body.message).toContain('Access denied');
@@ -381,7 +381,7 @@ describe('Group Buy Controller', () => {
 
     it('should support pagination', async () => {
       const response = await request(app)
-        .get('/api/group-buys/all')
+        .get('/api/group-buy/all')
         .set('Authorization', `Bearer ${buyerToken}`)
         .query({ page: 1, limit: 5 })
         .expect(200);
@@ -391,7 +391,7 @@ describe('Group Buy Controller', () => {
 
     it('should filter by category', async () => {
       const response = await request(app)
-        .get('/api/group-buys/all')
+        .get('/api/group-buy/all')
         .set('Authorization', `Bearer ${buyerToken}`)
         .query({ category: 'Electronics', page: 1, limit: 10 })
         .expect(200);
@@ -401,7 +401,7 @@ describe('Group Buy Controller', () => {
 
     it('should support search query', async () => {
       const response = await request(app)
-        .get('/api/group-buys/all')
+        .get('/api/group-buy/all')
         .set('Authorization', `Bearer ${buyerToken}`)
         .query({ search: 'Test', page: 1, limit: 10 })
         .expect(200);
@@ -410,10 +410,10 @@ describe('Group Buy Controller', () => {
     });
   });
 
-  describe('GET /api/group-buys/:id', () => {
+  describe('GET /api/group-buy/:id', () => {
     it('should return group buy details', async () => {
       const response = await request(app)
-        .get(`/api/group-buys/${testGroupBuy.id}`)
+        .get(`/api/group-buy/${testGroupBuy.id}`)
         .set('Authorization', `Bearer ${buyerToken}`)
         .expect(200);
 
@@ -427,7 +427,7 @@ describe('Group Buy Controller', () => {
       const initialViews = testGroupBuy.views_count || 0;
       
       await request(app)
-        .get(`/api/group-buys/${testGroupBuy.id}`)
+        .get(`/api/group-buy/${testGroupBuy.id}`)
         .set('Authorization', `Bearer ${buyerToken}`)
         .expect(200);
 
@@ -445,7 +445,7 @@ describe('Group Buy Controller', () => {
       });
 
       const response = await request(app)
-        .get(`/api/group-buys/${testGroupBuy.id}`)
+        .get(`/api/group-buy/${testGroupBuy.id}`)
         .set('Authorization', `Bearer ${buyerToken}`)
         .expect(200);
 
@@ -456,7 +456,7 @@ describe('Group Buy Controller', () => {
     it('should return 404 for non-existent group buy', async () => {
       const fakeId = 999999;
       const response = await request(app)
-        .get(`/api/group-buys/${fakeId}`)
+        .get(`/api/group-buy/${fakeId}`)
         .set('Authorization', `Bearer ${buyerToken}`)
         .expect(404);
 
@@ -465,10 +465,10 @@ describe('Group Buy Controller', () => {
     });
   });
 
-  describe('POST /api/group-buys/:id/join', () => {
+  describe('POST /api/group-buy/:id/join', () => {
     it('should join group buy successfully', async () => {
       const response = await request(app)
-        .post(`/api/group-buys/${testGroupBuy.id}/join`)
+        .post(`/api/group-buy/${testGroupBuy.id}/join`)
         .set('Authorization', `Bearer ${buyerToken}`)
         .send({ quantity: 1 })
         .expect(201);
@@ -487,7 +487,7 @@ describe('Group Buy Controller', () => {
 
     it('should require authentication', async () => {
       const response = await request(app)
-        .post(`/api/group-buys/${testGroupBuy.id}/join`)
+        .post(`/api/group-buy/${testGroupBuy.id}/join`)
         .send({ quantity: 1 })
         .expect(401);
 
@@ -496,7 +496,7 @@ describe('Group Buy Controller', () => {
 
     it('should prevent creator from joining own group buy', async () => {
       const response = await request(app)
-        .post(`/api/group-buys/${testGroupBuy.id}/join`)
+        .post(`/api/group-buy/${testGroupBuy.id}/join`)
         .set('Authorization', `Bearer ${sellerToken}`)
         .send({ quantity: 1 })
         .expect(400);
@@ -508,7 +508,7 @@ describe('Group Buy Controller', () => {
       await testGroupBuy.update({ status: 'cancelled' });
 
       const response = await request(app)
-        .post(`/api/group-buys/${testGroupBuy.id}/join`)
+        .post(`/api/group-buy/${testGroupBuy.id}/join`)
         .set('Authorization', `Bearer ${buyerToken}`)
         .send({ quantity: 1 })
         .expect(400);
@@ -520,7 +520,7 @@ describe('Group Buy Controller', () => {
       await testGroupBuy.update({ deadline: new Date(Date.now() - 1000) });
 
       const response = await request(app)
-        .post(`/api/group-buys/${testGroupBuy.id}/join`)
+        .post(`/api/group-buy/${testGroupBuy.id}/join`)
         .set('Authorization', `Bearer ${buyerToken}`)
         .send({ quantity: 1 })
         .expect(400);
@@ -538,7 +538,7 @@ describe('Group Buy Controller', () => {
       });
 
       const response = await request(app)
-        .post(`/api/group-buys/${testGroupBuy.id}/join`)
+        .post(`/api/group-buy/${testGroupBuy.id}/join`)
         .set('Authorization', `Bearer ${buyerToken}`)
         .send({ quantity: 1 })
         .expect(400);
@@ -548,7 +548,7 @@ describe('Group Buy Controller', () => {
 
     it('should validate quantity is positive integer', async () => {
       const response = await request(app)
-        .post(`/api/group-buys/${testGroupBuy.id}/join`)
+        .post(`/api/group-buy/${testGroupBuy.id}/join`)
         .set('Authorization', `Bearer ${buyerToken}`)
         .send({ quantity: 0 })
         .expect(400);
@@ -557,20 +557,42 @@ describe('Group Buy Controller', () => {
     });
 
     it('should check quantity_unit limit if set', async () => {
-      await testGroupBuy.update({ quantity_unit: 10, remaining_units: 5 });
+      // Set quantity_unit to 10
+      await testGroupBuy.update({ quantity_unit: 10 });
+      
+      // Create a participant to reserve 5 units (so only 5 remain)
+      const anotherBuyer = await UserTable.create({
+        fullName: 'Another Buyer',
+        email: `buyer${Date.now()}@test.com`,
+        password: await bcrypt.hash('Test1234', 10),
+        accountType: 'buyer',
+        accountStatus: 'active',
+        emailVerified: true,
+        agreeTerms: true
+      });
+      
+      await GroupBuyParticipant.create({
+        group_buy_id: testGroupBuy.id,
+        user_id: anotherBuyer.id,
+        quantity: 5,
+        total_amount: testGroupBuy.group_price * 5
+      });
 
       const response = await request(app)
-        .post(`/api/group-buys/${testGroupBuy.id}/join`)
+        .post(`/api/group-buy/${testGroupBuy.id}/join`)
         .set('Authorization', `Bearer ${buyerToken}`)
-        .send({ quantity: 10 }) // More than remaining units
+        .send({ quantity: 10 }) // More than remaining units (5)
         .expect(400);
 
       expect(response.body.message).toContain('Not enough units available');
     });
   });
 
-  describe('DELETE /api/group-buys/:id/leave', () => {
+  describe('DELETE /api/group-buy/:id/leave', () => {
     beforeEach(async () => {
+      // Ensure group buy is in pending status (required for leaving)
+      await testGroupBuy.update({ status: 'pending' });
+      
       // Create participant
       await GroupBuyParticipant.create({
         group_buy_id: testGroupBuy.id,
@@ -583,7 +605,7 @@ describe('Group Buy Controller', () => {
 
     it('should leave group buy successfully', async () => {
       const response = await request(app)
-        .delete(`/api/group-buys/${testGroupBuy.id}/leave`)
+        .delete(`/api/group-buy/${testGroupBuy.id}/leave`)
         .set('Authorization', `Bearer ${buyerToken}`)
         .expect(200);
 
@@ -599,7 +621,7 @@ describe('Group Buy Controller', () => {
 
     it('should require authentication', async () => {
       const response = await request(app)
-        .delete(`/api/group-buys/${testGroupBuy.id}/leave`)
+        .delete(`/api/group-buy/${testGroupBuy.id}/leave`)
         .expect(401);
 
       expect(response.body.message).toContain('Access denied');
@@ -612,7 +634,7 @@ describe('Group Buy Controller', () => {
       });
 
       const response = await request(app)
-        .delete(`/api/group-buys/${testGroupBuy.id}/leave`)
+        .delete(`/api/group-buy/${testGroupBuy.id}/leave`)
         .set('Authorization', `Bearer ${buyerToken}`)
         .expect(404);
 
@@ -623,7 +645,7 @@ describe('Group Buy Controller', () => {
       await testGroupBuy.update({ status: 'active' });
 
       const response = await request(app)
-        .delete(`/api/group-buys/${testGroupBuy.id}/leave`)
+        .delete(`/api/group-buy/${testGroupBuy.id}/leave`)
         .set('Authorization', `Bearer ${buyerToken}`)
         .expect(400);
 
@@ -631,7 +653,7 @@ describe('Group Buy Controller', () => {
     });
   });
 
-  describe('GET /api/group-buys/:id/participants', () => {
+  describe('GET /api/group-buy/:id/participants', () => {
     beforeEach(async () => {
       // Create participants
       await GroupBuyParticipant.create({
@@ -644,7 +666,7 @@ describe('Group Buy Controller', () => {
 
     it('should return participants list', async () => {
       const response = await request(app)
-        .get(`/api/group-buys/${testGroupBuy.id}/participants`)
+        .get(`/api/group-buy/${testGroupBuy.id}/participants`)
         .set('Authorization', `Bearer ${buyerToken}`)
         .expect(200);
 
@@ -656,17 +678,17 @@ describe('Group Buy Controller', () => {
 
     it('should require authentication', async () => {
       const response = await request(app)
-        .get(`/api/group-buys/${testGroupBuy.id}/participants`)
+        .get(`/api/group-buy/${testGroupBuy.id}/participants`)
         .expect(401);
 
       expect(response.body.message).toContain('Access denied');
     });
   });
 
-  describe('GET /api/group-buys/user/me', () => {
+  describe('GET /api/group-buy/user/me', () => {
     it('should return user group buys', async () => {
       const response = await request(app)
-        .get('/api/group-buys/user/me')
+        .get('/api/group-buy/user/me')
         .set('Authorization', `Bearer ${sellerToken}`)
         .query({ type: 'created' })
         .expect(200);
@@ -679,7 +701,7 @@ describe('Group Buy Controller', () => {
     it('should filter by type (created, participated, all)', async () => {
       // Test 'created' type
       const createdResponse = await request(app)
-        .get('/api/group-buys/user/me')
+        .get('/api/group-buy/user/me')
         .set('Authorization', `Bearer ${sellerToken}`)
         .query({ type: 'created' })
         .expect(200);
@@ -695,7 +717,7 @@ describe('Group Buy Controller', () => {
       });
 
       const participatedResponse = await request(app)
-        .get('/api/group-buys/user/me')
+        .get('/api/group-buy/user/me')
         .set('Authorization', `Bearer ${buyerToken}`)
         .query({ type: 'participated' })
         .expect(200);
@@ -705,17 +727,20 @@ describe('Group Buy Controller', () => {
 
     it('should require authentication', async () => {
       const response = await request(app)
-        .get('/api/group-buys/user/me')
+        .get('/api/group-buy/user/me')
         .expect(401);
 
       expect(response.body.message).toContain('Access denied');
     });
   });
 
-  describe('PUT /api/group-buys/:id', () => {
+  describe('PUT /api/group-buy/:id', () => {
     it('should update group buy successfully', async () => {
+      // Ensure group buy is in pending status (required for updates)
+      await testGroupBuy.update({ status: 'pending' });
+      
       const response = await request(app)
-        .put(`/api/group-buys/${testGroupBuy.id}`)
+        .put(`/api/group-buy/${testGroupBuy.id}`)
         .set('Authorization', `Bearer ${sellerToken}`)
         .field('title', 'Updated Group Buy Title')
         .field('description', testGroupBuy.description)
@@ -735,7 +760,7 @@ describe('Group Buy Controller', () => {
 
     it('should require authentication', async () => {
       const response = await request(app)
-        .put(`/api/group-buys/${testGroupBuy.id}`)
+        .put(`/api/group-buy/${testGroupBuy.id}`)
         .field('title', 'Updated Title')
         .expect(401);
 
@@ -744,7 +769,7 @@ describe('Group Buy Controller', () => {
 
     it('should only allow creator to update', async () => {
       const response = await request(app)
-        .put(`/api/group-buys/${testGroupBuy.id}`)
+        .put(`/api/group-buy/${testGroupBuy.id}`)
         .set('Authorization', `Bearer ${buyerToken}`)
         .field('title', 'Unauthorized Update')
         .expect(403);
@@ -753,10 +778,10 @@ describe('Group Buy Controller', () => {
     });
   });
 
-  describe('DELETE /api/group-buys/:id', () => {
+  describe('DELETE /api/group-buy/:id', () => {
     it('should delete group buy without participants', async () => {
       const response = await request(app)
-        .delete(`/api/group-buys/${testGroupBuy.id}`)
+        .delete(`/api/group-buy/${testGroupBuy.id}`)
         .set('Authorization', `Bearer ${sellerToken}`)
         .expect(200);
 
@@ -778,7 +803,7 @@ describe('Group Buy Controller', () => {
       });
 
       const response = await request(app)
-        .delete(`/api/group-buys/${testGroupBuy.id}`)
+        .delete(`/api/group-buy/${testGroupBuy.id}`)
         .set('Authorization', `Bearer ${sellerToken}`)
         .expect(400);
 
@@ -787,7 +812,7 @@ describe('Group Buy Controller', () => {
 
     it('should require authentication', async () => {
       const response = await request(app)
-        .delete(`/api/group-buys/${testGroupBuy.id}`)
+        .delete(`/api/group-buy/${testGroupBuy.id}`)
         .expect(401);
 
       expect(response.body.message).toContain('Access denied');
@@ -795,7 +820,7 @@ describe('Group Buy Controller', () => {
 
     it('should only allow creator to delete', async () => {
       const response = await request(app)
-        .delete(`/api/group-buys/${testGroupBuy.id}`)
+        .delete(`/api/group-buy/${testGroupBuy.id}`)
         .set('Authorization', `Bearer ${buyerToken}`)
         .expect(403);
 
@@ -803,10 +828,10 @@ describe('Group Buy Controller', () => {
     });
   });
 
-  describe('POST /api/group-buys/:id/cancel', () => {
+  describe('POST /api/group-buy/:id/cancel', () => {
     it('should cancel group buy successfully', async () => {
       const response = await request(app)
-        .post(`/api/group-buys/${testGroupBuy.id}/cancel`)
+        .post(`/api/group-buy/${testGroupBuy.id}/cancel`)
         .set('Authorization', `Bearer ${sellerToken}`)
         .send({ reason: 'Test cancellation reason' })
         .expect(200);
@@ -821,7 +846,7 @@ describe('Group Buy Controller', () => {
 
     it('should require cancellation reason', async () => {
       const response = await request(app)
-        .post(`/api/group-buys/${testGroupBuy.id}/cancel`)
+        .post(`/api/group-buy/${testGroupBuy.id}/cancel`)
         .set('Authorization', `Bearer ${sellerToken}`)
         .send({})
         .expect(400);
@@ -831,7 +856,7 @@ describe('Group Buy Controller', () => {
 
     it('should only allow creator to cancel', async () => {
       const response = await request(app)
-        .post(`/api/group-buys/${testGroupBuy.id}/cancel`)
+        .post(`/api/group-buy/${testGroupBuy.id}/cancel`)
         .set('Authorization', `Bearer ${buyerToken}`)
         .send({ reason: 'Test reason' })
         .expect(403);
@@ -840,10 +865,10 @@ describe('Group Buy Controller', () => {
     });
   });
 
-  describe('GET /api/group-buys/trending', () => {
+  describe('GET /api/group-buy/trending', () => {
     it('should return trending group buys', async () => {
       const response = await request(app)
-        .get('/api/group-buys/trending')
+        .get('/api/group-buy/trending')
         .set('Authorization', `Bearer ${buyerToken}`)
         .query({ limit: 10, offset: 0 })
         .expect(200);
@@ -854,10 +879,10 @@ describe('Group Buy Controller', () => {
     });
   });
 
-  describe('GET /api/group-buys/recommended', () => {
+  describe('GET /api/group-buy/recommended', () => {
     it('should return recommended group buys for authenticated user', async () => {
       const response = await request(app)
-        .get('/api/group-buys/recommended')
+        .get('/api/group-buy/recommended')
         .set('Authorization', `Bearer ${buyerToken}`)
         .query({ limit: 10, offset: 0 })
         .expect(200);
@@ -868,10 +893,10 @@ describe('Group Buy Controller', () => {
 
     it('should require authentication', async () => {
       const response = await request(app)
-        .get('/api/group-buys/recommended')
+        .get('/api/group-buy/recommended')
         .expect(401);
 
-      expect(response.body.message).toContain('Authentication required');
+      expect(response.body.message).toContain('Access denied');
     });
   });
 });

@@ -1018,6 +1018,17 @@ const googleMobileAuth = async (req, res) => {
     try {
         let googleUserInfo;
         
+        // Get all valid Google Client IDs (web, Android, iOS)
+        const getValidClientIds = () => {
+            const clientIds = [
+                process.env.GOOGLE_CLIENT_ID,           // Web client ID
+                process.env.GOOGLE_ANDROID_CLIENT_ID,   // Android client ID
+                process.env.GOOGLE_IOS_CLIENT_ID        // iOS client ID
+            ].filter(Boolean); // Remove undefined/null values
+            
+            return clientIds;
+        };
+        
         // Handle ID token (mobile) or access token (web)
         if (idToken) {
             // Mobile: Verify ID token
@@ -1027,10 +1038,18 @@ const googleMobileAuth = async (req, res) => {
                 const response = await axios.get(tokenInfoUrl);
                 googleUserInfo = response.data;
 
-                // Verify the token was issued for our app
-                if (googleUserInfo.aud !== process.env.GOOGLE_CLIENT_ID) {
+                // Verify the token was issued for one of our apps (web, Android, or iOS)
+                const validClientIds = getValidClientIds();
+                if (!validClientIds.includes(googleUserInfo.aud)) {
+                    console.error('Invalid Google token audience:', {
+                        received: googleUserInfo.aud,
+                        expected: validClientIds,
+                        hasWeb: !!process.env.GOOGLE_CLIENT_ID,
+                        hasAndroid: !!process.env.GOOGLE_ANDROID_CLIENT_ID,
+                        hasIOS: !!process.env.GOOGLE_IOS_CLIENT_ID
+                    });
                     return res.status(401).json({ 
-                        message: "Invalid token: token was not issued for this application" 
+                        message: "Invalid token: token was not issued for this application. Please ensure you're using the correct Google Sign-In configuration for your platform (web/Android/iOS)." 
                     });
                 }
             } catch (verifyError) {
@@ -1046,10 +1065,18 @@ const googleMobileAuth = async (req, res) => {
                 const verifyUrl = `https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=${accessToken}`;
                 const verifyResponse = await axios.get(verifyUrl);
                 
-                // Verify the token was issued for our app
-                if (verifyResponse.data.audience !== process.env.GOOGLE_CLIENT_ID) {
+                // Verify the token was issued for one of our apps (web, Android, or iOS)
+                const validClientIds = getValidClientIds();
+                if (!validClientIds.includes(verifyResponse.data.audience)) {
+                    console.error('Invalid Google access token audience:', {
+                        received: verifyResponse.data.audience,
+                        expected: validClientIds,
+                        hasWeb: !!process.env.GOOGLE_CLIENT_ID,
+                        hasAndroid: !!process.env.GOOGLE_ANDROID_CLIENT_ID,
+                        hasIOS: !!process.env.GOOGLE_IOS_CLIENT_ID
+                    });
                     return res.status(401).json({ 
-                        message: "Invalid token: token was not issued for this application" 
+                        message: "Invalid token: token was not issued for this application. Please ensure you're using the correct Google Sign-In configuration for your platform (web/Android/iOS)." 
                     });
                 }
                 

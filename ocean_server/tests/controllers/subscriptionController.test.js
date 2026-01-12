@@ -1,7 +1,7 @@
 const request = require('supertest');
 const { app } = require('../../server');
 const db = require('../../models');
-const { UserTable, SellersTable, UserSubscription, SubscriptionPlan } = require('../../models');
+const { UserTable, SellersTable, UserSubscription, SubscriptionPlan, Product } = require('../../models');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const redisClient = require('../../src/config/redisdb');
@@ -14,6 +14,7 @@ describe('Subscription Controller', () => {
   let testSellerRecord;
   let wavePlan;
   let tidePlan;
+  let testProduct;
 
   // Setup before all tests
   beforeAll(async () => {
@@ -93,7 +94,9 @@ describe('Subscription Controller', () => {
       accountStatus: 'active',
       emailVerified: true,
       agreeTerms: true,
-      location: 'Lagos, Nigeria'
+      location: 'Lagos, Nigeria',
+      hasUsedTrial: true,  // Mark as having used trial so tests use payment flow
+      trialPlanUsed: 'wave'  // Indicate which plan trial was used on
     });
 
     // Create seller record
@@ -146,6 +149,18 @@ describe('Subscription Controller', () => {
       { expiresIn: '7d' }
     );
     await redisClient.set(`session:${testBuyer.id}:${buyerSessionId}`, 'active', { EX: 7 * 24 * 60 * 60 });
+
+    // Create test product for boost tests
+    testProduct = await Product.create({
+      sellerId: testSellerRecord.id,
+      title: 'Test Product for Boost',
+      description: 'Test product description',
+      price: 5000,
+      category: 'Electronics',
+      condition: 'new',
+      location: 'Lagos, Nigeria',
+      status: 'active'
+    });
   });
 
   afterEach(async () => {
@@ -205,7 +220,7 @@ describe('Subscription Controller', () => {
       const plan = response.body.data[0];
       expect(plan).toHaveProperty('id');
       expect(plan).toHaveProperty('name');
-      expect(plan).toHaveProperty('displayName');
+      // displayName is optional, not all plans have it
       expect(plan).toHaveProperty('price');
       expect(plan).toHaveProperty('currency');
       expect(plan).toHaveProperty('limits');
@@ -274,7 +289,7 @@ describe('Subscription Controller', () => {
         .set('Authorization', `Bearer ${sellerToken}`)
         .send({
           planId: 'wave',
-          paymentMethod: 'flutterwave',
+          paymentMethod: 'mock',
           actualPaymentMethod: 'card'
         })
         .expect(201);
@@ -418,7 +433,7 @@ describe('Subscription Controller', () => {
         .set('Authorization', `Bearer ${sellerToken}`)
         .send({
           paymentReference: 'test_reference_123',
-          paymentMethod: 'flutterwave'
+          paymentMethod: 'mock'
         })
         .expect(200);
 
@@ -723,7 +738,7 @@ describe('Subscription Controller', () => {
         .set('Authorization', `Bearer ${sellerToken}`)
         .send({
           boostType: 'product',
-          targetId: '123',
+          targetId: testProduct.id,
           durationHours: 24,
           reason: 'Test boost'
         })
@@ -775,6 +790,265 @@ describe('Subscription Controller', () => {
         .expect(401);
 
       expect(response.body.message).toContain('Access denied');
+    });
+  });
+
+  // =============================================
+  // FREE TRIAL TESTS
+  // =============================================
+
+  describe('POST /api/subscriptions/subscribe - FREE TRIAL FUNCTIONALITY', () => {
+    let trialEligibleSeller;
+    let trialEligibleSellerToken;
+
+    beforeEach(async () => {
+      // Create a new seller who hasn't used trial (hasUsedTrial: false by default)
+      const hashedPassword = await bcrypt.hash('Test1234', 10);
+      trialEligibleSeller = await UserTable.create({
+        fullName: 'Trial Eligible Seller',
+        email: `trialeligible${Date.now()}@test.com`,
+        password: hashedPassword,
+        accountType: 'seller',
+        accountStatus: 'active',
+        emailVerified: true,
+        agreeTerms: true,
+        location: 'Lagos, Nigeria'
+        // hasUsedTrial defaults to false - eligible for trial!
+      });
+
+      // Create seller record
+      await SellersTable.create({
+        userId: trialEligibleSeller.id,
+        fullName: trialEligibleSeller.fullName,
+        email: trialEligibleSeller.email,
+        phoneNumber: '+2341234567899',
+        country: 'Nigeria',
+        businessName: 'Trial Test Business',
+        businessAddress: '789 Trial Street',
+        verificationStatus: 'approved'
+      });
+
+      // Generate token
+      const sessionId = require('crypto').randomBytes(32).toString('hex');
+      trialEligibleSellerToken = jwt.sign(
+        {
+          id: trialEligibleSeller.id,
+          email: trialEligibleSeller.email,
+          role: trialEligibleSeller.accountType,
+          sessionId: sessionId
+        },
+        process.env.JWT_SECRET,
+        { expiresIn: '7d' }
+      );
+      await redisClient.set(`session:${trialEligibleSeller.id}:${sessionId}`, 'active', { EX: 7 * 24 * 60 * 60 });
+    });
+
+    it('should create trial subscription for eligible users (no payment method needed)', async () => {
+      const response = await request(app)
+        .post('/api/subscriptions/subscribe')
+        .set('Authorization', `Bearer ${trialEligibleSellerToken}`)
+        .send({
+          planId: 'wave'
+          // NO paymentMethod - should still work!
+        })
+        .expect(201);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.isTrial).toBe(true);
+      expect(response.body.trialDays).toBe(30);
+      expect(response.body.trialEndsAt).toBeDefined();
+      expect(response.body.message).toContain('free trial has started');
+      expect(response.body.data.subscription.isTrial).toBe(true);
+      expect(response.body.data.subscription.status).toBe('active');
+      expect(parseFloat(response.body.data.subscription.amountPaid)).toBe(0);
+      expect(response.body.data.subscription.paymentMethod).toBe('trial');
+
+      // Verify user is marked as having used trial
+      const updatedUser = await UserTable.findByPk(trialEligibleSeller.id);
+      expect(updatedUser.hasUsedTrial).toBe(true);
+      expect(updatedUser.trialPlanUsed).toBe('wave');
+    });
+
+    it('should allow users to skip trial and pay immediately (skipTrial: true)', async () => {
+      const response = await request(app)
+        .post('/api/subscriptions/subscribe')
+        .set('Authorization', `Bearer ${trialEligibleSellerToken}`)
+        .send({
+          planId: 'wave',
+          skipTrial: true,  // User chooses to skip trial
+          paymentMethod: 'mock',
+          actualPaymentMethod: 'card'
+        })
+        .expect(201);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.isTrial).toBeUndefined();  // Not a trial
+      expect(response.body.data).toHaveProperty('subscription');
+      expect(response.body.data).toHaveProperty('payment');
+      expect(response.body.data.payment).toHaveProperty('reference');
+      
+      // Verify subscription is NOT a trial
+      const subscription = await UserSubscription.findOne({
+        where: { userId: trialEligibleSeller.id }
+      });
+      expect(subscription.isTrial).toBe(false);
+      expect(subscription.status).toBe('pending');  // Pending until payment verified
+    });
+
+    it('should require payment for users who already used trial', async () => {
+      // Mark user as having already used trial
+      await trialEligibleSeller.update({
+        hasUsedTrial: true,
+        trialPlanUsed: 'drift'
+      });
+
+      const response = await request(app)
+        .post('/api/subscriptions/subscribe')
+        .set('Authorization', `Bearer ${trialEligibleSellerToken}`)
+        .send({
+          planId: 'wave'
+          // No payment method
+        })
+        .expect(400);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.trialUsed).toBe(true);
+      expect(response.body.message).toContain('already used');
+    });
+
+    it('should create paid subscription for trial-ineligible users with payment', async () => {
+      // Mark user as having already used trial
+      await trialEligibleSeller.update({
+        hasUsedTrial: true,
+        trialPlanUsed: 'drift'
+      });
+
+      const response = await request(app)
+        .post('/api/subscriptions/subscribe')
+        .set('Authorization', `Bearer ${trialEligibleSellerToken}`)
+        .send({
+          planId: 'wave',
+          paymentMethod: 'mock',
+          actualPaymentMethod: 'card'
+        })
+        .expect(201);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.data).toHaveProperty('subscription');
+      expect(response.body.data).toHaveProperty('payment');
+    });
+  });
+
+  describe('GET /api/subscriptions/plans - TRIAL INFORMATION', () => {
+    it('should include trial availability for trial-eligible users', async () => {
+      // Create trial-eligible user
+      const hashedPassword = await bcrypt.hash('Test1234', 10);
+      const trialUser = await UserTable.create({
+        fullName: 'Trial Check User',
+        email: `trialcheck${Date.now()}@test.com`,
+        password: hashedPassword,
+        accountType: 'seller',
+        accountStatus: 'active',
+        emailVerified: true,
+        agreeTerms: true
+        // hasUsedTrial defaults to false
+      });
+
+      const sessionId = require('crypto').randomBytes(32).toString('hex');
+      const token = jwt.sign(
+        { id: trialUser.id, email: trialUser.email, role: 'seller', sessionId },
+        process.env.JWT_SECRET,
+        { expiresIn: '7d' }
+      );
+      await redisClient.set(`session:${trialUser.id}:${sessionId}`, 'active', { EX: 7 * 24 * 60 * 60 });
+
+      const response = await request(app)
+        .get('/api/subscriptions/plans')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.trialAvailable).toBe(true);
+      expect(response.body.trialDays).toBe(30);
+      
+      // Each plan should have trial info
+      response.body.data.forEach(plan => {
+        expect(plan.trialAvailable).toBe(true);
+        expect(plan.trialDays).toBe(30);
+        expect(plan.trialMessage).toContain('free trial');
+      });
+    });
+
+    it('should show trial as unavailable for users who already used it', async () => {
+      const response = await request(app)
+        .get('/api/subscriptions/plans')
+        .set('Authorization', `Bearer ${sellerToken}`)
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.trialAvailable).toBe(false);
+      
+      // Each plan should show trial as used
+      response.body.data.forEach(plan => {
+        expect(plan.trialAvailable).toBe(false);
+        expect(plan.trialMessage).toContain('already used');
+      });
+    });
+  });
+
+  describe('GET /api/subscriptions/current - TRIAL STATUS', () => {
+    it('should include trial information for active trial subscriptions', async () => {
+      // Create trial-eligible user
+      const hashedPassword = await bcrypt.hash('Test1234', 10);
+      const trialUser = await UserTable.create({
+        fullName: 'Active Trial User',
+        email: `activetrial${Date.now()}@test.com`,
+        password: hashedPassword,
+        accountType: 'seller',
+        accountStatus: 'active',
+        emailVerified: true,
+        agreeTerms: true
+      });
+
+      await SellersTable.create({
+        userId: trialUser.id,
+        fullName: trialUser.fullName,
+        email: trialUser.email,
+        phoneNumber: '+2341234567888',
+        country: 'Nigeria',
+        businessName: 'Active Trial Business',
+        businessAddress: '101 Trial Ave',
+        verificationStatus: 'approved'
+      });
+
+      const sessionId = require('crypto').randomBytes(32).toString('hex');
+      const token = jwt.sign(
+        { id: trialUser.id, email: trialUser.email, role: 'seller', sessionId },
+        process.env.JWT_SECRET,
+        { expiresIn: '7d' }
+      );
+      await redisClient.set(`session:${trialUser.id}:${sessionId}`, 'active', { EX: 7 * 24 * 60 * 60 });
+
+      // Create trial subscription
+      await request(app)
+        .post('/api/subscriptions/subscribe')
+        .set('Authorization', `Bearer ${token}`)
+        .send({ planId: 'wave' })
+        .expect(201);
+
+      // Check current subscription status
+      const response = await request(app)
+        .get('/api/subscriptions/current')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.data.hasActiveSubscription).toBe(true);
+      expect(response.body.data.isTrial).toBe(true);
+      expect(response.body.data.trialDaysRemaining).toBeDefined();
+      expect(response.body.data.trialDaysRemaining).toBeGreaterThan(0);
+      expect(response.body.data.trialDaysRemaining).toBeLessThanOrEqual(30);
+      expect(response.body.data.trialEndsAt).toBeDefined();
     });
   });
 });

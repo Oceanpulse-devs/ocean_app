@@ -17,6 +17,10 @@
     "test:product": "node scripts/runTestWithLog.js productController",
     "test:groupbuy": "node scripts/runTestWithLog.js groupBuyController",
     "test:subscription": "node scripts/runTestWithLog.js subscriptionController",
+    "test:swapdeal": "node scripts/runTestWithLog.js swapDealController",
+    "test:distresssale": "node scripts/runTestWithLog.js distressSaleController",
+    "test:notification": "node scripts/runTestWithLog.js notificationController",
+    "test:buyerneed": "node scripts/runTestWithLog.js buyerNeedController",
     "test:clear-logs": "node -e \"require('fs').rmSync('test-logs', {recursive: true, force: true}); console.log('✅ Logs cleared')\""
   },
   "author": "",

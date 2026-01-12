@@ -813,6 +813,118 @@ class SubscriptionService {
       return false;
     }
   }
+
+  /**
+   * Check if user is eligible for free trial
+   * @param {string} userId - User ID
+   * @param {string} planName - Plan name to trial
+   * @returns {Object} {eligible: boolean, reason: string}
+   */
+  async checkTrialEligibility(userId, planName) {
+    try {
+      console.log('Checking trial eligibility for user:', userId, 'plan:', planName);
+      
+      // Check if user has already used trial
+      const user = await UserTable.findByPk(userId);
+      if (user.hasUsedTrial) {
+        return {
+          eligible: false,
+          reason: `You've already used your free trial on ${user.trialPlanUsed}. Choose a plan to subscribe.`,
+          previousTrialPlan: user.trialPlanUsed
+        };
+      }
+
+      // Check if user currently has any active subscription
+      const activeSubscription = await UserSubscription.findOne({
+        where: {
+          userId,
+          status: 'active',
+          endDate: { [Op.gt]: new Date() }
+        }
+      });
+
+      if (activeSubscription) {
+        return {
+          eligible: false,
+          reason: 'You already have an active subscription'
+        };
+      }
+
+      // User is eligible for trial!
+      console.log('✅ User eligible for trial');
+      return {
+        eligible: true,
+        reason: 'Start your 30-day free trial - no card required!'
+      };
+    } catch (error) {
+      console.error('Error checking trial eligibility:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Create trial subscription (no payment required)
+   * @param {string} userId - User ID
+   * @param {string} planName - Plan name
+   * @returns {Object} Created trial subscription
+   */
+  async createTrialSubscription(userId, planName) {
+    try {
+      console.log('Creating trial subscription for user:', userId, 'plan:', planName);
+      
+      const plan = await this.getPlanByName(planName);
+      if (!plan) {
+        throw new Error('Plan not found');
+      }
+
+      const startDate = new Date();
+      const endDate = new Date();
+      endDate.setDate(endDate.getDate() + 30); // Exactly 30 days from now
+
+      // Create trial subscription
+      const subscription = await UserSubscription.create({
+        userId,
+        planId: plan.id,
+        status: 'active', // Trial is immediately active - no payment needed
+        startDate,
+        endDate,
+        isTrial: true,
+        trialStartDate: startDate,
+        trialEndDate: endDate,
+        hasUsedTrial: true,
+        autoRenew: true, // Encourage conversion
+        amountPaid: 0.00, // No payment for trial
+        currency: 'NGN',
+        paymentMethod: 'trial', // Special marker
+        paymentReference: null // No card, no reference
+      });
+
+      console.log('✅ Trial subscription created:', subscription.id);
+
+      // Mark user as having used trial (forever)
+      await UserTable.update({
+        hasUsedTrial: true,
+        trialPlanUsed: planName,
+        subscription_status: 'active',
+        current_plan_id: plan.id,
+        subscription_expires_at: endDate
+      }, {
+        where: { id: userId }
+      });
+
+      console.log('✅ User marked as trial used');
+
+      // Reload subscription with plan details
+      await subscription.reload({
+        include: [{ model: SubscriptionPlan, as: 'plan' }]
+      });
+
+      return subscription;
+    } catch (error) {
+      console.error('Error creating trial subscription:', error);
+      throw error;
+    }
+  }
 }
 
 module.exports = new SubscriptionService();

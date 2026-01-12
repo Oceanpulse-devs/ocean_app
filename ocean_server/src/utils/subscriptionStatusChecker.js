@@ -79,6 +79,18 @@ class SubscriptionStatusChecker {
         boostsLimit = -1;
       }
 
+      // Check if trial and calculate days remaining
+      let isTrial = subscription.isTrial || false;
+      let trialDaysRemaining = null;
+      let trialEndsAt = null;
+      
+      if (isTrial && subscription.trialEndDate) {
+        trialEndsAt = subscription.trialEndDate;
+        const now = new Date();
+        const trialEnd = new Date(subscription.trialEndDate);
+        trialDaysRemaining = Math.ceil((trialEnd - now) / (1000 * 60 * 60 * 24));
+      }
+
       return {
         hasActiveSubscription: true,
         plan: {
@@ -90,6 +102,9 @@ class SubscriptionStatusChecker {
           billingPeriod: plan.billing_period
         },
         status: subscription.status,
+        isTrial: isTrial,
+        trialDaysRemaining: trialDaysRemaining,
+        trialEndsAt: trialEndsAt,
         limits: {
           maxListings: plan.max_listings,
           maxGroupBuys: plan.max_group_buys,

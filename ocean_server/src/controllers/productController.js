@@ -205,16 +205,25 @@ const getProduct = async (req, res) => {
 
         // Add engagement status for current user
         if (currentUserId) {
-            const [userSaved, userFollow, userLiked] = await Promise.all([
+            const [userSaved, userLiked] = await Promise.all([
                 SavedProduct.findOne({ where: { productId, userId: currentUserId } }),
-                UserFollows.findOne({ 
+                ProductLike.findOne({ where: { productId, userId: currentUserId } })
+            ]);
+
+            // Check follow status separately to handle potential table/column issues gracefully
+            let userFollow = null;
+            try {
+                userFollow = await UserFollows.findOne({ 
                     where: { 
                         userId: currentUserId, 
                         followsUserId: product.seller.userId 
                     } 
-                }),
-                ProductLike.findOne({ where: { productId, userId: currentUserId } })
-            ]);
+                });
+            } catch (error) {
+                // If UserFollows table has issues, just set isFollowing to false
+                console.warn('Error checking follow status:', error.message);
+                userFollow = null;
+            }
 
             productData.isSaved = !!userSaved;
             productData.isFollowing = !!userFollow;

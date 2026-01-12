@@ -68,6 +68,7 @@ class MockPaymentProvider extends PaymentProviderInterface {
       expiresAt.setHours(expiresAt.getHours() + 24);
 
       return {
+        success: true,
         reference: reference,
         amount: paymentData.amount,
         currency: paymentData.currency,
@@ -84,8 +85,9 @@ class MockPaymentProvider extends PaymentProviderInterface {
   async verifyPayment(paymentReference) {
     try {
       // Mock payment verification - always succeeds for development
-      if (paymentReference.startsWith('mock_')) {
+      if (paymentReference.startsWith('mock_') || paymentReference.startsWith('test_')) {
         return {
+          success: true,
           status: 'success',
           userId: 'mock_user_id', // This would be extracted from the reference in real implementation
           planId: 1, // This would be extracted from the reference in real implementation

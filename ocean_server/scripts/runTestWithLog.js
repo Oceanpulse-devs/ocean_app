@@ -28,10 +28,16 @@ if (!testFileName) {
   console.error('❌ Please provide a test file name');
   console.log('\nUsage: node scripts/runTestWithLog.js <testFileName>');
   console.log('\nAvailable test files:');
+  console.log('\n  Priority 1:');
   console.log('  - auctionController');
   console.log('  - productController');
   console.log('  - groupBuyController');
   console.log('  - subscriptionController');
+  console.log('\n  Priority 2:');
+  console.log('  - swapDealController');
+  console.log('  - distressSaleController');
+  console.log('  - notificationController');
+  console.log('  - buyerNeedController');
   process.exit(1);
 }
 
