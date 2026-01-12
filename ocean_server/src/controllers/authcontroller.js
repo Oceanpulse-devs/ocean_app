@@ -1148,9 +1148,10 @@ const googleMobileAuth = async (req, res) => {
             
             if (existingUser) {
                 // User exists with this email, link Google ID to existing account
+                // Preserve existing profile picture - only use Google's if user has none
                 await existingUser.update({
                     google_Id: googleId,
-                    profilePicture: profilePicture || existingUser.profilePicture,
+                    profilePicture: existingUser.profilePicture || profilePicture,
                     accountStatus: 'active' // Ensure account is active
                 });
                 user = existingUser;

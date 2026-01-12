@@ -33,9 +33,10 @@ passport.use(new GoogleStrategy({
                 
                 if (existingUser) {
                     // User exists with this email, link Google ID to existing account
+                    // Preserve existing profile picture - only use Google's if user has none
                     await existingUser.update({
                         google_Id: profile.id,
-                        profilePicture: profile._json.picture || existingUser.profilePicture,
+                        profilePicture: existingUser.profilePicture || profile._json.picture,
                         accountStatus: 'active' // Ensure account is active
                     });
                     return done(null, existingUser);
