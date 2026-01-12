@@ -1,26 +1,166 @@
-version: '3.8'
 services:
+  # MySQL Database
   mysql:
     image: mysql:8.0
-    container_name: jules-mysql
+    container_name: ocean-mysql
     restart: always
     environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: ocean_app_db   # 👈 same name as your local DB
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
+      MYSQL_DATABASE: ${DB_NAME:-ocean_app_db}
+      MYSQL_USER: ${DB_USERNAME:-ocean_user}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-ocean_password}
     ports:
-      - "3307:3306"   # avoids clash with your local MySQL
+      - "${MYSQL_PORT:-3306}:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
     networks:
-      - app-network
+      - ocean-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-rootpassword}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
+  # Redis Cache
   redis:
-    image: redis:latest
-    container_name: jules-redis
+    image: redis:7-alpine
+    container_name: ocean-redis
     restart: always
     ports:
-      - "6380:6379"   # avoids clash with your local Redis
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --requirepass ${REDIS_PASSWORD:-}
     networks:
-      - app-network
+      - ocean-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "--no-auth-warning", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Main Ocean Server
+  ocean-server:
+    build:
+      context: ./ocean_server
+      dockerfile: Dockerfile
+    container_name: ocean-server
+    restart: always
+    ports:
+      - "${PORT:-5000}:5000"
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      # Database connection (using Docker service name)
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USERNAME: ${DB_USERNAME:-ocean_user}
+      DB_PASSWORD: ${DB_PASSWORD:-ocean_password}
+      DB_NAME: ${DB_NAME:-ocean_app_db}
+      # Redis connection (using Docker service name)
+      REDIS_URL: redis://redis:6379
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      # Session & JWT
+      SESSION_SECRET: ${SESSION_SECRET}
+      JWT_SECRET: ${JWT_SECRET}
+      # Frontend URL
+      FRONTEND_URL: ${FRONTEND_URL}
+      # Message Server URL
+      MESSAGE_SERVER_URL: ${MESSAGE_SERVER_URL:-http://ocean-message-server:5001}
+      # Cloudinary (if used)
+      CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME:-}
+      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY:-}
+      CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET:-}
+      # OAuth (if used)
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GOOGLE_ANDROID_CLIENT_ID: ${GOOGLE_ANDROID_CLIENT_ID:-}
+      GOOGLE_IOS_CLIENT_ID: ${GOOGLE_IOS_CLIENT_ID:-}
+      FACEBOOK_APP_ID: ${FACEBOOK_APP_ID:-}
+      FACEBOOK_APP_SECRET: ${FACEBOOK_APP_SECRET:-}
+      # Payment Providers
+      PAYMENT_PROVIDER: ${PAYMENT_PROVIDER:-flutterwave}
+      FLW_CLIENT_ID: ${FLW_CLIENT_ID:-}
+      FLW_CLIENT_SECRET: ${FLW_CLIENT_SECRET:-}
+      FLW_PUBLIC_KEY: ${FLW_PUBLIC_KEY:-}
+      FLW_SECRET_KEY: ${FLW_SECRET_KEY:-}
+      FLW_ENCRYPTION_KEY: ${FLW_ENCRYPTION_KEY:-}
+      FLW_BASE_URL: ${FLW_BASE_URL:-}
+      BASE_URL: ${BASE_URL:-}
+    env_file:
+      - ./ocean_server/.env
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - ocean-network
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:5000/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Message Server
+  ocean-message-server:
+    build:
+      context: ./ocean_message_server
+      dockerfile: Dockerfile
+    container_name: ocean-message-server
+    restart: always
+    ports:
+      - "${MESSAGE_SERVER_PORT:-5001}:5001"
+    environment:
+      NODE_ENV: production
+      PORT: 5001
+      # Database connection (using Docker service name)
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USER: ${DB_USERNAME:-ocean_user}
+      DB_USERNAME: ${DB_USERNAME:-ocean_user}
+      DB_PASSWORD: ${DB_PASSWORD:-ocean_password}
+      DB_NAME: ${DB_NAME:-ocean_app_db}
+      # Redis connection (using Docker service name)
+      REDIS_URL: redis://redis:6379
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      # JWT
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
+      # Frontend URL
+      CLIENT_URL: ${FRONTEND_URL:-}
+      # Main Server URL
+      MAIN_SERVER_URL: http://ocean-server:5000
+    env_file:
+      - ./ocean_message_server/config.env
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      ocean-server:
+        condition: service_healthy
+    networks:
+      - ocean-network
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:5001/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  mysql_data:
+    driver: local
+  redis_data:
+    driver: local
 
 networks:
-  app-network:
+  ocean-network:
     driver: bridge

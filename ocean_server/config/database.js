@@ -19,12 +19,13 @@ const getConfig = () => {
       }
     };
   } else {
-    // Development configuration
+    // Development configuration - use environment variables if available, otherwise fallback to defaults
     return {
-      username: 'root',
-      password: 'j@123098',
-      database: 'ocean_app_db',
-      host: '127.0.0.1',
+      username: process.env.DB_USERNAME || 'root',
+      password: process.env.DB_PASSWORD || 'j@123098',
+      database: process.env.DB_NAME || 'ocean_app_db',
+      host: process.env.DB_HOST || '127.0.0.1',
+      port: process.env.DB_PORT || 3306,
       dialect: 'mysql',
       logging: console.log
     };

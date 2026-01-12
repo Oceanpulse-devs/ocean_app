@@ -1,0 +1,157 @@
+services:
+  # MySQL Database
+  mysql:
+    image: mysql:8.0
+    container_name: ocean-mysql-dev
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: ocean_app_db
+      MYSQL_USER: ocean_user
+      MYSQL_PASSWORD: ocean_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - ocean-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-prootpassword"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: ocean-redis-dev
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - ocean-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Main Ocean Server
+  ocean-server:
+    build:
+      context: ./ocean_server
+      dockerfile: Dockerfile.dev
+    container_name: ocean-server-dev
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    volumes:
+      # Mount source code for hot reload
+      - ./ocean_server:/app
+      # Preserve node_modules (don't overwrite with host's)
+      - /app/node_modules
+      # Persist uploads
+      - ./ocean_server/uploads:/app/uploads
+    environment:
+      NODE_ENV: development
+      PORT: 5000
+      # Database connection (using Docker service name)
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USERNAME: ocean_user
+      DB_PASSWORD: ocean_password
+      DB_NAME: ocean_app_db
+      # Redis connection (using Docker service name)
+      REDIS_URL: redis://redis:6379
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ""
+      # Session & JWT
+      SESSION_SECRET: dev_session_secret_change_in_production
+      JWT_SECRET: dev_jwt_secret_change_in_production
+      # Frontend URL
+      FRONTEND_URL: http://localhost:5173
+      # Message Server URL
+      MESSAGE_SERVER_URL: http://localhost:5001
+    env_file:
+      - ./ocean_server/.env
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - ocean-network
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:5000/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Message Server
+  ocean-message-server:
+    build:
+      context: ./ocean_message_server
+      dockerfile: Dockerfile.dev
+    container_name: ocean-message-server-dev
+    restart: unless-stopped
+    ports:
+      - "5001:5001"
+    volumes:
+      # Mount source code for hot reload
+      - ./ocean_message_server:/app
+      # Preserve node_modules (don't overwrite with host's)
+      - /app/node_modules
+    environment:
+      NODE_ENV: development
+      PORT: 5001
+      # Database connection (using Docker service name)
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USER: ocean_user
+      DB_USERNAME: ocean_user
+      DB_PASSWORD: ocean_password
+      DB_NAME: ocean_app_db
+      # Redis connection (using Docker service name)
+      REDIS_URL: redis://redis:6379
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ""
+      # JWT
+      JWT_SECRET: dev_jwt_secret_change_in_production
+      JWT_EXPIRES_IN: 7d
+      # Frontend URL
+      CLIENT_URL: http://localhost:5173
+      # Main Server URL
+      MAIN_SERVER_URL: http://ocean-server:5000
+    env_file:
+      - ./ocean_message_server/config.env
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      ocean-server:
+        condition: service_healthy
+    networks:
+      - ocean-network
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:5001/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  mysql_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  ocean-network:
+    driver: bridge
