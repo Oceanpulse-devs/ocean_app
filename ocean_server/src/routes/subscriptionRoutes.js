@@ -130,61 +130,6 @@ router.post('/confirm-payment', authMiddleware, SubscriptionController.confirmPa
 // =============================================
 
 /**
- * POST /api/subscriptions/webhooks/paystack
- * Handle payment webhook from Paystack
- * No authentication required (uses webhook signature verification)
- */
-router.post('/webhooks/paystack', SubscriptionController.handlePaymentWebhook);
-
-/**
- * GET /api/subscriptions/webhooks/paystack
- * Test endpoint to verify webhook URL is accessible
- * No authentication required
- */
-    router.get('/webhooks/paystack', (req, res) => {
-        res.status(200).json({
-            success: true,
-            message: 'Paystack webhook endpoint is accessible on port 5000',
-            timestamp: new Date().toISOString()
-        });
-    });
-
-/**
- * GET /api/subscriptions/test-paystack
- * Test Paystack integration with real test transaction
- * No authentication required
- */
-router.get('/test-paystack', async (req, res) => {
-  try {
-    // Use Paystack's test transaction reference
-    const testReference = 'test_reference_123456789';
-    
-    console.log('Testing Paystack integration with reference:', testReference);
-    
-    // This will test the Paystack API connection
-    const { PaymentProvider } = require('../providers/PaymentProvider');
-    const result = await PaymentProvider.verifyPayment(testReference);
-    
-    res.json({
-      success: true,
-      message: 'Paystack integration test completed',
-      data: {
-        testReference,
-        paystackResult: result,
-        timestamp: new Date().toISOString()
-      }
-    });
-  } catch (error) {
-    console.error('Paystack test error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Paystack test failed',
-      error: error.message
-    });
-  }
-});
-
-/**
  * GET /api/subscriptions/debug-subscriptions
  * Debug endpoint to show all subscriptions for a user
  * Requires authentication

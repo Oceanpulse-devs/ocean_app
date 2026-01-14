@@ -99,6 +99,19 @@ module.exports = (sequelize) => {
       defaultValue: false,
       field: 'has_used_trial',
       comment: 'User already used trial for this subscription'
+    },
+    // Flutterwave Subscription Fields
+    flutterwaveSubscriptionId: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+      field: 'flutterwave_subscription_id',
+      comment: 'Flutterwave subscription ID for recurring billing'
+    },
+    nextBillingDate: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      field: 'next_billing_date',
+      comment: 'Next billing date for recurring subscription'
     }
   }, {
     tableName: 'user_subscriptions',

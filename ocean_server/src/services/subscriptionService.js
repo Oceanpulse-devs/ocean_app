@@ -72,7 +72,9 @@ class SubscriptionService {
         paymentReference: paymentData.reference || null,
         paymentMethod: paymentData.method || null,
         amountPaid: paymentData.amount || plan.price,  // Use passed amount, fallback to plan.price
-        currency: paymentData.currency || plan.currency // Use passed currency, fallback to plan.currency
+        currency: paymentData.currency || plan.currency, // Use passed currency, fallback to plan.currency
+        flutterwaveSubscriptionId: paymentData.flutterwaveSubscriptionId || null,
+        nextBillingDate: paymentData.nextBillingDate || null
       });
 
       // DON'T update user subscription status to 'active' here

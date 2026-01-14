@@ -48,6 +48,35 @@ class PaymentProviderInterface {
   async processWebhook(provider, webhookData) {
     throw new Error('processWebhook must be implemented by provider');
   }
+
+  /**
+   * Create a subscription (recurring billing)
+   * @param {string} userId - User ID
+   * @param {string} planId - Plan ID
+   * @param {Object} subscriptionData - Subscription details (email, name, phone, currency, flutterwavePlanId)
+   * @returns {Object} Subscription details with subscription ID and checkout URL
+   */
+  async createSubscription(userId, planId, subscriptionData) {
+    throw new Error('createSubscription must be implemented by provider');
+  }
+
+  /**
+   * Cancel a subscription
+   * @param {string} subscriptionId - Flutterwave subscription ID
+   * @returns {Object} Cancellation result
+   */
+  async cancelSubscription(subscriptionId) {
+    throw new Error('cancelSubscription must be implemented by provider');
+  }
+
+  /**
+   * Get subscription details
+   * @param {string} subscriptionId - Flutterwave subscription ID
+   * @returns {Object} Subscription details
+   */
+  async getSubscription(subscriptionId) {
+    throw new Error('getSubscription must be implemented by provider');
+  }
 }
 
 /**
@@ -497,11 +526,11 @@ class PaystackPaymentProvider extends PaymentProviderInterface {
 class FlutterwaveProvider extends PaymentProviderInterface {
   constructor() {
     super();
-    this.tokenManager = require('../utils/flutterwaveTokenManager');
+    // Removed tokenManager - not used, we use SECRET_KEY directly for API calls
     this.baseUrl = process.env.FLW_BASE_URL || 'https://api.flutterwave.com/v3';
     this.publicKey = process.env.FLW_PUBLIC_KEY;
     this.secretKey = process.env.FLW_SECRET_KEY;
-    this.encryptionKey = process.env.FLW_ENCRYPTION_KEY;
+    this.webhookSecret = process.env.FLUTTERWAVE_WEBHOOK_SECRET; // For webhook verification
   }
 
   /**
@@ -793,6 +822,204 @@ class FlutterwaveProvider extends PaymentProviderInterface {
   }
 
   /**
+   * Create a subscription (recurring billing) with Flutterwave
+   * @param {string} userId - User ID
+   * @param {string} planId - Plan ID
+   * @param {Object} subscriptionData - Subscription details
+   * @returns {Object} Subscription details with subscription ID and checkout URL
+   */
+  async createSubscription(userId, planId, subscriptionData) {
+    try {
+      if (!this.secretKey) {
+        throw new Error('Flutterwave SECRET_KEY not configured');
+      }
+
+      const { getFlutterwavePlanId } = require('../utils/flutterwavePlanHelper');
+      const flutterwavePlanId = subscriptionData.flutterwavePlanId || 
+        getFlutterwavePlanId(subscriptionData.planName, subscriptionData.currency || 'NGN');
+
+      if (!flutterwavePlanId) {
+        throw new Error(`Flutterwave plan ID not found for plan: ${subscriptionData.planName} (${subscriptionData.currency || 'NGN'})`);
+      }
+
+      // Generate unique transaction reference
+      const txRef = `OCEAN_SUB_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+      // Get redirect URL for payment callback
+      const baseUrl = (process.env.BASE_URL || 'http://localhost:5000').replace(/\/$/, '');
+      const redirectUrl = `${baseUrl}/api/subscriptions/callback/flutterwave`;
+
+      // Use Flutterwave /payments endpoint with payment_plan field (recommended approach)
+      // This creates a payment that subscribes the customer to the recurring plan
+      const paymentRequest = {
+        tx_ref: txRef,
+        amount: subscriptionData.amount,
+        currency: subscriptionData.currency || 'NGN',
+        payment_plan: parseInt(flutterwavePlanId), // Plan ID as integer (e.g., 152253, 228797)
+        redirect_url: redirectUrl,
+        customer: {
+          email: subscriptionData.email,
+          name: subscriptionData.name || 'Customer',
+          ...(subscriptionData.phone && { phonenumber: subscriptionData.phone })
+        },
+        customizations: {
+          title: `Ocean Subscription - ${subscriptionData.planName || 'Plan'}`,
+          description: `Subscription payment for ${subscriptionData.planName || 'plan'}`,
+          ...(process.env.APP_LOGO_URL && { logo: process.env.APP_LOGO_URL })
+        },
+        meta: {
+          userId: userId,
+          planId: planId,
+          planName: subscriptionData.planName || '',
+          tx_ref: txRef
+        }
+      };
+
+      console.log('Creating Flutterwave subscription payment:', {
+        userId,
+        planId,
+        flutterwavePlanId,
+        paymentPlan: parseInt(flutterwavePlanId),
+        email: subscriptionData.email,
+        amount: subscriptionData.amount,
+        currency: subscriptionData.currency
+      });
+
+      // Make API request to create payment with subscription plan
+      const response = await axios.post(
+        `${this.baseUrl}/payments`,
+        paymentRequest,
+        {
+          headers: {
+            'Authorization': `Bearer ${this.secretKey.trim()}`,
+            'Content-Type': 'application/json'
+          },
+          timeout: 30000
+        }
+      );
+
+      if (response.data.status === 'success' && response.data.data) {
+        const paymentData = response.data.data;
+        
+        return {
+          success: true,
+          subscriptionId: paymentData.id?.toString() || txRef, // Use payment ID as subscription reference
+          checkoutUrl: paymentData.link, // Checkout URL for customer to complete payment
+          reference: paymentData.tx_ref || txRef,
+          amount: paymentData.amount || subscriptionData.amount,
+          currency: paymentData.currency || subscriptionData.currency,
+          status: 'pending', // Will be activated after payment
+          createdAt: new Date().toISOString()
+        };
+      } else {
+        throw new Error(response.data.message || 'Failed to create subscription payment');
+      }
+    } catch (error) {
+      console.error('Flutterwave subscription creation error:', {
+        message: error.message,
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        secretKeyPrefix: this.secretKey ? this.secretKey.substring(0, 20) + '...' : 'NOT SET',
+        secretKeyLength: this.secretKey ? this.secretKey.length : 0
+      });
+      
+      // Provide helpful error message for 401
+      if (error.response?.status === 401) {
+        throw new Error('Flutterwave authentication failed. Please check your FLW_SECRET_KEY in .env file. Make sure it matches your Flutterwave dashboard.');
+      }
+      
+      throw error;
+    }
+  }
+
+  /**
+   * Cancel a Flutterwave subscription
+   * @param {string} subscriptionId - Flutterwave subscription ID
+   * @returns {Object} Cancellation result
+   */
+  async cancelSubscription(subscriptionId) {
+    try {
+      if (!this.secretKey) {
+        throw new Error('Flutterwave SECRET_KEY not configured');
+      }
+
+      console.log('Cancelling Flutterwave subscription:', subscriptionId);
+
+      // Make API request to cancel subscription
+      const response = await axios.put(
+        `${this.baseUrl}/subscriptions/${subscriptionId}/cancel`,
+        {},
+        {
+          headers: {
+            'Authorization': `Bearer ${this.secretKey.trim()}`,
+            'Content-Type': 'application/json'
+          },
+          timeout: 30000
+        }
+      );
+
+      if (response.data.status === 'success') {
+        return {
+          success: true,
+          message: 'Subscription cancelled successfully',
+          subscriptionId: subscriptionId
+        };
+      } else {
+        throw new Error(response.data.message || 'Failed to cancel subscription');
+      }
+    } catch (error) {
+      console.error('Flutterwave subscription cancellation error:', error.response?.data || error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Get Flutterwave subscription details
+   * @param {string} subscriptionId - Flutterwave subscription ID
+   * @returns {Object} Subscription details
+   */
+  async getSubscription(subscriptionId) {
+    try {
+      if (!this.secretKey) {
+        throw new Error('Flutterwave SECRET_KEY not configured');
+      }
+
+      // Make API request to get subscription
+      const response = await axios.get(
+        `${this.baseUrl}/subscriptions/${subscriptionId}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${this.secretKey.trim()}`,
+            'Content-Type': 'application/json'
+          },
+          timeout: 30000
+        }
+      );
+
+      if (response.data.status === 'success' && response.data.data) {
+        const subscription = response.data.data;
+        
+        return {
+          success: true,
+          subscriptionId: subscription.id.toString(),
+          status: subscription.status,
+          amount: subscription.amount,
+          currency: subscription.currency,
+          planToken: subscription.plan_token,
+          nextPaymentDate: subscription.next_payment_date,
+          createdAt: subscription.created_at
+        };
+      } else {
+        throw new Error(response.data.message || 'Failed to get subscription');
+      }
+    } catch (error) {
+      console.error('Flutterwave get subscription error:', error.response?.data || error.message);
+      throw error;
+    }
+  }
+
+  /**
    * Verify webhook signature
    * @param {string} provider - Provider name
    * @param {Object} webhookData - Webhook payload
@@ -804,14 +1031,14 @@ class FlutterwaveProvider extends PaymentProviderInterface {
       // Flutterwave webhook verification uses verif-hash header
       const signature = headers['verif-hash'];
       
-      if (!signature || !this.encryptionKey) {
-        console.warn('⚠️ Flutterwave webhook signature or encryption key missing');
+      if (!signature || !this.webhookSecret) {
+        console.warn('⚠️ Flutterwave webhook signature or webhook secret missing');
         return false;
       }
 
       // Flutterwave sends the signature in the verif-hash header
-      // It should match your encryption key (FLW_SECRET_HASH)
-      return signature === this.encryptionKey;
+      // It should match your webhook secret (FLUTTERWAVE_WEBHOOK_SECRET)
+      return signature === this.webhookSecret;
     } catch (error) {
       console.error('Flutterwave webhook signature verification error:', error);
       return false;
@@ -870,6 +1097,50 @@ class FlutterwaveProvider extends PaymentProviderInterface {
           currency: data.currency || 'NGN',
           paidAt: data.created_at || new Date().toISOString(),
           paymentMethod: 'virtual_account'
+        };
+      }
+
+      // Handle subscription renewal events
+      if (event === 'subscription.charged' || event === 'subscription.renewed') {
+        // Subscription was successfully charged/renewed
+        return {
+          success: true,
+          paymentStatus: 'success',
+          subscriptionId: data.subscription?.id?.toString() || data.id?.toString(),
+          reference: data.tx_ref || data.reference,
+          flwRef: data.flw_ref,
+          userId: data.meta?.userId,
+          planId: data.meta?.planId,
+          amount: data.amount,
+          currency: data.currency || 'NGN',
+          paidAt: data.created_at || new Date().toISOString(),
+          nextBillingDate: data.next_payment_date,
+          paymentMethod: 'subscription',
+          eventType: 'subscription_renewal'
+        };
+      }
+
+      // Handle subscription cancellation events
+      if (event === 'subscription.cancelled' || event === 'subscription.deactivated') {
+        return {
+          success: true,
+          paymentStatus: 'cancelled',
+          subscriptionId: data.subscription?.id?.toString() || data.id?.toString(),
+          userId: data.meta?.userId,
+          planId: data.meta?.planId,
+          eventType: 'subscription_cancelled'
+        };
+      }
+
+      // Handle subscription activation events
+      if (event === 'subscription.activated' || event === 'subscription.created') {
+        return {
+          success: true,
+          paymentStatus: 'active',
+          subscriptionId: data.subscription?.id?.toString() || data.id?.toString(),
+          userId: data.meta?.userId,
+          planId: data.meta?.planId,
+          eventType: 'subscription_activated'
         };
       }
 

@@ -237,7 +237,6 @@ class SubscriptionController {
         currency: currency,
         priceNgn: plan.price,
         priceUsd: plan.priceUsd,
-        paystack_plan_code: plan.paystackPlanCode,
         is_active: plan.isActive
       });
 
@@ -281,16 +280,6 @@ class SubscriptionController {
         console.log('User not eligible for trial:', trialCheck.reason);
       }
 
-      // Now payment method is REQUIRED
-      if (!paymentMethod) {
-        return res.status(400).json({
-          success: false,
-          message: 'Payment method is required. You have already used your free trial.',
-          trialUsed: true,
-          trialReason: trialCheck.reason
-        });
-      }
-
       // Check if user already has an active subscription
       const currentStatus = await SubscriptionStatusChecker.getUserSubscriptionStatus(userId);
       if (currentStatus.hasActiveSubscription) {
@@ -311,161 +300,116 @@ class SubscriptionController {
         }
       }
 
-      // Get the appropriate payment provider based on payment method
+      // Get the appropriate payment provider - default to Flutterwave
       const { PaymentProviderFactory } = require('../providers/PaymentProvider');
-      // Only allow flutterwave and mock (for testing) - Paystack removed
+      // Default to Flutterwave if paymentMethod is not provided (Flutterwave subscriptions don't need explicit paymentMethod)
+      const effectivePaymentMethod = paymentMethod || 'flutterwave';
       let providerName;
       
-      // In test environment, validate payment method but use mock provider
+      // In test environment, use mock provider
       if (process.env.NODE_ENV === 'test') {
-        // Still validate payment method in tests
-        const validTestMethods = ['mock', 'flutterwave'];
-        if (!validTestMethods.includes(paymentMethod) && !paymentMethod?.includes('flutterwave')) {
-          return res.status(400).json({
-            success: false,
-            message: `Invalid payment method: ${paymentMethod}. Only Flutterwave is supported.`
-          });
-        }
         providerName = 'mock';
-      } else if (paymentMethod === 'mock') {
+      } else if (effectivePaymentMethod === 'mock') {
         providerName = 'mock';
-      } else if (paymentMethod === 'flutterwave' || paymentMethod?.includes('flutterwave')) {
-        providerName = 'flutterwave';
       } else {
-        return res.status(400).json({
-          success: false,
-          message: `Invalid payment method: ${paymentMethod}. Only Flutterwave is supported.`
-        });
+        // Default to Flutterwave for production
+        providerName = 'flutterwave';
       }
       const paymentProvider = PaymentProviderFactory.getProvider(providerName);
 
-      // Extract actual payment method type (card, virtual_account, googlepay)
-      const actualPaymentMethod = req.body.actualPaymentMethod || 'card'; // Default to card
-      const isVirtualAccount = actualPaymentMethod === 'virtual_account';
+      // Get Flutterwave plan ID helper
+      const { getFlutterwavePlanId } = require('../utils/flutterwavePlanHelper');
+      const flutterwavePlanId = getFlutterwavePlanId(plan.name, currency);
 
-      let paymentIntent;
-      let virtualAccountDetails = null;
-
-      if (isVirtualAccount && providerName === 'flutterwave') {
-        // Create virtual account for payment
-        virtualAccountDetails = await paymentProvider.createVirtualAccount(userId, plan.id, {
-          email: user.email,
-          name: user.fullName || user.username || 'Customer',
-          firstname: (user.fullName || user.username || 'Customer').split(' ')[0],
-          lastname: (user.fullName || user.username || 'Customer').split(' ').slice(1).join(' ') || '',
-          phone: user.phoneNumber || user.phone || '',
-          amount: price,
-          currency: currency,
-          planName: plan.display_name || plan.name
+      if (!flutterwavePlanId) {
+        return res.status(400).json({
+          success: false,
+          message: `Flutterwave plan ID not configured for ${plan.name} (${currency}). Please contact support.`
         });
-
-        if (!virtualAccountDetails.success) {
-          return res.status(400).json({
-            success: false,
-            message: 'Failed to create virtual account',
-            error: virtualAccountDetails.message
-          });
-        }
-
-        // Create a payment intent-like structure for virtual account
-        paymentIntent = {
-          success: true,
-          reference: virtualAccountDetails.reference,
-          amount: price,
-          currency: currency,
-          expiresAt: virtualAccountDetails.expiresAt ? new Date(virtualAccountDetails.expiresAt) : new Date(Date.now() + 24 * 60 * 60 * 1000)
-        };
-      } else {
-        // Create payment intent with plan details (for card/Google Pay)
-        paymentIntent = await paymentProvider.createPaymentIntent(userId, plan.id, {
-          email: user.email,
-          name: user.fullName || user.username || 'Customer',
-          phone: user.phoneNumber || user.phone || '',
-          amount: price,
-          currency: currency,
-          billingPeriod: plan.billingPeriod,
-          planName: plan.display_name || plan.name
-        });
-
-        console.log('Payment intent created:', {
-          success: paymentIntent.success,
-          hasCheckoutUrl: !!paymentIntent.checkoutUrl,
-          checkoutUrl: paymentIntent.checkoutUrl,
-          reference: paymentIntent.reference
-        });
-
-        // Check if payment intent creation failed
-        if (!paymentIntent.success) {
-          return res.status(400).json({
-            success: false,
-            message: 'Failed to create payment intent',
-            error: paymentIntent.message
-          });
-        }
       }
 
-      // Create pending subscription
+      // Create Flutterwave subscription (recurring billing)
+      let subscriptionResult;
+      try {
+        subscriptionResult = await paymentProvider.createSubscription(userId, plan.id, {
+          email: user.email,
+          name: user.fullName || user.username || 'Customer',
+          phone: user.phoneNumber || user.phone || '',
+          amount: price,
+          currency: currency,
+          planName: plan.name,
+          flutterwavePlanId: flutterwavePlanId
+        });
+
+        console.log('Flutterwave subscription created:', {
+          success: subscriptionResult.success,
+          subscriptionId: subscriptionResult.subscriptionId,
+          hasCheckoutUrl: !!subscriptionResult.checkoutUrl,
+          checkoutUrl: subscriptionResult.checkoutUrl
+        });
+
+        if (!subscriptionResult.success) {
+          return res.status(400).json({
+            success: false,
+            message: 'Failed to create subscription',
+            error: subscriptionResult.message
+          });
+        }
+      } catch (error) {
+        console.error('Error creating Flutterwave subscription:', error);
+        return res.status(400).json({
+          success: false,
+          message: 'Failed to create subscription',
+          error: error.message
+        });
+      }
+
+      // Generate reference for tracking
+      const reference = `OCEAN_SUB_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+      // Create pending subscription in database
       const subscription = await subscriptionService.createSubscription(userId, plan.id, {
-        reference: paymentIntent.reference,
+        reference: reference,
         method: paymentMethod,
-        amount: price,        // Use calculated price (USD or NGN)
-        currency: currency   // Use detected currency (USD or NGN)
+        amount: price,
+        currency: currency,
+        flutterwaveSubscriptionId: subscriptionResult.subscriptionId
       });
 
-      // Prepare payment response
-      const paymentResponse = {
-        reference: paymentIntent.reference,
-        amount: paymentIntent.amount,
-        currency: paymentIntent.currency,
-        expiresAt: paymentIntent.expiresAt
+      // Prepare subscription response
+      const subscriptionResponse = {
+        reference: reference,
+        subscriptionId: subscriptionResult.subscriptionId,
+        amount: price,
+        currency: currency,
+        checkoutUrl: subscriptionResult.checkoutUrl,
+        emailToken: subscriptionResult.emailToken // For customer to authorize subscription
       };
 
-      // Add provider-specific payment data
-      if (providerName === 'flutterwave') {
-        if (isVirtualAccount && virtualAccountDetails) {
-          // Include virtual account details
-          paymentResponse.virtualAccount = {
-            accountNumber: virtualAccountDetails.accountNumber,
-            bankName: virtualAccountDetails.bankName,
-            reference: virtualAccountDetails.reference,
-            flwRef: virtualAccountDetails.flwRef,
-            expiresAt: virtualAccountDetails.expiresAt
-          };
-        } else {
-          // For card/Google Pay - include both checkoutUrl (for WebView) and paymentData (for future SDK)
-          if (paymentIntent.checkoutUrl) {
-            paymentResponse.checkoutUrl = paymentIntent.checkoutUrl;
-          }
-          if (paymentIntent.paymentData) {
-            paymentResponse.paymentData = paymentIntent.paymentData;
-            paymentResponse.publicKey = paymentIntent.paymentData.publicKey;
-          }
-        }
-      }
-
       console.log('Sending subscription response to frontend:', {
-        hasCheckoutUrl: !!paymentResponse.checkoutUrl,
-        checkoutUrl: paymentResponse.checkoutUrl,
+        hasCheckoutUrl: !!subscriptionResponse.checkoutUrl,
+        checkoutUrl: subscriptionResponse.checkoutUrl,
         subscriptionId: subscription.id,
-        paymentReference: paymentResponse.reference
+        flutterwaveSubscriptionId: subscriptionResult.subscriptionId
       });
 
       res.status(201).json({
         success: true,
-        message: 'Subscription created successfully. Complete payment to activate.',
+        message: 'Subscription created successfully. Complete payment setup to activate recurring billing.',
         data: {
           subscription: {
             id: subscription.id,
             status: subscription.status,
+            flutterwaveSubscriptionId: subscriptionResult.subscriptionId,
             plan: {
               name: plan.display_name,
-              price: plan.price,
-              currency: plan.currency
+              price: price,
+              currency: currency
             },
             startDate: subscription.start_date,
             endDate: subscription.end_date
           },
-          payment: paymentResponse
+          payment: subscriptionResponse
         }
       });
     } catch (error) {
@@ -670,8 +614,7 @@ class SubscriptionController {
       console.log('Target plan found:', targetPlan ? {
         id: targetPlan.id,
         name: targetPlan.name,
-        price: targetPlan.price,
-        paystackPlanCode: targetPlan.paystackPlanCode
+        price: targetPlan.price
       } : 'null');
       
       if (!targetPlan) {
@@ -682,33 +625,72 @@ class SubscriptionController {
         });
       }
 
-      // Create payment intent for plan change
-      // Check test environment FIRST to ensure tests always use mock provider
+      // Get currency for target plan
+      const currency = getSellerCurrency(seller.country) || 'NGN';
+      const price = currency === 'USD' ? targetPlan.priceUsd : targetPlan.price;
+
+      // Cancel existing subscription if it has Flutterwave subscription ID
+      const currentSubscriptionStatus = await SubscriptionStatusChecker.getUserSubscriptionStatus(userId);
+      if (currentSubscriptionStatus.hasActiveSubscription && currentSubscriptionStatus.subscription?.flutterwaveSubscriptionId) {
+        const { PaymentProviderFactory } = require('../providers/PaymentProvider');
+        const providerName = (process.env.NODE_ENV === 'test') ? 'mock' : 'flutterwave';
+        const paymentProvider = PaymentProviderFactory.getProvider(providerName);
+        
+        try {
+          await paymentProvider.cancelSubscription(currentSubscriptionStatus.subscription.flutterwaveSubscriptionId);
+          console.log('Cancelled existing Flutterwave subscription:', currentSubscriptionStatus.subscription.flutterwaveSubscriptionId);
+        } catch (error) {
+          console.error('Error cancelling existing subscription:', error);
+          // Continue with new subscription creation even if cancellation fails
+        }
+      }
+
+      // Create new subscription for plan change
       const { PaymentProviderFactory } = require('../providers/PaymentProvider');
+      const { getFlutterwavePlanId } = require('../utils/flutterwavePlanHelper');
       const providerName = (process.env.NODE_ENV === 'test') ? 'mock' : 'flutterwave';
       const paymentProvider = PaymentProviderFactory.getProvider(providerName);
       
-      const paymentIntent = await paymentProvider.createPaymentIntent(userId, targetPlan.id, {
+      const flutterwavePlanId = getFlutterwavePlanId(targetPlan.name, currency);
+      if (!flutterwavePlanId) {
+        return res.status(400).json({
+          success: false,
+          message: `Flutterwave plan ID not configured for ${targetPlan.name} (${currency}). Please contact support.`
+        });
+      }
+
+      const subscriptionResult = await paymentProvider.createSubscription(userId, targetPlan.id, {
         email: user.email,
-        paystackPlanCode: targetPlan.paystackPlanCode,
-        amount: targetPlan.price,
-        currency: targetPlan.currency,
-        billingPeriod: targetPlan.billingPeriod,
-        type: 'plan_change'
+        name: user.fullName || user.username || 'Customer',
+        phone: user.phoneNumber || user.phone || '',
+        amount: price,
+        currency: currency,
+        planName: targetPlan.name,
+        flutterwavePlanId: flutterwavePlanId
       });
+
+      if (!subscriptionResult.success) {
+        return res.status(400).json({
+          success: false,
+          message: 'Failed to create subscription for plan change',
+          error: subscriptionResult.message
+        });
+      }
 
       res.json({
         success: true,
-        message: 'Plan change initiated. Complete payment to activate new plan.',
+        message: 'Plan change initiated. Complete payment setup to activate new plan.',
         data: {
           currentPlan: eligibility.currentPlan,
           targetPlan: targetPlan,
+          subscription: {
+            subscriptionId: subscriptionResult.subscriptionId,
+            checkoutUrl: subscriptionResult.checkoutUrl,
+            emailToken: subscriptionResult.emailToken
+          },
           payment: {
-            reference: paymentIntent.reference,
-            amount: paymentIntent.amount,
-            currency: paymentIntent.currency,
-            checkoutUrl: paymentIntent.checkoutUrl,
-            expiresAt: paymentIntent.expiresAt
+            amount: price,
+            currency: currency
           }
         }
       });
@@ -734,6 +716,22 @@ class SubscriptionController {
       // Get current subscription details before cancellation
       const currentSubscriptionStatus = await SubscriptionStatusChecker.getUserSubscriptionStatus(userId);
       const user = await subscriptionService.getUserById(userId);
+
+      // Cancel Flutterwave subscription if it exists
+      if (currentSubscriptionStatus.hasActiveSubscription && 
+          currentSubscriptionStatus.subscription?.flutterwaveSubscriptionId) {
+        const { PaymentProviderFactory } = require('../providers/PaymentProvider');
+        const providerName = (process.env.NODE_ENV === 'test') ? 'mock' : 'flutterwave';
+        const paymentProvider = PaymentProviderFactory.getProvider(providerName);
+        
+        try {
+          await paymentProvider.cancelSubscription(currentSubscriptionStatus.subscription.flutterwaveSubscriptionId);
+          console.log('Cancelled Flutterwave subscription:', currentSubscriptionStatus.subscription.flutterwaveSubscriptionId);
+        } catch (error) {
+          console.error('Error cancelling Flutterwave subscription:', error);
+          // Continue with database cancellation even if Flutterwave cancellation fails
+        }
+      }
 
       let success;
       try {
@@ -1346,8 +1344,58 @@ class SubscriptionController {
       // Process webhook
       const result = await provider.processWebhook('flutterwave', req.body);
       
-      if (result.success && result.paymentStatus === 'success') {
-        // Update subscription status
+      // Handle subscription renewal events
+      if (result.eventType === 'subscription_renewal' && result.success) {
+        const { UserSubscription } = require('../../models');
+        
+        // Find subscription by Flutterwave subscription ID
+        const subscription = await UserSubscription.findOne({
+          where: { flutterwaveSubscriptionId: result.subscriptionId }
+        });
+        
+        if (subscription) {
+          // Update subscription with new billing period
+          const nextBillingDate = result.nextBillingDate ? new Date(result.nextBillingDate) : null;
+          const newEndDate = nextBillingDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days from now
+          
+          await subscription.update({
+            status: 'active',
+            endDate: newEndDate,
+            nextBillingDate: nextBillingDate,
+            paymentReference: result.reference,
+            amountPaid: result.amount,
+            currency: result.currency
+          });
+          
+          console.log('✅ Subscription renewed successfully:', {
+            subscriptionId: subscription.id,
+            flutterwaveSubscriptionId: result.subscriptionId,
+            nextBillingDate: nextBillingDate
+          });
+        } else {
+          console.warn('⚠️ Subscription not found for Flutterwave subscription ID:', result.subscriptionId);
+        }
+      } else if (result.eventType === 'subscription_cancelled' && result.success) {
+        const { UserSubscription } = require('../../models');
+        
+        // Find and cancel subscription
+        const subscription = await UserSubscription.findOne({
+          where: { flutterwaveSubscriptionId: result.subscriptionId }
+        });
+        
+        if (subscription) {
+          await subscription.update({
+            status: 'cancelled',
+            cancelledAt: new Date()
+          });
+          
+          console.log('✅ Subscription cancelled via webhook:', {
+            subscriptionId: subscription.id,
+            flutterwaveSubscriptionId: result.subscriptionId
+          });
+        }
+      } else if (result.success && result.paymentStatus === 'success') {
+        // Handle one-time payment success (for initial subscription setup)
         await SubscriptionController.handleSuccessfulPayment({
           reference: result.reference,
           flwRef: result.flwRef,

@@ -181,12 +181,6 @@ module.exports = (sequelize) => {
       defaultValue: true,
       field: 'is_active',
       comment: 'Whether plan is available for subscription'
-    },
-    paystackPlanCode: {
-      type: DataTypes.STRING(50),
-      allowNull: true,
-      field: 'paystack_plan_code',
-      comment: 'Paystack plan code (PLN_xxxxxxxxxx)'
     }
   }, {
     tableName: 'subscription_plans',

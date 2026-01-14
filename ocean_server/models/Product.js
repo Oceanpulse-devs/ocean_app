@@ -24,7 +24,7 @@ module.exports = (sequelize) => {
       allowNull: false
     },
     price: {
-      type: DataTypes.DECIMAL(10, 2),
+      type: DataTypes.DECIMAL(18, 2),
       allowNull: false
     },
     currency: {
@@ -91,7 +91,7 @@ module.exports = (sequelize) => {
       comment: 'Whether this is a distress sale item'
     },
     originalPrice: {
-      type: DataTypes.DECIMAL(10, 2),
+      type: DataTypes.DECIMAL(18, 2),
       allowNull: true,
       comment: 'Original price before discount'
     },

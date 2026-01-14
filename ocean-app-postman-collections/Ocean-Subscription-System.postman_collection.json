@@ -2,7 +2,7 @@
 	"info": {
 		"_postman_id": "subscription-system-collection",
 		"name": "Ocean-Subscription-System",
-		"description": "Complete subscription management API endpoints for Ocean platform",
+		"description": "Complete subscription management API endpoints for Ocean platform with Flutterwave recurring billing",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
 	"item": [
@@ -25,7 +25,7 @@
 								"plans"
 							]
 						},
-						"description": "Get all available subscription plans (public endpoint)"
+						"description": "Get all available subscription plans (public endpoint). Returns plans with NGN and USD prices, trial eligibility, and features."
 					},
 					"response": []
 				},
@@ -78,7 +78,12 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"planId\": \"wave\"\n}"
+							"raw": "{\n  \"planId\": \"wave\",\n  \"skipTrial\": false\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
 						},
 						"url": {
 							"raw": "{{base_url}}/api/subscriptions/subscribe",
@@ -91,7 +96,7 @@
 								"subscribe"
 							]
 						},
-						"description": "Subscribe to a plan - returns Paystack payment URL"
+						"description": "Subscribe to a plan using Flutterwave recurring billing.\n\n**Request Body:**\n- `planId` (required): Plan name - \"drift\", \"wave\", \"tide\", or \"surge\"\n- `skipTrial` (optional): Set to `true` to skip free trial and pay immediately\n\n**Response:**\n- If eligible for trial and `skipTrial=false`: Returns trial subscription (no payment needed)\n- If not eligible or `skipTrial=true`: Returns Flutterwave subscription checkout URL for recurring billing\n\n**Note:** User must be a verified seller to subscribe. Currency (NGN/USD) is automatically determined based on seller's country."
 					},
 					"response": []
 				},
@@ -126,7 +131,7 @@
 								"change-plan"
 							]
 						},
-						"description": "Change user's subscription plan"
+						"description": "Change user's subscription plan (upgrade/downgrade). Cancels existing Flutterwave subscription and creates new one. Returns Flutterwave checkout URL for new plan."
 					},
 					"response": []
 				},
@@ -148,7 +153,12 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"cancellation_reason\": \"No longer needed\",\n  \"immediate\": false\n}"
+							"raw": "{\n  \"reason\": \"No longer needed\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
 						},
 						"url": {
 							"raw": "{{base_url}}/api/subscriptions/cancel",
@@ -161,7 +171,7 @@
 								"cancel"
 							]
 						},
-						"description": "Cancel user's subscription"
+						"description": "Cancel user's subscription. Cancels both the database subscription and the Flutterwave recurring subscription. Subscription will remain active until the end of the current billing period."
 					},
 					"response": []
 				}
@@ -343,20 +353,25 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"paymentReference\": \"pay_123456789\"\n}"
+							"raw": "{\n  \"paymentReference\": \"OCEAN_SUB_1234567890_abc123\",\n  \"paymentMethod\": \"flutterwave\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
 						},
 						"url": {
-							"raw": "{{base_url}}/api/subscriptions/confirm-payment",
+							"raw": "{{base_url}}/api/subscriptions/verify-payment",
 							"host": [
 								"{{base_url}}"
 							],
 							"path": [
 								"api",
 								"subscriptions",
-								"confirm-payment"
+								"verify-payment"
 							]
 						},
-						"description": "Manually confirm payment (for development/admin use)"
+						"description": "Verify payment and update subscription status. Use this to manually verify a payment reference from Flutterwave."
 					},
 					"response": []
 				}
@@ -366,7 +381,7 @@
 			"name": "Payment Webhooks",
 			"item": [
 				{
-					"name": "Paystack Webhook Test",
+					"name": "Flutterwave Webhook Test",
 					"request": {
 						"method": "POST",
 						"header": [
@@ -376,81 +391,55 @@
 								"type": "text"
 							},
 							{
-								"key": "x-paystack-signature",
-								"value": "test_signature",
+								"key": "verif-hash",
+								"value": "{{flw_encryption_key}}",
 								"type": "text",
-								"description": "HMAC SHA512 signature"
+								"description": "Flutterwave secret hash (must match FLW_ENCRYPTION_KEY)"
 							}
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"event\": \"charge.success\",\n  \"data\": {\n    \"reference\": \"pay_123456789\",\n    \"amount\": 5000,\n    \"currency\": \"NGN\",\n    \"customer\": {\n      \"id\": \"user_123\",\n      \"email\": \"user@example.com\"\n    },\n    \"metadata\": {\n      \"userId\": \"user_123\",\n      \"planId\": \"2\"\n    }\n  }\n}"
-						},
-						"url": {
-							"raw": "{{base_url}}/api/subscriptions/webhooks/paystack",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"api",
-								"subscriptions",
-								"webhooks",
-								"paystack"
-							]
-						},
-						"description": "Test Paystack webhook endpoint"
-					},
-					"response": []
-				},
-				{
-					"name": "Paystack Webhook Test (GET)",
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{base_url}}/api/subscriptions/webhooks/paystack",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"api",
-								"subscriptions",
-								"webhooks",
-								"paystack"
-							]
-						},
-						"description": "Test webhook endpoint accessibility"
-					},
-					"response": []
-				},
-				{
-					"name": "Paystack Callback Test",
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{base_url}}/api/subscriptions/callback/paystack?reference=pay_123456789&status=success",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"api",
-								"subscriptions",
-								"callback",
-								"paystack"
-							],
-							"query": [
-								{
-									"key": "reference",
-									"value": "pay_123456789"
-								},
-								{
-									"key": "status",
-									"value": "success"
+							"raw": "{\n  \"event\": \"subscription.charged\",\n  \"data\": {\n    \"id\": \"12345\",\n    \"subscription\": {\n      \"id\": \"67890\"\n    },\n    \"tx_ref\": \"OCEAN_SUB_1234567890_abc123\",\n    \"flw_ref\": \"FLW_REF_123456\",\n    \"amount\": 3000,\n    \"currency\": \"NGN\",\n    \"created_at\": \"2026-01-13T20:48:39.000Z\",\n    \"next_payment_date\": \"2026-02-13T20:48:39.000Z\",\n    \"meta\": {\n      \"userId\": \"user-uuid-here\",\n      \"planId\": \"2\"\n    }\n  }\n}",
+							"options": {
+								"raw": {
+									"language": "json"
 								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/subscriptions/webhooks/flutterwave",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"subscriptions",
+								"webhooks",
+								"flutterwave"
 							]
 						},
-						"description": "Test Paystack callback endpoint"
+						"description": "Test Flutterwave webhook endpoint for subscription events.\n\n**Supported Events:**\n- `subscription.charged` - Subscription payment successful\n- `subscription.renewed` - Subscription renewed\n- `subscription.cancelled` - Subscription cancelled\n- `subscription.activated` - Subscription activated\n- `charge.completed` - One-time payment completed\n\n**Headers:**\n- `verif-hash`: Must match your FLW_ENCRYPTION_KEY from environment variables"
+					},
+					"response": []
+				},
+				{
+					"name": "Flutterwave Webhook Test (GET)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/subscriptions/webhooks/flutterwave",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"subscriptions",
+								"webhooks",
+								"flutterwave"
+							]
+						},
+						"description": "Test webhook endpoint accessibility. Returns success message if endpoint is reachable."
 					},
 					"response": []
 				}
@@ -467,6 +456,12 @@
 			"key": "auth_token",
 			"value": "",
 			"type": "string"
+		},
+		{
+			"key": "flw_encryption_key",
+			"value": "",
+			"type": "string",
+			"description": "Flutterwave encryption key (FLW_ENCRYPTION_KEY) for webhook verification"
 		}
 	]
 }
