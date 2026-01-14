@@ -31,7 +31,7 @@ class SubscriptionAwareSearchService {
       } = searchParams;
 
       // Build base where clause
-      const whereClause = { isAvailable: true };
+      const whereClause = { status: 'active', isAvailable: true };
       
       if (query) {
         whereClause[Op.or] = [
