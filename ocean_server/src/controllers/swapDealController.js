@@ -108,6 +108,14 @@ class SwapDealController {
         });
       }
 
+      // Validate images/files - at least one image is required
+      if (!req.files || !req.files.images || req.files.images.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'At least one swap deal image is required'
+        });
+      }
+
       // DEBUG: Log what files we received
       console.log('📦 Swap Deal Files received:', {
         filesKeys: req.files ? Object.keys(req.files) : 'no files object',
