@@ -44,9 +44,9 @@ class RankingService {
         throw new Error(`Invalid item type: ${itemType}`);
       }
 
-      // Build where clause
+      // Build where clause - only show active items (excludes cancelled, inactive, completed, ended, failed, etc.)
       const whereClause = {
-        status: { [Op.ne]: 'inactive' }
+        status: 'active'
       };
 
       if (itemType === 'product' || itemType === 'distress_sale') {
@@ -109,9 +109,9 @@ class RankingService {
         throw new Error(`Invalid item type: ${itemType}`);
       }
 
-      // Build where clause
+      // Build where clause - only show active items (excludes cancelled, inactive, completed, ended, failed, etc.)
       const whereClause = {
-        status: { [Op.ne]: 'inactive' }
+        status: 'active'
       };
 
       if (itemType === 'product' || itemType === 'distress_sale') {
@@ -164,10 +164,10 @@ class RankingService {
         return [];
       }
 
-      // Build where clause for similar items
+      // Build where clause for similar items - only show active items (excludes cancelled, inactive, completed, ended, failed, etc.)
       const whereClause = {
         id: { [Op.ne]: itemId }, // Exclude the reference item
-        status: { [Op.ne]: 'inactive' }
+        status: 'active'
       };
 
       if (itemType === 'product' || itemType === 'distress_sale') {
