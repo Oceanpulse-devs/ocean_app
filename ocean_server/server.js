@@ -23,12 +23,6 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
     console.log('⚠️  Google OAuth not configured - missing GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET');
 }
 
-if (process.env.FACEBOOK_APP_ID && process.env.FACEBOOK_APP_SECRET) {
-    require('./src/services/facebookAuth'); // Initialize Facebook Auth service
-    console.log('✅ Facebook OAuth service initialized');
-} else {
-    console.log('⚠️  Facebook OAuth not configured - missing FACEBOOK_APP_ID or FACEBOOK_APP_SECRET');
-}
 
 
 
@@ -640,7 +634,7 @@ app.get('/api/mobile/config', (req, res) => {
             messaging: true,
             notifications: true,
             fileUpload: true,
-            oauth: !!(process.env.GOOGLE_CLIENT_ID && process.env.FACEBOOK_APP_ID)
+            oauth: !!(process.env.GOOGLE_CLIENT_ID)
         },
         limits: {
             maxFileSize: '10MB',

@@ -22,13 +22,6 @@ module.exports = (sequelize, DataTypes) =>{
                 notEmpty:false,
             }
         },
-        // facebook_Id:{
-        //     type:DataTypes.STRING,
-        //     allowNull: true,
-        //     validate:{
-        //         notEmpty:false,
-        //     }
-        // },
         fullName:{
             type:DataTypes.STRING,
             allowNull: false,
@@ -151,21 +144,6 @@ module.exports = (sequelize, DataTypes) =>{
             }
         },
         emailVerificationExpires:{
-            type:DataTypes.DATE,
-            allowNull: true,
-            validate:{
-                notEmpty:false,
-            }
-        },
-        // Password reset fields
-        passwordResetToken:{
-            type:DataTypes.STRING,
-            allowNull: true,
-            validate:{
-                notEmpty:false,
-            }
-        },
-        passwordResetExpires:{
             type:DataTypes.DATE,
             allowNull: true,
             validate:{

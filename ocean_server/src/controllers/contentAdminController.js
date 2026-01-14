@@ -131,8 +131,7 @@ class ContentAdminController {
     try {
       const { id } = req.params;
       const { 
-        status, // published, draft, archived, deleted
-        adminNotes = 'Status updated by admin'
+        status // published, draft, archived, deleted
       } = req.body;
 
       if (!status) {
@@ -160,7 +159,6 @@ class ContentAdminController {
 
       await post.update({
         status,
-        adminNotes,
         updatedAt: new Date()
       });
 
@@ -170,7 +168,6 @@ class ContentAdminController {
         data: {
           id: post.id,
           status: post.status,
-          adminNotes: post.adminNotes,
           updatedAt: post.updatedAt
         }
       });
@@ -209,8 +206,7 @@ class ContentAdminController {
         // Soft delete - mark as deleted
         await post.update({
           status: 'deleted',
-          adminNotes: reason,
-          deletedAt: new Date()
+          updatedAt: new Date()
         });
       }
 
@@ -358,8 +354,7 @@ class ContentAdminController {
     try {
       const { id } = req.params;
       const { 
-        status, // active, inactive, pending, rejected
-        adminNotes = 'Status updated by admin'
+        status // active, inactive, pending, rejected
       } = req.body;
 
       if (!status) {
@@ -387,7 +382,6 @@ class ContentAdminController {
 
       await product.update({
         status,
-        adminNotes,
         updatedAt: new Date()
       });
 
@@ -397,7 +391,6 @@ class ContentAdminController {
         data: {
           id: product.id,
           status: product.status,
-          adminNotes: product.adminNotes,
           updatedAt: product.updatedAt
         }
       });
@@ -705,8 +698,7 @@ class ContentAdminController {
       const { 
         postIds, 
         action, // status, category, archive, delete
-        value, // new status, category ID, etc.
-        adminNotes = 'Bulk update by admin'
+        value // new status, category ID, etc.
       } = req.body;
 
       if (!postIds || !Array.isArray(postIds) || postIds.length === 0) {
@@ -731,7 +723,7 @@ class ContentAdminController {
         });
       }
 
-      const updateData = { adminNotes };
+      const updateData = {};
       
       switch (action) {
         case 'status':
