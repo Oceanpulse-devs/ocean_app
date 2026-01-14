@@ -78,6 +78,10 @@ class SubscriptionAwareSearchService {
         case 'popular':
           orderClause.push(['views', 'DESC']);
           break;
+        case 'random':
+          // Map 'random' to newest first so new products appear
+          orderClause.push(['createdAt', 'DESC']);
+          break;
         default: // relevance
           orderClause.push(['views', 'DESC'], ['createdAt', 'DESC']);
       }

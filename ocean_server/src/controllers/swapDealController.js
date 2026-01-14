@@ -108,6 +108,16 @@ class SwapDealController {
         });
       }
 
+      // DEBUG: Log what files we received
+      console.log('📦 Swap Deal Files received:', {
+        filesKeys: req.files ? Object.keys(req.files) : 'no files object',
+        imagesCount: req.files?.images?.length || 0,
+        arModelCount: req.files?.arModel?.length || 0,
+        allFiles: req.files ? Object.keys(req.files) : [],
+        hasFiles: !!req.files,
+        hasImages: !!(req.files && req.files.images)
+      });
+
       // Process uploaded images for the swap deal
       let swapDealImages = [];
       if (req.files && req.files.images && req.files.images.length > 0) {
