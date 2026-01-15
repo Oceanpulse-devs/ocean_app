@@ -215,6 +215,17 @@ class SellerVerificationController {
         }
       }
 
+      // Validate that ID Card is COMPULSORY (required)
+      const hasIDCard = parsedDocuments.some(doc => doc.documentType === 'IDCard');
+      if (!hasIDCard) {
+        return res.status(400).json({
+          success: false,
+          message: 'ID Card is required. Please upload your ID Card document.'
+        });
+      }
+
+      // Business License is optional - no validation needed
+
       // Now validate each document has required fields based on type
       for (let i = 0; i < parsedDocuments.length; i++) {
         const doc = parsedDocuments[i];
@@ -235,13 +246,7 @@ class SellerVerificationController {
             });
           }
         } else if (doc.documentType === 'IDCard') {
-          // ID card needs both number and image
-          if (!doc.documentNumber) {
-            return res.status(400).json({
-              success: false,
-              message: `Document ${i + 1}: ID card number is required`
-            });
-          }
+          // ID card is COMPULSORY - only requires image (number is optional)
           if (!doc.documentImage) {
             return res.status(400).json({
               success: false,
