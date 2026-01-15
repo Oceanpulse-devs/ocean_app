@@ -127,6 +127,14 @@ module.exports = (sequelize, DataTypes) =>{
                 notEmpty:false,
             }
         },
+        sellerId:{
+            type:DataTypes.UUID,
+            allowNull: true,
+            validate:{
+                notEmpty:false,
+            },
+            comment: 'Seller Table ID (Sellers table) - only for sellers'
+        },
         // Email verification fields
         emailVerified:{
             type:DataTypes.BOOLEAN,
