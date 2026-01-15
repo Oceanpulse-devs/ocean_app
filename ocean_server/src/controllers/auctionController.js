@@ -11,6 +11,7 @@ const PromotionHelperService = require('../services/promotionHelperService');
 const RankingService = require('../services/rankingService');
 const SpotlightService = require('../services/spotlightService');
 const TopPlacementService = require('../services/topPlacementService');
+const imageCompressionService = require('../services/imageCompressionService');
 
 // Helper function to map auction field names for frontend
 const mapAuctionResponse = (auction) => {
@@ -121,8 +122,14 @@ const createAuction = async (req, res) => {
       for (let i = 0; i < req.files.images.length; i++) {
         const file = req.files.images[i];
         try {
+          // Compress image before upload if it's an image file
+          let imageBuffer = file.buffer;
+          if (file.mimetype.startsWith('image/')) {
+            imageBuffer = await imageCompressionService.compressProductImage(file.buffer);
+          }
+          
           const uploadResult = await cloudinaryService.uploadFile(
-            file.buffer,
+            imageBuffer,
             `ocean-app/auctions/${seller.id}/${Date.now()}-${i}`,
             {
               resource_type: 'image',
@@ -1145,8 +1152,14 @@ const updateAuction = async (req, res) => {
       for (let i = 0; i < req.files.images.length; i++) {
         const file = req.files.images[i];
         try {
+          // Compress image before upload if it's an image file
+          let imageBuffer = file.buffer;
+          if (file.mimetype.startsWith('image/')) {
+            imageBuffer = await imageCompressionService.compressProductImage(file.buffer);
+          }
+          
           const uploadResult = await cloudinaryService.uploadFile(
-            file.buffer,
+            imageBuffer,
             `ocean-app/auctions/${seller.id}/${Date.now()}-${i}`,
             {
               resource_type: 'image',

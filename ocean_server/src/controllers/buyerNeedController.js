@@ -1,6 +1,7 @@
 const db = require('../../models');
 const { Op } = require('sequelize');
 const cloudinaryService = require('../services/cloudinaryService');
+const imageCompressionService = require('../services/imageCompressionService');
 
 // Helper function to create notifications
 const createNotification = async (userId, title, message, type = 'info', category = 'system', metadata = null) => {
@@ -143,9 +144,15 @@ class BuyerNeedController {
             // Determine media type from file mimetype
             const mediaType = file.mimetype.startsWith('image/') ? 'image' : 'video';
             
+            // Compress image before upload if it's an image file
+            let fileBuffer = file.buffer;
+            if (mediaType === 'image') {
+                fileBuffer = await imageCompressionService.compressPostImage(file.buffer);
+            }
+            
             // Upload to Cloudinary
             console.log(`Uploading file ${index} to Cloudinary...`);
-            const uploadResult = await cloudinaryService.uploadBuyerNeedMedia(file.buffer, buyerNeed.id);
+            const uploadResult = await cloudinaryService.uploadBuyerNeedMedia(fileBuffer, buyerNeed.id);
             
             if (!uploadResult.success) {
               console.error('Cloudinary upload failed:', uploadResult.error);

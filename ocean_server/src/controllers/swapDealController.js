@@ -133,8 +133,14 @@ class SwapDealController {
         
         for (const file of req.files.images) {
           try {
+            // Compress image before upload if it's an image file
+            let imageBuffer = file.buffer;
+            if (file.mimetype.startsWith('image/')) {
+              imageBuffer = await imageCompressionService.compressProductImage(file.buffer);
+            }
+            
             const uploadResult = await cloudinaryService.uploadProductImage(
-              file.buffer, 
+              imageBuffer, 
               `swap-deal-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
             );
             

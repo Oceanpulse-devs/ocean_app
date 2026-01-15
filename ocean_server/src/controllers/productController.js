@@ -2,6 +2,7 @@ const { Product, ProductCategory, SavedProduct, SavedPost, Post, PostMedia, User
 const db = require('../../models');
 const { Op, Sequelize } = require('sequelize');
 const cloudinaryService = require('../services/cloudinaryService');
+const imageCompressionService = require('../services/imageCompressionService');
 const { checkSubscriptionLimit, incrementUsage } = require('../middleware/subscriptionMiddleware');
 const { productListingMiddleware } = require('../middleware/featureMiddleware');
 const SubscriptionAwareSearchService = require('../services/subscriptionAwareSearchService');
@@ -389,7 +390,13 @@ const createProduct = async (req, res) => {
         for (let i = 0; i < req.files.images.length; i++) {
             const file = req.files.images[i];
             try {
-                const uploadResult = await cloudinaryService.uploadProductImage(file.buffer, product.id);
+                // Compress image before upload if it's an image file
+                let imageBuffer = file.buffer;
+                if (file.mimetype.startsWith('image/')) {
+                    imageBuffer = await imageCompressionService.compressProductImage(file.buffer);
+                }
+                
+                const uploadResult = await cloudinaryService.uploadProductImage(imageBuffer, product.id);
                 
                 if (!uploadResult.success) {
                     console.error('Cloudinary upload failed:', uploadResult.error);

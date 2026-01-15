@@ -4,6 +4,7 @@ const { checkSubscriptionLimit, incrementUsage, checkFeatureAccess } = require('
 const { groupBuyCreationMiddleware } = require('../middleware/featureMiddleware');
 const SubscriptionAwareSearchService = require('../services/subscriptionAwareSearchService');
 const cloudinaryService = require('../services/cloudinaryService');
+const imageCompressionService = require('../services/imageCompressionService');
 const axios = require('axios');
 const PromotionHelperService = require('../services/promotionHelperService');
 const RankingService = require('../services/rankingService');
@@ -444,8 +445,14 @@ class GroupBuyController {
         for (let i = 0; i < req.files.images.length; i++) {
           const file = req.files.images[i];
           try {
+            // Compress image before upload if it's an image file
+            let imageBuffer = file.buffer;
+            if (file.mimetype.startsWith('image/')) {
+              imageBuffer = await imageCompressionService.compressProductImage(file.buffer);
+            }
+            
             const uploadResult = await cloudinaryService.uploadProductImage(
-              file.buffer, 
+              imageBuffer, 
               `groupbuy-${groupBuy.id}/image-${i + 1}`
             );
             
@@ -950,8 +957,14 @@ class GroupBuyController {
         for (let i = 0; i < req.files.images.length; i++) {
           const file = req.files.images[i];
           try {
+            // Compress image before upload if it's an image file
+            let imageBuffer = file.buffer;
+            if (file.mimetype.startsWith('image/')) {
+              imageBuffer = await imageCompressionService.compressProductImage(file.buffer);
+            }
+            
             const uploadResult = await cloudinaryService.uploadProductImage(
-              file.buffer, 
+              imageBuffer, 
               `groupbuy-${groupBuy.id}/image-${i + 1}`
             );
             

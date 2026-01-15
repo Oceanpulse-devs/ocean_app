@@ -1,6 +1,7 @@
 const { Post, PostMedia, PostLike, PostComment, PostShare, SavedPost, UserTable, SellersTable, UserFollows, ProductCategory, Notification } = require('../../models');
 const { Op, Sequelize } = require('sequelize');
 const cloudinaryService = require('../services/cloudinaryService');
+const imageCompressionService = require('../services/imageCompressionService');
 const { mapNestedFields } = require('../../utils/fieldMapper');
 
 // Helper function to create notifications
@@ -1557,7 +1558,13 @@ const updatePost = async (req, res) => {
                 const isVideo = file.mimetype.startsWith('video/');
                 
                 try {
-                    const uploadResult = await cloudinaryService.uploadPostMedia(file.buffer, post.id);
+                    // Compress image before upload if it's an image file
+                    let fileBuffer = file.buffer;
+                    if (!isVideo) {
+                        fileBuffer = await imageCompressionService.compressPostImage(file.buffer);
+                    }
+                    
+                    const uploadResult = await cloudinaryService.uploadPostMedia(fileBuffer, post.id);
                     
                     if (uploadResult.success) {
                         await PostMedia.create({
