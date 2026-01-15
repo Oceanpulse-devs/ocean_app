@@ -101,7 +101,16 @@ class SellerManagementController {
           {
             model: db.SellerDocument,
             as: 'documents',
-            attributes: ['id', 'documentType', 'status', 'submittedAt']
+            required: false,  // Ensure documents are included even if seller has none
+            attributes: [
+              'id', 
+              'documentType', 
+              'documentNumber',  // Document number for ID cards
+              'status', 
+              'submittedAt', 
+              'documentImage',  // Front image - THIS WAS MISSING!
+              'documentBackImage'  // Back image for ID cards
+            ]
           }
         ],
         order: [['createdAt', 'DESC']],
@@ -157,7 +166,16 @@ class SellerManagementController {
           {
             model: db.SellerDocument,
             as: 'documents',
-            attributes: ['id', 'documentType', 'status', 'submittedAt', 'documentImage']
+            required: false,  // Ensure documents are included even if seller has none
+            attributes: [
+              'id', 
+              'documentType', 
+              'documentNumber',  // Document number for ID cards
+              'status', 
+              'submittedAt', 
+              'documentImage',  // Front image
+              'documentBackImage'  // Back image for ID cards
+            ]
           }
         ]
       });
