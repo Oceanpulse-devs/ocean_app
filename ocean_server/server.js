@@ -1477,6 +1477,10 @@ syncDatabase()
                 console.log(`⚠️  ${result.missingTables.length} tables missing, but continuing...`);
             }
             
+            // Initialize trigger manager to verify/restore triggers
+            const TriggerManager = require('./src/utils/triggerManager');
+            TriggerManager.initialize();
+            
             // Initialize auction scheduler AFTER sync completes
             // This ensures tables exist before scheduler tries to query them
             const AuctionScheduler = require('./src/services/auctionScheduler');

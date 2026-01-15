@@ -87,7 +87,6 @@ BEGIN
         SET post_content_var = CONCAT('New Product: ', NEW.title, ' - ', COALESCE(NEW.description, ''));
         SET feed_priority_var = CASE 
             WHEN COALESCE(NEW.is_boosted, FALSE) = TRUE THEN 100
-            WHEN COALESCE(NEW.isFeatured, FALSE) = TRUE THEN 50
             ELSE 0
         END;
     END IF;
@@ -527,7 +526,6 @@ BEGIN
         `feed_priority` = CASE 
             WHEN COALESCE(NEW.is_boosted, FALSE) = TRUE THEN 100
             WHEN COALESCE(NEW.isDistressSale, FALSE) = TRUE THEN 75
-            WHEN COALESCE(NEW.isFeatured, FALSE) = TRUE THEN 50
             ELSE 0
         END,
         `status` = CASE WHEN NEW.isAvailable = TRUE THEN 'active' ELSE 'inactive' END,
