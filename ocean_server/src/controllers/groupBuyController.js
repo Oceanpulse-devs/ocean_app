@@ -768,17 +768,23 @@ class GroupBuyController {
         });
       }
 
-      // Increment view count (deduplicated for logged-in users)
+      // Increment view count (deduplicated for logged-in users - one view per user)
+      // Composite primary key (groupBuyId, viewerId) prevents duplicate views from same user
       if (req.user && req.user.id) {
         const currentUserId = req.user.id;
-        const [view, created] = await db.GroupBuyView.findOrCreate({
-          where: { groupBuyId: groupBuy.id, viewerId: currentUserId },
-          defaults: { viewedAt: new Date() }
-        });
-        if (created) {
-          await groupBuy.increment('views_count');
+        // Only track views if not viewing own group buy
+        if (currentUserId !== groupBuy.creator_id) {
+          const [view, created] = await db.GroupBuyView.findOrCreate({
+            where: { groupBuyId: groupBuy.id, viewerId: currentUserId },
+            defaults: { viewedAt: new Date() }
+          });
+          // Only increment view count if this is a new view (not a duplicate)
+          if (created) {
+            await groupBuy.increment('views_count');
+          }
         }
       } else {
+        // Anonymous users - cannot dedupe, always increment
         await groupBuy.increment('views_count');
       }
 

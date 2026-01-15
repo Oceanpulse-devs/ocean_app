@@ -163,44 +163,25 @@ const getProduct = async (req, res) => {
             return res.status(404).json({ message: "Product not found" });
         }
 
-        // Increment view count (deduplicated for logged-in users)
-        if (currentUserId && currentUserId !== product.sellerId) {
+        // Increment view count (deduplicated for logged-in users - one view per user per product)
+        // Composite primary key (productId, viewerId) prevents duplicate views from same user
+        if (currentUserId && product.seller && currentUserId !== product.seller.userId) {
+            // Use findOrCreate to ensure one view per user per product
             const [view, created] = await db.ProductView.findOrCreate({
                 where: { productId: product.id, viewerId: currentUserId },
                 defaults: { viewedAt: new Date() }
             });
+            
+            // Only increment view count if this is a new view (not a duplicate)
             if (created) {
                 await product.increment('views');
             }
         } else if (!currentUserId) {
-            // Anonymous users - cannot dedupe
+            // Anonymous users - cannot dedupe, always increment
             await product.increment('views');
         }
 
-        // Send notification to seller that their product was viewed (if not viewing own product)
-        if (currentUserId && product.seller && product.seller.userId !== currentUserId) {
-            const viewer = await UserTable.findByPk(currentUserId, {
-                attributes: ['id', 'fullName', 'username', 'profilePicture']
-            });
-
-            await createNotification(
-                product.seller.userId,  // Use User ID, not Seller Table ID
-                'Product Viewed',
-                `${viewer.fullName || viewer.username} viewed your product "${product.title}"`,
-                'info',
-                'product_view',
-                { 
-                    productId: product.id,
-                    title: product.title,
-                    viewerId: currentUserId,
-                    viewerName: viewer.fullName || viewer.username,
-                    viewerUsername: viewer.username,
-                    productPrice: product.price,
-                    productCategory: product.category,
-                    viewsCount: product.views + 1
-                }
-            );
-        }
+        // Note: Removed notification for product views - views should not trigger notifications
 
         const productData = product.toJSON();
 

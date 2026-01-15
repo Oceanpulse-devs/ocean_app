@@ -499,17 +499,23 @@ class SwapDealController {
         });
       }
 
-      // Increment view count (deduplicated for logged-in users)
+      // Increment view count (deduplicated for logged-in users - one view per user)
+      // Composite primary key (swapDealId, viewerId) prevents duplicate views from same user
       if (req.user && req.user.id) {
         const currentUserId = req.user.id;
-        const [view, created] = await db.SwapDealView.findOrCreate({
-          where: { swapDealId: swapDeal.id, viewerId: currentUserId },
-          defaults: { viewedAt: new Date() }
-        });
-        if (created) {
-          await swapDeal.increment('viewsCount');
+        // Only track views if not viewing own swap deal
+        if (currentUserId !== swapDeal.seller_id) {
+          const [view, created] = await db.SwapDealView.findOrCreate({
+            where: { swapDealId: swapDeal.id, viewerId: currentUserId },
+            defaults: { viewedAt: new Date() }
+          });
+          // Only increment view count if this is a new view (not a duplicate)
+          if (created) {
+            await swapDeal.increment('viewsCount');
+          }
         }
       } else {
+        // Anonymous users - cannot dedupe, always increment
         await swapDeal.increment('viewsCount');
       }
 
