@@ -33,12 +33,14 @@ module.exports = (sequelize, DataTypes) => {
 
   UserFollows.associate = function(models) {
     UserFollows.belongsTo(models.UserTable, {
-      foreignKey: 'userId',
+      foreignKey: 'user_id',  // Use actual database column name, not property name
+      targetKey: 'id',
       as: 'user'
     });
     
     UserFollows.belongsTo(models.UserTable, {
-      foreignKey: 'followsUserId',
+      foreignKey: 'follows_user_id',  // Use actual database column name, not property name
+      targetKey: 'id',
       as: 'followedUser'
     });
   };

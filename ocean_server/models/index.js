@@ -157,8 +157,9 @@ const setupAssociations = () => {
   db.UserTable.hasOne(db.SellersTable, { foreignKey: 'userId', as: 'seller' });
   
   // User Follow associations
-  db.UserTable.hasMany(db.UserFollows, { foreignKey: 'userId', as: 'following' });
-  db.UserTable.hasMany(db.UserFollows, { foreignKey: 'followsUserId', as: 'followers' });
+  // Use actual database column names (user_id, follows_user_id) not model property names (userId, followsUserId)
+  db.UserTable.hasMany(db.UserFollows, { foreignKey: 'user_id', as: 'following' });
+  db.UserTable.hasMany(db.UserFollows, { foreignKey: 'follows_user_id', as: 'followers' });
   
   // UserFollows associations
   // Use actual database column names (user_id, follows_user_id) not model property names (userId, followsUserId)
