@@ -159,13 +159,13 @@ module.exports = (sequelize) => {
         fields: ['replyToId']
       },
       {
-        fields: ['referenceType']
+        fields: ['reference_type']  // Use database column name, not property name
       },
       {
-        fields: ['referenceId']
+        fields: ['reference_id']  // Use database column name, not property name
       },
       {
-        fields: ['referenceType', 'referenceId']
+        fields: ['reference_type', 'reference_id']  // Use database column names
       }
     ]
   });
@@ -225,4 +225,4 @@ module.exports = (sequelize) => {
   };
 
   return Message;
-}; 
+};

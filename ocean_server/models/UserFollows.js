@@ -24,7 +24,7 @@ module.exports = (sequelize, DataTypes) => {
     indexes: [
       {
         unique: true,
-        fields: ['userId', 'followsUserId']
+        fields: ['user_id', 'follows_user_id']  // Use database column names, not property names
       }
     ]
   });
