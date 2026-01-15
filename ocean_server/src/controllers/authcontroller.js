@@ -1031,8 +1031,9 @@ const googleMobileAuth = async (req, res) => {
         
         // Handle ID token (mobile) or access token (web)
         if (idToken) {
-            // Mobile: Verify ID token
-            const tokenInfoUrl = `https://www.googleapis.com/oauth2/v3/tokeninfo?id_token=${idToken}`;
+            // Mobile: Verify ID token (Android & iOS)
+            // Updated to use the correct Google OAuth 2.0 endpoint
+            const tokenInfoUrl = `https://oauth2.googleapis.com/tokeninfo?id_token=${idToken}`;
             
             try {
                 const response = await axios.get(tokenInfoUrl);
@@ -1061,8 +1062,9 @@ const googleMobileAuth = async (req, res) => {
             }
         } else if (accessToken && userInfo) {
             // Web: Verify access token and use provided user info
+            // Updated to use the correct Google OAuth 2.0 endpoint
             try {
-                const verifyUrl = `https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=${accessToken}`;
+                const verifyUrl = `https://oauth2.googleapis.com/tokeninfo?access_token=${accessToken}`;
                 const verifyResponse = await axios.get(verifyUrl);
                 
                 // Verify the token was issued for one of our apps (web, Android, or iOS)
