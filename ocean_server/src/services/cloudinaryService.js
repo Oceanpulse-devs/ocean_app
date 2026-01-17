@@ -34,14 +34,26 @@ class CloudinaryService {
                 uploadOptions.eager_async = true;
             }
 
+            // Add longer timeout for video uploads to prevent HTTP 499 TimeoutError
+            // Even compressed videos (35MB) can take time on slow networks
+            // With eager_async: true, upload completes quickly, but the file transfer itself can timeout
+            if (options.resource_type === 'video' && !uploadOptions.timeout) {
+                // 5 minutes (300000ms) for video uploads - allows time for large compressed videos
+                uploadOptions.timeout = 300000; // 5 minutes in milliseconds
+                console.log('⏱️ Added extended timeout for video upload: 300000ms (5 minutes)');
+            }
+
             // Debug logging for video uploads to verify options are correctly set
             if (options.resource_type === 'video') {
+                const fileSizeMB = Buffer.isBuffer(file) ? (file.length / (1024 * 1024)).toFixed(2) : 'unknown';
                 console.log('📹 Cloudinary video upload options:', {
                     resource_type: uploadOptions.resource_type,
                     eager_async: uploadOptions.eager_async,
                     has_eager: !!uploadOptions.eager,
                     eager_count: uploadOptions.eager?.length || 0,
-                    folder: uploadOptions.folder
+                    folder: uploadOptions.folder,
+                    timeout: uploadOptions.timeout || 'default',
+                    fileSizeMB: fileSizeMB
                 });
             }
 
@@ -50,10 +62,17 @@ class CloudinaryService {
             if (Buffer.isBuffer(file)) {
                 // Convert buffer to stream for Cloudinary
                 const stream = Readable.from(file);
+                // Add timeout wrapper for Promise to handle client-side timeouts
+                const timeoutMs = uploadOptions.timeout || 60000; // Default 60s if not specified
                 uploadResult = await new Promise((resolve, reject) => {
+                    const timeoutId = setTimeout(() => {
+                        reject(new Error(`Upload timeout after ${timeoutMs}ms. The file may be too large or the network is slow. Consider compressing the video further or checking network connectivity.`));
+                    }, timeoutMs);
+
                     const uploadStream = cloudinary.uploader.upload_stream(
                         uploadOptions,
                         (error, result) => {
+                            clearTimeout(timeoutId); // Clear timeout on completion
                             if (error) reject(error);
                             else resolve(result);
                         }

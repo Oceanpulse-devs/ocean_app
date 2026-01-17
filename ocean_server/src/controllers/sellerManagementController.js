@@ -1,5 +1,7 @@
 const db = require('../../models');
 const { Op } = require('sequelize');
+const { sendEmail, emailTemplates } = require('../services/emailService');
+const { sendSellerApplicationNotification } = require('./notificationController');
 
 class SellerManagementController {
   // Get all sellers with filtering and pagination
@@ -265,6 +267,28 @@ class SellerManagementController {
         { accountType: 'seller' },
         { where: { id: seller.userId } }
       );
+
+      // Send notification to user (in-app notification)
+      await sendSellerApplicationNotification(seller.userId, 'approved');
+
+      // Send approval email to seller
+      try {
+        const userEmail = seller.user?.email || seller.email;
+        const userName = seller.fullName || seller.user?.username || 'Seller';
+        const businessName = seller.businessName || 'Your business';
+        
+        const emailTemplate = emailTemplates.sellerApplicationApproved(userName, businessName);
+        await sendEmail(
+          userEmail,
+          emailTemplate.subject,
+          emailTemplate.html,
+          'seller-approval'
+        );
+        console.log('✅ Seller approval email sent to:', userEmail);
+      } catch (emailError) {
+        console.error('❌ Failed to send seller approval email:', emailError);
+        // Don't fail approval if email fails
+      }
 
       // Reload seller with updated data and associations
       const updatedSeller = await db.SellersTable.findByPk(id, {

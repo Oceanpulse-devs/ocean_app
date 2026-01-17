@@ -772,8 +772,23 @@ const sellerRegistration = async(req,res)=>{
             { where: { id: currentUserId } }
         );
 
-        // Send notification to user
+        // Send notification to user (in-app notification)
         await sendSellerApplicationNotification(currentUserId, 'submitted');
+
+        // Send email to user confirming seller application submission
+        try {
+            const emailTemplate = emailTemplates.sellerApplicationSubmitted(currentuser.fullName || currentuser.username);
+            await sendEmail(
+                currentuser.email,
+                emailTemplate.subject,
+                emailTemplate.html,
+                'seller-registration'
+            );
+            console.log('✅ Seller registration email sent to:', currentuser.email);
+        } catch (emailError) {
+            console.error('❌ Failed to send seller registration email:', emailError);
+            // Don't fail registration if email fails
+        }
 
         // Send notification to admins
         await sendAdminNotification(businessName);

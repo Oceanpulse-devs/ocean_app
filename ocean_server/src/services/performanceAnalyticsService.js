@@ -153,7 +153,7 @@ const analyzeMarketplacePerformance = async () => {
       db.BuyerNeed.count({
         where: {
           status: 'fulfilled',
-          createdAt: { [Op.gte]: oneWeekAgo }
+          created_at: { [Op.gte]: oneWeekAgo }
         }
       }),
       
@@ -184,7 +184,7 @@ const analyzeMarketplacePerformance = async () => {
       }
     }) + await db.BuyerNeed.count({
       where: {
-        createdAt: { [Op.gte]: oneWeekAgo }
+        created_at: { [Op.gte]: oneWeekAgo }
       }
     });
 
