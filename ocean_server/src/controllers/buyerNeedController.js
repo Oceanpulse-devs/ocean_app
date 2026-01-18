@@ -1,6 +1,7 @@
 const db = require('../../models');
 const { Op } = require('sequelize');
 const cloudinaryService = require('../services/cloudinaryService');
+const videoUploadService = require('../services/videoUploadService');
 const imageCompressionService = require('../services/imageCompressionService');
 
 // Helper function to create notifications
@@ -150,16 +151,29 @@ class BuyerNeedController {
                 fileBuffer = await imageCompressionService.compressPostImage(file.buffer);
             }
             
-            // Upload to Cloudinary
-            console.log(`Uploading file ${index} to Cloudinary...`);
-            const uploadResult = await cloudinaryService.uploadBuyerNeedMedia(fileBuffer, buyerNeed.id);
+            let uploadResult;
+            if (mediaType === 'video') {
+                // Use unified video upload service (AWS S3 if configured, otherwise Cloudinary)
+                console.log(`Uploading video ${index}...`);
+                uploadResult = await videoUploadService.uploadVideo(
+                    fileBuffer,
+                    `ocean-app/buyer-needs/${buyerNeed.id}`,
+                    {
+                        mimetype: file.mimetype
+                    }
+                );
+            } else {
+                // Images always use Cloudinary
+                console.log(`Uploading image ${index} to Cloudinary...`);
+                uploadResult = await cloudinaryService.uploadBuyerNeedMedia(fileBuffer, buyerNeed.id);
+            }
             
             if (!uploadResult.success) {
-              console.error('Cloudinary upload failed:', uploadResult.error);
+              console.error('Upload failed:', uploadResult.error);
               throw new Error(`Failed to upload ${file.originalname}: ${uploadResult.error}`);
             }
             
-            console.log(`Cloudinary upload successful for file ${index}:`, uploadResult.url);
+            console.log(`Upload successful for file ${index}:`, uploadResult.url);
             
             // Create BuyerNeedMedia record with Cloudinary URLs
             const mediaRecord = await db.BuyerNeedMedia.create({

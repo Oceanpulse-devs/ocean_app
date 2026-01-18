@@ -1,6 +1,7 @@
 const { Post, PostMedia, PostLike, PostComment, PostShare, SavedPost, UserTable, SellersTable, UserFollows, ProductCategory, Notification } = require('../../models');
 const { Op, Sequelize } = require('sequelize');
 const cloudinaryService = require('../services/cloudinaryService');
+const videoUploadService = require('../services/videoUploadService');
 const imageCompressionService = require('../services/imageCompressionService');
 const { mapNestedFields } = require('../../utils/fieldMapper');
 
@@ -877,16 +878,29 @@ const createPost = async (req, res) => {
                     // Determine media type from file mimetype
                     const mediaType = file.mimetype.startsWith('image/') ? 'image' : 'video';
                     
-                    // Upload to Cloudinary
-                    console.log(`Uploading file ${index} to Cloudinary...`);
-                    const uploadResult = await cloudinaryService.uploadPostMedia(file.buffer, post.id);
+                    let uploadResult;
+                    if (mediaType === 'video') {
+                        // Use unified video upload service (AWS S3 if configured, otherwise Cloudinary)
+                        console.log(`Uploading video ${index}...`);
+                        uploadResult = await videoUploadService.uploadVideo(
+                            file.buffer,
+                            `ocean-app/posts/${post.id}`,
+                            {
+                                mimetype: file.mimetype
+                            }
+                        );
+                    } else {
+                        // Images always use Cloudinary
+                        console.log(`Uploading image ${index} to Cloudinary...`);
+                        uploadResult = await cloudinaryService.uploadPostMedia(file.buffer, post.id);
+                    }
                     
                     if (!uploadResult.success) {
-                        console.error('Cloudinary upload failed:', uploadResult.error);
+                        console.error('Upload failed:', uploadResult.error);
                         throw new Error(`Failed to upload ${file.originalname}: ${uploadResult.error}`);
                     }
                     
-                    console.log(`Cloudinary upload successful for file ${index}:`, uploadResult.url);
+                    console.log(`Upload successful for file ${index}:`, uploadResult.url);
                     
                     // Create PostMedia record with Cloudinary URLs
                     const mediaRecord = await PostMedia.create({
@@ -1564,7 +1578,20 @@ const updatePost = async (req, res) => {
                         fileBuffer = await imageCompressionService.compressPostImage(file.buffer);
                     }
                     
-                    const uploadResult = await cloudinaryService.uploadPostMedia(fileBuffer, post.id);
+                    let uploadResult;
+                    if (isVideo) {
+                        // Use unified video upload service (AWS S3 if configured, otherwise Cloudinary)
+                        uploadResult = await videoUploadService.uploadVideo(
+                            fileBuffer,
+                            `ocean-app/posts/${post.id}`,
+                            {
+                                mimetype: file.mimetype
+                            }
+                        );
+                    } else {
+                        // Images always use Cloudinary
+                        uploadResult = await cloudinaryService.uploadPostMedia(fileBuffer, post.id);
+                    }
                     
                     if (uploadResult.success) {
                         await PostMedia.create({

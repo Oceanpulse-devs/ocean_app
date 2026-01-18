@@ -2,6 +2,7 @@ const { Story, StoryView, UserTable, UserFollows } = require('../../models');
 const { Op } = require('sequelize');
 const { v4: uuidv4 } = require('uuid');
 const cloudinaryService = require('../services/cloudinaryService');
+const videoUploadService = require('../services/videoUploadService');
 
 class StoryController {
     // Create a new story
@@ -87,23 +88,33 @@ class StoryController {
                     });
                 }
 
-                // Upload media to Cloudinary
                 const folder = `ocean-app/stories/${userId}`;
-                const uploadOptions = {
-                    resource_type: isVideo ? 'video' : 'image',
-                    quality: 'auto',
-                    transformation: isVideo ? [
-                        { width: 1080, height: 1920, crop: 'limit' } // Story aspect ratio
-                    ] : [
-                        { width: 1080, height: 1920, crop: 'fill', gravity: 'center' }
-                    ]
-                };
+                let uploadResult;
 
-                const uploadResult = await cloudinaryService.uploadFile(
-                    mediaFile.buffer, 
-                    folder, 
-                    uploadOptions
-                );
+                if (isVideo) {
+                    // Use unified video upload service (AWS S3 if configured, otherwise Cloudinary)
+                    uploadResult = await videoUploadService.uploadVideo(
+                        mediaFile.buffer,
+                        folder,
+                        {
+                            mimetype: mediaFile.mimetype
+                        }
+                    );
+                } else {
+                    // Images always use Cloudinary
+                    const uploadOptions = {
+                        resource_type: 'image',
+                        quality: 'auto',
+                        transformation: [
+                            { width: 1080, height: 1920, crop: 'fill', gravity: 'center' }
+                        ]
+                    };
+                    uploadResult = await cloudinaryService.uploadFile(
+                        mediaFile.buffer,
+                        folder,
+                        uploadOptions
+                    );
+                }
 
                 if (!uploadResult.success) {
                     return res.status(500).json({

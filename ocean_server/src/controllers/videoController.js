@@ -1,6 +1,7 @@
 const { Video, VideoLike, VideoView, VideoComment, VideoCommentLike, UserTable, SellersTable } = require('../../models');
 const { Op } = require('sequelize');
 const { v4: uuidv4 } = require('uuid');
+const videoUploadService = require('../services/videoUploadService');
 const cloudinaryService = require('../services/cloudinaryService');
 const videoCompressionService = require('../services/videoCompressionService');
 const redisClient = require('../config/redisdb');
@@ -80,64 +81,16 @@ class VideoController {
                 }
             }
 
-            // Upload video to Cloudinary with eager transformations for thumbnail
+            // Upload video using unified service (AWS S3 if configured, otherwise Cloudinary)
             const folder = `ocean-app/videos/${userId}`;
             
-            // First attempt: Try with eager transformations (thumbnail generation)
-            let uploadOptions = {
-                resource_type: 'video',
-                quality: 'auto', // Preserves quality while optimizing file size
-                // Generate thumbnail as eager transformation (extract frame at 5 seconds)
-                eager: [
-                    {
-                        format: 'jpg',
-                        width: 400,
-                        height: 300,
-                        crop: 'fill',
-                        quality: 'auto:good',
-                        start_offset: '5' // Extract frame at 5 seconds (or 'auto' for middle frame)
-                    }
-                ],
-                eager_async: true // Use async processing to handle large videos from modern phones
-                // Note: Modern phone cameras record high-resolution videos that exceed Cloudinary's
-                // synchronous processing limits, so async is required for reliable uploads
-            };
-
-            let uploadResult = await cloudinaryService.uploadFile(
+            const uploadResult = await videoUploadService.uploadVideo(
                 videoBuffer, // Use compressed buffer if compression was applied
                 folder,
-                uploadOptions
-            );
-
-            // If upload fails due to eager transformation processing issues, retry without eager
-            // Thumbnail will be generated on-demand using URL transformations
-            if (!uploadResult.success && 
-                uploadResult.error && 
-                (uploadResult.error.toLowerCase().includes('too large') ||
-                 uploadResult.error.toLowerCase().includes('eager_async') ||
-                 uploadResult.error.toLowerCase().includes('synchronously'))) {
-                
-                console.log('⚠️ Video upload failed with eager transformations, retrying without eager...');
-                console.log('   Original error:', uploadResult.error);
-                console.log('   File size:', (videoFile.size / (1024 * 1024)).toFixed(2), 'MB');
-                
-                // Retry without eager transformations - thumbnail will be generated on-demand
-                uploadOptions = {
-                    resource_type: 'video',
-                    quality: 'auto'
-                    // No eager transformations - thumbnail will be generated using URL transformation
-                };
-                
-                uploadResult = await cloudinaryService.uploadFile(
-                    videoBuffer, // Use compressed buffer if compression was applied
-                    folder,
-                    uploadOptions
-                );
-                
-                if (uploadResult.success) {
-                    console.log('✅ Video uploaded successfully without eager transformations');
+                {
+                    mimetype: videoFile.mimetype
                 }
-            }
+            );
 
             if (!uploadResult.success) {
                 // Check for specific Cloudinary errors and provide user-friendly messages
@@ -174,12 +127,12 @@ class VideoController {
             const videoDuration = uploadResult.duration ? Math.round(uploadResult.duration) : null;
 
             if (videoDuration && videoDuration > maxDuration) {
-                // Delete the uploaded video from Cloudinary since it exceeds limit
+                // Delete the uploaded video since it exceeds limit
                 try {
-                    await cloudinaryService.deleteFile(uploadResult.publicId);
-                    console.log('🗑️ Deleted video exceeding duration limit from Cloudinary');
+                    await videoUploadService.deleteVideo(uploadResult.publicId, uploadResult.url);
+                    console.log('🗑️ Deleted video exceeding duration limit');
                 } catch (deleteError) {
-                    console.error('Error deleting video from Cloudinary:', deleteError);
+                    console.error('Error deleting video:', deleteError);
                 }
                 
                 return res.status(400).json({
