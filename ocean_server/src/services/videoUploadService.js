@@ -3,9 +3,8 @@ const cloudinaryService = require('./cloudinaryService');
 
 /**
  * Unified video upload service
- * - Checks if AWS credentials are configured
- * - If AWS is configured → uses AWS S3
- * - If AWS is not configured → falls back to Cloudinary
+ * - Uses Cloudinary as primary (auto thumbnails, video processing)
+ * - If Cloudinary fails → falls back to AWS S3 (if configured)
  * - Returns consistent response format
  */
 class VideoUploadService {
@@ -17,26 +16,43 @@ class VideoUploadService {
      * @returns {Promise<Object>} Upload result
      */
     async uploadVideo(fileBuffer, folder = 'ocean-app/videos', options = {}) {
-        // Check if AWS is configured
-        if (awsS3Service.isAwsConfigured()) {
-            console.log('📹 Using AWS S3 for video upload');
-            try {
-                const result = await awsS3Service.uploadVideo(fileBuffer, folder, options);
-                if (result.success) {
-                    return result;
+        // Try Cloudinary first (primary - has auto thumbnails and video processing)
+        console.log('📹 Using Cloudinary for video upload (primary)');
+        try {
+            const result = await this.uploadToCloudinary(fileBuffer, folder, options);
+            if (result.success) {
+                return result;
+            } else {
+                // If Cloudinary fails and AWS is configured, try AWS as backup
+                if (awsS3Service.isAwsConfigured()) {
+                    console.log('⚠️ Cloudinary upload failed, falling back to AWS S3:', result.error);
+                    return await awsS3Service.uploadVideo(fileBuffer, folder, options);
                 } else {
-                    // If AWS fails, fall back to Cloudinary
-                    console.log('⚠️ AWS S3 upload failed, falling back to Cloudinary:', result.error);
-                    return await this.uploadToCloudinary(fileBuffer, folder, options);
+                    // No backup available
+                    return result;
                 }
-            } catch (error) {
-                console.error('❌ AWS S3 upload error, falling back to Cloudinary:', error.message);
-                return await this.uploadToCloudinary(fileBuffer, folder, options);
             }
-        } else {
-            // AWS not configured, use Cloudinary
-            console.log('📹 Using Cloudinary for video upload (AWS not configured)');
-            return await this.uploadToCloudinary(fileBuffer, folder, options);
+        } catch (error) {
+            console.error('❌ Cloudinary upload error:', error.message);
+            // If Cloudinary fails and AWS is configured, try AWS as backup
+            if (awsS3Service.isAwsConfigured()) {
+                console.log('⚠️ Falling back to AWS S3 after Cloudinary error');
+                try {
+                    return await awsS3Service.uploadVideo(fileBuffer, folder, options);
+                } catch (awsError) {
+                    console.error('❌ AWS S3 backup also failed:', awsError.message);
+                    return {
+                        success: false,
+                        error: `Both Cloudinary and AWS S3 failed: ${error.message}`
+                    };
+                }
+            } else {
+                // No backup available
+                return {
+                    success: false,
+                    error: error.message
+                };
+            }
         }
     }
 
