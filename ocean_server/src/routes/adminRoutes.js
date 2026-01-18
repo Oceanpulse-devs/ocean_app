@@ -29,38 +29,38 @@ const adminMiddleware = (req, res, next) => {
 router.use(adminMiddleware);
 
 // System Maintenance Routes
-router.post('/maintenance/schedule', adminController.sendMaintenanceNotification);
-router.post('/maintenance/complete', adminController.sendMaintenanceCompletionNotification);
-router.post('/maintenance/emergency', adminController.sendEmergencyMaintenanceNotification);
+router.post('/maintenance/schedule', (req, res) => adminController.sendMaintenanceNotification(req, res));
+router.post('/maintenance/complete', (req, res) => adminController.sendMaintenanceCompletionNotification(req, res));
+router.post('/maintenance/emergency', (req, res) => adminController.sendEmergencyMaintenanceNotification(req, res));
 
 // Feature Update Routes
-router.post('/feature-update', adminController.sendFeatureUpdateNotification);
+router.post('/feature-update', (req, res) => adminController.sendFeatureUpdateNotification(req, res));
 
 // App Update Routes
-router.post('/app-update', adminController.sendAppUpdateNotification);
+router.post('/app-update', (req, res) => adminController.sendAppUpdateNotification(req, res));
 
 // Security Alert Routes
-router.post('/security-alert', adminController.sendSecurityAlertNotification);
+router.post('/security-alert', (req, res) => adminController.sendSecurityAlertNotification(req, res));
 
 // System Health Routes
-router.get('/system-health', adminController.getSystemHealth);
+router.get('/system-health', (req, res) => adminController.getSystemHealth(req, res));
 
 // ==================== SELLER MANAGEMENT ROUTES ====================
 
 // Seller Operations
-router.get('/sellers', sellerManagementController.getAllSellers);
-router.get('/sellers/pending', sellerManagementController.getPendingSellers);
-router.get('/sellers/search', sellerManagementController.searchSellers);
-router.get('/sellers/stats', sellerManagementController.getSellerStats);
-router.get('/sellers/top', sellerManagementController.getTopSellers);
-router.get('/sellers/:id', sellerManagementController.getSellerById);
+router.get('/sellers', (req, res) => sellerManagementController.getAllSellers(req, res));
+router.get('/sellers/pending', (req, res) => sellerManagementController.getPendingSellers(req, res));
+router.get('/sellers/search', (req, res) => sellerManagementController.searchSellers(req, res));
+router.get('/sellers/stats', (req, res) => sellerManagementController.getSellerStats(req, res));
+router.get('/sellers/top', (req, res) => sellerManagementController.getTopSellers(req, res));
+router.get('/sellers/:id', (req, res) => sellerManagementController.getSellerById(req, res));
 
 // Seller Actions
-router.put('/sellers/:id/approve', sellerManagementController.approveSeller);
-router.put('/sellers/:id/reject', sellerManagementController.rejectSeller);
-router.put('/sellers/:id/suspend', sellerManagementController.suspendSeller);
-router.put('/sellers/:id/activate', sellerManagementController.activateSeller);
-router.delete('/sellers/:id', sellerManagementController.deleteSeller);
+router.put('/sellers/:id/approve', (req, res) => sellerManagementController.approveSeller(req, res));
+router.put('/sellers/:id/reject', (req, res) => sellerManagementController.rejectSeller(req, res));
+router.put('/sellers/:id/suspend', (req, res) => sellerManagementController.suspendSeller(req, res));
+router.put('/sellers/:id/activate', (req, res) => sellerManagementController.activateSeller(req, res));
+router.delete('/sellers/:id', (req, res) => sellerManagementController.deleteSeller(req, res));
 
 // ==================== USER MANAGEMENT ROUTES ====================
 
@@ -152,10 +152,10 @@ router.get('/content/stats', contentAdminController.getContentStats.bind(content
 // ==================== USER REPORTS MANAGEMENT ROUTES ====================
 
 // Report Management
-router.get('/reports/list', ReportController.getAllReports);
-router.get('/reports/stats', ReportController.getReportStats);
-router.get('/reports/:id', ReportController.getReport);
-router.put('/reports/:id/status', ReportController.updateReportStatus);
-router.post('/reports/:id/resolve', ReportController.resolveReport);
+router.get('/reports/list', (req, res) => ReportController.getAllReports(req, res));
+router.get('/reports/stats', (req, res) => ReportController.getReportStats(req, res));
+router.get('/reports/:id', (req, res) => ReportController.getReport(req, res));
+router.put('/reports/:id/status', (req, res) => ReportController.updateReportStatus(req, res));
+router.post('/reports/:id/resolve', (req, res) => ReportController.resolveReport(req, res));
 
 module.exports = router; 

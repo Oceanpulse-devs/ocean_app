@@ -21,17 +21,17 @@ const upload = multer({
 });
 
 // Public routes (no authentication required)
-router.get('/requirements', sellerVerificationController.getVerificationRequirements);
+router.get('/requirements', (req, res) => sellerVerificationController.getVerificationRequirements(req, res));
 
 // Protected routes (authentication required)
 router.post('/submit', authMiddleware, upload.fields([
   { name: 'businessDocument', maxCount: 1 },
   { name: 'personalId', maxCount: 1 }
-]), sellerVerificationController.submitVerification);
-router.get('/status', authMiddleware, sellerVerificationController.getVerificationStatus);
+]), (req, res) => sellerVerificationController.submitVerification(req, res));
+router.get('/status', authMiddleware, (req, res) => sellerVerificationController.getVerificationStatus(req, res));
 
 // Admin routes (admin authentication required)
-router.post('/admin/review', authMiddleware, sellerVerificationController.reviewVerification);
-router.get('/admin/stats', authMiddleware, sellerVerificationController.getVerificationStats);
+router.post('/admin/review', authMiddleware, (req, res) => sellerVerificationController.reviewVerification(req, res));
+router.get('/admin/stats', authMiddleware, (req, res) => sellerVerificationController.getVerificationStats(req, res));
 
 module.exports = router;

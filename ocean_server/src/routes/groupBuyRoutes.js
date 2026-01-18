@@ -39,36 +39,36 @@ const upload = multer({
 });
 
 // Group Buy CRUD operations (auth middleware applied individually)
-router.post('/create', authMiddleware, upload.fields([{ name: 'images', maxCount: 10 }, { name: 'arModel', maxCount: 1 }]), groupBuyController.createGroupBuy);
+router.post('/create', authMiddleware, upload.fields([{ name: 'images', maxCount: 10 }, { name: 'arModel', maxCount: 1 }]), (req, res) => groupBuyController.createGroupBuy(req, res));
 
 // Apply authentication middleware to remaining routes
 router.use(authMiddleware);
-router.get('/all', groupBuyController.getAllGroupBuys);
-router.get('/trending', groupBuyController.getTrendingGroupBuys);
-router.get('/recommended', groupBuyController.getRecommendedGroupBuys);
-router.get('/spotlight', groupBuyController.getSpotlightGroupBuys);
-router.get('/top-placement', groupBuyController.getTopPlacementGroupBuys);
-router.get('/by-conversation/:conversationId', groupBuyController.getGroupBuyByConversationId);
-router.get('/:id', groupBuyController.getGroupBuyById);
-router.get('/:id/similar', groupBuyController.getSimilarGroupBuys);
-router.put('/:id', upload.fields([{ name: 'images', maxCount: 10 }, { name: 'arModel', maxCount: 1 }]), groupBuyController.updateGroupBuy);
-router.delete('/:id', groupBuyController.deleteGroupBuy);
-router.patch('/:id/deadline', groupBuyController.extendGroupBuyDeadline);
+router.get('/all', (req, res) => groupBuyController.getAllGroupBuys(req, res));
+router.get('/trending', (req, res) => groupBuyController.getTrendingGroupBuys(req, res));
+router.get('/recommended', (req, res) => groupBuyController.getRecommendedGroupBuys(req, res));
+router.get('/spotlight', (req, res) => groupBuyController.getSpotlightGroupBuys(req, res));
+router.get('/top-placement', (req, res) => groupBuyController.getTopPlacementGroupBuys(req, res));
+router.get('/by-conversation/:conversationId', (req, res) => groupBuyController.getGroupBuyByConversationId(req, res));
+router.get('/:id', (req, res) => groupBuyController.getGroupBuyById(req, res));
+router.get('/:id/similar', (req, res) => groupBuyController.getSimilarGroupBuys(req, res));
+router.put('/:id', upload.fields([{ name: 'images', maxCount: 10 }, { name: 'arModel', maxCount: 1 }]), (req, res) => groupBuyController.updateGroupBuy(req, res));
+router.delete('/:id', (req, res) => groupBuyController.deleteGroupBuy(req, res));
+router.patch('/:id/deadline', (req, res) => groupBuyController.extendGroupBuyDeadline(req, res));
 
 // Group Buy participation
-router.post('/:id/join', groupBuyController.joinGroupBuy);
-router.delete('/:id/leave', groupBuyController.leaveGroupBuy);
-router.get('/:id/participants', groupBuyController.getParticipants);
+router.post('/:id/join', (req, res) => groupBuyController.joinGroupBuy(req, res));
+router.delete('/:id/leave', (req, res) => groupBuyController.leaveGroupBuy(req, res));
+router.get('/:id/participants', (req, res) => groupBuyController.getParticipants(req, res));
 
 // User-specific group buys
-router.get('/user/me', groupBuyController.getUserGroupBuys);
+router.get('/user/me', (req, res) => groupBuyController.getUserGroupBuys(req, res));
 
 // Admin/creator operations
-router.put('/:id/successful', groupBuyController.markGroupBuySuccessful);
-router.post('/:id/cancel', groupBuyController.cancelGroupBuy);
-router.patch('/:groupBuyId/participants/:participantId/status', groupBuyController.updateParticipantStatus);
+router.put('/:id/successful', (req, res) => groupBuyController.markGroupBuySuccessful(req, res));
+router.post('/:id/cancel', (req, res) => groupBuyController.cancelGroupBuy(req, res));
+router.patch('/:groupBuyId/participants/:participantId/status', (req, res) => groupBuyController.updateParticipantStatus(req, res));
 
 // Statistics
-router.get('/stats/overview', groupBuyController.getGroupBuyStats);
+router.get('/stats/overview', (req, res) => groupBuyController.getGroupBuyStats(req, res));
 
 module.exports = router;

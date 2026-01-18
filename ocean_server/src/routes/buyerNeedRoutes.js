@@ -26,46 +26,46 @@ const upload = multer({
 });
 
 // Buyer Need CRUD operations
-router.post('/create', upload.array('images', 10), buyerNeedController.createBuyerNeed);
-router.get('/all', buyerNeedController.getAllBuyerNeeds);
+router.post('/create', upload.array('images', 10), (req, res) => buyerNeedController.createBuyerNeed(req, res));
+router.get('/all', (req, res) => buyerNeedController.getAllBuyerNeeds(req, res));
 
 // User-specific buyer needs (must come before /:id)
-router.get('/user/me', buyerNeedController.getUserBuyerNeeds);
+router.get('/user/me', (req, res) => buyerNeedController.getUserBuyerNeeds(req, res));
 
 // Buyer Need statistics (must come before /:id)
-router.get('/stats/overview', buyerNeedController.getBuyerNeedStats);
+router.get('/stats/overview', (req, res) => buyerNeedController.getBuyerNeedStats(req, res));
 
 // Buyer Search Insights routes (must come before /:id)
-router.post('/search-insight/track', buyerNeedController.trackFailedSearch);
-router.get('/search-insights', buyerNeedController.getBuyerSearchInsights);
+router.post('/search-insight/track', (req, res) => buyerNeedController.trackFailedSearch(req, res));
+router.get('/search-insights', (req, res) => buyerNeedController.getBuyerSearchInsights(req, res));
 
 // Seller response management (must come before /:id routes)
-router.get('/seller/responses', buyerNeedResponseController.getSellerResponses);
+router.get('/seller/responses', (req, res) => buyerNeedResponseController.getSellerResponses(req, res));
 
 // Parameterized routes (must come after all specific routes)
-router.get('/:id', buyerNeedController.getBuyerNeedById);
-router.put('/:id', buyerNeedController.updateBuyerNeed);
-router.delete('/:id', buyerNeedController.deleteBuyerNeed);
+router.get('/:id', (req, res) => buyerNeedController.getBuyerNeedById(req, res));
+router.put('/:id', (req, res) => buyerNeedController.updateBuyerNeed(req, res));
+router.delete('/:id', (req, res) => buyerNeedController.deleteBuyerNeed(req, res));
 
 // Buyer Need actions
-router.put('/:id/cancel', buyerNeedController.cancelBuyerNeed);
-router.put('/:id/fulfill', buyerNeedController.markBuyerNeedFulfilled);
+router.put('/:id/cancel', (req, res) => buyerNeedController.cancelBuyerNeed(req, res));
+router.put('/:id/fulfill', (req, res) => buyerNeedController.markBuyerNeedFulfilled(req, res));
 
 // Reach management routes
-router.post('/:id/increment-reach', buyerNeedController.incrementReach);
-router.get('/:id/reach-status', buyerNeedController.getReachStatus);
+router.post('/:id/increment-reach', (req, res) => buyerNeedController.incrementReach(req, res));
+router.get('/:id/reach-status', (req, res) => buyerNeedController.getReachStatus(req, res));
 
 // Buyer Need Response routes
-router.post('/:buyer_need_id/responses', buyerNeedResponseController.createResponse);
-router.get('/:buyer_need_id/responses', buyerNeedResponseController.getResponsesByBuyerNeed);
-router.get('/responses/:id', buyerNeedResponseController.getResponseById);
-router.put('/responses/:id', buyerNeedResponseController.updateResponse);
+router.post('/:buyer_need_id/responses', (req, res) => buyerNeedResponseController.createResponse(req, res));
+router.get('/:buyer_need_id/responses', (req, res) => buyerNeedResponseController.getResponsesByBuyerNeed(req, res));
+router.get('/responses/:id', (req, res) => buyerNeedResponseController.getResponseById(req, res));
+router.put('/responses/:id', (req, res) => buyerNeedResponseController.updateResponse(req, res));
 
 // Response actions
-router.put('/responses/:id/accept', buyerNeedResponseController.acceptResponse);
-router.put('/responses/:id/reject', buyerNeedResponseController.rejectResponse);
-router.put('/responses/:id/withdraw', buyerNeedResponseController.withdrawResponse);
-router.put('/responses/:id/read', buyerNeedResponseController.markResponseAsRead);
-router.put('/responses/:id/feedback', buyerNeedResponseController.provideFeedback);
+router.put('/responses/:id/accept', (req, res) => buyerNeedResponseController.acceptResponse(req, res));
+router.put('/responses/:id/reject', (req, res) => buyerNeedResponseController.rejectResponse(req, res));
+router.put('/responses/:id/withdraw', (req, res) => buyerNeedResponseController.withdrawResponse(req, res));
+router.put('/responses/:id/read', (req, res) => buyerNeedResponseController.markResponseAsRead(req, res));
+router.put('/responses/:id/feedback', (req, res) => buyerNeedResponseController.provideFeedback(req, res));
 
 module.exports = router;

@@ -78,6 +78,11 @@ module.exports = (sequelize) => {
             type: DataTypes.STRING(255),
             allowNull: true
         },
+        category: {
+            type: DataTypes.STRING(255),
+            allowNull: true,
+            comment: 'Category name for filtering and search'
+        },
         brand: {
             type: DataTypes.STRING(100),
             allowNull: true

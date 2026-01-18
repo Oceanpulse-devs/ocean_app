@@ -40,19 +40,19 @@ const upload = multer({
 });
 
 // Public routes (no authentication required)
-router.get('/all', distressSaleController.getAllDistressSales);
-router.get('/trending', distressSaleController.getTrendingDistressSales);
-router.get('/recommended', optionalAuthMiddleware, distressSaleController.getRecommendedDistressSales);
-router.get('/spotlight', distressSaleController.getSpotlightDistressSales);
-router.get('/top-placement', distressSaleController.getTopPlacementDistressSales);
-router.get('/stats', distressSaleController.getDistressSaleStats);
-router.get('/:id', distressSaleController.getDistressSaleById);
-router.get('/:id/similar', distressSaleController.getSimilarDistressSales);
+router.get('/all', (req, res) => distressSaleController.getAllDistressSales(req, res));
+router.get('/trending', (req, res) => distressSaleController.getTrendingDistressSales(req, res));
+router.get('/recommended', optionalAuthMiddleware, (req, res) => distressSaleController.getRecommendedDistressSales(req, res));
+router.get('/spotlight', (req, res) => distressSaleController.getSpotlightDistressSales(req, res));
+router.get('/top-placement', (req, res) => distressSaleController.getTopPlacementDistressSales(req, res));
+router.get('/stats', (req, res) => distressSaleController.getDistressSaleStats(req, res));
+router.get('/:id', (req, res) => distressSaleController.getDistressSaleById(req, res));
+router.get('/:id/similar', (req, res) => distressSaleController.getSimilarDistressSales(req, res));
 
 // Protected routes (authentication required)
-router.post('/create', authMiddleware, upload.fields([{ name: 'images', maxCount: 10 }, { name: 'arModel', maxCount: 1 }]), distressSaleController.createDistressSale);
-router.put('/:id', authMiddleware, upload.fields([{ name: 'images', maxCount: 10 }, { name: 'arModel', maxCount: 1 }]), distressSaleController.updateDistressSale);
-router.delete('/:id', authMiddleware, distressSaleController.deleteDistressSale);
-router.put('/:id/convert', authMiddleware, distressSaleController.convertToDistressSale);
+router.post('/create', authMiddleware, upload.fields([{ name: 'images', maxCount: 10 }, { name: 'arModel', maxCount: 1 }]), (req, res) => distressSaleController.createDistressSale(req, res));
+router.put('/:id', authMiddleware, upload.fields([{ name: 'images', maxCount: 10 }, { name: 'arModel', maxCount: 1 }]), (req, res) => distressSaleController.updateDistressSale(req, res));
+router.delete('/:id', authMiddleware, (req, res) => distressSaleController.deleteDistressSale(req, res));
+router.put('/:id/convert', authMiddleware, (req, res) => distressSaleController.convertToDistressSale(req, res));
 
 module.exports = router;

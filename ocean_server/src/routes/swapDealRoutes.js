@@ -64,27 +64,27 @@ const handleMulterError = (err, req, res, next) => {
 };
 
 // Swap Deal CRUD operations
-router.post('/create', upload.fields([{ name: 'images', maxCount: 10 }, { name: 'arModel', maxCount: 1 }]), handleMulterError, swapDealController.createSwapDeal);
-router.get('/all', swapDealController.getAllSwapDeals);
-router.get('/trending', swapDealController.getTrendingSwapDeals);
-router.get('/recommended', swapDealController.getRecommendedSwapDeals);
-router.get('/spotlight', swapDealController.getSpotlightSwapDeals);
-router.get('/top-placement', swapDealController.getTopPlacementSwapDeals);
-router.get('/:id', swapDealController.getSwapDealById);
-router.get('/:id/similar', swapDealController.getSimilarSwapDeals);
-router.put('/:id', upload.fields([{ name: 'images', maxCount: 10 }, { name: 'arModel', maxCount: 1 }]), handleMulterError, swapDealController.updateSwapDeal);
-router.put('/:id/cancel', swapDealController.cancelSwapDeal);
+router.post('/create', upload.fields([{ name: 'images', maxCount: 10 }, { name: 'arModel', maxCount: 1 }]), handleMulterError, (req, res) => swapDealController.createSwapDeal(req, res));
+router.get('/all', (req, res) => swapDealController.getAllSwapDeals(req, res));
+router.get('/trending', (req, res) => swapDealController.getTrendingSwapDeals(req, res));
+router.get('/recommended', (req, res) => swapDealController.getRecommendedSwapDeals(req, res));
+router.get('/spotlight', (req, res) => swapDealController.getSpotlightSwapDeals(req, res));
+router.get('/top-placement', (req, res) => swapDealController.getTopPlacementSwapDeals(req, res));
+router.get('/:id', (req, res) => swapDealController.getSwapDealById(req, res));
+router.get('/:id/similar', (req, res) => swapDealController.getSimilarSwapDeals(req, res));
+router.put('/:id', upload.fields([{ name: 'images', maxCount: 10 }, { name: 'arModel', maxCount: 1 }]), handleMulterError, (req, res) => swapDealController.updateSwapDeal(req, res));
+router.put('/:id/cancel', (req, res) => swapDealController.cancelSwapDeal(req, res));
 
 // Swap Proposal operations
-router.post('/:swapDealId/propose', upload.any(), handleMulterError, swapDealController.proposeSwap);
-router.put('/proposals/:proposalId/accept', swapDealController.acceptProposal);
-router.put('/proposals/:proposalId/reject', swapDealController.rejectProposal);
+router.post('/:swapDealId/propose', upload.any(), handleMulterError, (req, res) => swapDealController.proposeSwap(req, res));
+router.put('/proposals/:proposalId/accept', (req, res) => swapDealController.acceptProposal(req, res));
+router.put('/proposals/:proposalId/reject', (req, res) => swapDealController.rejectProposal(req, res));
 
 // User-specific operations
-router.get('/user/my-deals', swapDealController.getUserSwapDeals);
-router.get('/user/my-proposals', swapDealController.getUserProposals);
+router.get('/user/my-deals', (req, res) => swapDealController.getUserSwapDeals(req, res));
+router.get('/user/my-proposals', (req, res) => swapDealController.getUserProposals(req, res));
 
 // Statistics
-router.get('/stats/overview', swapDealController.getSwapDealStats);
+router.get('/stats/overview', (req, res) => swapDealController.getSwapDealStats(req, res));
 
 module.exports = router;
