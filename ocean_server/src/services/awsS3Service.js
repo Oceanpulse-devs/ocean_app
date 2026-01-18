@@ -53,7 +53,6 @@ class AwsS3Service {
                 Key: key,
                 Body: fileBuffer,
                 ContentType: options.mimetype || 'video/mp4',
-                ACL: 'public-read', // Make videos publicly accessible
                 CacheControl: 'max-age=31536000' // Cache for 1 year
             });
 
