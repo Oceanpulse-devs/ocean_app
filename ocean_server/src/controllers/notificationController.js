@@ -1,5 +1,6 @@
 const { UserTable, Notification } = require('../../models');
 const { mapArrayFields } = require('../../utils/fieldMapper');
+const redisClient = require('../config/redisdb');
 
 // Create and send notification
 const createNotification = async (userId, title, message, type = 'info', category = 'system', metadata = null) => {
@@ -69,6 +70,21 @@ const getUserNotifications = async (req, res) => {
     const { page = 1, limit = 20, unreadOnly = false } = req.query;
     const offset = (page - 1) * limit;
 
+    // Create cache key based on query parameters
+    const cacheKey = `notifications:${userId}:${page}:${limit}:${unreadOnly}`;
+    
+    // Try to get from Redis cache first
+    try {
+      const cached = await redisClient.get(cacheKey);
+      if (cached) {
+        const cachedData = JSON.parse(cached);
+        return res.status(200).json(cachedData);
+      }
+    } catch (redisError) {
+      console.error('Redis cache read failed:', redisError.message);
+      // Continue with DB query if cache fails
+    }
+
     let whereClause = { userId };
     if (unreadOnly === 'true') {
       whereClause.isRead = false;
@@ -136,7 +152,7 @@ const getUserNotifications = async (req, res) => {
       };
     });
 
-    res.status(200).json({
+    const responseData = {
       message: "Notifications retrieved successfully",
       data: {
         notifications: formattedNotifications,
@@ -148,7 +164,17 @@ const getUserNotifications = async (req, res) => {
           hasPrevPage: page > 1
         }
       }
-    });
+    };
+
+    // Cache the response in Redis for 1 minute (notifications change frequently)
+    try {
+      await redisClient.setEx(cacheKey, 60, JSON.stringify(responseData));
+    } catch (redisError) {
+      console.error('Redis cache write failed:', redisError.message);
+      // Continue even if caching fails
+    }
+
+    res.status(200).json(responseData);
   } catch (error) {
     res.status(500).json({ message: "Error retrieving notifications", error: error.message });
   }

@@ -3,18 +3,12 @@ const { Op } = require('sequelize');
 const { v4: uuidv4 } = require('uuid');
 const cloudinaryService = require('../services/cloudinaryService');
 const videoUploadService = require('../services/videoUploadService');
+const redisClient = require('../config/redisdb');
 
 class StoryController {
     // Create a new story
     static async createStory(req, res) {
         try {
-            console.log('📱 Story creation request received');
-            console.log('User ID:', req.user?.id);
-            console.log('Request files:', req.files ? Object.keys(req.files) : 'No files');
-            console.log('Request files details:', req.files);
-            console.log('Request body:', req.body);
-            console.log('Media file check:', req.files?.media ? 'Found' : 'Not found');
-            
             const userId = req.user.id;
             
             // Extract all fields from request body (matching frontend field names)
@@ -198,6 +192,21 @@ class StoryController {
         try {
             const userId = req.user.id;
 
+            // Create cache key based on user ID
+            const cacheKey = `stories:${userId}`;
+            
+            // Try to get from Redis cache first
+            try {
+                const cached = await redisClient.get(cacheKey);
+                if (cached) {
+                    const cachedData = JSON.parse(cached);
+                    return res.json(cachedData);
+                }
+            } catch (redisError) {
+                console.error('Redis cache read failed:', redisError.message);
+                // Continue with DB query if cache fails
+            }
+
             // Get users that the current user follows
             const followingUsers = await UserFollows.findAll({
                 where: { userId },
@@ -260,11 +269,21 @@ class StoryController {
                 return acc;
             }, {});
 
-            res.json({
+            const responseData = {
                 success: true,
                 message: 'Stories retrieved successfully',
                 data: Object.values(groupedStories)
-            });
+            };
+
+            // Cache the response in Redis for 1 minute (stories are short-lived)
+            try {
+                await redisClient.setEx(cacheKey, 60, JSON.stringify(responseData));
+            } catch (redisError) {
+                console.error('Redis cache write failed:', redisError.message);
+                // Continue even if caching fails
+            }
+
+            res.json(responseData);
 
         } catch (error) {
             console.error('Error getting stories:', error);

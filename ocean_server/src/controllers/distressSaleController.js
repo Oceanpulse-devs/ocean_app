@@ -6,6 +6,7 @@ const RankingService = require('../services/rankingService');
 const SpotlightService = require('../services/spotlightService');
 const TopPlacementService = require('../services/topPlacementService');
 const imageCompressionService = require('../services/imageCompressionService');
+const redisClient = require('../config/redisdb');
 
 // Helper function to map distress sale field names for frontend
 const mapDistressSaleResponse = (distressSale) => {
@@ -290,6 +291,21 @@ class DistressSaleController {
 
       const offset = (page - 1) * limit;
 
+      // Create cache key based on query parameters
+      const cacheKey = `distressSales:${page}:${limit}:${urgencyLevel || ''}:${maxDiscount || ''}:${minDiscount || ''}:${category || ''}:${subcategory || ''}:${location || ''}:${search || ''}:${sortBy}:${sortOrder}`;
+      
+      // Try to get from Redis cache first
+      try {
+        const cached = await redisClient.get(cacheKey);
+        if (cached) {
+          const cachedData = JSON.parse(cached);
+          return res.json(cachedData);
+        }
+      } catch (redisError) {
+        console.error('Redis cache read failed:', redisError.message);
+        // Continue with DB query if cache fails
+      }
+
       // Build filter conditions
       const whereClause = {
         isDistressSale: true,
@@ -399,7 +415,7 @@ class DistressSaleController {
       // Calculate total pages
       const totalPages = Math.ceil(count / limit);
 
-      res.json({
+      const responseData = {
         success: true,
         data: mappedDistressSales,
         pagination: {
@@ -408,7 +424,17 @@ class DistressSaleController {
           totalItems: count,
           itemsPerPage: parseInt(limit)
         }
-      });
+      };
+
+      // Cache the response in Redis for 3 minutes
+      try {
+        await redisClient.setEx(cacheKey, 180, JSON.stringify(responseData));
+      } catch (redisError) {
+        console.error('Redis cache write failed:', redisError.message);
+        // Continue even if caching fails
+      }
+
+      res.json(responseData);
     } catch (error) {
       console.error('Error fetching distress sales:', error);
       res.status(500).json({

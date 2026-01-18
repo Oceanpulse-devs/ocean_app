@@ -12,6 +12,7 @@ const RankingService = require('../services/rankingService');
 const SpotlightService = require('../services/spotlightService');
 const TopPlacementService = require('../services/topPlacementService');
 const imageCompressionService = require('../services/imageCompressionService');
+const redisClient = require('../config/redisdb');
 
 // Helper function to map auction field names for frontend
 const mapAuctionResponse = (auction) => {
@@ -314,8 +315,20 @@ const getAuctions = async (req, res) => {
       sortOrder = 'ASC'
     } = req.query;
 
-    // Removed verbose logging to reduce Railway log rate limiting
-    // Only log errors in production
+    // Create cache key based on query parameters
+    const cacheKey = `auctions:${page}:${limit}:${status}:${category || ''}:${subcategory || ''}:${minPrice || ''}:${maxPrice || ''}:${condition || ''}:${location || ''}:${search || ''}:${sortBy}:${sortOrder}`;
+    
+    // Try to get from Redis cache first
+    try {
+      const cached = await redisClient.get(cacheKey);
+      if (cached) {
+        const cachedData = JSON.parse(cached);
+        return res.status(200).json(cachedData);
+      }
+    } catch (redisError) {
+      console.error('Redis cache read failed:', redisError.message);
+      // Continue with DB query if cache fails
+    }
 
     // Build where clause
     const whereClause = {};
@@ -441,7 +454,7 @@ const getAuctions = async (req, res) => {
     // Include promotion fields and sort by promotion priority
     mappedAuctions = PromotionHelperService.processItemsForResponse(mappedAuctions);
 
-    res.status(200).json({
+    const responseData = {
       success: true,
       data: mappedAuctions,
       pagination: {
@@ -450,7 +463,17 @@ const getAuctions = async (req, res) => {
         total: count,
         pages: Math.ceil(count / parseInt(limit))
       }
-    });
+    };
+
+    // Cache the response in Redis for 3 minutes
+    try {
+      await redisClient.setEx(cacheKey, 180, JSON.stringify(responseData));
+    } catch (redisError) {
+      console.error('Redis cache write failed:', redisError.message);
+      // Continue even if caching fails
+    }
+
+    res.status(200).json(responseData);
 
   } catch (error) {
     console.error('Get auctions error:', error);

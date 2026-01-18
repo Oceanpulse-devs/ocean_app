@@ -11,6 +11,7 @@ const PromotionHelperService = require('../services/promotionHelperService');
 const RankingService = require('../services/rankingService');
 const SpotlightService = require('../services/spotlightService');
 const TopPlacementService = require('../services/topPlacementService');
+const redisClient = require('../config/redisdb');
 
 // Helper function to map product field names for frontend
 const mapProductResponse = (product) => {
@@ -60,6 +61,21 @@ const getProducts = async (req, res) => {
         } = req.query;
 
         const currentUserId = req.user?.id;
+
+        // Create cache key based on query parameters
+        const cacheKey = `products:${page}:${limit}:${search || ''}:${category || ''}:${subcategory || ''}:${brand || ''}:${minPrice || ''}:${maxPrice || ''}:${condition || ''}:${location || ''}:${sortBy}:${currentUserId || 'guest'}`;
+        
+        // Try to get from Redis cache first
+        try {
+            const cached = await redisClient.get(cacheKey);
+            if (cached) {
+                const cachedData = JSON.parse(cached);
+                return res.status(200).json(cachedData);
+            }
+        } catch (redisError) {
+            console.error('Redis cache read failed:', redisError.message);
+            // Continue with DB query if cache fails
+        }
 
         // Use subscription-aware search service
         const searchResults = await SubscriptionAwareSearchService.searchProducts({
@@ -126,6 +142,13 @@ const getProducts = async (req, res) => {
             pagination: searchResults.pagination,
             searchInfo: searchResults.searchInfo
         });
+        
+        // Cache in Redis (expire after 2 minutes)
+        try {
+            await redisClient.setEx(cacheKey, 120, JSON.stringify(response));
+        } catch (redisError) {
+            console.error('Redis cache write failed:', redisError.message);
+        }
         
         res.status(200).json(response);
 

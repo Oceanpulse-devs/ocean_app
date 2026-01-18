@@ -10,11 +10,6 @@ class VideoController {
     // Create a new video
     static async createVideo(req, res) {
         try {
-            console.log('📹 Video creation request received');
-            console.log('User ID:', req.user?.id);
-            console.log('Request file:', req.file ? 'File present' : 'No file');
-            console.log('Request body:', req.body);
-
             const userId = req.user.id;
 
             // Extract fields from request body
@@ -250,7 +245,6 @@ class VideoController {
                 const cached = await redisClient.get(cacheKey);
                 if (cached) {
                     cachedVideos = JSON.parse(cached);
-                    console.log('✅ Video feed retrieved from Redis cache');
                 }
             } catch (redisError) {
                 console.error('Redis cache read failed:', redisError.message);

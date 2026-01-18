@@ -4,6 +4,7 @@ const cloudinaryService = require('../services/cloudinaryService');
 const videoUploadService = require('../services/videoUploadService');
 const imageCompressionService = require('../services/imageCompressionService');
 const { mapNestedFields } = require('../../utils/fieldMapper');
+const redisClient = require('../config/redisdb');
 
 // Helper function to create notifications
 const createNotification = async (userId, title, message, type = 'info', category = 'system', metadata = null) => {
@@ -29,6 +30,21 @@ const getHomeFeed = async (req, res) => {
         const { page = 1, limit = 10 } = req.query;
         const offset = (page - 1) * limit;
         const currentUserId = req.user?.id;
+
+        // Create cache key based on query parameters
+        const cacheKey = `homeFeed:${page}:${limit}:${currentUserId || 'guest'}`;
+        
+        // Try to get from Redis cache first
+        try {
+            const cached = await redisClient.get(cacheKey);
+            if (cached) {
+                const cachedData = JSON.parse(cached);
+                return res.status(200).json(cachedData);
+            }
+        } catch (redisError) {
+            console.error('Redis cache read failed:', redisError.message);
+            // Continue with DB query if cache fails
+        }
 
         // Get stories (users with recent posts)
         const stories = await UserTable.findAll({
@@ -522,7 +538,7 @@ const getHomeFeed = async (req, res) => {
             hasPrevPage: 'hasPreviousPage'
         });
 
-        res.status(200).json({
+        const responseData = {
             success: true,
             message: "Home feed retrieved successfully",
             data: {
@@ -530,7 +546,17 @@ const getHomeFeed = async (req, res) => {
                 posts: formattedPosts,
                 pagination: frontendPagination
             }
-        });
+        };
+
+        // Cache the response in Redis for 2 minutes
+        try {
+            await redisClient.setEx(cacheKey, 120, JSON.stringify(responseData));
+        } catch (redisError) {
+            console.error('Redis cache write failed:', redisError.message);
+            // Continue even if caching fails
+        }
+
+        res.status(200).json(responseData);
 
     } catch (error) {
         console.error('Get home feed error:', error);
@@ -586,6 +612,21 @@ const getFeed = async (req, res) => {
         
         const offset = (page - 1) * limit;
         const currentUserId = req.user?.id;
+
+        // Create cache key based on query parameters
+        const cacheKey = `feed:${page}:${limit}:${region || ''}:${country || ''}:${postType || ''}:${search || ''}:${userId || ''}:${currentUserId || 'guest'}`;
+        
+        // Try to get from Redis cache first
+        try {
+            const cached = await redisClient.get(cacheKey);
+            if (cached) {
+                const cachedData = JSON.parse(cached);
+                return res.status(200).json(cachedData);
+            }
+        } catch (redisError) {
+            console.error('Redis cache read failed:', redisError.message);
+            // Continue with DB query if cache fails
+        }
 
         // Build where clause
         let whereClause = {
@@ -711,14 +752,24 @@ const getFeed = async (req, res) => {
             hasPrevPage: 'hasPreviousPage'
         });
 
-        res.status(200).json({
+        const responseData = {
             success: true,
             message: "Feed retrieved successfully",
             data: {
                 posts: postsWithEngagement,
                 pagination: frontendPagination
             }
-        });
+        };
+
+        // Cache the response in Redis for 2 minutes
+        try {
+            await redisClient.setEx(cacheKey, 120, JSON.stringify(responseData));
+        } catch (redisError) {
+            console.error('Redis cache write failed:', redisError.message);
+            // Continue even if caching fails
+        }
+
+        res.status(200).json(responseData);
 
   } catch (error) {
         console.error('Get feed error:', error);
@@ -855,33 +906,15 @@ const createPost = async (req, res) => {
         const post = await Post.create(autoFilledData);
 
         // Add media if provided (optional - pictures are always optional)
-        console.log('=== MEDIA PROCESSING DEBUG ===');
-        console.log('req.files:', req.files);
-        console.log('req.files length:', req.files ? req.files.length : 'no files');
-        console.log('req.body keys:', Object.keys(req.body));
-        console.log('req.body.media present:', !!req.body.media);
-        console.log('req.body.media_name present:', !!req.body.media_name);
-        console.log('req.body.media_type present:', !!req.body.media_type);
-        console.log('===============================');
-        
         if (req.files && req.files.length > 0) {
-            console.log(`Processing ${req.files.length} files`);
             const mediaPromises = req.files.map(async (file, index) => {
                 try {
-                    console.log(`Processing file ${index}:`, {
-                        name: file.originalname,
-                        size: file.size,
-                        mimetype: file.mimetype,
-                        bufferLength: file.buffer ? file.buffer.length : 'no buffer'
-                    });
-                    
                     // Determine media type from file mimetype
                     const mediaType = file.mimetype.startsWith('image/') ? 'image' : 'video';
                     
                     let uploadResult;
                     if (mediaType === 'video') {
                         // Use unified video upload service (AWS S3 if configured, otherwise Cloudinary)
-                        console.log(`Uploading video ${index}...`);
                         uploadResult = await videoUploadService.uploadVideo(
                             file.buffer,
                             `ocean-app/posts/${post.id}`,
@@ -891,7 +924,6 @@ const createPost = async (req, res) => {
                         );
                     } else {
                         // Images always use Cloudinary
-                        console.log(`Uploading image ${index} to Cloudinary...`);
                         uploadResult = await cloudinaryService.uploadPostMedia(file.buffer, post.id);
                     }
                     
@@ -899,8 +931,6 @@ const createPost = async (req, res) => {
                         console.error('Upload failed:', uploadResult.error);
                         throw new Error(`Failed to upload ${file.originalname}: ${uploadResult.error}`);
                     }
-                    
-                    console.log(`Upload successful for file ${index}:`, uploadResult.url);
                     
                     // Create PostMedia record with Cloudinary URLs
                     const mediaRecord = await PostMedia.create({
@@ -912,7 +942,6 @@ const createPost = async (req, res) => {
                         altText: file.originalname
                     });
                     
-                    console.log(`Created PostMedia record for file ${index}:`, mediaRecord.id);
                     return mediaRecord;
                 } catch (error) {
                     console.error(`Error processing file ${file.originalname}:`, error);
@@ -920,25 +949,19 @@ const createPost = async (req, res) => {
                 }
             });
             await Promise.all(mediaPromises);
-            console.log('All media files processed successfully');
         } else if (req.body._parts) {
             // Handle files from _parts array when multer fails
-            console.log('Processing files from _parts array');
             const mediaParts = req.body._parts.filter(part => part[0] === 'media');
             
             if (mediaParts.length > 0) {
-                console.log(`Found ${mediaParts.length} media files in _parts`);
-                
                 // Process files from _parts array
                 const mediaPromises = mediaParts.map(async (part, index) => {
                     try {
                         // Extract file data from the part
                         const fileData = part[1];
-                        console.log(`Processing file ${index}:`, fileData);
                         
                         // For now, we'll skip actual file processing since we can't easily extract the buffer
                         // This is a limitation of the current approach
-                        console.log('Note: Files from _parts array cannot be processed with current implementation');
                         return null;
                     } catch (error) {
                         console.error(`Error processing file ${index}:`, error);
@@ -971,7 +994,6 @@ const createPost = async (req, res) => {
         // Buyers should now create buyer needs directly instead of posts
         // Only sellers can create posts, and posts are for products/announcements
 
-        console.log('Sending response:', { message: "Post created successfully", data: createdPost });
         res.status(201).json({
             success: true,
             message: "Post created successfully",

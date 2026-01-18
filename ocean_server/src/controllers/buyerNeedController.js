@@ -3,6 +3,7 @@ const { Op } = require('sequelize');
 const cloudinaryService = require('../services/cloudinaryService');
 const videoUploadService = require('../services/videoUploadService');
 const imageCompressionService = require('../services/imageCompressionService');
+const redisClient = require('../config/redisdb');
 
 // Helper function to create notifications
 const createNotification = async (userId, title, message, type = 'info', category = 'system', metadata = null) => {
@@ -139,7 +140,6 @@ class BuyerNeedController {
 
       // Add images if provided (optional - field name changed from media to images)
       if (req.files && req.files.length > 0) {
-        console.log(`Processing ${req.files.length} image files for buyer need ${buyerNeed.id}`);
         const mediaPromises = req.files.map(async (file, index) => {
           try {
             // Determine media type from file mimetype
@@ -154,7 +154,6 @@ class BuyerNeedController {
             let uploadResult;
             if (mediaType === 'video') {
                 // Use unified video upload service (AWS S3 if configured, otherwise Cloudinary)
-                console.log(`Uploading video ${index}...`);
                 uploadResult = await videoUploadService.uploadVideo(
                     fileBuffer,
                     `ocean-app/buyer-needs/${buyerNeed.id}`,
@@ -164,7 +163,6 @@ class BuyerNeedController {
                 );
             } else {
                 // Images always use Cloudinary
-                console.log(`Uploading image ${index} to Cloudinary...`);
                 uploadResult = await cloudinaryService.uploadBuyerNeedMedia(fileBuffer, buyerNeed.id);
             }
             
@@ -172,8 +170,6 @@ class BuyerNeedController {
               console.error('Upload failed:', uploadResult.error);
               throw new Error(`Failed to upload ${file.originalname}: ${uploadResult.error}`);
             }
-            
-            console.log(`Upload successful for file ${index}:`, uploadResult.url);
             
             // Create BuyerNeedMedia record with Cloudinary URLs
             const mediaRecord = await db.BuyerNeedMedia.create({
@@ -194,7 +190,6 @@ class BuyerNeedController {
         });
         
         await Promise.all(mediaPromises);
-        console.log('All media files processed successfully');
       }
 
       // Get created buyer need with associations (same structure as posts)
@@ -256,6 +251,24 @@ class BuyerNeedController {
       } = req.query;
 
       const offset = (page - 1) * limit;
+      const currentUserId = req.user?.id;
+      const userAccountType = req.user.accountType;
+
+      // Create cache key based on query parameters
+      const cacheKey = `buyerNeeds:${page}:${limit}:${status || ''}:${category || ''}:${featured || ''}:${search || ''}:${sort_by}:${sort_order}:${currentUserId}:${userAccountType}`;
+      
+      // Try to get from Redis cache first
+      try {
+        const cached = await redisClient.get(cacheKey);
+        if (cached) {
+          const cachedData = JSON.parse(cached);
+          return res.json(cachedData);
+        }
+      } catch (redisError) {
+        console.error('Redis cache read failed:', redisError.message);
+        // Continue with DB query if cache fails
+      }
+
       const whereClause = {};
 
       // Apply filters
@@ -276,9 +289,8 @@ class BuyerNeedController {
       whereClause.expires_at = { [Op.gt]: new Date() };
 
       // Access control: Buyers can only see their own needs, sellers/admin can see all
-      const userAccountType = req.user.accountType;
       if (userAccountType === 'buyer' || userAccountType === 'pending-seller') {
-        whereClause.buyer_id = req.user.id;
+        whereClause.buyer_id = currentUserId;
       }
       // Sellers and admins can see all buyer needs (no additional filter)
 
@@ -306,7 +318,7 @@ class BuyerNeedController {
       // Map buyer need field names for frontend compatibility (match post structure)
       const mappedBuyerNeeds = rows.map(buyerNeed => mapBuyerNeedResponse(buyerNeed));
 
-      res.json({
+      const responseData = {
         success: true,
         data: mappedBuyerNeeds,
         pagination: {
@@ -315,7 +327,17 @@ class BuyerNeedController {
           total_items: count,
           items_per_page: parseInt(limit)
         }
-      });
+      };
+
+      // Cache the response in Redis for 2 minutes
+      try {
+        await redisClient.setEx(cacheKey, 120, JSON.stringify(responseData));
+      } catch (redisError) {
+        console.error('Redis cache write failed:', redisError.message);
+        // Continue even if caching fails
+      }
+
+      res.json(responseData);
 
     } catch (error) {
       console.error('Error fetching buyer needs:', error);

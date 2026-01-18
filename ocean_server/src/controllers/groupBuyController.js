@@ -10,6 +10,7 @@ const PromotionHelperService = require('../services/promotionHelperService');
 const RankingService = require('../services/rankingService');
 const SpotlightService = require('../services/spotlightService');
 const TopPlacementService = require('../services/topPlacementService');
+const redisClient = require('../config/redisdb');
 
 // Helper function to map group buy field names for frontend
 const mapGroupBuyResponse = (groupBuy) => {
@@ -636,6 +637,21 @@ class GroupBuyController {
 
       const currentUserId = req.user?.id;
 
+      // Create cache key based on query parameters
+      const cacheKey = `groupBuys:${page}:${limit}:${status}:${category || ''}:${subcategory || ''}:${location || ''}:${min_price || ''}:${max_price || ''}:${featured || ''}:${search || ''}:${currentUserId || 'guest'}`;
+      
+      // Try to get from Redis cache first
+      try {
+        const cached = await redisClient.get(cacheKey);
+        if (cached) {
+          const cachedData = JSON.parse(cached);
+          return res.status(200).json(cachedData);
+        }
+      } catch (redisError) {
+        console.error('Redis cache read failed:', redisError.message);
+        // Continue with DB query if cache fails
+      }
+
       // Use subscription-aware search service
       const searchResults = await SubscriptionAwareSearchService.searchGroupBuys({
         query: search,
@@ -654,11 +670,21 @@ class GroupBuyController {
       // Include promotion fields and sort by promotion priority
       mappedGroupBuys = PromotionHelperService.processItemsForResponse(mappedGroupBuys);
 
-      res.status(200).json({
+      const responseData = {
         success: true,
         data: mappedGroupBuys,
         pagination: searchResults.pagination
-      });
+      };
+
+      // Cache the response in Redis for 3 minutes
+      try {
+        await redisClient.setEx(cacheKey, 180, JSON.stringify(responseData));
+      } catch (redisError) {
+        console.error('Redis cache write failed:', redisError.message);
+        // Continue even if caching fails
+      }
+
+      res.status(200).json(responseData);
 
     } catch (error) {
       console.error('Error fetching group buys:', error);

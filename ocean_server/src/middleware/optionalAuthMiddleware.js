@@ -34,21 +34,20 @@ const optionalAuthMiddleware = async (req, res, next) => {
       
       if (sessionStatus && sessionStatus === 'active') {
         req.user = decoded;
-        console.log('✅ Optional auth: User authenticated:', decoded.id);
+        // Removed logging - only log actual errors
       }
       // If session invalid, just continue without req.user (don't block)
     } else {
       req.user = decoded;
-      console.log('✅ Optional auth: User authenticated:', decoded.id);
+      // Removed logging - only log actual errors
     }
     
     next();
   } catch (error) {
     // Token invalid or expired - just continue without req.user (don't block)
-    console.log('⚠️ Optional auth: Invalid token, continuing as anonymous');
+    // Only log actual errors, not normal flow
     next();
   }
 };
 
 module.exports = optionalAuthMiddleware;
-

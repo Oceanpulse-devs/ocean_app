@@ -7,6 +7,7 @@ const PromotionHelperService = require('../services/promotionHelperService');
 const RankingService = require('../services/rankingService');
 const SpotlightService = require('../services/spotlightService');
 const TopPlacementService = require('../services/topPlacementService');
+const redisClient = require('../config/redisdb');
 
 // Helper function to map swap deal field names for frontend
 const mapSwapDealResponse = (swapDeal) => {
@@ -346,6 +347,21 @@ class SwapDealController {
       const { page = 1, limit = 20, category, subcategory, location, search } = req.query;
       const offset = (page - 1) * limit;
 
+      // Create cache key based on query parameters
+      const cacheKey = `swapDeals:${page}:${limit}:${category || ''}:${subcategory || ''}:${location || ''}:${search || ''}`;
+      
+      // Try to get from Redis cache first
+      try {
+        const cached = await redisClient.get(cacheKey);
+        if (cached) {
+          const cachedData = JSON.parse(cached);
+          return res.json(cachedData);
+        }
+      } catch (redisError) {
+        console.error('Redis cache read failed:', redisError.message);
+        // Continue with DB query if cache fails
+      }
+
       let whereClause = { status: 'active' };
       const additionalConditions = [];
 
@@ -434,7 +450,7 @@ class SwapDealController {
       // Include promotion fields and sort by promotion priority
       mappedSwapDeals = PromotionHelperService.processItemsForResponse(mappedSwapDeals);
 
-      res.json({
+      const responseData = {
         success: true,
         data: {
           swapDeals: mappedSwapDeals,
@@ -445,7 +461,17 @@ class SwapDealController {
             itemsPerPage: parseInt(limit)
           }
         }
-      });
+      };
+
+      // Cache the response in Redis for 3 minutes
+      try {
+        await redisClient.setEx(cacheKey, 180, JSON.stringify(responseData));
+      } catch (redisError) {
+        console.error('Redis cache write failed:', redisError.message);
+        // Continue even if caching fails
+      }
+
+      res.json(responseData);
 
     } catch (error) {
       console.error('Error fetching swap deals:', error);
