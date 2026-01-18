@@ -278,9 +278,16 @@ class ContentAdminController {
         where: whereClause,
         include: [
           {
-            model: db.UserTable,
+            model: db.SellersTable,
             as: 'seller',
-            attributes: ['id', 'fullName', 'email', 'profilePicture']
+            attributes: ['id', 'userId', 'businessName', 'businessAddress', 'country', 'state', 'category', 'verificationStatus'],
+            include: [
+              {
+                model: db.UserTable,
+                as: 'user',
+                attributes: ['id', 'fullName', 'email', 'profilePicture']
+              }
+            ]
           }
         ],
         order: [[sortBy, sortOrder]],
