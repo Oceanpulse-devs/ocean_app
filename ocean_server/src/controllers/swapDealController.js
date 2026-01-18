@@ -1,6 +1,7 @@
 const db = require('../../models');
 const { Op, Sequelize } = require('sequelize');
 const cloudinaryService = require('../services/cloudinaryService');
+const imageCompressionService = require('../services/imageCompressionService');
 const { checkSubscriptionLimit, incrementUsage, checkFeatureAccess } = require('../middleware/subscriptionMiddleware');
 const SubscriptionAwareSearchService = require('../services/subscriptionAwareSearchService');
 const PromotionHelperService = require('../services/promotionHelperService');
