@@ -131,7 +131,7 @@ const analyzeMarketplacePerformance = async () => {
     
     const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
-    // Get marketplace metrics
+    // Get marketplace metrics - FIXED: Removed incorrect promise addition
     const metrics = await Promise.all([
       // Successful group buys
       db.GroupBuy.count({
@@ -155,38 +155,34 @@ const analyzeMarketplacePerformance = async () => {
           status: 'fulfilled',
           created_at: { [Op.gte]: oneWeekAgo }
         }
-      }),
-      
-      // Total transactions
+      })
+    ]);
+
+    const [successfulGroupBuys, completedSwapDeals, fulfilledBuyerNeeds] = metrics;
+
+    // FIXED: Calculate totalTransactions properly by summing the successful transactions
+    const totalTransactions = successfulGroupBuys + completedSwapDeals + fulfilledBuyerNeeds;
+
+    // Calculate total attempts (all created in the last week) - OPTIMIZED: Using Promise.all
+    const [groupBuyAttempts, swapDealAttempts, buyerNeedAttempts] = await Promise.all([
       db.GroupBuy.count({
         where: {
-          status: { [Op.in]: ['successful', 'completed'] },
           createdAt: { [Op.gte]: oneWeekAgo }
         }
-      }) + db.SwapDeal.count({
+      }),
+      db.SwapDeal.count({
         where: {
-          status: 'completed',
           createdAt: { [Op.gte]: oneWeekAgo }
+        }
+      }),
+      db.BuyerNeed.count({
+        where: {
+          created_at: { [Op.gte]: oneWeekAgo }
         }
       })
     ]);
 
-    const [successfulGroupBuys, completedSwapDeals, fulfilledBuyerNeeds, totalTransactions] = metrics;
-
-    // Calculate success rate
-    const totalAttempts = await db.GroupBuy.count({
-      where: {
-        createdAt: { [Op.gte]: oneWeekAgo }
-      }
-    }) + await db.SwapDeal.count({
-      where: {
-        createdAt: { [Op.gte]: oneWeekAgo }
-      }
-    }) + await db.BuyerNeed.count({
-      where: {
-        created_at: { [Op.gte]: oneWeekAgo }
-      }
-    });
+    const totalAttempts = groupBuyAttempts + swapDealAttempts + buyerNeedAttempts;
 
     const successRate = totalAttempts > 0 ? (totalTransactions / totalAttempts) * 100 : 0;
 
