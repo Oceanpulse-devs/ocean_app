@@ -1905,9 +1905,11 @@ const getAllSavedItems = async (req, res) => {
             const itemType = product.isDistressSale ? 'distress_sale' : 'product';
             
             return {
-                id: product.id, // Use product ID, not savedItem ID
+                id: product.id, // Actual Product ID (for navigation)
+                savedItemId: savedItem.getDataValue('id'), // SavedProduct ID (for deletion)
+                productId: product.id, // Actual Product ID (for navigation) - kept for clarity
                 type: itemType,
-                sourceId: savedItem.getDataValue('id'), // Save reference ID - explicitly get SavedProduct's ID
+                sourceId: savedItem.getDataValue('id'), // Save reference ID - explicitly get SavedProduct's ID (deprecated, use savedItemId)
                 name: product.title,
                 price: `${product.currency || 'NGN'} ${product.price}`,
                 originalPrice: product.originalPrice ? `${product.currency || 'NGN'} ${product.originalPrice}` : null,
@@ -1954,10 +1956,11 @@ const getAllSavedItems = async (req, res) => {
             }
             
             return {
-                    id: post.id,
+                    id: post.id, // Actual Post ID (for navigation)
+                    savedItemId: savedItem.getDataValue('id'), // SavedPost ID (for deletion)
                     type: 'post',
-                    sourceId: savedItem.getDataValue('id'), // Save reference ID - explicitly get SavedPost's ID
-                    postId: post.id,
+                    sourceId: savedItem.getDataValue('id'), // Save reference ID - explicitly get SavedPost's ID (deprecated, use savedItemId)
+                    postId: post.id, // Actual Post ID (for navigation)
                     name: post.productName || (post.content ? post.content.substring(0, 50) : 'Post'),
                     price: null,
                 originalPrice: null,
@@ -2108,9 +2111,11 @@ const getAllSavedItems = async (req, res) => {
                 }
                 
                 return {
-                    id: swapDeal.id, // Use swap deal ID, not post ID
+                    id: swapDeal.id, // Actual Swap Deal ID (for navigation)
+                    savedItemId: savedItem.getDataValue('id'), // SavedPost ID (for deletion)
+                    swapDealId: swapDeal.id, // Actual Swap Deal ID (for navigation) - kept for clarity
                     type: 'swap_deal',
-                    sourceId: savedItem.getDataValue('id'), // Save reference ID - explicitly get SavedPost's ID
+                    sourceId: savedItem.getDataValue('id'), // Save reference ID - explicitly get SavedPost's ID (deprecated, use savedItemId)
                     postId: post.id, // Keep post ID for reference
                     name: swapDeal.title,
                     price: null, // Swap deals don't have prices
@@ -2183,9 +2188,11 @@ const getAllSavedItems = async (req, res) => {
                 const itemType = product.isDistressSale ? 'distress_sale' : 'product';
                 
                 return {
-                    id: product.id, // Use product ID, not post ID
+                    id: product.id, // Actual Product ID (for navigation)
+                    savedItemId: savedItem.getDataValue('id'), // SavedPost ID (for deletion)
+                    productId: product.id, // Actual Product ID (for navigation) - kept for clarity
                     type: itemType,
-                    sourceId: savedItem.getDataValue('id'), // Save reference ID - explicitly get SavedPost's ID
+                    sourceId: savedItem.getDataValue('id'), // Save reference ID - explicitly get SavedPost's ID (deprecated, use savedItemId)
                     postId: post.id, // Keep post ID for reference
                     name: product.title,
                     price: `${product.currency || 'NGN'} ${product.price}`,
