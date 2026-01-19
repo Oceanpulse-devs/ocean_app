@@ -206,12 +206,26 @@ module.exports = (sequelize, DataTypes) =>{
             allowNull: true,
             field: 'trial_plan_used',
             comment: 'Which plan they trialed (drift/wave/tide/surge)'
+        },
+        // Account deletion fields
+        deletedAt: {
+            type: DataTypes.DATE,
+            allowNull: true,
+            field: 'deleted_at',
+            comment: 'When the account was deleted (soft delete)'
+        },
+        deleteReason: {
+            type: DataTypes.TEXT,
+            allowNull: true,
+            field: 'delete_reason',
+            comment: 'Reason for account deletion'
         }
     },{
         tableName:'users',
         timestamps: true, // Enable automatic timestamp management
         createdAt: 'createdAt',
-        updatedAt: 'updatedAt'
+        updatedAt: 'updatedAt',
+        paranoid: false // We handle soft delete manually
     })
 
 

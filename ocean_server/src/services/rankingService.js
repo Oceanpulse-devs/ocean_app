@@ -53,8 +53,15 @@ class RankingService {
         whereClause.isAvailable = true;
       }
 
+      // Handle category filtering - different models use different field names
       if (category) {
-        whereClause.category = category;
+        if (itemType === 'swap_deal') {
+          // SwapDeal uses categoryToSwap (maps to category_to_swap in DB)
+          whereClause.categoryToSwap = category;
+        } else {
+          // Products, Auctions, GroupBuys use category
+          whereClause.category = category;
+        }
       }
 
       // Get items ordered by visibility score
@@ -174,9 +181,17 @@ class RankingService {
         whereClause.isAvailable = true;
       }
 
-      // Find items in the same category
-      if (referenceItem.category) {
-        whereClause.category = referenceItem.category;
+      // Find items in the same category - handle different field names per model
+      if (itemType === 'swap_deal') {
+        // SwapDeal uses categoryToSwap
+        if (referenceItem.categoryToSwap) {
+          whereClause.categoryToSwap = referenceItem.categoryToSwap;
+        }
+      } else {
+        // Products, Auctions, GroupBuys use category
+        if (referenceItem.category) {
+          whereClause.category = referenceItem.category;
+        }
       }
 
       // Get similar items ordered by visibility score

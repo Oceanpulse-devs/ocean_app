@@ -184,16 +184,17 @@ class ReportController {
                         }
                         break;
                     case 'distress_sale':
-                        // Distress sales are posts with category 'distress_sale'
-                        const distressPost = await Post.findOne({
+                        // Distress sales are products with isDistressSale: true
+                        const distressSale = await Product.findOne({
                             where: {
                                 id: itemId,
-                                category: 'distress_sale'
+                                isDistressSale: true
                             }
                         });
-                        if (distressPost) {
+                        if (distressSale) {
                             itemExists = true;
-                            itemOwnerId = distressPost.userId;
+                            const seller = await SellersTable.findByPk(distressSale.sellerId);
+                            itemOwnerId = seller?.userId || null;
                         }
                         break;
                     case 'bulk_purchase':

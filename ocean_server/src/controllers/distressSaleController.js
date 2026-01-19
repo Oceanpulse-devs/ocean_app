@@ -472,23 +472,26 @@ class DistressSaleController {
         });
       }
 
-      // Increment view count (deduplicated for logged-in users)
+      // Increment view count (deduplicated for logged-in users - one view per user per distress sale)
       // Distress sales use Product model, so use ProductView for tracking
-      if (req.user && req.user.id) {
-        const currentUserId = req.user.id;
-        const seller = await db.SellersTable.findOne({ where: { id: distressSale.sellerId } });
-        if (seller && currentUserId !== seller.userId) {
-          const [view, created] = await db.ProductView.findOrCreate({
-            where: { productId: distressSale.id, viewerId: currentUserId },
-            defaults: { viewedAt: new Date() }
-          });
-          if (created) {
-            await distressSale.increment('views');
-          }
+      // Composite primary key (productId, viewerId) prevents duplicate views from same user
+      const currentUserId = req.user?.id;
+      if (currentUserId && distressSale.seller && currentUserId !== distressSale.seller.userId) {
+        // Use findOrCreate to ensure one view per user per distress sale
+        const [view, created] = await db.ProductView.findOrCreate({
+          where: { productId: distressSale.id, viewerId: currentUserId },
+          defaults: { viewedAt: new Date() }
+        });
+        
+        // Only increment view count if this is a new view (not a duplicate)
+        if (created) {
+          await distressSale.increment('views');
         }
-      } else {
+      } else if (!currentUserId) {
+        // Anonymous users - cannot dedupe, always increment
         await distressSale.increment('views');
       }
+      // Note: If user is the seller (currentUserId === seller.userId), don't increment views
 
       // Attach canonical sellerEntityId
       let distressSaleData = distressSale.toJSON ? distressSale.toJSON() : distressSale;

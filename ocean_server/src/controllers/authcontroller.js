@@ -1,11 +1,12 @@
-const {UserTable, SellersTable, SellerDocument} = require('../../models')
+const db = require('../../models')
+const {UserTable, SellersTable, SellerDocument, Product, Post, Auction, GroupBuy, SwapDeal, BuyerNeed, UserFollows, SavedProduct, SavedPost, PostLike, ProductLike, Notification} = db
 const { sendSellerApplicationNotification, sendAdminNotification } = require('./notificationController')
 const { sendEmail, emailTemplates } = require('../services/emailService')
 const CloudinaryService = require('../services/cloudinaryService')
 const bcrypt = require('bcrypt')
 const jwt = require('jsonwebtoken')
 const crypto = require('crypto')
-const { where } = require('sequelize')
+const { Op } = require('sequelize')
 const JWT_SECRET = process.env.JWT_SECRET
 const redisClient = require('../config/redisdb')
 const { mapRequestFields, mapResponseFields } = require('../../utils/fieldMapper')
@@ -1244,6 +1245,238 @@ const googleMobileAuth = async (req, res) => {
     }
 };
 
+// Delete user account (soft delete with anonymization)
+const deleteAccount = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const { password, reason } = req.body;
+
+        // Validate password is provided
+        if (!password) {
+            return res.status(400).json({
+                success: false,
+                message: 'Password is required to delete your account'
+            });
+        }
+
+        // Get user and verify password
+        const user = await UserTable.findByPk(userId);
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found'
+            });
+        }
+
+        // Verify password
+        const isPasswordValid = await bcrypt.compare(password, user.password);
+        if (!isPasswordValid) {
+            return res.status(401).json({
+                success: false,
+                message: 'Invalid password. Please provide the correct password to delete your account.'
+            });
+        }
+
+        // Check if account is already deactivated
+        if (user.accountStatus === 'deactivated') {
+            return res.status(400).json({
+                success: false,
+                message: 'Account is already deleted'
+            });
+        }
+
+        // Start transaction for data consistency
+        const transaction = await db.sequelize.transaction();
+
+        try {
+            // 1. Soft delete and anonymize user account
+            const deletedEmail = `deleted_${userId.substring(0, 8)}@deleted.local`;
+            const deletedUsername = `deleted_${userId.substring(0, 8)}`;
+            
+            await user.update({
+                accountStatus: 'deactivated',
+                fullName: 'Deleted User',
+                email: deletedEmail,
+                username: deletedUsername,
+                profilePicture: null,
+                coverPicture: null,
+                bio: null,
+                location: null,
+                website: null,
+                google_Id: null,
+                emailVerificationToken: null,
+                emailVerificationExpires: null,
+                deleteReason: reason || 'User requested account deletion',
+                deletedAt: new Date()
+            }, { transaction });
+
+            // 2. Soft delete user's products (if seller)
+            const seller = await SellersTable.findOne({
+                where: { userId: userId },
+                transaction
+            });
+
+            if (seller) {
+                await Product.update(
+                    { 
+                        status: 'inactive',
+                        isAvailable: false 
+                    },
+                    { 
+                        where: { sellerId: seller.id },
+                        transaction 
+                    }
+                );
+            }
+
+            // 3. Soft delete user's posts
+            await Post.update(
+                { status: 'inactive' },
+                { 
+                    where: { userId: userId },
+                    transaction 
+                }
+            );
+
+            // 4. Cancel/soft delete user's auctions
+            await Auction.update(
+                { status: 'cancelled' },
+                { 
+                    where: { 
+                        sellerId: userId,
+                        status: { [Op.in]: ['draft', 'active', 'paused'] }
+                    },
+                    transaction 
+                }
+            );
+
+            // 5. Cancel/soft delete user's group buys
+            await GroupBuy.update(
+                { status: 'cancelled' },
+                { 
+                    where: { 
+                        creator_id: userId,
+                        status: { [Op.in]: ['pending', 'active'] }
+                    },
+                    transaction 
+                }
+            );
+
+            // 6. Cancel/soft delete user's swap deals
+            await SwapDeal.update(
+                { status: 'cancelled' },
+                { 
+                    where: { 
+                        sellerId: userId,
+                        status: { [Op.in]: ['pending', 'active'] }
+                    },
+                    transaction 
+                }
+            );
+
+            // 7. Cancel/soft delete user's buyer needs
+            await BuyerNeed.update(
+                { status: 'cancelled' },
+                { 
+                    where: { 
+                        buyer_id: userId,
+                        status: { [Op.in]: ['active', 'in_progress'] }
+                    },
+                    transaction 
+                }
+            );
+
+            // 8. Remove user's follows and followers
+            await UserFollows.destroy({
+                where: {
+                    [Op.or]: [
+                        { user_id: userId },
+                        { follows_user_id: userId }
+                    ]
+                },
+                transaction
+            });
+
+            // 9. Remove user's saved items
+            await SavedProduct.destroy({
+                where: { userId: userId },
+                transaction
+            });
+
+            await SavedPost.destroy({
+                where: { userId: userId },
+                transaction
+            });
+
+            // 10. Remove user's likes
+            await PostLike.destroy({
+                where: { userId: userId },
+                transaction
+            });
+
+            await ProductLike.destroy({
+                where: { userId: userId },
+                transaction
+            });
+
+            // 11. Delete user's notifications (personal notifications)
+            await Notification.destroy({
+                where: { userId: userId },
+                transaction
+            });
+
+            // 12. Clear all user sessions from Redis
+            const sessionKeys = await redisClient.keys(`session:${userId}:*`);
+            if (sessionKeys.length > 0) {
+                await redisClient.del(sessionKeys);
+            }
+
+            // Commit transaction
+            await transaction.commit();
+
+            // Clear auth cookie
+            res.clearCookie('token');
+
+            // Send confirmation email (optional - can be async)
+            try {
+                await sendEmail(
+                    user.email, // Original email before anonymization
+                    'Account Deletion Confirmation',
+                    emailTemplates.accountDeleted({
+                        userName: user.fullName,
+                        deletionDate: new Date().toLocaleDateString()
+                    })
+                );
+            } catch (emailError) {
+                console.error('Error sending deletion confirmation email:', emailError);
+                // Don't fail the deletion if email fails
+            }
+
+            res.status(200).json({
+                success: true,
+                message: 'Your account has been successfully deleted. All your personal information has been anonymized and your content has been removed.',
+                data: {
+                    deletedAt: new Date(),
+                    recoveryPeriod: '30 days' // Inform user about recovery period
+                }
+            });
+
+        } catch (error) {
+            // Rollback transaction on error
+            await transaction.rollback();
+            throw error;
+        }
+
+    } catch (error) {
+        console.error('Delete account error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error deleting account. Please try again later.',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+};
+
 module.exports = {
     signup,
     login,
@@ -1253,5 +1486,6 @@ module.exports = {
     sellerRegistration,
     verifyEmail,
     resendVerificationEmail,
-    googleMobileAuth
+    googleMobileAuth,
+    deleteAccount
 };

@@ -1,7 +1,7 @@
 const express = require('express')
 const router = express.Router()
 const multer = require('multer')
-const {signup,login,forgotPassword,verifyResetCode,resetPassword,sellerRegistration,verifyEmail,resendVerificationEmail,googleMobileAuth} = require('../controllers/authcontroller')
+const {signup,login,forgotPassword,verifyResetCode,resetPassword,sellerRegistration,verifyEmail,resendVerificationEmail,googleMobileAuth,deleteAccount} = require('../controllers/authcontroller')
 const authMiddleware = require('../middleware/authMiddleware')
 const updateRoleBasedOnVerification = require('../middleware/sellerVerficationstatusWare')
 const updateVerificationStatusBasedOnDocuments = require('../middleware/sellerdocstatusWare')
@@ -140,6 +140,7 @@ router.get('/api/messaging-token', authMiddleware, (req, res) => {
 router.post('/api/forgot-password',forgotPassword)
 router.post('/api/verify-resetCode',verifyResetCode)
 router.post('/api/reset-password',resetPassword)
+router.delete('/api/account/delete', authMiddleware, deleteAccount)
 router.post('/api/seller-registration', authMiddleware, upload.fields([
   { name: 'businessDocument', maxCount: 1 },
   { name: 'personalId', maxCount: 1 }

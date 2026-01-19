@@ -592,6 +592,30 @@ const emailTemplates = {
         <p>Best regards,<br>The Ocean App Team</p>
       </div>
     `
+  }),
+
+  accountDeleted: (userName, deletionDate) => ({
+    subject: "Account Deletion Confirmation - Ocean App",
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #2c3e50;">Hello ${userName},</h2>
+        <p>This email confirms that your Ocean App account has been successfully deleted on ${deletionDate}.</p>
+        <div style="background-color: #f8f9fa; padding: 20px; border-radius: 5px; margin: 20px 0;">
+          <h3 style="color: #2c3e50;">What was deleted:</h3>
+          <ul>
+            <li>Your personal information has been anonymized</li>
+            <li>Your profile and account data</li>
+            <li>Your active listings and posts</li>
+            <li>Your saved items and preferences</li>
+          </ul>
+          <h3 style="color: #2c3e50; margin-top: 20px;">Recovery Period:</h3>
+          <p>You have <strong>30 days</strong> to recover your account if this was done by mistake. After 30 days, the deletion will be permanent.</p>
+        </div>
+        <p>If you did not request this deletion, please contact our support team immediately.</p>
+        <p>We're sorry to see you go. If you change your mind, you're always welcome back!</p>
+        <p>Best regards,<br>The Ocean App Team</p>
+      </div>
+    `
   })
 };
 
