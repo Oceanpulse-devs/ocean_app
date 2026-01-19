@@ -25,7 +25,7 @@ module.exports = (sequelize) => {
             allowNull: false
         },
         thumbnailUrl: {
-            type: DataTypes.STRING(500),
+            type: DataTypes.STRING(2000),
             allowNull: true
         },
         mediaOrder: {
