@@ -24,6 +24,55 @@ const createNotification = async (userId, title, message, type = 'info', categor
     }
 };
 
+// Helper: Standardize user object across all post types
+const standardizeUserObject = (postData) => {
+    const displayName = postData.user?.seller?.businessName || postData.user?.fullName || 'Unknown User';
+    const role = postData.user?.seller ? 'seller' : (postData.user?.accountType || 'user');
+    
+    return {
+        id: postData.user?.id || '',
+        name: displayName,
+        businessName: postData.user?.seller?.businessName || null,
+        avatar: postData.user?.profilePicture || '👤',
+        verified: postData.user?.accountStatus === 'verified' || postData.user?.seller?.verificationStatus === 'approved',
+        role: role,
+        location: postData.user?.location || null
+    };
+};
+
+// Helper: Standardize media array format
+const standardizeMediaArray = (mediaList, postId) => {
+    if (!mediaList || !Array.isArray(mediaList) || mediaList.length === 0) {
+        return [];
+    }
+    
+    return mediaList.map((item, index) => {
+        if (typeof item === 'string') {
+            // Simple URL string
+            return {
+                id: `${postId}_media_${index}`,
+                type: item.toLowerCase().includes('.mp4') || item.toLowerCase().includes('.mov') ? 'video' : 'image',
+                url: item,
+                thumbnailUrl: item,
+                order: index
+            };
+        } else if (item && typeof item === 'object') {
+            // Object with mediaUrl or url
+            const url = item.url || item.mediaUrl || item.thumbnailUrl || '';
+            const mediaType = item.type || item.mediaType || 'image';
+            
+            return {
+                id: item.id || `${postId}_media_${index}`,
+                type: mediaType.toLowerCase().includes('video') ? 'video' : 'image',
+                url: url,
+                thumbnailUrl: item.thumbnailUrl || url,
+                order: typeof item.mediaOrder === 'number' ? item.mediaOrder : (typeof item.order === 'number' ? item.order : index)
+            };
+        }
+        return null;
+    }).filter(Boolean);
+};
+
 // Get home feed with stories and mixed posts
 const getHomeFeed = async (req, res) => {
     try {
@@ -31,8 +80,8 @@ const getHomeFeed = async (req, res) => {
         const offset = (page - 1) * limit;
         const currentUserId = req.user?.id;
 
-        // Create cache key based on query parameters
-        const cacheKey = `homeFeed:${page}:${limit}:${currentUserId || 'guest'}`;
+        // Create cache key based on query parameters (v2 for new standardized structure)
+        const cacheKey = `homeFeed:v2:${page}:${limit}:${currentUserId || 'guest'}`;
         
         // Try to get from Redis cache first
         try {
@@ -175,117 +224,132 @@ const getHomeFeed = async (req, res) => {
                         }
                     }
                     
-                    // Get business name if user is a seller, otherwise use personal name
-                    const displayName = postData.user.seller?.businessName || postData.user.fullName;
-                    
-                    // Product post format
+                    // Product post format (STANDARDIZED V2)
                     formattedPost = {
                         id: postData.id,
                         type: 'product',
-                        contentType: postData.contentType,
+                        category: 'product',
+                        contentType: 'product',
                         createdAt: postData.createdAt,
                         updatedAt: postData.updatedAt,
-                        productId: postData.sourceId || postData.feedMetadata?.product_id || null,
-                        user: {
-                            id: postData.user.id,
-                            name: displayName,
-                            avatar: postData.user.profilePicture || '👤',
-                            verified: postData.user.accountStatus === 'verified',
-                            location: postData.user.location
-                        },
-                        product: {
-                            id: postData.sourceId || postData.feedMetadata?.product_id || null,
-                            title: postData.productName || 'Product',
-                            price: postData.price ? `₦${parseInt(postData.price).toLocaleString()}` : 'Price not specified',
-                            brand: postData.brand,
-                            description: postData.content.replace(/^New Product: /, '').trim() || postData.productName || 'Product',
-                            images: productImages,
-                            metadata: postData.feedMetadata
-                        },
-                        likes: postData.likesCount || 0,
-                        comments: postData.commentsCount || 0,
-                        shares: postData.sharesCount || 0,
-                        saves: postData.savedCount || 0,
+                        
+                        user: standardizeUserObject(postData),
+                        
+                        caption: postData.content?.replace(/^New Product: /, '').trim() || '',
+                        
+                        media: standardizeMediaArray(productImages, postData.id),
+                        
+                        likesCount: postData.likesCount || 0,
+                        commentsCount: postData.commentsCount || 0,
+                        sharesCount: postData.sharesCount || 0,
+                        savesCount: postData.savedCount || 0,
                         timeAgo: getTimeAgo(postData.createdAt),
                         isLiked: false, // Will be set below
                         isSaved: false, // Will be set below
-                        showComments: false,
-                        commentList: []
+                        
+                        productId: postData.sourceId || postData.feedMetadata?.product_id || null,
+                        
+                        product: {
+                            id: postData.sourceId || postData.feedMetadata?.product_id || null,
+                            name: postData.productName || 'Product',
+                            brand: postData.brand || null,
+                            description: postData.content?.replace(/^New Product: /, '').trim() || postData.productName || '',
+                            category: postData.feedMetadata?.category || null,
+                            price: postData.price || 0,
+                            currencyCode: 'NGN',
+                            images: productImages,
+                            metadata: postData.feedMetadata || {}
+                        }
                     };
                 } else if (postData.contentType === 'auction') {
-                    // Auction post format
-                    const displayName = postData.user?.seller?.businessName || postData.user?.fullName;
+                    // Auction post format (STANDARDIZED V2)
+                    const auctionImages = postData.media?.map(m => m.mediaUrl) || postData.feedMetadata?.images || [];
+                    
                     formattedPost = {
                         id: postData.id,
                         type: 'auction',
-                        contentType: postData.contentType,
+                        category: 'auction',
+                        contentType: 'auction',
                         createdAt: postData.createdAt,
                         updatedAt: postData.updatedAt,
-                        user: {
-                            id: postData.user.id,
-                            name: displayName,
-                            avatar: postData.user.profilePicture || '👤',
-                            verified: postData.user.accountStatus === 'verified',
-                            location: postData.user.location
-                        },
-                        auction: {
-                            title: postData.productName || 'Auction',
-                            startingPrice: postData.price ? `₦${parseInt(postData.price).toLocaleString()}` : 'Price not specified',
-                            description: postData.content,
-                            images: postData.media?.map(m => m.mediaUrl) || [],
-                            metadata: postData.feedMetadata
-                        },
-                        likes: postData.likesCount || 0,
-                        comments: postData.commentsCount || 0,
-                        shares: postData.sharesCount || 0,
-                        saves: postData.savedCount || 0,
+                        
+                        user: standardizeUserObject(postData),
+                        
+                        caption: postData.content || '',
+                        
+                        media: standardizeMediaArray(auctionImages, postData.id),
+                        
+                        likesCount: postData.likesCount || 0,
+                        commentsCount: postData.commentsCount || 0,
+                        sharesCount: postData.sharesCount || 0,
+                        savesCount: postData.savedCount || 0,
                         timeAgo: getTimeAgo(postData.createdAt),
                         isLiked: false,
                         isSaved: false,
-                        showComments: false,
-                        commentList: []
+                        
+                        auctionId: postData.sourceId || postData.feedMetadata?.auction_id || null,
+                        
+                        auction: {
+                            id: postData.sourceId || postData.feedMetadata?.auction_id || null,
+                            productName: postData.productName || 'Auction',
+                            brand: postData.brand || null,
+                            category: postData.feedMetadata?.category || null,
+                            description: postData.content || '',
+                            startingBid: postData.price || 0,
+                            currentBid: postData.feedMetadata?.currentBid || postData.price || 0,
+                            currencyCode: 'NGN',
+                            endTime: postData.feedMetadata?.endTime || null,
+                            images: auctionImages,
+                            metadata: postData.feedMetadata || {}
+                        }
                     };
                 } else if (postData.contentType === 'group_buy') {
-                    // Group buy post format
+                    // Group buy post format (STANDARDIZED V2)
                     const groupBuyId = postData.sourceId || postData.feedMetadata?.group_buy_id || null;
+                    const groupBuyImages = postData.media?.map(m => m.mediaUrl) || postData.feedMetadata?.images || [];
+                    
                     formattedPost = {
                         id: postData.id,
                         type: 'group_buy',
-                        contentType: postData.contentType,
-                        bulkPurchaseId: groupBuyId, // Add for frontend mapping
-                        groupBuyId: groupBuyId, // Also add as alternative
+                        category: 'group_buy',
+                        contentType: 'group_buy',
                         createdAt: postData.createdAt,
                         updatedAt: postData.updatedAt,
-                        user: {
-                            id: postData.user.id,
-                            name: postData.user.fullName,
-                            avatar: postData.user.profilePicture || '👤',
-                            verified: postData.user.accountStatus === 'verified',
-                            location: postData.user.location
-                        },
-                        groupBuy: {
-                            id: groupBuyId, // Add id to groupBuy object
-                            title: postData.productName || 'Group Buy',
-                            price: postData.price ? `₦${parseInt(postData.price).toLocaleString()}` : 'Price not specified',
-                            description: postData.content,
-                            images: postData.media?.map(m => m.mediaUrl) || [],
-                            metadata: postData.feedMetadata
-                        },
-                        likes: postData.likesCount || 0,
-                        comments: postData.commentsCount || 0,
-                        shares: postData.sharesCount || 0,
-                        saves: postData.savedCount || 0,
+                        
+                        user: standardizeUserObject(postData),
+                        
+                        caption: postData.content || '',
+                        
+                        media: standardizeMediaArray(groupBuyImages, postData.id),
+                        
+                        likesCount: postData.likesCount || 0,
+                        commentsCount: postData.commentsCount || 0,
+                        sharesCount: postData.sharesCount || 0,
+                        savesCount: postData.savedCount || 0,
                         timeAgo: getTimeAgo(postData.createdAt),
                         isLiked: false,
                         isSaved: false,
-                        showComments: false,
-                        commentList: []
+                        
+                        bulkPurchaseId: groupBuyId,
+                        
+                        groupBuy: {
+                            id: groupBuyId,
+                            productName: postData.productName || 'Group Buy',
+                            brand: postData.brand || null,
+                            category: postData.feedMetadata?.category || null,
+                            description: postData.content || '',
+                            pricePerUnit: postData.price || 0,
+                            currencyCode: 'NGN',
+                            minBuyers: postData.feedMetadata?.minBuyers || 0,
+                            maxBuyers: postData.feedMetadata?.maxBuyers || 0,
+                            currentBuyers: postData.feedMetadata?.currentBuyers || 0,
+                            deadline: postData.feedMetadata?.deadline || null,
+                            images: groupBuyImages,
+                            metadata: postData.feedMetadata || {}
+                        }
                     };
                 } else if (postData.contentType === 'swap_deal') {
-                    // Swap deal post format
-                    const displayName = postData.user?.seller?.businessName || postData.user?.fullName;
-                    
-                    // Get swap deal ID from multiple sources for frontend compatibility
+                    // Swap deal post format (STANDARDIZED V2)
                     const swapDealId = postData.sourceId || 
                                       postData.feedMetadata?.swap_deal_id || 
                                       postData.feedMetadata?.swap_dealId || 
@@ -299,208 +363,122 @@ const getHomeFeed = async (req, res) => {
                         swapDealImages = postData.media.map(m => m.mediaUrl);
                     }
                     
-                    // Format media array
-                    const mediaArray = postData.media?.map((m, index) => ({
-                        id: m.id || `media_${Date.now()}_${index}`,
-                        type: m.mediaType || 'image',
-                        url: m.mediaUrl,
-                        thumbnailUrl: m.thumbnailUrl || m.mediaUrl
-                    })) || [];
-                    
-                    // Build feedMetadata with all swap deal details
-                    const feedMetadata = {
-                        swap_deal_id: swapDealId,
-                        images: swapDealImages,
-                        ...(postData.feedMetadata || {}), // Include all existing metadata
-                        product_to_swap: postData.feedMetadata?.product_to_swap || postData.productName || null,
-                        category_to_swap: postData.feedMetadata?.category_to_swap || null,
-                        brand_to_swap: postData.feedMetadata?.brand_to_swap || null,
-                        condition: postData.feedMetadata?.condition || null,
-                        status: postData.feedMetadata?.status || 'active',
-                        is_featured: postData.feedMetadata?.is_featured || false
-                    };
-                    
                     formattedPost = {
                         id: postData.id,
-                        swapDealId: swapDealId,  // ✅ Top level swap deal ID
-                        category: 'swap_deal',   // ✅ Required category
-                        type: 'swap_deal',       // ✅ Required type
+                        type: 'swap_deal',
+                        category: 'swap_deal',
                         contentType: 'swap_deal',
-                        sourceId: postData.sourceId || swapDealId,  // ✅ Source ID
-                        sourceTable: postData.sourceTable || 'swap_deals',  // ✅ Source table
                         createdAt: postData.createdAt,
                         updatedAt: postData.updatedAt,
-                        user: {
-                            id: postData.user.id,
-                            name: displayName,
-                            avatar: postData.user.profilePicture || '👤',
-                            verified: postData.user.accountStatus === 'verified',
-                            location: postData.user.location
-                        },
-                        // Attach seller identifiers & metadata for frontend
-                        sellerEntityId: postData.user?.seller?.id || null,
-                        sellerMeta: {
-                            businessName: postData.user?.seller?.businessName || null,
-                            profilePicture: postData.user?.profilePicture || null,
-                            businessEmail: postData.user?.seller?.businessEmail || null
-                        },
-                        caption: postData.content || `Swap Deal: ${feedMetadata.product_to_swap || 'Product'}`,
-                        feedMetadata: feedMetadata,  // ✅ Complete metadata with images array
-                        media: mediaArray,  // ✅ Media array format
-                        likes: postData.likesCount || 0,
-                        comments: postData.commentsCount || 0,
-                        shares: postData.sharesCount || 0,
-                        saves: postData.savedCount || 0,
+                        
+                        user: standardizeUserObject(postData),
+                        
+                        caption: postData.content || '',
+                        
+                        media: standardizeMediaArray(swapDealImages, postData.id),
+                        
+                        likesCount: postData.likesCount || 0,
+                        commentsCount: postData.commentsCount || 0,
+                        sharesCount: postData.sharesCount || 0,
+                        savesCount: postData.savedCount || 0,
                         timeAgo: getTimeAgo(postData.createdAt),
                         isLiked: false,
                         isSaved: false,
-                        showComments: false,
-                        commentList: []
+                        
+                        swapDealId: swapDealId,
+                        
+                        swapDeal: {
+                            id: swapDealId,
+                            title: postData.productName || `Swap Deal: ${postData.feedMetadata?.product_to_swap || 'Product'}`,
+                            myItem: {
+                                name: postData.feedMetadata?.product_to_swap || postData.productName || '',
+                                brand: postData.feedMetadata?.brand_to_swap || null,
+                                category: postData.feedMetadata?.category_to_swap || null,
+                                condition: postData.feedMetadata?.condition || null,
+                                images: swapDealImages
+                            },
+                            wantedItem: {
+                                name: postData.feedMetadata?.preferred_items || '',
+                                category: postData.feedMetadata?.preferred_swap_category || null
+                            },
+                            preferredSwapCategory: postData.feedMetadata?.preferred_swap_category || null,
+                            status: postData.feedMetadata?.status || 'active'
+                        }
                     };
-                    
-                    console.log('🔄 SWAP DEAL POST FOUND:', {
-                        postId: postData.id,
-                        swapDealId: swapDealId,
-                        sourceId: postData.sourceId,
-                        imagesCount: swapDealImages.length
-                    });
-                    console.log('🔄 SWAP DEAL MAPPING:', {
-                        swapDealId: swapDealId,
-                        sourceId: postData.sourceId,
-                        feedMetadataSwapDealId: postData.feedMetadata?.swap_deal_id,
-                        hasImages: swapDealImages.length > 0
-                    });
                 } else if (postData.contentType === 'product_demand') {
-                    // Product Demand post format (read-only mode on feed)
+                    // Product Demand post format (STANDARDIZED V2)
                     const buyerNeedId = postData.sourceId || postData.feedMetadata?.buyer_need_id || null;
                     
                     // Get images from media or feedMetadata
                     let demandImages = [];
                     if (postData.media && postData.media.length > 0) {
                         demandImages = postData.media.map(m => m.mediaUrl);
+                    } else if (postData.feedMetadata?.images) {
+                        demandImages = postData.feedMetadata.images;
                     }
-                    
-                    // Format media array
-                    const mediaArray = postData.media?.map((m, index) => ({
-                        id: m.id || `media_${Date.now()}_${index}`,
-                        type: m.mediaType || 'image',
-                        url: m.mediaUrl,
-                        thumbnailUrl: m.thumbnailUrl || m.mediaUrl
-                    })) || [];
-                    
-                    // Build feedMetadata with all buyer need details
-                    const feedMetadata = {
-                        buyer_need_id: buyerNeedId,
-                        title: postData.feedMetadata?.title || postData.productName || 'Product Demand',
-                        description: postData.feedMetadata?.description || postData.content || '',
-                        category: postData.feedMetadata?.category || postData.category || null,
-                        status: postData.feedMetadata?.status || 'active',
-                        reach_limit: postData.feedMetadata?.reach_limit || 5,
-                        current_reach: postData.feedMetadata?.current_reach || 0,
-                        reach_exceeded: postData.feedMetadata?.reach_exceeded || false,
-                        expires_at: postData.feedMetadata?.expires_at || null,
-                        is_featured: postData.feedMetadata?.is_featured || false,
-                        images: demandImages,
-                        ...(postData.feedMetadata || {}) // Include all existing metadata
-                    };
                     
                     formattedPost = {
                         id: postData.id,
-                        demandPostId: buyerNeedId,  // Top level buyer need ID
-                        category: 'product_demand',   // Required category
-                        type: 'product_demand',       // Required type
+                        type: 'product_demand',
+                        category: 'product_demand',
                         contentType: 'product_demand',
-                        sourceId: postData.sourceId || buyerNeedId,  // Source ID
-                        sourceTable: postData.sourceTable || 'buyer_needs',  // Source table
                         createdAt: postData.createdAt,
                         updatedAt: postData.updatedAt,
-                        user: {
-                            id: postData.user.id,
-                            name: postData.user.fullName,  // Buyer name (not seller)
-                            avatar: postData.user.profilePicture || '👤',
-                            verified: postData.user.accountStatus === 'verified',
-                            location: postData.user.location
-                        },
-                        // Buyer need specific fields
+                        
+                        user: standardizeUserObject(postData),
+                        
+                        caption: postData.content || `Product Demand: ${postData.feedMetadata?.title || postData.productName || 'Product'}`,
+                        
+                        media: standardizeMediaArray(demandImages, postData.id),
+                        
+                        likesCount: postData.likesCount || 0,
+                        commentsCount: postData.commentsCount || 0,
+                        sharesCount: postData.sharesCount || 0,
+                        savesCount: postData.savedCount || 0,
+                        timeAgo: getTimeAgo(postData.createdAt),
+                        isLiked: false,
+                        isSaved: false,
+                        
+                        demandPostId: buyerNeedId,
+                        
                         buyerNeed: {
                             id: buyerNeedId,
                             title: postData.feedMetadata?.title || postData.productName || 'Product Demand',
                             description: postData.feedMetadata?.description || postData.content || '',
-                            category: postData.feedMetadata?.category || postData.category || null,
+                            category: postData.feedMetadata?.category || null,
+                            reachLimit: postData.feedMetadata?.reach_limit || 5,
+                            currentReach: postData.feedMetadata?.current_reach || 0,
+                            reachExceeded: postData.feedMetadata?.reach_exceeded || false,
+                            expiresAt: postData.feedMetadata?.expires_at || null,
                             status: postData.feedMetadata?.status || 'active',
-                            reach_limit: postData.feedMetadata?.reach_limit || 5,
-                            current_reach: postData.feedMetadata?.current_reach || 0,
-                            reach_exceeded: postData.feedMetadata?.reach_exceeded || false,
-                            expires_at: postData.feedMetadata?.expires_at || null,
-                            is_featured: postData.feedMetadata?.is_featured || false
-                        },
-                        caption: postData.content || `Product Demand: ${feedMetadata.title}`,
-                        feedMetadata: feedMetadata,  // Complete metadata with images array
-                        media: mediaArray,  // Media array format
-                        likes: postData.likesCount || 0,
-                        comments: postData.commentsCount || 0,
-                        shares: postData.sharesCount || 0,
-                        saves: postData.savedCount || 0,
-                        timeAgo: getTimeAgo(postData.createdAt),
-                        isLiked: false,
-                        isSaved: false,
-                        showComments: false,
-                        commentList: []
+                            isFeatured: postData.feedMetadata?.is_featured || false
+                        }
                     };
-                    
-                    console.log('🔍 PRODUCT DEMAND POST FOUND:', {
-                        postId: postData.id,
-                        buyerNeedId: buyerNeedId,
-                        sourceId: postData.sourceId,
-                        imagesCount: demandImages.length
-                    });
                 } else {
-                    // General post format (default) - Map to frontend field names
-                    const displayName = postData.user?.seller?.businessName || postData.user?.fullName;
-                    
-                    // Check if this is a distress sale post
-                    const isDistressSale = postData.contentType === 'distress_sale' || 
-                                          postData.contentType === 'distressSale' ||
-                                          postData.sourceTable === 'distress_sales' ||
-                                          postData.feedMetadata?.distressSaleId;
+                    // General post format (STANDARDIZED V2)
+                    const postImages = postData.media?.map(m => m.mediaUrl) || [];
                     
                     formattedPost = {
                         id: postData.id,
-                        category: postData.contentType || 'general',  // type → category
-                        contentType: postData.contentType || 'post',
+                        type: 'general',
+                        category: 'general',
+                        contentType: 'post',
                         createdAt: postData.createdAt,
                         updatedAt: postData.updatedAt,
-                        distressSaleId: isDistressSale ? (postData.sourceId || postData.feedMetadata?.distressSaleId || null) : null,
-                        user: {
-                            id: postData.user.id,
-                            name: displayName,
-                            avatar: postData.user.profilePicture || '👤',
-                            verified: postData.user.accountStatus === 'verified',
-                            location: postData.user.location
-                        },
-                        // Attach seller identifiers & metadata for frontend
-                        sellerEntityId: postData.user?.seller?.id || null,
-                        sellerMeta: {
-                            businessName: postData.user?.seller?.businessName || null,
-                            profilePicture: postData.user?.profilePicture || null,
-                            businessEmail: postData.user?.seller?.businessEmail || null
-                        },
-                        caption: postData.content,  // content → caption
-                        media: postData.media?.map((m, index) => ({
-                            id: m.id || `media_${Date.now()}_${index}`,
-                            type: m.mediaType || 'image',
-                            url: m.mediaUrl,
-                            thumbnailUrl: m.thumbnailUrl || m.mediaUrl
-                        })) || [],  // images → media with structure
-                        likes: postData.likesCount || 0,
-                        comments: postData.commentsCount || 0,
-                        shares: postData.sharesCount || 0,
-                        saves: postData.savedCount || 0,
+                        
+                        user: standardizeUserObject(postData),
+                        
+                        caption: postData.content || '',
+                        
+                        media: standardizeMediaArray(postImages, postData.id),
+                        
+                        likesCount: postData.likesCount || 0,
+                        commentsCount: postData.commentsCount || 0,
+                        sharesCount: postData.sharesCount || 0,
+                        savesCount: postData.savedCount || 0,
                         timeAgo: getTimeAgo(postData.createdAt),
                         isLiked: false,
-                        isSaved: false,
-                        showComments: false,
-                        commentList: []
+                        isSaved: false
                     };
                 }
 
