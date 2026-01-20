@@ -1004,7 +1004,7 @@ class DistressSaleController {
           
           if (currentUserId) {
             const [userSaved, userLike] = await Promise.all([
-              db.SavedProduct.findOne({ where: { productId: distressSale.id, userId: currentUserId } }),
+              db.SavedItem.findOne({ where: { itemId: distressSale.id, itemType: 'distress_sale', userId: currentUserId } }),
               db.ProductLike.findOne({ where: { productId: distressSale.id, userId: currentUserId } })
             ]);
 

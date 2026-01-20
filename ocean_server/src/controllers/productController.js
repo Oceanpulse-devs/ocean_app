@@ -1,4 +1,4 @@
-const { Product, ProductCategory, SavedProduct, SavedPost, Post, PostMedia, UserTable, SellersTable, UserFollows, Notification, ProductLike, Auction, SwapDeal, GroupBuy } = require('../../models');
+const { Product, ProductCategory, SavedItem, Post, PostMedia, UserTable, SellersTable, UserFollows, Notification, ProductLike, Auction, SwapDeal, GroupBuy } = require('../../models');
 const db = require('../../models');
 const { Op, Sequelize } = require('sequelize');
 const cloudinaryService = require('../services/cloudinaryService');
@@ -211,7 +211,7 @@ const getProduct = async (req, res) => {
         // Add engagement status for current user
         if (currentUserId) {
             const [userSaved, userLiked] = await Promise.all([
-                SavedProduct.findOne({ where: { productId, userId: currentUserId } }),
+                SavedItem.findOne({ where: { itemId: productId, itemType: 'product', userId: currentUserId } }),
                 ProductLike.findOne({ where: { productId, userId: currentUserId } })
             ]);
 
@@ -737,233 +737,30 @@ const toggleLikeProduct = async (req, res) => {
     }
 };
 
-// Toggle save/unsave product
-const toggleSaveProduct = async (req, res) => {
-    try {
-        const { productId } = req.params;
-        const userId = req.user.id;
-        
-        // Handle collectionName with proper defaults
-        let collectionName = 'Favorites'; // Default collection name
-        console.log('Request body:', req.body);
-        console.log('Collection name from body:', req.body?.collectionName);
-        
-        if (req.body && req.body.collectionName) {
-            collectionName = req.body.collectionName;
-        }
-        
-        console.log('Final collection name:', collectionName);
+// ============================================================================
+// SAVED ITEMS SYSTEM MIGRATION NOTICE
+// ============================================================================
+// The old saved items methods (toggleSaveProduct, getSavedProducts, 
+// deleteSavedProduct, getAllSavedItems) have been REMOVED and replaced with
+// a unified saved items system in savedItemsController.js
+//
+// Old endpoints (REMOVED):
+//   - POST /api/products/:productId/save
+//   - GET /api/saved-products
+//   - DELETE /api/saved-products/:savedItemId
+//   - GET /api/saved-items
+//
+// New unified endpoints (USE THESE):
+//   - POST /api/items/:itemId/save (Body: { itemType: 'product' | 'distress_sale' | ... })
+//   - GET /api/saved-items (Works for all item types)
+//   - DELETE /api/saved-items/:savedItemId (Works for all item types)
+//
+// See: ocean_server/src/controllers/savedItemsController.js
+// See: ocean_server/src/routes/savedItemsRoutes.js
+// ============================================================================
 
-        // Check if product exists
-        const product = await Product.findByPk(productId);
-        if (!product) {
-            return res.status(404).json({ message: "Product not found" });
-        }
-
-        // Check if already saved
-        const existingSave = await SavedProduct.findOne({
-            where: { productId, userId }
-        });
-
-        if (existingSave) {
-            // Unsave
-            await existingSave.destroy();
-            await product.decrement('saves');
-            
-            res.status(200).json({
-                message: "Product unsaved successfully",
-                data: { isSaved: false }
-            });
-        } else {
-            // Save
-            await SavedProduct.create({ productId, userId, collectionName });
-            await product.increment('saves');
-            
-            // Send notification to seller that their product was saved (if not saving own product)
-            // Get seller user ID
-            const seller = await SellersTable.findByPk(product.sellerId, {
-                attributes: ['userId']
-            });
-            
-            if (seller && seller.userId !== userId) {
-                const saver = await UserTable.findByPk(userId, {
-                    attributes: ['id', 'fullName', 'username', 'profilePicture']
-                });
-
-                await createNotification(
-                    seller.userId,  // Use User ID, not Seller Table ID
-                    'Product Saved',
-                    `${saver.fullName || saver.username} saved your product "${product.title}"`,
-                    'info',
-                    'product_save',
-                    { 
-                        productId: product.id,
-                        title: product.title,
-                        saverId: userId,
-                        saverName: saver.fullName || saver.username,
-                        saverUsername: saver.username,
-                        collectionName: collectionName,
-                        productPrice: product.price,
-                        productCategory: product.category,
-                        savesCount: product.saves + 1
-                    }
-                );
-            }
-            
-            res.status(200).json({
-                message: "Product saved successfully",
-                data: { isSaved: true }
-            });
-        }
-
-    } catch (error) {
-        console.error('Toggle save product error:', error);
-        res.status(500).json({ message: "Error toggling save", error: error.message });
-    }
-};
-
-// Get user's saved products
-const getSavedProducts = async (req, res) => {
-    try {
-        const { page = 1, limit = 10, collectionName } = req.query;
-        const offset = (page - 1) * limit;
-        const userId = req.user.id;
-
-        let whereClause = { userId };
-        if (collectionName) {
-            whereClause.collectionName = collectionName;
-        }
-
-        const savedProducts = await SavedProduct.findAndCountAll({
-            where: whereClause,
-            include: [
-                {
-                    model: Product,
-                    as: 'product',
-                    where: { status: 'active', isAvailable: true },
-                    include: [
-                        {
-                            model: SellersTable,
-                            as: 'seller',
-                            attributes: ['id', 'userId', 'businessName', 'businessAddress', 'country', 'state', 'category', 'verificationStatus'],
-                            include: [
-                                {
-                                    model: UserTable,
-                                    as: 'user',
-                                    attributes: ['id', 'fullName', 'email', 'profilePicture', 'accountType', 'accountStatus']
-                                }
-                            ]
-                        }
-                    ]
-                }
-            ],
-            order: [['createdAt', 'DESC']],
-            limit: parseInt(limit),
-            offset: parseInt(offset)
-        });
-
-        res.status(200).json({
-            message: "Saved products retrieved successfully",
-            data: {
-                savedProducts: savedProducts.rows,
-                pagination: {
-                    currentPage: parseInt(page),
-                    totalPages: Math.ceil(savedProducts.count / limit),
-                    totalSavedProducts: savedProducts.count,
-                    hasNextPage: offset + limit < savedProducts.count,
-                    hasPrevPage: page > 1
-                }
-            }
-        });
-
-    } catch (error) {
-        console.error('Get saved products error:', error);
-        res.status(500).json({ message: "Error retrieving saved products", error: error.message });
-    }
-};
-
-// Delete saved product by savedItemId
-const deleteSavedProduct = async (req, res) => {
-    try {
-        const { savedItemId } = req.params;
-        const userId = req.user.id;
-
-        console.log('Delete saved product request:', { savedItemId, userId });
-
-        // First, try to find by the savedItemId
-        let savedProduct = await SavedProduct.findOne({
-            where: { id: savedItemId, userId }
-        });
-
-        // If not found, check if it exists with different userId or try to find by productId
-        if (!savedProduct) {
-            console.log('SavedProduct not found by ID and userId. Checking alternatives...');
-            
-            // Check if record exists with different userId
-            const anySavedProduct = await SavedProduct.findOne({
-                where: { id: savedItemId }
-            });
-            
-            if (anySavedProduct) {
-                console.log('SavedProduct exists but with different userId:', {
-                    savedProductId: anySavedProduct.id,
-                    savedProductUserId: anySavedProduct.userId,
-                    currentUserId: userId,
-                    productId: anySavedProduct.productId
-                });
-                
-                // If userId doesn't match, return error (security check)
-                if (anySavedProduct.userId !== userId) {
-                    return res.status(403).json({ 
-                        success: false,
-                        message: "You don't have permission to delete this saved item" 
-                    });
-                }
-                
-                // If userId matches but first query failed (edge case), use this record
-                savedProduct = anySavedProduct;
-            } else {
-                // Record doesn't exist at all - treat as already deleted (idempotent)
-                console.log('SavedProduct record does not exist - treating as already deleted');
-                return res.status(200).json({ 
-                    success: true,
-                    message: "Saved product already removed",
-                    data: { isSaved: false }
-                });
-            }
-        }
-
-        const productId = savedProduct.productId;
-        
-        // Delete ALL SavedProduct records for this productId and userId (handle duplicates)
-        const deletedCount = await SavedProduct.destroy({
-            where: { productId, userId }
-        });
-        
-        console.log(`Deleted ${deletedCount} SavedProduct record(s) for productId: ${productId}, userId: ${userId}`);
-        
-        // Only decrement if we actually deleted something
-        if (deletedCount > 0) {
-            await Product.decrement('saves', { 
-                where: { id: productId },
-                by: deletedCount
-            });
-        }
-
-        res.status(200).json({
-            success: true,
-            message: "Saved product removed successfully",
-            data: { isSaved: false }
-        });
-    } catch (error) {
-        console.error('Delete saved product error:', error);
-        res.status(500).json({ 
-            success: false,
-            message: "Error removing saved product", 
-            error: error.message 
-        });
-    }
-};
+// [OLD METHODS REMOVED - See migration notice above]
+// Methods removed: toggleSaveProduct, getSavedProducts, deleteSavedProduct, getAllSavedItems
 
 // Get product categories (Universal Categories System)
 const getCategories = async (req, res) => {
@@ -1596,7 +1393,7 @@ const getSellerProducts = async (req, res) => {
                 
                 if (currentUserId) {
                     const [userSaved, userFollow] = await Promise.all([
-                        SavedProduct.findOne({ where: { productId: product.id, userId: currentUserId } }),
+                        SavedItem.findOne({ where: { itemId: product.id, itemType: 'product', userId: currentUserId } }),
                         UserFollows.findOne({ 
                             where: { 
                                 userId: currentUserId, 
@@ -1703,7 +1500,7 @@ const getUserProducts = async (req, res) => {
                 
                 if (currentUserId) {
                     const [userSaved, userLike] = await Promise.all([
-                        SavedProduct.findOne({ where: { productId: product.id, userId: currentUserId } }),
+                        SavedItem.findOne({ where: { itemId: product.id, itemType: 'product', userId: currentUserId } }),
                         ProductLike.findOne({ where: { productId: product.id, userId: currentUserId } })
                     ]);
 
@@ -2610,9 +2407,7 @@ module.exports = {
     updateProduct,
     deleteProduct,
     toggleLikeProduct,
-    toggleSaveProduct,
-    getSavedProducts,
-    deleteSavedProduct,
+    // toggleSaveProduct, getSavedProducts, deleteSavedProduct - REMOVED (see savedItemsController)
     getCategories,
     createCustomCategory,
     getCustomCategories,
@@ -2624,7 +2419,7 @@ module.exports = {
     getSellerProducts,
     getUserProducts,
     getMyProducts,
-    getAllSavedItems,
+    // getAllSavedItems - REMOVED (see savedItemsController)
     getTrendingProducts,
     getRecommendedProducts,
     getSimilarProducts,

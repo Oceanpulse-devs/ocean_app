@@ -1,5 +1,5 @@
 const db = require('../../models')
-const {UserTable, SellersTable, SellerDocument, Product, Post, Auction, GroupBuy, SwapDeal, BuyerNeed, UserFollows, SavedProduct, SavedPost, PostLike, ProductLike, Notification} = db
+const {UserTable, SellersTable, SellerDocument, Product, Post, Auction, GroupBuy, SwapDeal, BuyerNeed, UserFollows, SavedItem, PostLike, ProductLike, Notification} = db
 const { sendSellerApplicationNotification, sendAdminNotification } = require('./notificationController')
 const { sendEmail, emailTemplates } = require('../services/emailService')
 const CloudinaryService = require('../services/cloudinaryService')
@@ -1397,13 +1397,8 @@ const deleteAccount = async (req, res) => {
                 transaction
             });
 
-            // 9. Remove user's saved items
-            await SavedProduct.destroy({
-                where: { userId: userId },
-                transaction
-            });
-
-            await SavedPost.destroy({
+            // 9. Remove user's saved items (unified system)
+            await SavedItem.destroy({
                 where: { userId: userId },
                 transaction
             });

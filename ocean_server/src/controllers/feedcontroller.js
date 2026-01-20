@@ -1,4 +1,4 @@
-const { Post, PostMedia, PostLike, PostComment, PostShare, SavedPost, UserTable, SellersTable, UserFollows, ProductCategory, Notification } = require('../../models');
+const { Post, PostMedia, PostLike, PostComment, PostShare, SavedItem, UserTable, SellersTable, UserFollows, ProductCategory, Notification } = require('../../models');
 const { Op, Sequelize } = require('sequelize');
 const cloudinaryService = require('../services/cloudinaryService');
 const videoUploadService = require('../services/videoUploadService');
@@ -513,8 +513,8 @@ const getHomeFeed = async (req, res) => {
                     formattedPost.isLiked = !!userLike;
 
                     // Check if user saved the post
-                    const userSaved = await SavedPost.findOne({
-                        where: { postId: post.id, userId: currentUserId }
+                    const userSaved = await SavedItem.findOne({
+                        where: { itemId: post.id, itemType: 'post', userId: currentUserId }
                     });
                     formattedPost.isSaved = !!userSaved;
                 }
@@ -718,8 +718,8 @@ const getFeed = async (req, res) => {
                     postData.isLiked = !!userLike;
 
                     // Check if user saved the post
-                    const userSaved = await SavedPost.findOne({
-                        where: { postId: post.id, userId: currentUserId }
+                    const userSaved = await SavedItem.findOne({
+                        where: { itemId: post.id, itemType: 'post', userId: currentUserId }
                     });
                     postData.isSaved = !!userSaved;
 
@@ -1221,6 +1221,14 @@ const deleteSavedPost = async (req, res) => {
     }
 };
 
+// ============================================================================
+// SAVED ITEMS MIGRATION NOTICE
+// ============================================================================
+// Old save methods (toggleSave, getSavedPosts, deleteSavedPost) REMOVED
+// Use unified system: ocean_server/src/controllers/savedItemsController.js
+// New endpoint: POST /api/items/:itemId/save (Body: { itemType: 'post' })
+// ============================================================================
+
 // Share a post
 const toggleShare = async (req, res) => {
     try {
@@ -1460,8 +1468,8 @@ const searchPosts = async (req, res) => {
                     postData.isLiked = !!userLike;
 
                     // Check if user saved the post
-                    const userSaved = await SavedPost.findOne({
-                        where: { postId: post.id, userId: currentUserId }
+                    const userSaved = await SavedItem.findOne({
+                        where: { itemId: post.id, itemType: 'post', userId: currentUserId }
                     });
                     postData.isSaved = !!userSaved;
 
@@ -2511,8 +2519,8 @@ const getLikedPosts = async (req, res) => {
 
                 // Check if user saved the post
                 if (currentUserId) {
-                    const userSaved = await SavedPost.findOne({
-                        where: { postId: post.id, userId: currentUserId }
+                    const userSaved = await SavedItem.findOne({
+                        where: { itemId: post.id, itemType: 'post', userId: currentUserId }
                     });
                     formattedPost.isSaved = !!userSaved;
                 }
@@ -2566,10 +2574,8 @@ module.exports = {
     deletePost,
     getPost,
     toggleLike,
-    toggleSave,
-    deleteSavedPost,
+    // toggleSave, deleteSavedPost, getSavedPosts - REMOVED (see savedItemsController)
     toggleShare,
-    getSavedPosts,
     searchPosts,
     createComment,
     getComments,

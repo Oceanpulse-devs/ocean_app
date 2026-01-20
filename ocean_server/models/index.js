@@ -24,8 +24,7 @@ const PostShare = require('./PostShare');
 const Product = require('./Product');
 const ProductCategory = require('./ProductCategory');
 const ProductLike = require('./ProductLike');
-const SavedProduct = require('./SavedProduct');
-const SavedPost = require('./SavedPost');
+const SavedItem = require('./SavedItem');
 const UserFollows = require('./UserFollows');
 const Auction = require('./Auction');
 const AuctionBid = require('./AuctionBid');
@@ -91,8 +90,7 @@ db.PostShare = PostShare(sequelize, Sequelize.DataTypes);
 db.Product = Product(sequelize, Sequelize.DataTypes);
 db.ProductCategory = ProductCategory(sequelize, Sequelize.DataTypes);
 db.ProductLike = ProductLike(sequelize, Sequelize.DataTypes);
-db.SavedProduct = SavedProduct(sequelize, Sequelize.DataTypes);
-db.SavedPost = SavedPost(sequelize, Sequelize.DataTypes);
+db.SavedItem = SavedItem(sequelize, Sequelize.DataTypes);
 db.UserFollows = UserFollows(sequelize, Sequelize.DataTypes);
 db.Auction = Auction(sequelize, Sequelize.DataTypes);
 db.AuctionBid = AuctionBid(sequelize, Sequelize.DataTypes);
@@ -207,15 +205,12 @@ const setupAssociations = () => {
   // ProductCategory association with UserTable for custom categories
   db.ProductCategory.belongsTo(db.UserTable, { foreignKey: 'createdBy', as: 'creator' });
   
-  // SavedProduct associations
-  db.SavedProduct.belongsTo(db.Product, { foreignKey: 'productId', as: 'product' });
-  db.SavedProduct.belongsTo(db.UserTable, { foreignKey: 'userId', as: 'user' });
-  db.Product.hasMany(db.SavedProduct, { foreignKey: 'productId', as: 'savedProducts' });
-  
-  // SavedPost associations
-  db.SavedPost.belongsTo(db.Post, { foreignKey: 'postId', as: 'post' });
-  db.SavedPost.belongsTo(db.UserTable, { foreignKey: 'userId', as: 'user' });
-  
+  // SavedItem associations (unified saved items)
+  db.SavedItem.belongsTo(db.UserTable, { foreignKey: 'userId', as: 'user' });
+  db.UserTable.hasMany(db.SavedItem, { foreignKey: 'userId', as: 'savedItems' });
+  // Note: SavedItem doesn't have direct associations to Product/Post/etc
+  // because itemId can reference different tables based on itemType
+  // The association is handled dynamically in the controller
 
   
   // Auction associations

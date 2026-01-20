@@ -78,10 +78,7 @@ router.put('/api/products/:productId',
 );
 router.delete('/api/products/:productId', authMiddleware, productController.deleteProduct);
 router.post('/api/products/:productId/like', authMiddleware, productController.toggleLikeProduct);
-router.post('/api/products/:productId/save', authMiddleware, productController.toggleSaveProduct);
-router.get('/api/saved-products', authMiddleware, productController.getSavedProducts);
-router.delete('/api/saved-products/:savedItemId', authMiddleware, productController.deleteSavedProduct);
-router.get('/api/saved-items', authMiddleware, productController.getAllSavedItems);
+// Saved items routes moved to savedItemsRoutes.js (unified system)
 router.get('/api/my-products', authMiddleware, productController.getMyProducts);
 
 // Category management routes (authentication required)

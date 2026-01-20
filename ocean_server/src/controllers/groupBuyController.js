@@ -526,8 +526,9 @@ class GroupBuyController {
       });
 
       // Find users who might be interested in this categorysi
-      // This could be users who have saved products in this category or have shown interest
-      const interestedUsers = await db.SavedProduct.findAll({
+      // Find users interested in this category via saved items
+      const interestedUsers = await db.SavedItem.findAll({
+        where: { itemType: 'product' }, // Only consider saved products for interest
         include: [
           {
             model: db.Product,
