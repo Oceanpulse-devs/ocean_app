@@ -56,9 +56,9 @@ const updateSaveCount = async (itemId, itemType, increment = true) => {
   
   try {
     if (increment) {
-      await model.increment('saves', { where: { id: itemId } });
+      await model.increment('savedCount', { where: { id: itemId } });
     } else {
-      await model.decrement('saves', { where: { id: itemId } });
+      await model.decrement('savedCount', { where: { id: itemId } });
     }
   } catch (error) {
     console.error(`Error updating save count for ${itemType}:`, error);
