@@ -137,6 +137,11 @@ module.exports = (sequelize, DataTypes) => {
     defaultValue: 0,
     comment: 'Number of views on this group buy'
   },
+  savedCount: {
+    type: DataTypes.INTEGER,
+    defaultValue: 0,
+    comment: 'Number of times this group buy has been saved (standardized field)'
+  },
   is_boosted: {
     type: DataTypes.BOOLEAN,
     defaultValue: false,

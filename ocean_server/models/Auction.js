@@ -90,6 +90,11 @@ module.exports = (sequelize) => {
       type: DataTypes.INTEGER,
       defaultValue: 0
     },
+    savedCount: {
+      type: DataTypes.INTEGER,
+      defaultValue: 0,
+      comment: 'Number of times this auction has been saved (standardized field)'
+    },
     totalBids: {
       type: DataTypes.INTEGER,
       defaultValue: 0

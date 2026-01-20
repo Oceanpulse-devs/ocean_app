@@ -109,6 +109,12 @@ module.exports = (sequelize, DataTypes) => {
     field: 'views_count',
     comment: 'Number of views on this swap deal'
   },
+  savedCount: {
+    type: DataTypes.INTEGER,
+    defaultValue: 0,
+    field: 'savedCount',
+    comment: 'Number of times this swap deal has been saved (standardized field)'
+  },
   proposalsCount: {
     type: DataTypes.INTEGER,
     defaultValue: 0,

@@ -72,6 +72,11 @@ module.exports = (sequelize) => {
       type: DataTypes.INTEGER,
       defaultValue: 0
     },
+    savedCount: {
+      type: DataTypes.INTEGER,
+      defaultValue: 0,
+      comment: 'Number of times this product has been saved (standardized field)'
+    },
     likes: {
       type: DataTypes.INTEGER,
       defaultValue: 0
