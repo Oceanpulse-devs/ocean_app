@@ -472,7 +472,23 @@ class DistressSaleController {
       // Distress sales use Product model, so use ProductView for tracking
       // Composite primary key (productId, viewerId) prevents duplicate views from same user
       const currentUserId = req.user?.id;
-      if (currentUserId && distressSale.seller && currentUserId !== distressSale.seller.userId) {
+      
+      // Get seller's userId reliably (from seller relationship or fetch directly)
+      let sellerUserId = null;
+      if (distressSale.seller && distressSale.seller.userId) {
+        sellerUserId = distressSale.seller.userId;
+      } else if (distressSale.sellerId) {
+        // Fallback: fetch seller to get userId if relationship not loaded
+        const seller = await db.SellersTable.findByPk(distressSale.sellerId, {
+          attributes: ['userId']
+        });
+        if (seller) {
+          sellerUserId = seller.userId;
+        }
+      }
+      
+      // Only track views if user is logged in AND is NOT the seller
+      if (currentUserId && sellerUserId && currentUserId !== sellerUserId) {
         // Use findOrCreate to ensure one view per user per distress sale
         const [view, created] = await db.ProductView.findOrCreate({
           where: { productId: distressSale.id, viewerId: currentUserId },
@@ -487,7 +503,7 @@ class DistressSaleController {
         // Anonymous users - cannot dedupe, always increment
         await distressSale.increment('views');
       }
-      // Note: If user is the seller (currentUserId === seller.userId), don't increment views
+      // Note: If user is the seller (currentUserId === sellerUserId), don't increment views
 
       // Attach canonical sellerEntityId
       let distressSaleData = distressSale.toJSON ? distressSale.toJSON() : distressSale;
