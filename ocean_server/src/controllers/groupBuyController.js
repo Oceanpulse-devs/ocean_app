@@ -529,25 +529,40 @@ class GroupBuyController {
         attributes: ['id', 'fullName', 'username', 'profilePicture']
       });
 
-      // Find users who might be interested in this categorysi
+      // Find users who might be interested in this category
       // Find users interested in this category via saved items
-      const interestedUsers = await db.SavedItem.findAll({
-        where: { itemType: 'product' }, // Only consider saved products for interest
+      // Since SavedItem doesn't have direct Product association, query in two steps
+      const savedProducts = await db.SavedItem.findAll({
+        where: { itemType: 'product' },
         include: [
-          {
-            model: db.Product,
-            as: 'product',
-            attributes: ['category'],
-            where: { category: finalCategoryName }
-          },
           {
             model: db.UserTable,
             as: 'user',
             attributes: ['id', 'fullName', 'username', 'email']
           }
         ],
-        limit: 50 // Limit to avoid spam
+        limit: 100 // Get more to filter by category
       });
+
+      // Get product IDs from saved items
+      const productIds = savedProducts.map(sp => sp.itemId);
+
+      // Find products in the same category (only if we have product IDs)
+      let interestedUsers = [];
+      if (productIds.length > 0) {
+        const productsInCategory = await db.Product.findAll({
+          where: {
+            id: { [Op.in]: productIds },
+            category: finalCategoryName
+          },
+          attributes: ['id']
+        });
+
+        const matchingProductIds = new Set(productsInCategory.map(p => p.id));
+
+        // Filter saved items to only those with products in the matching category
+        interestedUsers = savedProducts.filter(sp => matchingProductIds.has(sp.itemId)).slice(0, 50);
+      }
 
       // Send notifications to interested users (excluding the creator)
       for (const savedProduct of interestedUsers) {
