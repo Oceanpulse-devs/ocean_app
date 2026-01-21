@@ -87,10 +87,6 @@ class SellerVerificationController {
       console.log('Received documents:', documents);
       console.log('Parsed documents:', parsedDocuments);
       console.log('Files received:', req.files ? req.files.length : 0);
-      console.log('📋 Selected Categories:', selectedCategories);
-      console.log('📋 Selected Subcategories (raw):', selectedSubcategories);
-      console.log('📋 Selected Subcategories (parsed):', JSON.stringify(parsedSubcategories, null, 2));
-
       const userId = req.user.id;
 
       // Validate required fields with specific error messages

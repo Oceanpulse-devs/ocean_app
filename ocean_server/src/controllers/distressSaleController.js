@@ -400,10 +400,6 @@ class DistressSaleController {
         offset: parseInt(offset)
       });
 
-      // Log the results for debugging
-      console.log(`Found ${count} distress sales`);
-      console.log('Sample distress sale:', distressSales[0] ? JSON.stringify(distressSales[0], null, 2) : 'No sales found');
-
       // Filter out products without valid seller data
       const validDistressSales = distressSales.filter(sale => sale.seller && sale.seller.id);
       console.log(`Filtered to ${validDistressSales.length} valid distress sales with seller data`);

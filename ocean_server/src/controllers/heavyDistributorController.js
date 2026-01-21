@@ -290,8 +290,6 @@ class HeavyDistributorController {
       });
       };
 
-      console.log('   Where Clause:', JSON.stringify(combinedWhereClause, null, 2));
-
       // Get sellers with pagination and sorting
       let { count, rows: sellers } = await runPaginatedQuery(combinedWhereClause);
 
@@ -793,8 +791,6 @@ class HeavyDistributorController {
             [Op.and]: optionalFilters
           }
         : { ...baseWhereClause };
-
-      console.log('   Where Clause:', JSON.stringify(combinedWhereClause, null, 2));
 
       // Search directly from SellersTable
       let sellers = await db.SellersTable.findAll({

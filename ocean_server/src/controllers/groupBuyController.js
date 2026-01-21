@@ -871,10 +871,6 @@ class GroupBuyController {
         // Mirror for flat access when needed by frontend
         groupBuyJson.creator.sellerEntityId = groupBuyJson.creator.seller.id;
       }
-      
-      console.log('📦 Group Buy Creator:', JSON.stringify(groupBuyJson.creator, null, 2));
-      console.log('🏪 Creator Seller:', JSON.stringify(groupBuyJson.creator?.seller, null, 2));
-      console.log('💬 Conversation ID:', groupBuyJson.conversation_id);
 
       // Map group buy response to include category name
       let mappedResponse = mapGroupBuyResponse(groupBuyJson);

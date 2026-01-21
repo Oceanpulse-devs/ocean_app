@@ -1028,9 +1028,6 @@ class SubscriptionController {
    */
   static async handleSuccessfulPayment(paymentData) {
     try {
-      console.log('Processing successful payment:', paymentData.reference);
-      console.log('Payment data:', JSON.stringify(paymentData, null, 2));
-      
       // Extract user ID from metadata
       const userId = paymentData.metadata?.userId || paymentData.customer?.id;
       const planId = paymentData.metadata?.planId;
@@ -1059,9 +1056,6 @@ class SubscriptionController {
    */
   static async handleFailedPayment(paymentData) {
     try {
-      console.log('Processing failed payment:', paymentData.reference);
-      console.log('Failed payment data:', JSON.stringify(paymentData, null, 2));
-      
       // Extract user ID from metadata
       const userId = paymentData.metadata?.userId || paymentData.customer?.id;
       
@@ -1089,9 +1083,6 @@ class SubscriptionController {
    */
   static async handleSubscriptionCreated(subscriptionData) {
     try {
-      console.log('Processing subscription created:', subscriptionData.subscription_code);
-      console.log('Subscription data:', JSON.stringify(subscriptionData, null, 2));
-      
       // Extract user ID from customer data
       const userId = subscriptionData.customer?.id;
       const planId = subscriptionData.plan?.id;
