@@ -1559,19 +1559,22 @@ MonthlyPromotionResetJob.start();
 console.log('✅ Monthly promotion reset cron job initialized (runs on 1st of each month at 00:00)');
 
 // Initialize virtual account monitoring cron job (for Flutterwave virtual account payments)
-const VirtualAccountMonitoringJob = require('./src/jobs/virtualAccountMonitoringJob');
-VirtualAccountMonitoringJob.start();
-console.log('✅ Virtual account monitoring cron job initialized (runs every 15 minutes)');
+// DISABLED: Not needed for recurring subscriptions (virtual accounts are one-time payments only)
+// const VirtualAccountMonitoringJob = require('./src/jobs/virtualAccountMonitoringJob');
+// VirtualAccountMonitoringJob.start();
+// console.log('✅ Virtual account monitoring cron job initialized (runs every 15 minutes)');
 
 // Initialize subscription reminder cron job (sends 3-day expiration reminders)
-const SubscriptionReminderJob = require('./src/jobs/subscriptionReminderJob');
-SubscriptionReminderJob.start();
-console.log('✅ Subscription reminder cron job initialized (runs daily at 9:00 AM)');
+// DISABLED: Not needed for auto-renewing subscriptions (Flutterwave handles renewals automatically)
+// const SubscriptionReminderJob = require('./src/jobs/subscriptionReminderJob');
+// SubscriptionReminderJob.start();
+// console.log('✅ Subscription reminder cron job initialized (runs daily at 9:00 AM)');
 
 // Initialize subscription expiration cron job (marks expired subscriptions and sends emails)
-const SubscriptionExpirationJob = require('./src/jobs/subscriptionExpirationJob');
-SubscriptionExpirationJob.start();
-console.log('✅ Subscription expiration cron job initialized (runs daily at 10:00 AM)');
+// DISABLED: Not needed for auto-renewing subscriptions (Flutterwave handles renewals automatically)
+// const SubscriptionExpirationJob = require('./src/jobs/subscriptionExpirationJob');
+// SubscriptionExpirationJob.start();
+// console.log('✅ Subscription expiration cron job initialized (runs daily at 10:00 AM)');
 
 // Initialize trial expiration cron job (handles free trial expiration and reminders)
 const TrialExpirationJob = require('./src/jobs/trialExpirationJob');

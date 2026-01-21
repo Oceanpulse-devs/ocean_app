@@ -20,8 +20,6 @@ class VirtualAccountMonitoringJob {
   static start() {
     // Run every 15 minutes
     cron.schedule('*/15 * * * *', async () => {
-      console.log('Starting virtual account monitoring job...');
-      
       try {
         const results = {
           timestamp: new Date().toISOString(),
@@ -51,8 +49,6 @@ class VirtualAccountMonitoringJob {
           limit: 50 // Process max 50 at a time to avoid rate limits
         });
 
-        console.log(`Found ${pendingSubscriptions.length} pending virtual account subscriptions to check`);
-
         results.checked = pendingSubscriptions.length;
 
         // Get Flutterwave provider
@@ -64,11 +60,8 @@ class VirtualAccountMonitoringJob {
             const paymentReference = subscription.paymentReference;
             
             if (!paymentReference) {
-              console.log(`⚠️ Subscription ${subscription.id} has no payment reference`);
               continue;
             }
-
-            console.log(`Checking payment for subscription ${subscription.id}, reference: ${paymentReference}`);
 
             // Calculate hours since subscription creation
             const hoursSinceCreation = (Date.now() - new Date(subscription.created_at).getTime()) / (1000 * 60 * 60);
@@ -79,8 +72,6 @@ class VirtualAccountMonitoringJob {
             results.verified++;
 
             if (paymentResult.success && paymentResult.status === 'success') {
-              console.log(`✅ Payment verified for subscription ${subscription.id}`);
-
               // Update subscription status
               await subscriptionService.updateUserSubscriptionStatus(
                 subscription.userId,
@@ -98,8 +89,6 @@ class VirtualAccountMonitoringJob {
 
               results.activated++;
 
-              console.log(`✅ Subscription ${subscription.id} activated for user ${subscription.userId}`);
-
               // Send confirmation email
               try {
                 const user = await subscriptionService.getUserById(subscription.userId);
@@ -116,14 +105,12 @@ class VirtualAccountMonitoringJob {
                   );
 
                   await sendEmail(user.email, emailTemplate.subject, emailTemplate.html, 'subscription');
-                  console.log(`✅ Confirmation email sent to ${user.email}`);
                 }
               } catch (emailError) {
                 console.error(`Error sending confirmation email for subscription ${subscription.id}:`, emailError);
               }
 
             } else if (paymentResult.status === 'failed') {
-              console.log(`❌ Payment failed for subscription ${subscription.id}`);
               results.failed++;
 
               // Mark as failed
@@ -131,11 +118,8 @@ class VirtualAccountMonitoringJob {
             } else {
               // Payment still pending - check if virtual account has expired
               if (hoursSinceCreation > 48) {
-                console.log(`⏰ Subscription ${subscription.id} expired (older than 48 hours), marking as cancelled`);
                 await subscription.update({ status: 'cancelled' });
                 results.expired++;
-              } else {
-                console.log(`⏳ Payment still pending for subscription ${subscription.id}`);
               }
             }
 
@@ -155,11 +139,8 @@ class VirtualAccountMonitoringJob {
               const hoursSinceCreation = (Date.now() - new Date(subscription.created_at).getTime()) / (1000 * 60 * 60);
 
               if (hoursSinceCreation > 48) {
-                console.log(`⏰ Subscription ${subscription.id} - transaction not found and older than 48 hours, marking as cancelled`);
                 await subscription.update({ status: 'cancelled' });
                 results.expired++;
-              } else {
-                console.log(`⚠️ Subscription ${subscription.id} - transaction not found yet (may be too early, ${hoursSinceCreation.toFixed(1)} hours old)`);
               }
             } else {
               console.error(`Error checking subscription ${subscription.id}:`, error);
@@ -171,14 +152,12 @@ class VirtualAccountMonitoringJob {
           }
         }
 
-        console.log('Virtual account monitoring job completed:', results);
-
       } catch (error) {
         console.error('Error in virtual account monitoring job:', error);
       }
     });
 
-    console.log('Virtual account monitoring cron job started (runs every 15 minutes)');
+    console.log('✅ Virtual account monitoring cron job started (runs every 15 minutes)');
   }
 
   /**

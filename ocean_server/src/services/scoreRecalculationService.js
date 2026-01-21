@@ -84,11 +84,6 @@ class ScoreRecalculationService {
         }
 
         currentOffset += items.length;
-
-        // Log progress
-        if (processed % 100 === 0) {
-          console.log(`Recalculated ${processed}/${maxItems} ${itemType} scores...`);
-        }
       }
 
       return {
@@ -125,8 +120,6 @@ class ScoreRecalculationService {
 
       // Process each item type
       for (const itemType of itemTypes) {
-        console.log(`Starting recalculation for ${itemType}...`);
-        
         const typeResult = await this.recalculateScoresForType(itemType, { batchSize });
         
         results.itemTypes.push(typeResult);
@@ -134,14 +127,10 @@ class ScoreRecalculationService {
         results.totalSuccessful += typeResult.successful;
         results.totalFailed += typeResult.failed;
         results.errors.push(...typeResult.errors);
-
-        console.log(`Completed ${itemType}: ${typeResult.successful}/${typeResult.processed} successful`);
       }
 
       results.endTime = new Date();
       results.duration = results.endTime - results.startTime;
-
-      console.log(`Score recalculation complete: ${results.totalSuccessful}/${results.totalProcessed} successful in ${results.duration}ms`);
 
       return results;
     } catch (error) {

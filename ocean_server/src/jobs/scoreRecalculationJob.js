@@ -16,26 +16,16 @@ class ScoreRecalculationJob {
   static start() {
     // Run every hour at minute 5
     cron.schedule('5 * * * *', async () => {
-      console.log('Starting score recalculation job...');
-      
       try {
-        const results = await ScoreRecalculationService.recalculateAllScores({
+        await ScoreRecalculationService.recalculateAllScores({
           batchSize: 100
-        });
-        
-        console.log('Score recalculation job completed:', {
-          timestamp: new Date().toISOString(),
-          totalProcessed: results.totalProcessed,
-          totalSuccessful: results.totalSuccessful,
-          totalFailed: results.totalFailed,
-          duration: `${results.duration}ms`
         });
       } catch (error) {
         console.error('Error in score recalculation job:', error);
       }
     });
 
-    console.log('Score recalculation cron job started (runs every hour at :05)');
+    console.log('✅ Score recalculation cron job started (runs every hour at :05)');
   }
 
   /**
