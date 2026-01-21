@@ -14,7 +14,6 @@ const createNotification = async (userId, title, message, type = 'info', categor
       category,
       metadata
     });
-    console.log(`📧 Scheduled notification created for user ${userId}: ${title}`);
     return notification;
   } catch (error) {
     console.error('Error creating scheduled notification:', error);
@@ -36,7 +35,6 @@ const sendSystemMessageToConversation = async (conversationId, senderId, content
     // Auto-add https:// if protocol is missing
     if (messageServerUrl && !messageServerUrl.startsWith('http://') && !messageServerUrl.startsWith('https://')) {
       messageServerUrl = `https://${messageServerUrl}`;
-      console.log(`⚠️ Auto-added https:// to MESSAGE_SERVER_URL`);
     }
     
     await axios.post(
@@ -55,8 +53,6 @@ const sendSystemMessageToConversation = async (conversationId, senderId, content
         timeout: 10000
       }
     );
-    
-    console.log('💬 System message sent to conversation:', conversationId, content);
   } catch (error) {
     console.error('❌ Error sending system message to conversation:', error.message);
   }
@@ -97,8 +93,6 @@ const calculateRemainingUnits = async (groupBuyId) => {
 // Check for group buys with approaching deadlines
 const checkGroupBuyDeadlines = async () => {
   try {
-    console.log('🔍 Checking for group buys with approaching deadlines...');
-    
     // Find group buys that expire in the next 24 hours and are still active/pending
     const approachingDeadlines = await db.GroupBuy.findAll({
       where: {
@@ -129,8 +123,6 @@ const checkGroupBuyDeadlines = async () => {
         }
       ]
     });
-
-    console.log(`Found ${approachingDeadlines.length} group buys with approaching deadlines`);
 
     for (const groupBuy of approachingDeadlines) {
       const hoursLeft = Math.ceil((new Date(groupBuy.deadline) - new Date()) / (1000 * 60 * 60));
@@ -188,8 +180,6 @@ const checkGroupBuyDeadlines = async () => {
 // Check for expired group buys
 const checkExpiredGroupBuys = async () => {
   try {
-    console.log('🔍 Checking for expired group buys...');
-    
     const expiredGroupBuys = await db.GroupBuy.findAll({
       where: {
         status: { [Op.in]: ['active', 'pending'] },
@@ -216,8 +206,6 @@ const checkExpiredGroupBuys = async () => {
         }
       ]
     });
-
-    console.log(`Found ${expiredGroupBuys.length} expired group buys`);
 
     for (const groupBuy of expiredGroupBuys) {
       const failedToMeetMinimum = groupBuy.current_buyers < groupBuy.min_buyers;
@@ -354,12 +342,8 @@ const checkExpiredGroupBuys = async () => {
 // Run all scheduled checks
 const runScheduledChecks = async () => {
   try {
-    console.log('🕐 Running scheduled notification checks...');
-    
     const approachingCount = await checkGroupBuyDeadlines();
     const expiredCount = await checkExpiredGroupBuys();
-    
-    console.log(`✅ Scheduled checks completed: ${approachingCount} approaching deadlines, ${expiredCount} expired group buys`);
     
     return {
       approachingDeadlines: approachingCount,

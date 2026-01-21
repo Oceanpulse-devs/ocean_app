@@ -16,7 +16,6 @@ const createNotification = async (userId, title, message, type = 'info', categor
       category,
       metadata
     });
-    console.log(`📧 Notification created for user ${userId}: ${title}`);
     return notification;
   } catch (error) {
     console.error('Error creating notification:', error);
@@ -51,20 +50,15 @@ class BuyerNeedController {
   // Create a new buyer need (matches post structure - accepts content/caption, reach_limit, category (string), images)
   async createBuyerNeed(req, res) {
     try {
-      console.log('Create buyer need request body:', req.body);
-      console.log('Create buyer need request files:', req.files);
-      
       // Parse form data - handle both multer parsed and raw FormData
       let formData = {};
       if (!req.files && req.body._parts) {
-        console.log('Files not parsed by multer, handling manually');
         // Parse the _parts array to extract form data
         req.body._parts.forEach(part => {
           if (part[0] !== 'images') {  // Changed from 'media' to 'images'
             formData[part[0]] = part[1];
           }
         });
-        console.log('Parsed form data:', formData);
       } else {
         formData = req.body;
       }
@@ -117,7 +111,7 @@ class BuyerNeedController {
             await categoryRecord.update({ usageCount: categoryRecord.usageCount + 1 });
           }
         } catch (error) {
-          console.log('Category mapping not found, storing as string only:', error.message);
+          // Category mapping not found, storing as string only
         }
       }
 
@@ -181,7 +175,6 @@ class BuyerNeedController {
               altText: file.originalname
             });
             
-            console.log(`Created BuyerNeedMedia record for file ${index}:`, mediaRecord.id);
             return mediaRecord;
           } catch (error) {
             console.error(`Error processing file ${file.originalname}:`, error);
@@ -484,7 +477,7 @@ class BuyerNeedController {
             updateData.category_id = categoryRecord.id;
           }
         } catch (error) {
-          console.log('Category mapping not found for update:', error.message);
+          // Category mapping not found for update
         }
       }
 
@@ -994,7 +987,6 @@ class BuyerNeedController {
   // Helper method to notify matching sellers about new buyer need
   async notifyMatchingSellers(buyerNeed, categoryName) {
     if (!categoryName) {
-      console.log('No category provided, skipping seller notifications');
       return;
     }
 
@@ -1020,8 +1012,6 @@ class BuyerNeedController {
         limit: 100 // Limit to avoid too many notifications
       });
 
-      console.log(`Found ${matchingSellers.length} matching sellers for category: ${categoryName}`);
-
       // Send notification to each matching seller
       const notificationPromises = matchingSellers.map(async (seller) => {
         try {
@@ -1039,14 +1029,12 @@ class BuyerNeedController {
               createdAt: buyerNeed.created_at
             }
           );
-          console.log(`✅ Notification sent to seller ${seller.userId} (${seller.businessName})`);
         } catch (notifyError) {
           console.error(`Error sending notification to seller ${seller.userId}:`, notifyError);
         }
       });
 
       await Promise.all(notificationPromises);
-      console.log(`✅ Completed sending ${matchingSellers.length} notifications to matching sellers`);
     } catch (error) {
       console.error('Error in notifyMatchingSellers:', error);
       throw error;

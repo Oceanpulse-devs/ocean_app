@@ -35,7 +35,6 @@ const createNotification = async (userId, title, message, type = 'info', categor
       category,
       metadata
     });
-    console.log(`📧 Group buy notification created for user ${userId}: ${title}`);
     return notification;
   } catch (error) {
     console.error('Error creating group buy notification:', error);
@@ -57,7 +56,6 @@ const sendSystemMessageToConversation = async (conversationId, senderId, content
     // Auto-add https:// if protocol is missing
     if (messageServerUrl && !messageServerUrl.startsWith('http://') && !messageServerUrl.startsWith('https://')) {
       messageServerUrl = `https://${messageServerUrl}`;
-      console.log(`⚠️ Auto-added https:// to MESSAGE_SERVER_URL`);
     }
     
     await axios.post(
@@ -76,8 +74,6 @@ const sendSystemMessageToConversation = async (conversationId, senderId, content
         timeout: 10000
       }
     );
-    
-    console.log('💬 System message sent to conversation:', conversationId, content);
   } catch (error) {
     console.error('❌ Error sending system message to conversation:', error.message);
   }
@@ -94,7 +90,6 @@ const createGroupConversation = async (groupBuy, creatorId, authToken) => {
     // Auto-add https:// if protocol is missing
     if (messageServerUrl && !messageServerUrl.startsWith('http://') && !messageServerUrl.startsWith('https://')) {
       messageServerUrl = `https://${messageServerUrl}`;
-      console.log(`⚠️ Auto-added https:// to MESSAGE_SERVER_URL`);
     }
 
     const creator = await db.UserTable.findByPk(creatorId, {
@@ -212,10 +207,7 @@ const addParticipantToGroupChat = async (conversationId, userId) => {
     // Auto-add https:// if protocol is missing
     if (messageServerUrl && !messageServerUrl.startsWith('http://') && !messageServerUrl.startsWith('https://')) {
       messageServerUrl = `https://${messageServerUrl}`;
-      console.log(`⚠️ Auto-added https:// to MESSAGE_SERVER_URL`);
     }
-    
-    console.log(`👤 Adding user ${userId} to conversation ${conversationId}`);
     
     const response = await axios.post(
       `${messageServerUrl}/api/conversations/${conversationId}/participants`,
@@ -228,7 +220,6 @@ const addParticipantToGroupChat = async (conversationId, userId) => {
       }
     );
     
-    console.log(`✅ User added to group conversation`);
     return true;
   } catch (error) {
     console.error('❌ Error adding participant to group chat:', error.message);
@@ -379,17 +370,9 @@ class GroupBuyController {
 
       // Store category string directly (no lookup needed)
       const finalCategoryName = category?.trim();
-      console.log('📋 Category received:', finalCategoryName);
 
       // Validate and set location with fallback
       let groupBuyLocation = location?.trim();
-      
-      // DEBUG: Log received location
-      console.log('📍 Group Buy Location received:', {
-          raw: location,
-          trimmed: groupBuyLocation,
-          isEmpty: !groupBuyLocation || groupBuyLocation.length === 0
-      });
       
       // If location is empty or undefined, try to get from creator's profile
       if (!groupBuyLocation || groupBuyLocation.length === 0) {
@@ -408,12 +391,6 @@ class GroupBuyController {
           groupBuyLocation = creator?.seller?.country || 
                            creator?.location || 
                            'Nigeria';
-          
-          console.log('⚠️ Group Buy location was empty/undefined, using fallback:', {
-              sellerCountry: creator?.seller?.country,
-              userLocation: creator?.location,
-              finalLocation: groupBuyLocation
-          });
       }
 
       // ============================================
@@ -421,8 +398,6 @@ class GroupBuyController {
       // ============================================
       const imageUrls = [];
       if (req.files && req.files.images && req.files.images.length > 0) {
-        console.log(`Uploading ${req.files.images.length} image(s) to Cloudinary for group buy`);
-        
         // Generate temporary ID for upload path (will be updated with real ID after creation)
         const tempId = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
         
@@ -443,7 +418,6 @@ class GroupBuyController {
             
             if (uploadResult.success) {
               imageUrls.push(uploadResult.url);
-              console.log(`Image ${i + 1}/${req.files.images.length} uploaded successfully: ${uploadResult.url}`);
             } else {
               console.error(`Cloudinary upload failed for image ${i + 1}:`, uploadResult.error);
             }
@@ -477,17 +451,10 @@ class GroupBuyController {
         status: 'active'
       });
 
-      console.log(`✅ Group buy ${groupBuy.id} created with ${imageUrls.length} image(s)`);
-
       // Upload AR model if provided (optional)
       let arModelUrl = null;
       if (req.files && req.files.arModel && req.files.arModel.length > 0) {
         const arFile = req.files.arModel[0];
-        console.log('📤 Attempting to upload AR model for group buy:', {
-          filename: arFile.originalname,
-          mimetype: arFile.mimetype,
-          size: arFile.size
-        });
         
         try {
           const arUploadResult = await cloudinaryService.uploadGroupBuyARModel(arFile.buffer, groupBuy.id);
@@ -497,7 +464,6 @@ class GroupBuyController {
             console.warn('Group buy created but AR model upload failed');
           } else {
             arModelUrl = arUploadResult.url;
-            console.log('✅ AR model uploaded successfully:', arModelUrl);
             // Update group buy with AR model URL
             await groupBuy.update({ arModel: arModelUrl });
           }
@@ -510,15 +476,10 @@ class GroupBuyController {
       // Create group conversation for this group buy
       // Get auth token from request headers
       const authToken = req.headers.authorization?.replace('Bearer ', '') || null;
-      console.log(`🔑 Extracted auth token: ${authToken ? 'Yes (length: ' + authToken.length + ')' : 'No'}`);
       
       const conversationId = await createGroupConversation(groupBuy, creator_id, authToken);
       if (conversationId) {
         await groupBuy.update({ conversation_id: conversationId });
-        console.log(`✅ Group buy ${groupBuy.id} linked to conversation ${conversationId}`);
-      } else {
-        console.log(`⚠️ Group buy ${groupBuy.id} created but no conversation was created`);
-        console.log(`⚠️ Check backend logs above for detailed error messages`);
       }
 
       // Track subscription usage for group buy creation
@@ -999,7 +960,6 @@ class GroupBuyController {
 
       // Process uploaded images if any
       if (req.files && req.files.images && req.files.images.length > 0) {
-        console.log(`Uploading ${req.files.images.length} image(s) to Cloudinary for group buy update ${groupBuy.id}`);
         const imageUrls = [];
         
         for (let i = 0; i < req.files.images.length; i++) {
@@ -1018,7 +978,6 @@ class GroupBuyController {
             
             if (uploadResult.success) {
               imageUrls.push(uploadResult.url);
-              console.log(`Image ${i + 1}/${req.files.images.length} uploaded successfully: ${uploadResult.url}`);
             } else {
               console.error(`Cloudinary upload failed for image ${i + 1}:`, uploadResult.error);
             }
@@ -1035,11 +994,6 @@ class GroupBuyController {
       // Process AR model upload if provided (optional, replaces existing)
       if (req.files && req.files.arModel && req.files.arModel.length > 0) {
         const arFile = req.files.arModel[0];
-        console.log('📤 Attempting to upload AR model for group buy update:', {
-          filename: arFile.originalname,
-          mimetype: arFile.mimetype,
-          size: arFile.size
-        });
         
         try {
           const arUploadResult = await cloudinaryService.uploadGroupBuyARModel(arFile.buffer, groupBuy.id);
@@ -1049,7 +1003,6 @@ class GroupBuyController {
             console.warn('Group buy updated but AR model upload failed');
           } else {
             updateData.arModel = arUploadResult.url;
-            console.log('✅ AR model uploaded successfully:', arUploadResult.url);
           }
         } catch (error) {
           console.error('Error uploading AR model:', error);
@@ -2246,8 +2199,6 @@ class GroupBuyController {
     try {
       const { slotType = 'homepage', category = null, limit = 20, offset = 0 } = req.query;
 
-      console.log(`[Spotlight Group Buys] Requested slotType: ${slotType}, category: ${category}`);
-
       // Get spotlight slots
       const spotlightSlots = await SpotlightService.getSpotlightsBySlotType(slotType, {
         category,
@@ -2255,15 +2206,11 @@ class GroupBuyController {
         offset: parseInt(offset)
       });
 
-      console.log(`[Spotlight Group Buys] Found ${spotlightSlots.length} spotlight slots`);
-
       // Extract group buy IDs from spotlight slots
       // Use camelCase for Sequelize model attributes (not snake_case database columns)
       const groupBuyIds = spotlightSlots
         .filter(slot => (slot.itemType || slot.item_type) === 'group_buy')
         .map(slot => slot.itemId || slot.item_id);
-
-      console.log(`[Spotlight Group Buys] Extracted ${groupBuyIds.length} group buy IDs:`, groupBuyIds);
 
       if (groupBuyIds.length === 0) {
         return res.status(200).json({
@@ -2301,9 +2248,6 @@ class GroupBuyController {
           }
         ]
       });
-
-      console.log(`[Spotlight Group Buys] Found ${groupBuys.length} group buys from database`);
-      console.log(`[Spotlight Group Buys] Group buy IDs found:`, groupBuys.map(gb => gb.id));
 
       // Sort group buys to match spotlight slot order
       // Convert IDs to integers for proper comparison (IDs from spotlight slots are strings, DB IDs are integers)
@@ -2353,16 +2297,12 @@ class GroupBuyController {
         limit: parseInt(limit) + parseInt(offset) // Get more to handle offset
       });
 
-      console.log(`[Top Placement Group Buys] Found ${placements.length} placements`);
-
       // Apply offset
       const paginatedPlacements = placements.slice(parseInt(offset), parseInt(offset) + parseInt(limit));
 
       // Extract group buy IDs from placements
       // Use camelCase for Sequelize model attributes (not snake_case database columns)
       const groupBuyIds = paginatedPlacements.map(placement => placement.itemId || placement.item_id);
-
-      console.log(`[Top Placement Group Buys] Extracted ${groupBuyIds.length} group buy IDs:`, groupBuyIds);
 
       if (groupBuyIds.length === 0) {
         return res.status(200).json({

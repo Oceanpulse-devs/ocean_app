@@ -614,7 +614,7 @@ END$$
 -- BUYER NEED TRIGGERS
 -- =====================================================
 
--- Buyer Need to Feed Trigger (FIXED: Uses UUID() instead of LAST_INSERT_ID())
+-- Buyer Need to Feed Trigger (FIXED: Uses UUID() instead of LAST_INSERT_ID(), avoids title-description duplication)
 CREATE TRIGGER `tr_buyer_need_to_feed` 
 AFTER INSERT ON `buyer_needs` 
 FOR EACH ROW 
@@ -650,7 +650,15 @@ BEGIN
         new_post_id,
         NEW.buyer_id,  -- buyer_id is already the userId
         'general',
-        CONCAT('Product Demand: ', NEW.title, ' - ', COALESCE(NEW.description, '')),
+        -- Build content: avoid duplication if title and description are the same
+        CASE 
+            WHEN NEW.description IS NULL OR TRIM(NEW.description) = '' THEN
+                CONCAT('Product Demand: ', NEW.title)
+            WHEN TRIM(NEW.description) = TRIM(NEW.title) THEN
+                CONCAT('Product Demand: ', NEW.title)  -- Avoid duplication
+            ELSE
+                CONCAT('Product Demand: ', NEW.title, ' - ', NEW.description)
+        END,
         NEW.title,
         NEW.category,  -- Category stored as string
         NULL,  -- Buyer needs don't have location in the main table

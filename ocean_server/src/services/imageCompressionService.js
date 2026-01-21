@@ -44,7 +44,6 @@ class ImageCompressionService {
 
             // If image is already small, return original
             if (originalSizeKB < minSizeToCompress) {
-                console.log(`✅ Image already small (${originalSizeKB.toFixed(2)}KB), no compression needed`);
                 return imageBuffer;
             }
 
@@ -58,8 +57,6 @@ class ImageCompressionService {
             // Get original image info
             const originalInfo = await this.getImageInfo(imageBuffer);
             const originalSizeKB2 = originalInfo.size / 1024;
-            
-            console.log(`📸 Compressing image: ${originalInfo.width}x${originalInfo.height}, ${originalSizeKB2.toFixed(2)}KB, format: ${originalInfo.format}`);
 
             // Start with sharp pipeline
             let pipeline = sharp(imageBuffer);
@@ -71,7 +68,6 @@ class ImageCompressionService {
                     fit: 'inside',
                     withoutEnlargement: true
                 });
-                console.log(`📸 Resizing to max ${maxWidth}x${maxHeight} (maintaining aspect ratio)`);
             }
 
             // Determine output format
@@ -81,7 +77,6 @@ class ImageCompressionService {
             let outputFormat = originalInfo.format;
             if (shouldUseWebP) {
                 outputFormat = 'webp';
-                console.log(`📸 Converting to WebP for better compression`);
             }
 
             // Compress based on format
@@ -114,11 +109,6 @@ class ImageCompressionService {
                 // For other formats, just resize if needed
                 compressedBuffer = await pipeline.toBuffer();
             }
-
-            const compressedSizeKB = compressedBuffer.length / 1024;
-            const compressionRatio = ((1 - compressedBuffer.length / imageBuffer.length) * 100).toFixed(1);
-            
-            console.log(`✅ Image compressed: ${originalSizeKB2.toFixed(2)}KB → ${compressedSizeKB.toFixed(2)}KB (${compressionRatio}% reduction)`);
 
             return compressedBuffer;
         } catch (error) {
