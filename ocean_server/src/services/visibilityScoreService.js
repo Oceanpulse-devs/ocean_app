@@ -7,7 +7,7 @@ const {
   SellersTable,
   ProductView,
   ProductLike,
-  SavedProduct,
+  SavedItem,
   UserSubscription,
   SubscriptionPlan,
   PromotionalBoost,
@@ -235,9 +235,12 @@ class VisibilityScoreService {
       });
       score += Math.min(likeCount * 2, 40); // Max 40 points from likes
 
-      // Get saves count
-      const saveCount = await SavedProduct.count({
-        where: { productId: itemId }
+      // Get saves count (using unified SavedItem model)
+      const saveCount = await SavedItem.count({
+        where: { 
+          itemId: itemId,
+          itemType: 'product' // Both 'product' and 'distress_sale' use product itemType
+        }
       });
       score += Math.min(saveCount * 3, 30); // Max 30 points from saves
 
