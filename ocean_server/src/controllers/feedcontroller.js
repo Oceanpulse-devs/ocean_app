@@ -473,7 +473,8 @@ const getHomeFeed = async (req, res) => {
                         buyerNeed: {
                             id: buyerNeedId,
                             title: postData.feedMetadata?.title || postData.productName || 'Product Demand',
-                            description: postData.feedMetadata?.description || postData.content || '',
+                            description: postData.feedMetadata?.description || 
+                                        (postData.content || '').replace(/^Product Demand:\s*/, '').trim() || '',
                             category: postData.feedMetadata?.category || null,
                             reachLimit: postData.feedMetadata?.reach_limit || 5,
                             currentReach: postData.feedMetadata?.current_reach || 0,
@@ -2505,7 +2506,8 @@ const getLikedPosts = async (req, res) => {
                         buyerNeed: {
                             id: buyerNeedId,
                             title: postData.feedMetadata?.title || postData.productName || 'Product Demand',
-                            description: postData.feedMetadata?.description || postData.content || '',
+                            description: postData.feedMetadata?.description || 
+                                        (postData.content || '').replace(/^Product Demand:\s*/, '').trim() || '',
                             category: postData.feedMetadata?.category || postData.category || null,
                             status: postData.feedMetadata?.status || 'active',
                             reach_limit: postData.feedMetadata?.reach_limit || 5,
@@ -2514,7 +2516,9 @@ const getLikedPosts = async (req, res) => {
                             expires_at: postData.feedMetadata?.expires_at || null,
                             is_featured: postData.feedMetadata?.is_featured || false
                         },
-                        caption: postData.content || `Product Demand: ${feedMetadata.title}`,
+                        caption: (postData.content || `Product Demand: ${feedMetadata.title}`)
+                            .replace(/^Product Demand:\s*/, '') // Remove "Product Demand: " prefix
+                            .trim(),
                         feedMetadata: feedMetadata,  // Complete metadata with images array
                         media: mediaArray,  // Media array format
                         likes: postData.likesCount || 0,

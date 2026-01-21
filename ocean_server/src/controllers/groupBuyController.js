@@ -416,13 +416,53 @@ class GroupBuyController {
           });
       }
 
+      // ============================================
+      // UPLOAD IMAGES FIRST (before creating record)
+      // ============================================
+      const imageUrls = [];
+      if (req.files && req.files.images && req.files.images.length > 0) {
+        console.log(`Uploading ${req.files.images.length} image(s) to Cloudinary for group buy`);
+        
+        // Generate temporary ID for upload path (will be updated with real ID after creation)
+        const tempId = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        
+        // Upload all images
+        for (let i = 0; i < req.files.images.length; i++) {
+          const file = req.files.images[i];
+          try {
+            // Compress image before upload if it's an image file
+            let imageBuffer = file.buffer;
+            if (file.mimetype.startsWith('image/')) {
+              imageBuffer = await imageCompressionService.compressProductImage(file.buffer);
+            }
+            
+            const uploadResult = await cloudinaryService.uploadProductImage(
+              imageBuffer, 
+              `groupbuy-${tempId}/image-${i + 1}`
+            );
+            
+            if (uploadResult.success) {
+              imageUrls.push(uploadResult.url);
+              console.log(`Image ${i + 1}/${req.files.images.length} uploaded successfully: ${uploadResult.url}`);
+            } else {
+              console.error(`Cloudinary upload failed for image ${i + 1}:`, uploadResult.error);
+            }
+          } catch (uploadError) {
+            console.error(`Error uploading image ${i + 1}:`, uploadError.message);
+          }
+        }
+      }
+
+      // ============================================
+      // CREATE GROUP BUY WITH IMAGES ALREADY POPULATED
+      // ============================================
       const groupBuy = await db.GroupBuy.create({
         title,
         description,
         category: finalCategoryName,  // Store category name directly
         subcategory: subcategory?.trim() || null,
         product_name,
-        product_image: '', // Will be updated with first uploaded image URL
+        product_image: imageUrls,  // ✅ Images already uploaded and populated!
         original_price: numOriginalPrice,
         group_price: numGroupPrice,  // Use parsed numeric value
         min_buyers,
@@ -437,43 +477,7 @@ class GroupBuyController {
         status: 'active'
       });
 
-      // Handle image uploads to Cloudinary
-      const imageUrls = [];
-      if (req.files && req.files.images && req.files.images.length > 0) {
-        console.log(`Uploading ${req.files.images.length} image(s) to Cloudinary for group buy ${groupBuy.id}`);
-        
-        // Upload all images
-        for (let i = 0; i < req.files.images.length; i++) {
-          const file = req.files.images[i];
-          try {
-            // Compress image before upload if it's an image file
-            let imageBuffer = file.buffer;
-            if (file.mimetype.startsWith('image/')) {
-              imageBuffer = await imageCompressionService.compressProductImage(file.buffer);
-            }
-            
-            const uploadResult = await cloudinaryService.uploadProductImage(
-              imageBuffer, 
-              `groupbuy-${groupBuy.id}/image-${i + 1}`
-            );
-            
-            if (uploadResult.success) {
-              imageUrls.push(uploadResult.url);
-              console.log(`Image ${i + 1}/${req.files.images.length} uploaded successfully: ${uploadResult.url}`);
-            } else {
-              console.error(`Cloudinary upload failed for image ${i + 1}:`, uploadResult.error);
-            }
-          } catch (uploadError) {
-            console.error(`Error uploading image ${i + 1}:`, uploadError.message);
-          }
-        }
-        
-        // Update group buy with all image URLs
-        if (imageUrls.length > 0) {
-          await groupBuy.update({ product_image: imageUrls });
-          console.log(`✅ Group buy ${groupBuy.id} updated with ${imageUrls.length} image(s)`);
-        }
-      }
+      console.log(`✅ Group buy ${groupBuy.id} created with ${imageUrls.length} image(s)`);
 
       // Upload AR model if provided (optional)
       let arModelUrl = null;
@@ -1102,7 +1106,9 @@ class GroupBuyController {
         });
       }
 
-      await groupBuy.destroy();
+      // Soft delete by setting status to 'cancelled' (like products use 'inactive')
+      // This allows the UPDATE trigger to sync the Post status and remove it from feed
+      await groupBuy.update({ status: 'cancelled' });
 
       res.json({
         success: true,
