@@ -29,6 +29,14 @@ const standardizeUserObject = (postData) => {
     const displayName = postData.user?.seller?.businessName || postData.user?.fullName || 'Unknown User';
     const role = postData.user?.seller ? 'seller' : (postData.user?.accountType || 'user');
     
+    // Format location as "City, Country" if both exist
+    let location = null;
+    if (postData.user?.city && postData.user?.country) {
+        location = `${postData.user.city}, ${postData.user.country}`;
+    } else if (postData.user?.location) {
+        location = postData.user.location;
+    }
+    
     return {
         id: postData.user?.id || '',
         name: displayName,
@@ -36,7 +44,7 @@ const standardizeUserObject = (postData) => {
         avatar: postData.user?.profilePicture || '👤',
         verified: postData.user?.accountStatus === 'verified' || postData.user?.seller?.verificationStatus === 'approved',
         role: role,
-        location: postData.user?.location || null
+        location: location
     };
 };
 
@@ -124,7 +132,7 @@ const getHomeFeed = async (req, res) => {
             },
             hasStory: true,
             storyCount: story.posts.length,
-            lastStoryTime: getTimeAgo(story.posts[0]?.createdAt),
+            lastStoryTime: story.posts[0]?.createdAt || null, // ISO string format
             isViewed: false // TODO: Implement story viewing tracking
         }));
 
@@ -235,7 +243,7 @@ const getHomeFeed = async (req, res) => {
                         
                         user: standardizeUserObject(postData),
                         
-                        caption: postData.content?.replace(/^New Product: /, '').trim() || '',
+                        caption: '', // Empty for product posts per frontend requirement
                         
                         media: standardizeMediaArray(productImages, postData.id),
                         
@@ -255,10 +263,10 @@ const getHomeFeed = async (req, res) => {
                             brand: postData.brand || null,
                             description: postData.content?.replace(/^New Product: /, '').trim() || postData.productName || '',
                             category: postData.feedMetadata?.category || null,
-                            price: postData.price || 0,
+                            price: parseFloat(postData.price) || 0,
                             currencyCode: 'NGN',
-                            images: productImages,
-                            metadata: postData.feedMetadata || {}
+                            images: productImages
+                            // metadata removed per frontend requirement
                         }
                     };
                 } else if (postData.contentType === 'auction') {
@@ -275,7 +283,7 @@ const getHomeFeed = async (req, res) => {
                         
                         user: standardizeUserObject(postData),
                         
-                        caption: postData.content || '',
+                        caption: '', // Empty for auction posts per frontend requirement
                         
                         media: standardizeMediaArray(auctionImages, postData.id),
                         
@@ -292,15 +300,17 @@ const getHomeFeed = async (req, res) => {
                         auction: {
                             id: postData.sourceId || postData.feedMetadata?.auction_id || null,
                             productName: postData.productName || 'Auction',
-                            brand: postData.brand || null,
+                            brand: postData.feedMetadata?.brand || postData.brand || null,
                             category: postData.feedMetadata?.category || null,
                             description: postData.content || '',
-                            startingBid: postData.price || 0,
-                            currentBid: postData.feedMetadata?.currentBid || postData.price || 0,
+                            startingBid: parseFloat(postData.feedMetadata?.starting_price || postData.price) || 0,
+                            currentBid: parseFloat(postData.feedMetadata?.current_price || postData.feedMetadata?.currentBid || postData.price) || 0,
                             currencyCode: 'NGN',
-                            endTime: postData.feedMetadata?.endTime || null,
-                            images: auctionImages,
-                            metadata: postData.feedMetadata || {}
+                            endTime: postData.feedMetadata?.end_time 
+                                ? new Date(postData.feedMetadata.end_time).toISOString() 
+                                : (postData.feedMetadata?.endTime ? new Date(postData.feedMetadata.endTime).toISOString() : null),
+                            images: auctionImages
+                            // metadata removed per frontend requirement
                         }
                     };
                 } else if (postData.contentType === 'group_buy') {
@@ -318,7 +328,9 @@ const getHomeFeed = async (req, res) => {
                         
                         user: standardizeUserObject(postData),
                         
-                        caption: postData.content || '',
+                        caption: (postData.content || '')
+                            .replace(/^Group Buy:\s*[^-]+-\s*/, '') // Remove "Group Buy: Title - " prefix
+                            .trim(),
                         
                         media: standardizeMediaArray(groupBuyImages, postData.id),
                         
@@ -334,18 +346,20 @@ const getHomeFeed = async (req, res) => {
                         
                         groupBuy: {
                             id: groupBuyId,
-                            productName: postData.productName || 'Group Buy',
-                            brand: postData.brand || null,
+                            productName: postData.feedMetadata?.product_name || postData.productName || 'Group Buy',
+                            brand: postData.feedMetadata?.brand || postData.brand || null,
                             category: postData.feedMetadata?.category || null,
                             description: postData.content || '',
-                            pricePerUnit: postData.price || 0,
+                            pricePerUnit: parseFloat(postData.feedMetadata?.group_price || postData.price) || 0,
                             currencyCode: 'NGN',
-                            minBuyers: postData.feedMetadata?.minBuyers || 0,
-                            maxBuyers: postData.feedMetadata?.maxBuyers || 0,
-                            currentBuyers: postData.feedMetadata?.currentBuyers || 0,
-                            deadline: postData.feedMetadata?.deadline || null,
-                            images: groupBuyImages,
-                            metadata: postData.feedMetadata || {}
+                            minBuyers: parseInt(postData.feedMetadata?.min_buyers || postData.feedMetadata?.minBuyers) || 0,
+                            maxBuyers: parseInt(postData.feedMetadata?.max_buyers || postData.feedMetadata?.maxBuyers) || 0,
+                            currentBuyers: parseInt(postData.feedMetadata?.current_buyers || postData.feedMetadata?.currentBuyers) || 0,
+                            deadline: postData.feedMetadata?.deadline 
+                                ? new Date(postData.feedMetadata.deadline).toISOString()
+                                : null,
+                            images: groupBuyImages
+                            // metadata removed per frontend requirement
                         }
                     };
                 } else if (postData.contentType === 'swap_deal') {
@@ -355,10 +369,20 @@ const getHomeFeed = async (req, res) => {
                                       postData.feedMetadata?.swap_dealId || 
                                       null;
                     
-                    // Get images from feedMetadata or media
+                    // Get images from feedMetadata or media - PARSE JSON if stringified
                     let swapDealImages = [];
-                    if (postData.feedMetadata?.images && Array.isArray(postData.feedMetadata.images)) {
-                        swapDealImages = postData.feedMetadata.images;
+                    if (postData.feedMetadata?.images) {
+                        // Check if images is a stringified JSON array
+                        if (typeof postData.feedMetadata.images === 'string') {
+                            try {
+                                swapDealImages = JSON.parse(postData.feedMetadata.images);
+                            } catch (e) {
+                                console.error('Error parsing swap deal images:', e);
+                                swapDealImages = [];
+                            }
+                        } else if (Array.isArray(postData.feedMetadata.images)) {
+                            swapDealImages = postData.feedMetadata.images;
+                        }
                     } else if (postData.media && postData.media.length > 0) {
                         swapDealImages = postData.media.map(m => m.mediaUrl);
                     }
@@ -373,7 +397,10 @@ const getHomeFeed = async (req, res) => {
                         
                         user: standardizeUserObject(postData),
                         
-                        caption: postData.content || '',
+                        caption: (postData.content || '')
+                            .replace(/^Swap Deal:\s*[^-]+-\s*/, '') // Remove "Swap Deal: Title - " prefix
+                            .replace(/\nBrand:.*$/, '') // Remove "Brand: ..." suffix
+                            .trim(),
                         
                         media: standardizeMediaArray(swapDealImages, postData.id),
                         
@@ -395,7 +422,7 @@ const getHomeFeed = async (req, res) => {
                                 brand: postData.feedMetadata?.brand_to_swap || null,
                                 category: postData.feedMetadata?.category_to_swap || null,
                                 condition: postData.feedMetadata?.condition || null,
-                                images: swapDealImages
+                                images: swapDealImages // Already parsed above
                             },
                             wantedItem: {
                                 name: postData.feedMetadata?.preferred_items || '',
@@ -427,7 +454,9 @@ const getHomeFeed = async (req, res) => {
                         
                         user: standardizeUserObject(postData),
                         
-                        caption: postData.content || `Product Demand: ${postData.feedMetadata?.title || postData.productName || 'Product'}`,
+                        caption: (postData.content || `Product Demand: ${postData.feedMetadata?.title || postData.productName || 'Product'}`)
+                            .replace(/^Product Demand:\s*/, '') // Remove "Product Demand: " prefix
+                            .trim(),
                         
                         media: standardizeMediaArray(demandImages, postData.id),
                         
@@ -449,37 +478,91 @@ const getHomeFeed = async (req, res) => {
                             reachLimit: postData.feedMetadata?.reach_limit || 5,
                             currentReach: postData.feedMetadata?.current_reach || 0,
                             reachExceeded: postData.feedMetadata?.reach_exceeded || false,
-                            expiresAt: postData.feedMetadata?.expires_at || null,
+                            expiresAt: postData.feedMetadata?.expires_at 
+                                ? new Date(postData.feedMetadata.expires_at).toISOString()
+                                : null,
                             status: postData.feedMetadata?.status || 'active',
                             isFeatured: postData.feedMetadata?.is_featured || false
                         }
                     };
                 } else {
-                    // General post format (STANDARDIZED V2)
-                    const postImages = postData.media?.map(m => m.mediaUrl) || [];
+                    // Check if this is a distress sale disguised as general post
+                    const isDistressSale = postData.content?.includes('Distress Sale:') || 
+                                          postData.feedMetadata?.isDistressSale ||
+                                          postData.feedMetadata?.is_distress_sale;
                     
-                    formattedPost = {
-                        id: postData.id,
-                        type: 'general',
-                        category: 'general',
-                        contentType: 'post',
-                        createdAt: postData.createdAt,
-                        updatedAt: postData.updatedAt,
+                    if (isDistressSale && postData.sourceId) {
+                        // Treat as product post (distress sale)
+                        const productImages = postData.media?.map(m => m.mediaUrl) || postData.feedMetadata?.images || [];
                         
-                        user: standardizeUserObject(postData),
+                        formattedPost = {
+                            id: postData.id,
+                            type: 'product',
+                            category: 'product',
+                            contentType: 'product',
+                            createdAt: postData.createdAt,
+                            updatedAt: postData.updatedAt,
+                            
+                            user: standardizeUserObject(postData),
+                            
+                            caption: '', // Empty for distress sale product posts per frontend requirement
+                            
+                            media: standardizeMediaArray(productImages, postData.id),
+                            
+                            likesCount: postData.likesCount || 0,
+                            commentsCount: postData.commentsCount || 0,
+                            sharesCount: postData.sharesCount || 0,
+                            savesCount: postData.savedCount || 0,
+                            timeAgo: getTimeAgo(postData.createdAt),
+                            isLiked: false,
+                            isSaved: false,
+                            
+                            productId: postData.sourceId || postData.feedMetadata?.product_id || null,
+                            
+                            product: {
+                                id: postData.sourceId || postData.feedMetadata?.product_id || null,
+                                name: postData.productName || postData.feedMetadata?.product_name || 'Product',
+                                brand: postData.brand || postData.feedMetadata?.brand || null,
+                                description: (postData.content || '')
+                                    .replace(/^Distress Sale:\s*[^-]+-\s*/, '') // Remove "Distress Sale: Title - " prefix
+                                    .trim(),
+                                category: postData.feedMetadata?.category || null,
+                                price: parseFloat(postData.price || postData.feedMetadata?.price) || 0,
+                                currencyCode: 'NGN',
+                                images: productImages,
+                                isDistressSale: true,
+                                urgencyLevel: postData.feedMetadata?.urgencyLevel || postData.feedMetadata?.urgency_level || 'high',
+                                discountPercentage: postData.feedMetadata?.discountPercentage || postData.feedMetadata?.discount_percentage || null
+                                // metadata removed per frontend requirement
+                            }
+                        };
+                    } else {
+                        // General post format (STANDARDIZED V2)
+                        const postImages = postData.media?.map(m => m.mediaUrl) || [];
                         
-                        caption: postData.content || '',
-                        
-                        media: standardizeMediaArray(postImages, postData.id),
-                        
-                        likesCount: postData.likesCount || 0,
-                        commentsCount: postData.commentsCount || 0,
-                        sharesCount: postData.sharesCount || 0,
-                        savesCount: postData.savedCount || 0,
-                        timeAgo: getTimeAgo(postData.createdAt),
-                        isLiked: false,
-                        isSaved: false
-                    };
+                        formattedPost = {
+                            id: postData.id,
+                            type: 'general',
+                            category: 'general',
+                            contentType: 'post',
+                            createdAt: postData.createdAt,
+                            updatedAt: postData.updatedAt,
+                            
+                            user: standardizeUserObject(postData),
+                            
+                            caption: postData.content || '',
+                            
+                            media: standardizeMediaArray(postImages, postData.id),
+                            
+                            likesCount: postData.likesCount || 0,
+                            commentsCount: postData.commentsCount || 0,
+                            sharesCount: postData.sharesCount || 0,
+                            savesCount: postData.savedCount || 0,
+                            timeAgo: getTimeAgo(postData.createdAt),
+                            isLiked: false,
+                            isSaved: false
+                        };
+                    }
                 }
 
                 // Add user engagement status
@@ -504,7 +587,7 @@ const getHomeFeed = async (req, res) => {
         // Map pagination fields to match frontend expectations
         const pagination = {
             currentPage: parseInt(page),
-            totalPages: Math.ceil(posts.count / limit),
+            currentLimit: parseInt(limit),
             totalPosts: posts.count,
             hasNextPage: offset + limit < posts.count,
             hasPrevPage: page > 1
@@ -512,6 +595,7 @@ const getHomeFeed = async (req, res) => {
         
         const frontendPagination = mapNestedFields(pagination, {
             currentPage: 'page',
+            currentLimit: 'limit',
             totalPosts: 'totalCount',
             hasPrevPage: 'hasPreviousPage'
         });
