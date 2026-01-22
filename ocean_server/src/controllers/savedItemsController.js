@@ -98,6 +98,173 @@ const detectItemType = async (itemId) => {
   }
 };
 
+// Helper function to fetch and format linked item for posts
+const fetchLinkedItem = async (sourceId, sourceTable, contentType) => {
+  if (!sourceId || !sourceTable) return null;
+  
+  try {
+    let linkedItem = null;
+    let linkedType = null;
+    
+    // Determine type from sourceTable or contentType
+    if (contentType && contentType !== 'post' && contentType !== 'product_demand') {
+      linkedType = contentType;
+    } else if (sourceTable === 'products') {
+      // Need to check if it's a distress sale
+      const product = await Product.findByPk(sourceId);
+      if (product) {
+        linkedType = product.isDistressSale ? 'distress_sale' : 'product';
+        linkedItem = product;
+      }
+    } else if (sourceTable === 'auctions') {
+      linkedType = 'auction';
+      linkedItem = await Auction.findByPk(sourceId);
+    } else if (sourceTable === 'swap_deals') {
+      linkedType = 'swap_deal';
+      linkedItem = await SwapDeal.findByPk(sourceId);
+    } else if (sourceTable === 'group_buys') {
+      linkedType = 'group_buy';
+      linkedItem = await GroupBuy.findByPk(sourceId);
+    }
+    
+    if (!linkedItem || !linkedType) return null;
+    
+    // Format the linked item based on its type (same format as saved items)
+    let formattedLinkedItem = {
+      type: linkedType,
+      id: linkedItem.id,
+      name: linkedItem.title || linkedItem.name || linkedItem.product_name || 'Item',
+      images: [],
+      price: null,
+      condition: null,
+      category: linkedItem.category || null,
+      location: linkedItem.location || linkedItem.meeting_location || null
+    };
+    
+    if (linkedType === 'product' || linkedType === 'distress_sale') {
+      const seller = await SellersTable.findByPk(linkedItem.sellerId, {
+        include: [{
+          model: UserTable,
+          as: 'user',
+          attributes: ['id', 'fullName', 'profilePicture', 'accountStatus']
+        }]
+      });
+      
+      formattedLinkedItem = {
+        ...formattedLinkedItem,
+        name: linkedItem.title,
+        price: `${linkedItem.currency || 'NGN'} ${linkedItem.price}`,
+        images: linkedItem.images || [],
+        description: linkedItem.description,
+        condition: linkedItem.condition,
+        seller: seller ? {
+          id: seller.user.id,
+          name: seller.user.fullName || seller.businessName,
+          avatar: seller.user.profilePicture,
+          verified: seller.user.accountStatus === 'verified'
+        } : null
+      };
+    } else if (linkedType === 'auction') {
+      const seller = await SellersTable.findOne({
+        where: { userId: linkedItem.sellerId },
+        include: [{
+          model: UserTable,
+          as: 'user',
+          attributes: ['id', 'fullName', 'profilePicture', 'accountStatus']
+        }]
+      });
+      
+      formattedLinkedItem = {
+        ...formattedLinkedItem,
+        name: linkedItem.title,
+        price: `${linkedItem.currency || 'NGN'} ${linkedItem.currentPrice || linkedItem.startingPrice}`,
+        images: linkedItem.images || [],
+        description: linkedItem.description,
+        condition: linkedItem.condition || null,
+        startTime: linkedItem.startTime,
+        endTime: linkedItem.endTime,
+        seller: seller ? {
+          id: seller.user.id,
+          name: seller.user.fullName || seller.businessName,
+          avatar: seller.user.profilePicture,
+          verified: seller.user.accountStatus === 'verified'
+        } : null
+      };
+    } else if (linkedType === 'swap_deal') {
+      const seller = await UserTable.findByPk(linkedItem.sellerId, {
+        attributes: ['id', 'fullName', 'profilePicture', 'accountStatus']
+      });
+      
+      let images = [];
+      if (linkedItem.images) {
+        if (typeof linkedItem.images === 'string') {
+          try {
+            images = JSON.parse(linkedItem.images);
+          } catch (e) {
+            images = [];
+          }
+        } else if (Array.isArray(linkedItem.images)) {
+          images = linkedItem.images;
+        }
+      }
+      
+      formattedLinkedItem = {
+        ...formattedLinkedItem,
+        name: linkedItem.title,
+        price: null,
+        images: images,
+        description: linkedItem.description,
+        condition: linkedItem.itemCondition || null,
+        productToSwap: linkedItem.productToSwap,
+        preferredItems: linkedItem.preferredItems,
+        seller: seller ? {
+          id: seller.id,
+          name: seller.fullName,
+          avatar: seller.profilePicture,
+          verified: seller.accountStatus === 'verified'
+        } : null
+      };
+    } else if (linkedType === 'group_buy') {
+      const seller = await UserTable.findByPk(linkedItem.creator_id, {
+        attributes: ['id', 'fullName', 'profilePicture', 'accountStatus']
+      });
+      
+      let images = [];
+      if (linkedItem.product_image) {
+        if (typeof linkedItem.product_image === 'string') {
+          try {
+            images = JSON.parse(linkedItem.product_image);
+          } catch (e) {
+            images = [];
+          }
+        } else if (Array.isArray(linkedItem.product_image)) {
+          images = linkedItem.product_image;
+        }
+      }
+      
+      formattedLinkedItem = {
+        ...formattedLinkedItem,
+        name: linkedItem.title || linkedItem.product_name,
+        price: `NGN ${linkedItem.group_price}`,
+        images: images,
+        description: linkedItem.description,
+        condition: null,
+        seller: seller ? {
+          id: seller.id,
+          name: seller.fullName,
+          avatar: seller.profilePicture,
+          verified: seller.accountStatus === 'verified'
+        } : null
+      };
+    }
+    
+    return formattedLinkedItem;
+  } catch (error) {
+    console.error('Error fetching linked item:', error);
+    return null;
+  }
+};
+
 // Helper function for time ago
 const getTimeAgo = (date) => {
   const seconds = Math.floor((new Date() - new Date(date)) / 1000);
@@ -404,6 +571,14 @@ const getAllSavedItems = async (req, res) => {
                 verified: user.accountStatus === 'verified'
               } : null
             };
+            
+            // Fetch linked item if post has sourceId and sourceTable/contentType
+            if (item.sourceId && (item.sourceTable || (item.contentType && item.contentType !== 'post' && item.contentType !== 'product_demand'))) {
+              const linkedItem = await fetchLinkedItem(item.sourceId, item.sourceTable, item.contentType);
+              if (linkedItem) {
+                formattedItem.linkedItem = linkedItem;
+              }
+            }
           } else if (itemType === 'auction') {
             const seller = await SellersTable.findOne({
               where: { userId: item.sellerId },
