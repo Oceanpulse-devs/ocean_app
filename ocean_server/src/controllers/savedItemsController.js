@@ -290,9 +290,11 @@ const getAllSavedItems = async (req, res) => {
           
           // Format based on item type
           let formattedItem = {
-            id: item.id, // Use id for navigation (not itemId)
+            id: item.id, // Use id for navigation
+            itemId: item.id, // Also include itemId for frontend compatibility (frontend checks this first)
             savedItemId: savedItem.id,
-            type: itemType,
+            type: itemType, // Use type for display
+            itemType: itemType, // Also include itemType for frontend compatibility (frontend checks this first)
             isSaved: true,
             savedDate: savedItem.created_at.toISOString().split('T')[0],
             timeAgo: getTimeAgo(savedItem.created_at)
