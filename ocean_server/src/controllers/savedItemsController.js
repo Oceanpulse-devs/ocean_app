@@ -65,6 +65,39 @@ const updateSaveCount = async (itemId, itemType, increment = true) => {
   }
 };
 
+// Helper function to detect the correct item type by checking which table the item exists in
+const detectItemType = async (itemId) => {
+  try {
+    // Check Auction first
+    const auction = await Auction.findByPk(itemId);
+    if (auction) return 'auction';
+    
+    // Check SwapDeal
+    const swapDeal = await SwapDeal.findByPk(itemId);
+    if (swapDeal) return 'swap_deal';
+    
+    // Check GroupBuy
+    const groupBuy = await GroupBuy.findByPk(itemId);
+    if (groupBuy) return 'group_buy';
+    
+    // Check Product (and check if it's a distress sale)
+    const product = await Product.findByPk(itemId);
+    if (product) {
+      if (product.isDistressSale) return 'distress_sale';
+      return 'product';
+    }
+    
+    // Check Post last (as it's the most generic)
+    const post = await Post.findByPk(itemId);
+    if (post) return 'post';
+    
+    return null; // Item not found in any table
+  } catch (error) {
+    console.error('Error detecting item type:', error);
+    return null;
+  }
+};
+
 // Helper function for time ago
 const getTimeAgo = (date) => {
   const seconds = Math.floor((new Date() - new Date(date)) / 1000);
@@ -95,7 +128,7 @@ const getTimeAgo = (date) => {
 const toggleSaveItem = async (req, res) => {
   try {
     const { itemId } = req.params;
-    const { itemType, collectionName } = req.body;
+    let { itemType, collectionName } = req.body;
     const userId = req.user.id;
     
     // Validate itemType
@@ -104,6 +137,15 @@ const toggleSaveItem = async (req, res) => {
         success: false,
         message: 'itemType is required in request body'
       });
+    }
+    
+    // Detect correct item type if provided type is 'post' (likely incorrect)
+    // This prevents saving swap deals, auctions, etc. as 'post'
+    if (itemType === 'post') {
+      const detectedType = await detectItemType(itemId);
+      if (detectedType && detectedType !== 'post') {
+        itemType = detectedType;
+      }
     }
     
     const validTypes = ['product', 'post', 'auction', 'swap_deal', 'group_buy', 'distress_sale'];
@@ -282,7 +324,16 @@ const getAllSavedItems = async (req, res) => {
     // Fetch full item details for each saved item
     const formattedItems = await Promise.all(
       savedItems.rows.map(async (savedItem) => {
-        const { itemId, itemType } = savedItem;
+        let { itemId, itemType } = savedItem;
+        
+        // Detect correct item type if stored type is 'post' (likely incorrect)
+        // This fixes items that were previously saved with wrong type
+        if (itemType === 'post') {
+          const detectedType = await detectItemType(itemId);
+          if (detectedType && detectedType !== 'post') {
+            itemType = detectedType;
+          }
+        }
         
         try {
           const { exists, item } = await validateAndGetItem(itemId, itemType);
