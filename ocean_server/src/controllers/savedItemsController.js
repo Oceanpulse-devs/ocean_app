@@ -148,6 +148,7 @@ const fetchLinkedItem = async (sourceId, sourceTable, contentType) => {
       name: linkedItem.title || linkedItem.name || linkedItem.product_name || 'Item',
       images: [],
       price: null,
+      currencyCode: null,
       condition: null,
       category: linkedItem.category || null,
       location: linkedItem.location || linkedItem.meeting_location || null
@@ -165,7 +166,8 @@ const fetchLinkedItem = async (sourceId, sourceTable, contentType) => {
       formattedLinkedItem = {
         ...formattedLinkedItem,
         name: linkedItem.title,
-        price: `${linkedItem.currency || 'NGN'} ${linkedItem.price}`,
+        price: parseFloat(linkedItem.price) || 0,
+        currencyCode: linkedItem.currency || 'NGN',
         images: linkedItem.images || [],
         description: linkedItem.description,
         condition: linkedItem.condition,
@@ -173,7 +175,8 @@ const fetchLinkedItem = async (sourceId, sourceTable, contentType) => {
           id: seller.user.id,
           name: seller.user.fullName || seller.businessName,
           avatar: seller.user.profilePicture,
-          verified: seller.user.accountStatus === 'verified'
+          verified: seller.user.accountStatus === 'verified',
+          country: seller.country || 'Nigeria'
         } : null
       };
     } else if (linkedType === 'auction') {
@@ -189,7 +192,8 @@ const fetchLinkedItem = async (sourceId, sourceTable, contentType) => {
       formattedLinkedItem = {
         ...formattedLinkedItem,
         name: linkedItem.title,
-        price: `${linkedItem.currency || 'NGN'} ${linkedItem.currentPrice || linkedItem.startingPrice}`,
+        price: parseFloat(linkedItem.currentPrice || linkedItem.startingPrice) || 0,
+        currencyCode: linkedItem.currency || 'NGN',
         images: linkedItem.images || [],
         description: linkedItem.description,
         condition: linkedItem.condition || null,
@@ -199,7 +203,8 @@ const fetchLinkedItem = async (sourceId, sourceTable, contentType) => {
           id: seller.user.id,
           name: seller.user.fullName || seller.businessName,
           avatar: seller.user.profilePicture,
-          verified: seller.user.accountStatus === 'verified'
+          verified: seller.user.accountStatus === 'verified',
+          country: seller.country || 'Nigeria'
         } : null
       };
     } else if (linkedType === 'swap_deal') {
@@ -224,6 +229,7 @@ const fetchLinkedItem = async (sourceId, sourceTable, contentType) => {
         ...formattedLinkedItem,
         name: linkedItem.title,
         price: null,
+        currencyCode: null,
         images: images,
         description: linkedItem.description,
         condition: linkedItem.itemCondition || null,
@@ -233,7 +239,8 @@ const fetchLinkedItem = async (sourceId, sourceTable, contentType) => {
           id: seller.id,
           name: seller.fullName,
           avatar: seller.profilePicture,
-          verified: seller.accountStatus === 'verified'
+          verified: seller.accountStatus === 'verified',
+          country: 'Nigeria'
         } : null
       };
     } else if (linkedType === 'group_buy') {
@@ -257,7 +264,8 @@ const fetchLinkedItem = async (sourceId, sourceTable, contentType) => {
       formattedLinkedItem = {
         ...formattedLinkedItem,
         name: linkedItem.title || linkedItem.product_name,
-        price: `NGN ${linkedItem.group_price}`,
+        price: parseFloat(linkedItem.group_price) || 0,
+        currencyCode: 'NGN',
         images: images,
         description: linkedItem.description,
         condition: null,
@@ -265,7 +273,8 @@ const fetchLinkedItem = async (sourceId, sourceTable, contentType) => {
           id: seller.id,
           name: seller.fullName,
           avatar: seller.profilePicture,
-          verified: seller.accountStatus === 'verified'
+          verified: seller.accountStatus === 'verified',
+          country: 'Nigeria'
         } : null
       };
     }
@@ -546,7 +555,8 @@ const getAllSavedItems = async (req, res) => {
             formattedItem = {
               ...formattedItem,
               name: item.title, // Use name instead of title
-              price: `${item.currency || 'NGN'} ${item.price}`, // Format price as string
+              price: parseFloat(item.price) || 0, // Numeric price
+              currencyCode: item.currency || 'NGN', // Separate currency code
               images: item.images || [],
               description: item.description,
               condition: item.condition,
@@ -556,7 +566,8 @@ const getAllSavedItems = async (req, res) => {
                 id: seller.user.id,
                 name: seller.user.fullName || seller.businessName,
                 avatar: seller.user.profilePicture,
-                verified: seller.user.accountStatus === 'verified'
+                verified: seller.user.accountStatus === 'verified',
+                country: seller.country || 'Nigeria'
               } : null
             };
           } else if (itemType === 'post') {
@@ -574,13 +585,15 @@ const getAllSavedItems = async (req, res) => {
               ...formattedItem,
               name: item.productName || (item.content ? item.content.substring(0, 50) : 'Post'), // Use name
               price: null,
+              currencyCode: null,
               images: media.map(m => m.mediaUrl),
               description: item.content,
               seller: user ? {
                 id: user.id,
                 name: user.fullName,
                 avatar: user.profilePicture,
-                verified: user.accountStatus === 'verified'
+                verified: user.accountStatus === 'verified',
+                country: 'Nigeria' // Default country
               } : null
             };
             
@@ -604,7 +617,8 @@ const getAllSavedItems = async (req, res) => {
             formattedItem = {
               ...formattedItem,
               name: item.title, // Use name instead of title
-              price: `${item.currency || 'NGN'} ${item.currentPrice || item.startingPrice}`, // Format price as string
+              price: parseFloat(item.currentPrice || item.startingPrice) || 0, // Numeric price
+              currencyCode: item.currency || 'NGN', // Separate currency code
               images: item.images || [],
               description: item.description,
               condition: item.condition || null,
@@ -616,7 +630,8 @@ const getAllSavedItems = async (req, res) => {
                 id: seller.user.id,
                 name: seller.user.fullName || seller.businessName,
                 avatar: seller.user.profilePicture,
-                verified: seller.user.accountStatus === 'verified'
+                verified: seller.user.accountStatus === 'verified',
+                country: seller.country || 'Nigeria'
               } : null
             };
           } else if (itemType === 'swap_deal') {
@@ -642,6 +657,7 @@ const getAllSavedItems = async (req, res) => {
               ...formattedItem,
               name: item.title, // Use name instead of title
               price: null, // Swap deals don't have prices
+              currencyCode: null, // No currency for swap deals
               images: images,
               description: item.description,
               condition: item.itemCondition || null,
@@ -653,7 +669,8 @@ const getAllSavedItems = async (req, res) => {
                 id: seller.id,
                 name: seller.fullName,
                 avatar: seller.profilePicture,
-                verified: seller.accountStatus === 'verified'
+                verified: seller.accountStatus === 'verified',
+                country: 'Nigeria' // Default country
               } : null
             };
           } else if (itemType === 'group_buy') {
@@ -678,7 +695,8 @@ const getAllSavedItems = async (req, res) => {
             formattedItem = {
               ...formattedItem,
               name: item.title || item.product_name, // Use name instead of title
-              price: `NGN ${item.group_price}`, // Format price as string
+              price: parseFloat(item.group_price) || 0, // Numeric price
+              currencyCode: 'NGN', // Group buys use NGN
               images: images,
               description: item.description,
               condition: null,
@@ -688,7 +706,8 @@ const getAllSavedItems = async (req, res) => {
                 id: seller.id,
                 name: seller.fullName,
                 avatar: seller.profilePicture,
-                verified: seller.accountStatus === 'verified'
+                verified: seller.accountStatus === 'verified',
+                country: 'Nigeria' // Default country
               } : null
             };
           }
