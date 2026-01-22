@@ -100,16 +100,14 @@ const detectItemType = async (itemId) => {
 
 // Helper function to fetch and format linked item for posts
 const fetchLinkedItem = async (sourceId, sourceTable, contentType) => {
-  if (!sourceId || !sourceTable) return null;
+  if (!sourceId) return null;
   
   try {
     let linkedItem = null;
     let linkedType = null;
     
     // Determine type from sourceTable or contentType
-    if (contentType && contentType !== 'post' && contentType !== 'product_demand') {
-      linkedType = contentType;
-    } else if (sourceTable === 'products') {
+    if (sourceTable === 'products') {
       // Need to check if it's a distress sale
       const product = await Product.findByPk(sourceId);
       if (product) {
@@ -125,6 +123,20 @@ const fetchLinkedItem = async (sourceId, sourceTable, contentType) => {
     } else if (sourceTable === 'group_buys') {
       linkedType = 'group_buy';
       linkedItem = await GroupBuy.findByPk(sourceId);
+    } else if (contentType && contentType !== 'post' && contentType !== 'product_demand') {
+      // Use contentType when sourceTable is missing
+      linkedType = contentType;
+      
+      // Fetch item based on contentType
+      if (contentType === 'product' || contentType === 'distress_sale') {
+        linkedItem = await Product.findByPk(sourceId);
+      } else if (contentType === 'auction') {
+        linkedItem = await Auction.findByPk(sourceId);
+      } else if (contentType === 'swap_deal') {
+        linkedItem = await SwapDeal.findByPk(sourceId);
+      } else if (contentType === 'group_buy') {
+        linkedItem = await GroupBuy.findByPk(sourceId);
+      }
     }
     
     if (!linkedItem || !linkedType) return null;
