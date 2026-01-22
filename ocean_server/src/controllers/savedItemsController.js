@@ -290,11 +290,11 @@ const getAllSavedItems = async (req, res) => {
           
           // Format based on item type
           let formattedItem = {
+            id: item.id, // Use id for navigation (not itemId)
             savedItemId: savedItem.id,
-            itemId: item.id,
-            itemType,
-            collectionName: savedItem.collectionName,
-            savedAt: savedItem.created_at,
+            type: itemType,
+            isSaved: true,
+            savedDate: savedItem.created_at.toISOString().split('T')[0],
             timeAgo: getTimeAgo(savedItem.created_at)
           };
           
@@ -310,9 +310,8 @@ const getAllSavedItems = async (req, res) => {
             
             formattedItem = {
               ...formattedItem,
-              title: item.title,
-              price: item.price,
-              currency: item.currency || 'NGN',
+              name: item.title, // Use name instead of title
+              price: `${item.currency || 'NGN'} ${item.price}`, // Format price as string
               images: item.images || [],
               description: item.description,
               condition: item.condition,
@@ -338,9 +337,11 @@ const getAllSavedItems = async (req, res) => {
             
             formattedItem = {
               ...formattedItem,
-              content: item.content,
+              name: item.productName || (item.content ? item.content.substring(0, 50) : 'Post'), // Use name
+              price: null,
               images: media.map(m => m.mediaUrl),
-              user: user ? {
+              description: item.content,
+              seller: user ? {
                 id: user.id,
                 name: user.fullName,
                 avatar: user.profilePicture,
@@ -359,11 +360,13 @@ const getAllSavedItems = async (req, res) => {
             
             formattedItem = {
               ...formattedItem,
-              title: item.title,
-              startingPrice: item.startingPrice,
-              currentPrice: item.currentPrice,
+              name: item.title, // Use name instead of title
+              price: `${item.currency || 'NGN'} ${item.currentPrice || item.startingPrice}`, // Format price as string
               images: item.images || [],
               description: item.description,
+              condition: item.condition || null,
+              category: item.category,
+              location: item.location,
               startTime: item.startTime,
               endTime: item.endTime,
               seller: seller ? {
@@ -378,11 +381,29 @@ const getAllSavedItems = async (req, res) => {
               attributes: ['id', 'fullName', 'profilePicture', 'accountStatus']
             });
             
+            // Parse images if it's a JSON string
+            let images = [];
+            if (item.images) {
+              if (typeof item.images === 'string') {
+                try {
+                  images = JSON.parse(item.images);
+                } catch (e) {
+                  images = [];
+                }
+              } else if (Array.isArray(item.images)) {
+                images = item.images;
+              }
+            }
+            
             formattedItem = {
               ...formattedItem,
-              title: item.title,
-              images: item.images || [],
+              name: item.title, // Use name instead of title
+              price: null, // Swap deals don't have prices
+              images: images,
               description: item.description,
+              condition: item.itemCondition || null,
+              category: item.category,
+              location: item.location,
               productToSwap: item.productToSwap,
               preferredItems: item.preferredItems,
               seller: seller ? {
@@ -393,21 +414,38 @@ const getAllSavedItems = async (req, res) => {
               } : null
             };
           } else if (itemType === 'group_buy') {
-            const creator = await UserTable.findByPk(item.creator_id, {
+            const seller = await UserTable.findByPk(item.creator_id, {
               attributes: ['id', 'fullName', 'profilePicture', 'accountStatus']
             });
             
+            // Parse images if it's a JSON string
+            let images = [];
+            if (item.product_image) {
+              if (typeof item.product_image === 'string') {
+                try {
+                  images = JSON.parse(item.product_image);
+                } catch (e) {
+                  images = [];
+                }
+              } else if (Array.isArray(item.product_image)) {
+                images = item.product_image;
+              }
+            }
+            
             formattedItem = {
               ...formattedItem,
-              title: item.title || item.product_name,
-              groupPrice: item.group_price,
-              images: item.product_image || [],
+              name: item.title || item.product_name, // Use name instead of title
+              price: `NGN ${item.group_price}`, // Format price as string
+              images: images,
               description: item.description,
-              creator: creator ? {
-                id: creator.id,
-                name: creator.fullName,
-                avatar: creator.profilePicture,
-                verified: creator.accountStatus === 'verified'
+              condition: null,
+              category: item.category,
+              location: item.location,
+              seller: seller ? { // Use seller instead of creator
+                id: seller.id,
+                name: seller.fullName,
+                avatar: seller.profilePicture,
+                verified: seller.accountStatus === 'verified'
               } : null
             };
           }
