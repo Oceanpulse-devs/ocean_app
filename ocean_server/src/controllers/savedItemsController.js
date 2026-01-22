@@ -128,32 +128,35 @@ const getTimeAgo = (date) => {
 const toggleSaveItem = async (req, res) => {
   try {
     const { itemId } = req.params;
-    let { itemType, collectionName } = req.body;
+    const { itemType: frontendItemType, collectionName } = req.body;
     const userId = req.user.id;
     
-    // Validate itemType
-    if (!itemType) {
-      return res.status(400).json({
+    // Always detect the correct item type from the database
+    // This ensures we save with the correct type regardless of what frontend sends
+    const detectedType = await detectItemType(itemId);
+    
+    if (!detectedType) {
+      return res.status(404).json({
         success: false,
-        message: 'itemType is required in request body'
+        message: 'Item not found in any table'
       });
     }
     
-    // Detect correct item type if provided type is 'post' (likely incorrect)
-    // This prevents saving swap deals, auctions, etc. as 'post'
-    if (itemType === 'post') {
-      const detectedType = await detectItemType(itemId);
-      if (detectedType && detectedType !== 'post') {
-        itemType = detectedType;
-      }
-    }
+    // Use the detected type (the source of truth)
+    const itemType = detectedType;
     
+    // Validate that the detected type is valid
     const validTypes = ['product', 'post', 'auction', 'swap_deal', 'group_buy', 'distress_sale'];
     if (!validTypes.includes(itemType)) {
       return res.status(400).json({
         success: false,
-        message: `Invalid itemType. Must be one of: ${validTypes.join(', ')}`
+        message: `Detected invalid itemType: ${itemType}. Must be one of: ${validTypes.join(', ')}`
       });
+    }
+    
+    // Optional: Log if frontend sent wrong type (for debugging)
+    if (frontendItemType && frontendItemType !== itemType) {
+      console.error(`⚠️ Item type mismatch for ${itemId}: Frontend sent '${frontendItemType}', but detected '${itemType}'. Using detected type.`);
     }
     
     // Validate item exists
