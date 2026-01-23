@@ -1841,7 +1841,7 @@ const createComment = async (req, res) => {
                 post.userId,
                 'New Comment',
                 `${user?.fullName || 'Someone'} commented on your post`,
-                'comment',
+                'info',
                 'engagement',
                 { postId, commentId: comment.id, userId }
             );

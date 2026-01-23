@@ -127,6 +127,21 @@ const getUserNotifications = async (req, res) => {
       // Format time
       const timeAgo = getTimeAgo(notificationData.createdAt);
 
+      // Build user object: for "follow" use actor (follower) from metadata, else use recipient
+      let userObj = {
+        name: notificationData.user?.fullName || 'System',
+        avatar: notificationData.user?.profilePicture || '🌊',
+        verified: notificationData.user?.accountStatus === 'verified'
+      };
+
+      if (notificationData.category === 'follow' && metadata.followerId) {
+        userObj = {
+          name: metadata.followerName || metadata.followerUsername || 'Someone',
+          avatar: metadata.followerProfilePicture || '🌊',
+          verified: false
+        };
+      }
+
       // Map field names to match frontend expectations
       return {
         id: notificationData.id,
@@ -134,11 +149,7 @@ const getUserNotifications = async (req, res) => {
         isRead: notificationData.isRead, // Keep isRead (frontend expects this)
         body: notificationData.message, // Map message → body
         data: metadata, // Map metadata → data
-        user: {
-          name: notificationData.user?.fullName || 'System',
-          avatar: notificationData.user?.profilePicture || '🌊',
-          verified: notificationData.user?.accountStatus === 'verified'
-        },
+        user: userObj,
         title: notificationData.title,
         comment: metadata.comment || null,
         message: metadata.message || null,
@@ -146,7 +157,7 @@ const getUserNotifications = async (req, res) => {
         time: timeAgo,
         postId: metadata.postId || null,
         productId: metadata.productId || null,
-        userId: metadata.userId || null,
+        userId: metadata.userId || metadata.followerId || null,
         chatId: metadata.chatId || null,
         auctionId: metadata.auctionId || null
       };
