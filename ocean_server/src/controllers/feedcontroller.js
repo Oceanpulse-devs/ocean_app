@@ -84,12 +84,17 @@ const standardizeMediaArray = (mediaList, postId) => {
 // Get home feed with stories and mixed posts
 const getHomeFeed = async (req, res) => {
     try {
-        const { page = 1, limit = 10 } = req.query;
+        const { 
+            page = 1, 
+            limit = 10, 
+            country,
+            region 
+        } = req.query;
         const offset = (page - 1) * limit;
         const currentUserId = req.user?.id;
 
         // Create cache key based on query parameters (v2 for new standardized structure)
-        const cacheKey = `homeFeed:v2:${page}:${limit}:${currentUserId || 'guest'}`;
+        const cacheKey = `homeFeed:v2:${page}:${limit}:${country || ''}:${region || ''}:${currentUserId || 'guest'}`;
         
         // Try to get from Redis cache first
         try {
@@ -103,17 +108,27 @@ const getHomeFeed = async (req, res) => {
             // Continue with DB query if cache fails
         }
 
+        // Build where clause for stories (filter by country if provided)
+        const storyPostWhere = {
+            createdAt: {
+                [Op.gte]: new Date(Date.now() - 24 * 60 * 60 * 1000) // Last 24 hours
+            }
+        };
+        
+        if (country) {
+            storyPostWhere.userCountry = country;
+        }
+        if (region) {
+            storyPostWhere.userRegion = region;
+        }
+
         // Get stories (users with recent posts)
         const stories = await UserTable.findAll({
             include: [
                 {
                     model: Post,
                     as: 'posts',
-                    where: {
-                        createdAt: {
-                            [Op.gte]: new Date(Date.now() - 24 * 60 * 60 * 1000) // Last 24 hours
-                        }
-                    },
+                    where: storyPostWhere,
                     required: true,
                     attributes: ['id', 'createdAt']
                 }
@@ -138,11 +153,25 @@ const getHomeFeed = async (req, res) => {
 
         // Get mixed feed posts (seller and buyer posts)
         const { SellersTable } = require('../../models');
+        
+        // Build where clause for posts
+        const postWhereClause = {
+            status: 'active',
+            feedVisible: true  // Only show posts that should appear in feed
+        };
+        
+        // Add country filtering if provided
+        if (country) {
+            postWhereClause.userCountry = country;
+        }
+        
+        // Add region filtering if provided
+        if (region) {
+            postWhereClause.userRegion = region;
+        }
+        
         const posts = await Post.findAndCountAll({
-            where: {
-                status: 'active',
-                feedVisible: true  // Only show posts that should appear in feed
-            },
+            where: postWhereClause,
             include: [
                 {
                     model: UserTable,
