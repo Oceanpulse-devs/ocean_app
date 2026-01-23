@@ -53,8 +53,10 @@ class RankingService {
         whereClause.isAvailable = true;
       }
 
-      // Add time-based filters to exclude expired/ended items
+      // Separate distress sales from regular products
       if (itemType === 'distress_sale') {
+        // ONLY show items marked as distress sales
+        whereClause.isDistressSale = true;
         // Only show distress sales that haven't expired
         whereClause.distressExpiryDate = {
           [Op.or]: [
@@ -62,6 +64,12 @@ class RankingService {
             { [Op.is]: null }           // Or no expiry date set
           ]
         };
+      } else if (itemType === 'product') {
+        // ONLY show regular products (exclude distress sales)
+        whereClause[Op.or] = [
+          { isDistressSale: false },
+          { isDistressSale: null }
+        ];
       }
 
       if (itemType === 'auction') {
@@ -150,14 +158,23 @@ class RankingService {
         whereClause.isAvailable = true;
       }
 
-      // Add time-based filters to exclude expired/ended items
+      // Separate distress sales from regular products
       if (itemType === 'distress_sale') {
+        // ONLY show items marked as distress sales
+        whereClause.isDistressSale = true;
+        // Only show distress sales that haven't expired
         whereClause.distressExpiryDate = {
           [Op.or]: [
             { [Op.gte]: new Date() },
             { [Op.is]: null }
           ]
         };
+      } else if (itemType === 'product') {
+        // ONLY show regular products (exclude distress sales)
+        whereClause[Op.or] = [
+          { isDistressSale: false },
+          { isDistressSale: null }
+        ];
       }
 
       if (itemType === 'auction') {
@@ -228,14 +245,23 @@ class RankingService {
         whereClause.isAvailable = true;
       }
 
-      // Add time-based filters to exclude expired/ended items
+      // Separate distress sales from regular products
       if (itemType === 'distress_sale') {
+        // ONLY show items marked as distress sales
+        whereClause.isDistressSale = true;
+        // Only show distress sales that haven't expired
         whereClause.distressExpiryDate = {
           [Op.or]: [
             { [Op.gte]: new Date() },
             { [Op.is]: null }
           ]
         };
+      } else if (itemType === 'product') {
+        // ONLY show regular products (exclude distress sales)
+        whereClause[Op.or] = [
+          { isDistressSale: false },
+          { isDistressSale: null }
+        ];
       }
 
       if (itemType === 'auction') {
