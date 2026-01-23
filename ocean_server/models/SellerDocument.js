@@ -10,34 +10,42 @@ module.exports = (sequelize, DataTypes) => {
     sellerId: {
       type: DataTypes.UUID,
       allowNull: false,
+      field: 'seller_id',  // Map to snake_case column name in database
     },
     documentType: {
       type: DataTypes.ENUM('NIN', 'ElectricBill', 'IDCard', 'DriversLicense', 'Passport', 'BusinessCertificate', 'BusinessLicense', 'TaxCertificate', 'BankStatement', 'UtilityBill', 'InsuranceCertificate', 'Other'),
       allowNull: false,
+      field: 'document_type',
     },
     documentNumber: {
       type: DataTypes.STRING,
+      field: 'document_number',
       comment: 'Official document number/ID'
     },
     documentImage: {
       type: DataTypes.TEXT,
       allowNull: true,
+      field: 'document_image',
       comment: 'URL or path to document image (optional for NIN documents)'
     },
     documentBackImage: {
       type: DataTypes.TEXT,
+      field: 'document_back_image',
       comment: 'URL or path to back side of document if applicable'
     },
     documentExpiryDate: {
       type: DataTypes.DATE,
+      field: 'document_expiry_date',
       comment: 'When the document expires'
     },
     documentIssuingAuthority: {
       type: DataTypes.STRING,
+      field: 'document_issuing_authority',
       comment: 'Authority that issued the document'
     },
     documentCountry: {
       type: DataTypes.STRING,
+      field: 'document_country',
       comment: 'Country where document was issued'
     },
     status: {
@@ -47,16 +55,20 @@ module.exports = (sequelize, DataTypes) => {
     submittedAt: {
       type: DataTypes.DATE,
       defaultValue: DataTypes.NOW,
+      field: 'submitted_at',
     },
     verifiedAt: {
       type: DataTypes.DATE,
+      field: 'verified_at',
     },
     verifiedBy: {
       type: DataTypes.UUID,
+      field: 'verified_by',
       comment: 'Admin user who verified this document'
     },
     verificationNotes: {
       type: DataTypes.TEXT,
+      field: 'verification_notes',
       comment: 'Admin notes about document verification'
     },
     // rejectionReason: {
