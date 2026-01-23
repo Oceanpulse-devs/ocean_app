@@ -39,11 +39,6 @@ class SellerManagementController {
         ];
       }
 
-      console.log('🔍 getAllSellers - About to query with includes:');
-      console.log('   - User association');
-      console.log('   - SellerDocument association (as: documents)');
-      console.log('   - db.SellerDocument exists?', !!db.SellerDocument);
-      
       const sellers = await db.SellersTable.findAndCountAll({
         where: whereClause,
         include: [
@@ -71,16 +66,6 @@ class SellerManagementController {
         limit: parseInt(limit),
         offset: parseInt(offset)
       });
-      
-      console.log('🔍 Query completed. First seller:');
-      if (sellers.rows.length > 0) {
-        const firstSeller = sellers.rows[0].toJSON();
-        console.log('   ID:', firstSeller.id);
-        console.log('   Business Name:', firstSeller.businessName);
-        console.log('   Has documents key?', 'documents' in firstSeller);
-        console.log('   Documents:', firstSeller.documents);
-        console.log('   Documents count:', firstSeller.documents?.length ?? 0);
-      }
 
       // Map sellers to include category from selectedCategories
       const sellersWithCategory = sellers.rows.map(seller => {
