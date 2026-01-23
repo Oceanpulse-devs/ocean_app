@@ -310,7 +310,14 @@ class DistressSaleController {
       const whereClause = {
         isDistressSale: true,
         status: 'active',
-        isAvailable: true
+        isAvailable: true,
+        // Only show distress sales that haven't expired
+        distressExpiryDate: {
+          [Op.or]: [
+            { [Op.gte]: new Date() },  // Not expired yet
+            { [Op.is]: null }           // Or no expiry date set
+          ]
+        }
       };
 
       if (urgencyLevel) {
@@ -1257,7 +1264,14 @@ class DistressSaleController {
           id: { [Op.in]: distressSaleIds },
           isDistressSale: true,
           status: 'active',
-          isAvailable: true
+          isAvailable: true,
+          // Only show distress sales that haven't expired
+          distressExpiryDate: {
+            [Op.or]: [
+              { [Op.gte]: new Date() },
+              { [Op.is]: null }
+            ]
+          }
         },
         include: [
           {
@@ -1346,7 +1360,14 @@ class DistressSaleController {
           id: { [Op.in]: distressSaleIds },
           isDistressSale: true,
           status: 'active',
-          isAvailable: true
+          isAvailable: true,
+          // Only show distress sales that haven't expired
+          distressExpiryDate: {
+            [Op.or]: [
+              { [Op.gte]: new Date() },
+              { [Op.is]: null }
+            ]
+          }
         },
         include: [
           {

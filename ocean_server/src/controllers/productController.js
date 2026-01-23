@@ -2251,7 +2251,22 @@ const getSpotlightProducts = async (req, res) => {
             where: {
                 id: { [Op.in]: productIds },
                 status: 'active',
-                isAvailable: true
+                isAvailable: true,
+                // Exclude expired distress sales
+                [Op.or]: [
+                    { isDistressSale: false },  // Regular products (no expiry)
+                    { isDistressSale: null },   // Regular products (no distress flag)
+                    { 
+                        // Distress sales that haven't expired
+                        isDistressSale: true,
+                        distressExpiryDate: {
+                            [Op.or]: [
+                                { [Op.gte]: new Date() },
+                                { [Op.is]: null }
+                            ]
+                        }
+                    }
+                ]
             },
             include: [
                 {
@@ -2345,7 +2360,22 @@ const getTopPlacementProducts = async (req, res) => {
             where: {
                 id: { [Op.in]: productIds },
                 status: 'active',
-                isAvailable: true
+                isAvailable: true,
+                // Exclude expired distress sales
+                [Op.or]: [
+                    { isDistressSale: false },  // Regular products (no expiry)
+                    { isDistressSale: null },   // Regular products (no distress flag)
+                    { 
+                        // Distress sales that haven't expired
+                        isDistressSale: true,
+                        distressExpiryDate: {
+                            [Op.or]: [
+                                { [Op.gte]: new Date() },
+                                { [Op.is]: null }
+                            ]
+                        }
+                    }
+                ]
             },
             include: [
                 {

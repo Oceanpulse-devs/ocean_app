@@ -53,6 +53,31 @@ class RankingService {
         whereClause.isAvailable = true;
       }
 
+      // Add time-based filters to exclude expired/ended items
+      if (itemType === 'distress_sale') {
+        // Only show distress sales that haven't expired
+        whereClause.distressExpiryDate = {
+          [Op.or]: [
+            { [Op.gte]: new Date() },  // Not expired yet
+            { [Op.is]: null }           // Or no expiry date set
+          ]
+        };
+      }
+
+      if (itemType === 'auction') {
+        // Only show auctions that haven't ended yet
+        whereClause.endTime = {
+          [Op.gt]: new Date()
+        };
+      }
+
+      if (itemType === 'group_buy') {
+        // Only show group buys before deadline
+        whereClause.deadline = {
+          [Op.gt]: new Date()
+        };
+      }
+
       // Handle category filtering - different models use different field names
       if (category) {
         if (itemType === 'swap_deal') {
@@ -125,6 +150,28 @@ class RankingService {
         whereClause.isAvailable = true;
       }
 
+      // Add time-based filters to exclude expired/ended items
+      if (itemType === 'distress_sale') {
+        whereClause.distressExpiryDate = {
+          [Op.or]: [
+            { [Op.gte]: new Date() },
+            { [Op.is]: null }
+          ]
+        };
+      }
+
+      if (itemType === 'auction') {
+        whereClause.endTime = {
+          [Op.gt]: new Date()
+        };
+      }
+
+      if (itemType === 'group_buy') {
+        whereClause.deadline = {
+          [Op.gt]: new Date()
+        };
+      }
+
       // Get items with high visibility scores (recommended)
       // Can be enhanced with personalization
       const items = await Model.findAll({
@@ -179,6 +226,28 @@ class RankingService {
 
       if (itemType === 'product' || itemType === 'distress_sale') {
         whereClause.isAvailable = true;
+      }
+
+      // Add time-based filters to exclude expired/ended items
+      if (itemType === 'distress_sale') {
+        whereClause.distressExpiryDate = {
+          [Op.or]: [
+            { [Op.gte]: new Date() },
+            { [Op.is]: null }
+          ]
+        };
+      }
+
+      if (itemType === 'auction') {
+        whereClause.endTime = {
+          [Op.gt]: new Date()
+        };
+      }
+
+      if (itemType === 'group_buy') {
+        whereClause.deadline = {
+          [Op.gt]: new Date()
+        };
       }
 
       // Find items in the same category - handle different field names per model

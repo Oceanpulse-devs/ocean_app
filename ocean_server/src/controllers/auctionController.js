@@ -3277,7 +3277,11 @@ const getSpotlightAuctions = async (req, res) => {
     const auctions = await Auction.findAll({
       where: {
         id: { [Op.in]: auctionIds },
-        status: 'active'
+        status: 'active',
+        // Only show auctions that haven't ended yet
+        endTime: {
+          [Op.gt]: new Date()
+        }
       },
       include: [
         {
@@ -3364,7 +3368,11 @@ const getTopPlacementAuctions = async (req, res) => {
     const auctions = await Auction.findAll({
       where: {
         id: { [Op.in]: auctionIds },
-        status: 'active'
+        status: 'active',
+        // Only show auctions that haven't ended yet
+        endTime: {
+          [Op.gt]: new Date()
+        }
       },
       include: [
         {

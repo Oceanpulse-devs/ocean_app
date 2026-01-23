@@ -2229,11 +2229,14 @@ class GroupBuyController {
       }
 
       // Get group buys
-      // Remove status filter - spotlights should show regardless of status (active, failed, etc.)
       const groupBuys = await db.GroupBuy.findAll({
         where: {
-          id: { [Op.in]: groupBuyIds }
-          // Removed status: 'active' filter to show spotlights even if group buy status is not active
+          id: { [Op.in]: groupBuyIds },
+          status: 'active',
+          // Only show group buys before deadline
+          deadline: {
+            [Op.gt]: new Date()
+          }
         },
         include: [
           {
@@ -2321,11 +2324,14 @@ class GroupBuyController {
       }
 
       // Get group buys
-      // Remove status filter - top placements should show regardless of status (active, failed, etc.)
       const groupBuys = await db.GroupBuy.findAll({
         where: {
-          id: { [Op.in]: groupBuyIds }
-          // Removed status: 'active' filter to show top placements even if group buy status is not active
+          id: { [Op.in]: groupBuyIds },
+          status: 'active',
+          // Only show group buys before deadline
+          deadline: {
+            [Op.gt]: new Date()
+          }
         },
         include: [
           {
