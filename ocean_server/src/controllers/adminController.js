@@ -200,7 +200,8 @@ class AdminController {
           message,
           'info',
           'feature_update',
-          { 
+          {
+            type: 'feature_update',
             featureName: featureName,
             featureDescription: featureDescription,
             updateType: updateType,
@@ -270,7 +271,8 @@ class AdminController {
           message,
           updateType === 'critical_update' ? 'error' : 'info',
           'app_update',
-          { 
+          {
+            type: 'app_update',
             version: version,
             updateType: updateType,
             downloadUrl: downloadUrl,

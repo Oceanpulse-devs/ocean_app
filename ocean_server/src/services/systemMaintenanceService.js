@@ -52,7 +52,8 @@ const sendMaintenanceNotification = async (maintenanceData) => {
         message,
         maintenanceType === 'emergency' ? 'error' : 'warning',
         'system_maintenance',
-        { 
+        {
+          type: 'system_maintenance_scheduled',
           scheduledTime: scheduledTime,
           estimatedDuration: estimatedDuration,
           affectedServices: affectedServices,
@@ -148,7 +149,8 @@ const sendEmergencyMaintenanceNotification = async (emergencyData) => {
         message,
         'error',
         'system_maintenance',
-        { 
+        {
+          type: 'system_maintenance_emergency',
           affectedServices: affectedServices,
           estimatedDuration: estimatedDuration,
           maintenanceType: 'emergency',
@@ -208,7 +210,8 @@ const checkSystemHealth = async () => {
           `System detected ${errorCount} errors in the last hour. Please investigate.`,
           'error',
           'system_alert',
-          { 
+          {
+            type: 'system_alert',
             errorCount: errorCount,
             timeWindow: '1 hour',
             checkedAt: new Date(),

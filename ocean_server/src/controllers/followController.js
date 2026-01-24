@@ -70,8 +70,11 @@ const followUser = async (req, res) => {
             `${follower.fullName || follower.username} started following you`,
             'info',
             'follow',
-            { 
-                followerId: followerId,
+            {
+                type: 'follow',
+                relatedEntityId: followerId,
+                senderId: followerId,
+                followerId,
                 followerName: follower.fullName || follower.username,
                 followerUsername: follower.username,
                 followerProfilePicture: follower.profilePicture,

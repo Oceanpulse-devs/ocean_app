@@ -712,7 +712,10 @@ const toggleLikeProduct = async (req, res) => {
                     `${liker.fullName || liker.username} liked your product "${product.title}"`,
                     'info',
                     'product_like',
-                    { 
+                    {
+                        type: 'product_like',
+                        relatedEntityId: product.id,
+                        senderId: userId,
                         productId: product.id,
                         title: product.title,
                         likerId: userId,

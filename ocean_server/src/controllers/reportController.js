@@ -329,6 +329,9 @@ class ReportController {
                 `A new ${reportTypeLabels[reportType] || reportType} report has been submitted for ${reasonLabels[reason] || reason}. Please review it in the admin dashboard.`,
                 'report',
                 {
+                    type: 'report_new',
+                    relatedEntityId: report.id,
+                    senderId: reporterId,
                     reportId: report.id,
                     reportType: reportType,
                     reason: reason,
@@ -347,6 +350,8 @@ class ReportController {
                 'success',
                 'report',
                 {
+                    type: 'report_submitted',
+                    relatedEntityId: report.id,
                     reportId: report.id,
                     reportType: reportType,
                     status: 'pending'
@@ -639,6 +644,9 @@ class ReportController {
                     status === 'resolved' ? 'success' : 'info',
                     'report',
                     {
+                        type: status === 'resolved' ? 'report_resolved' : 'report_dismissed',
+                        relatedEntityId: report.id,
+                        senderId: adminId,
                         reportId: report.id,
                         reportType: report.reportType,
                         status: status,
@@ -725,6 +733,9 @@ class ReportController {
                 finalStatus === 'resolved' ? 'success' : 'info',
                 'report',
                 {
+                    type: finalStatus === 'resolved' ? 'report_resolved' : 'report_dismissed',
+                    relatedEntityId: report.id,
+                    senderId: adminId,
                     reportId: report.id,
                     reportType: report.reportType,
                     status: finalStatus,

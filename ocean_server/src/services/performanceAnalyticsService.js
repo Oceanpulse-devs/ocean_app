@@ -94,7 +94,8 @@ const analyzeUserEngagement = async () => {
           `User engagement rate is ${engagementRate.toFixed(1)}% (${activeUsersCount}/${totalUsersCount} active users). Consider implementing engagement strategies.`,
           'warning',
           'performance_analytics',
-          { 
+          {
+            type: 'performance_engagement',
             engagementRate: engagementRate,
             activeUsersCount: activeUsersCount,
             totalUsersCount: totalUsersCount,
@@ -202,7 +203,8 @@ const analyzeMarketplacePerformance = async () => {
           `Marketplace success rate is ${successRate.toFixed(1)}% (${totalTransactions}/${totalAttempts} successful). Consider optimizing matching algorithms.`,
           'warning',
           'performance_analytics',
-          { 
+          {
+            type: 'performance_marketplace',
             successRate: successRate,
             totalTransactions: totalTransactions,
             totalAttempts: totalAttempts,
@@ -279,7 +281,8 @@ const analyzeSystemPerformance = async () => {
           `System error rate is ${errorRate.toFixed(1)}% (${errorCount}/${totalNotifications} errors). Database health: ${dbHealth ? 'OK' : 'ISSUES'}. Please investigate.`,
           'error',
           'performance_analytics',
-          { 
+          {
+            type: 'performance_system',
             errorRate: errorRate,
             errorCount: errorCount,
             totalNotifications: totalNotifications,

@@ -116,12 +116,10 @@ const getUserNotifications = async (req, res) => {
         'admin': 'system'
       };
 
-      // Determine notification type from category or metadata
-      let frontendType = 'system';
-      if (metadata.type) {
-        frontendType = metadata.type;
-      } else if (notificationData.category === 'seller_application') {
-        frontendType = 'system';
+      // Use metadata.type for routing (post_like, post_comment, follow, etc.); fallback for legacy
+      let frontendType = metadata.type || 'system';
+      if (!metadata.type && notificationData.category === 'seller_application') {
+        frontendType = 'seller_application';
       }
 
       // Format time
@@ -134,7 +132,7 @@ const getUserNotifications = async (req, res) => {
         verified: notificationData.user?.accountStatus === 'verified'
       };
 
-      if (notificationData.category === 'follow' && metadata.followerId) {
+      if (notificationData.category === 'follow' && (metadata.followerId || metadata.senderId)) {
         userObj = {
           name: metadata.followerName || metadata.followerUsername || 'Someone',
           avatar: metadata.followerProfilePicture || '🌊',
@@ -142,13 +140,20 @@ const getUserNotifications = async (req, res) => {
         };
       }
 
+      // Normalized fields for push/navigation: relatedEntityId, senderId, commentId
+      const relatedEntityId = metadata.relatedEntityId || metadata.postId || metadata.productId
+        || metadata.groupBuyId || metadata.reportId || metadata.buyerNeedId || metadata.swapDealId
+        || metadata.itemId || null;
+      const senderId = metadata.senderId || metadata.userId || metadata.likerId || metadata.followerId
+        || metadata.sharerId || metadata.joinerId || metadata.proposerId || null;
+
       // Map field names to match frontend expectations
       return {
         id: notificationData.id,
         type: frontendType,
-        isRead: notificationData.isRead, // Keep isRead (frontend expects this)
-        body: notificationData.message, // Map message → body
-        data: metadata, // Map metadata → data
+        isRead: notificationData.isRead,
+        body: notificationData.message,
+        data: metadata,
         user: userObj,
         title: notificationData.title,
         comment: metadata.comment || null,
@@ -159,7 +164,10 @@ const getUserNotifications = async (req, res) => {
         productId: metadata.productId || null,
         userId: metadata.userId || metadata.followerId || null,
         chatId: metadata.chatId || null,
-        auctionId: metadata.auctionId || null
+        auctionId: metadata.auctionId || null,
+        relatedEntityId,
+        senderId,
+        commentId: metadata.commentId || null
       };
     });
 
@@ -367,7 +375,8 @@ const sendSellerApplicationNotification = async (userId, status, reason = null) 
       template.title,
       template.message,
       template.type,
-      template.category
+      template.category,
+      { type: 'seller_application', status }
     );
   } catch (error) {
     console.error('Error sending seller application notification:', error);
@@ -395,7 +404,8 @@ const sendAccountStatusNotification = async (userId, action, reason = null) => {
       template.title,
       template.message,
       template.type,
-      template.category
+      template.category,
+      { type: 'account_status', action }
     );
   } catch (error) {
     console.error('Error sending account status notification:', error);
@@ -419,7 +429,8 @@ const sendAdminNotification = async (businessName) => {
         template.title,
         template.message,
         template.type,
-        template.category
+        template.category,
+        { type: 'admin_new_seller', businessName }
       );
     }
   } catch (error) {

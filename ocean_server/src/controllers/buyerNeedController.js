@@ -1022,6 +1022,9 @@ class BuyerNeedController {
             'info',
             'buyer_need',
             {
+              type: 'buyer_need',
+              relatedEntityId: buyerNeed.id,
+              senderId: buyerNeed.buyer_id,
               buyerNeedId: buyerNeed.id,
               buyerNeedTitle: buyerNeed.title,
               category: categoryName,

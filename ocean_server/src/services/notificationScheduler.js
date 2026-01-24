@@ -134,7 +134,9 @@ const checkGroupBuyDeadlines = async () => {
         `Your group buy "${groupBuy.title}" expires in ${hoursLeft} hours. Current participants: ${groupBuy.current_buyers}/${groupBuy.min_buyers} minimum`,
         'warning',
         'group_buy',
-        { 
+        {
+          type: 'group_buy_deadline',
+          relatedEntityId: groupBuy.id,
           groupBuyId: groupBuy.id,
           title: groupBuy.title,
           deadline: groupBuy.deadline,
@@ -155,7 +157,9 @@ const checkGroupBuyDeadlines = async () => {
           `The group buy "${groupBuy.title}" you joined expires in ${hoursLeft} hours. Current participants: ${groupBuy.current_buyers}/${groupBuy.min_buyers} minimum`,
           'warning',
           'group_buy',
-          { 
+          {
+            type: 'group_buy_deadline',
+            relatedEntityId: groupBuy.id,
             groupBuyId: groupBuy.id,
             title: groupBuy.title,
             deadline: groupBuy.deadline,
@@ -254,7 +258,9 @@ const checkExpiredGroupBuys = async () => {
           `Your group buy "${groupBuy.title}" didn't meet the minimum requirement. Final participants: ${groupBuy.current_buyers}/${groupBuy.min_buyers} minimum`,
           'error',
           'group_buy',
-          { 
+          {
+            type: 'group_buy_failed',
+            relatedEntityId: groupBuy.id,
             groupBuyId: groupBuy.id,
             title: groupBuy.title,
             deadline: groupBuy.deadline,
@@ -274,7 +280,9 @@ const checkExpiredGroupBuys = async () => {
             `The group buy "${groupBuy.title}" you joined didn't meet the minimum requirement. All reservations have been cancelled.`,
             'error',
             'group_buy',
-            { 
+            {
+              type: 'group_buy_failed',
+              relatedEntityId: groupBuy.id,
               groupBuyId: groupBuy.id,
               title: groupBuy.title,
               deadline: groupBuy.deadline,
@@ -297,7 +305,9 @@ const checkExpiredGroupBuys = async () => {
           `Your group buy "${groupBuy.title}" has expired. Final participants: ${groupBuy.current_buyers}/${groupBuy.min_buyers} minimum`,
           'error',
           'group_buy',
-          { 
+          {
+            type: 'group_buy_expired',
+            relatedEntityId: groupBuy.id,
             groupBuyId: groupBuy.id,
             title: groupBuy.title,
             deadline: groupBuy.deadline,
@@ -317,7 +327,9 @@ const checkExpiredGroupBuys = async () => {
             `The group buy "${groupBuy.title}" you joined has expired. Final participants: ${groupBuy.current_buyers}/${groupBuy.min_buyers} minimum`,
             'error',
             'group_buy',
-            { 
+            {
+              type: 'group_buy_expired',
+              relatedEntityId: groupBuy.id,
               groupBuyId: groupBuy.id,
               title: groupBuy.title,
               deadline: groupBuy.deadline,

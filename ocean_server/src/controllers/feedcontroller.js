@@ -1201,8 +1201,11 @@ const toggleLike = async (req, res) => {
                     `${user.fullName} liked your post`,
                     'info',
                     'like',
-                    { 
-                        postId: post.id, 
+                    {
+                        type: 'post_like',
+                        relatedEntityId: post.id,
+                        senderId: userId,
+                        postId: post.id,
                         likerId: userId,
                         likerName: user.fullName,
                         postPreview: post.content ? post.content.substring(0, 100) : 'Your post'
@@ -1370,8 +1373,11 @@ const toggleShare = async (req, res) => {
                     `${user.fullName} shared your post`,
                     'info',
                     'share',
-                    { 
-                        postId: post.id, 
+                    {
+                        type: 'post_share',
+                        relatedEntityId: post.id,
+                        senderId: userId,
+                        postId: post.id,
                         sharerId: userId,
                         sharerName: user.fullName,
                         postPreview: post.content ? post.content.substring(0, 100) : 'Your post'
@@ -1843,7 +1849,14 @@ const createComment = async (req, res) => {
                 `${user?.fullName || 'Someone'} commented on your post`,
                 'info',
                 'engagement',
-                { postId, commentId: comment.id, userId }
+                {
+                    type: 'post_comment',
+                    relatedEntityId: postId,
+                    commentId: comment.id,
+                    senderId: userId,
+                    postId,
+                    userId
+                }
             );
         }
 

@@ -415,6 +415,9 @@ const toggleSaveItem = async (req, res) => {
             'info',
             'item_saved',
             {
+              type: 'item_saved',
+              relatedEntityId: itemId,
+              senderId: userId,
               itemId,
               itemType,
               itemName,

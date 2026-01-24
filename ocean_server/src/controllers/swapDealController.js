@@ -47,9 +47,16 @@ const sendDMNotification = async (sellerId, proposerId, swapDealId, proposalId) 
       sellerId,
       'New Swap Proposal',
       'You have received a new swap proposal for your product.',
-      'swap_proposal',
+      'info',
       'swap',
-      { swapDealId, proposalId, proposerId }
+      {
+        type: 'swap_proposal',
+        relatedEntityId: swapDealId,
+        senderId: proposerId,
+        swapDealId,
+        proposalId,
+        proposerId
+      }
     );
     console.log(`📨 DM notification sent to seller ${sellerId} for swap proposal ${proposalId}`);
   } catch (error) {
@@ -266,7 +273,13 @@ class SwapDealController {
         'Swap Deal Created',
         `Your swap deal for ${productToSwap} has been created successfully!`,
         'success',
-        'swap'
+        'swap',
+        {
+          type: 'swap_created',
+          relatedEntityId: swapDeal.id,
+          senderId: sellerId,
+          swapDealId: swapDeal.id
+        }
       );
 
       // Map swap deal field names for frontend compatibility
@@ -725,7 +738,14 @@ class SwapDealController {
         'Swap Proposal Accepted',
         `Your swap proposal for "${proposal.swapDeal.title}" has been accepted!`,
         'success',
-        'swap'
+        'swap',
+        {
+          type: 'swap_accepted',
+          relatedEntityId: proposal.swapDeal.id,
+          senderId: sellerId,
+          swapDealId: proposal.swapDeal.id,
+          proposalId: proposal.id
+        }
       );
 
       await createNotification(
@@ -733,7 +753,14 @@ class SwapDealController {
         'Swap Proposal Accepted',
         `You have accepted a swap proposal for "${proposal.swapDeal.title}". The swap deal remains active for more proposals.`,
         'success',
-        'swap'
+        'swap',
+        {
+          type: 'swap_accepted',
+          relatedEntityId: proposal.swapDeal.id,
+          senderId: sellerId,
+          swapDealId: proposal.swapDeal.id,
+          proposalId: proposal.id
+        }
       );
 
       res.json({
@@ -785,7 +812,14 @@ class SwapDealController {
         'Swap Proposal Rejected',
         `Your swap proposal for "${proposal.swapDeal.title}" was not accepted.`,
         'info',
-        'swap'
+        'swap',
+        {
+          type: 'swap_rejected',
+          relatedEntityId: proposal.swapDeal.id,
+          senderId: sellerId,
+          swapDealId: proposal.swapDeal.id,
+          proposalId: proposal.id
+        }
       );
 
       res.json({

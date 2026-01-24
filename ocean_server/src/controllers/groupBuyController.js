@@ -534,7 +534,10 @@ class GroupBuyController {
             `${creator.fullName || creator.username} created a new group buy "${title}" in ${finalCategoryName}`,
             'info',
             'group_buy',
-            { 
+            {
+              type: 'group_buy_created',
+              relatedEntityId: groupBuy.id,
+              senderId: creator_id,
               groupBuyId: groupBuy.id,
               title: groupBuy.title,
               creatorId: creator_id,
@@ -1237,7 +1240,10 @@ class GroupBuyController {
         `${joiner.fullName || joiner.username} joined your group buy "${groupBuy.title}"`,
         'info',
         'group_buy',
-        { 
+        {
+          type: 'group_buy_joined',
+          relatedEntityId: groupBuy.id,
+          senderId: user_id,
           groupBuyId: groupBuy.id,
           title: groupBuy.title,
           joinerId: user_id,
@@ -1260,7 +1266,9 @@ class GroupBuyController {
           `Your group buy "${groupBuy.title}" has reached the minimum threshold and is now active!`,
           'success',
           'group_buy',
-          { 
+          {
+            type: 'group_buy_threshold',
+            relatedEntityId: groupBuy.id,
             groupBuyId: groupBuy.id,
             title: groupBuy.title,
             currentBuyers: groupBuy.current_buyers + 1,
@@ -1288,7 +1296,9 @@ class GroupBuyController {
             `The group buy "${groupBuy.title}" has reached the minimum threshold and is now active!`,
             'success',
             'group_buy',
-            { 
+            {
+              type: 'group_buy_active',
+              relatedEntityId: groupBuy.id,
               groupBuyId: groupBuy.id,
               title: groupBuy.title,
               currentBuyers: groupBuy.current_buyers + 1,
@@ -1471,6 +1481,9 @@ class GroupBuyController {
               'warning',
               'group_buy',
               {
+                type: 'group_buy_issue',
+                relatedEntityId: groupBuy.id,
+                senderId: participant.user_id,
                 groupBuyId: groupBuy.id,
                 title: groupBuy.title,
                 participantId: participant.id,
@@ -1711,6 +1724,9 @@ class GroupBuyController {
           'warning',
           'group_buy',
           {
+            type: 'group_buy_cancelled',
+            relatedEntityId: groupBuy.id,
+            senderId: groupBuy.creator_id,
             groupBuyId: groupBuy.id,
             title: groupBuy.title,
             reason: reason.trim()
