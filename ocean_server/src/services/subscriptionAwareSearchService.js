@@ -21,6 +21,8 @@ class SubscriptionAwareSearchService {
       const { 
         query, 
         category, 
+        subcategory,
+        brand,
         location, 
         minPrice, 
         maxPrice, 
@@ -42,6 +44,8 @@ class SubscriptionAwareSearchService {
       }
       
       if (category) whereClause.category = category;
+      if (subcategory) whereClause.subcategory = subcategory;
+      if (brand) whereClause.brand = { [Op.like]: `%${brand}%` };
       if (location) whereClause.location = { [Op.like]: `%${location}%` };
       if (minPrice) whereClause.price = { [Op.gte]: minPrice };
       if (maxPrice) whereClause.price = { ...whereClause.price, [Op.lte]: maxPrice };
@@ -123,6 +127,8 @@ class SubscriptionAwareSearchService {
         searchInfo: {
           query,
           category,
+          subcategory,
+          brand,
           location,
           hasSubscriptionPriority: userId ? await this.userHasSearchPriority(userId) : false
         }
