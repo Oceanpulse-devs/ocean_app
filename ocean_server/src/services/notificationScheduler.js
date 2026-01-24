@@ -2,23 +2,7 @@ const db = require('../../models');
 const { Op } = require('sequelize');
 const axios = require('axios');
 const performanceAnalyticsService = require('./performanceAnalyticsService');
-
-// Helper function to create notifications
-const createNotification = async (userId, title, message, type = 'info', category = 'system', metadata = null) => {
-  try {
-    const notification = await db.Notification.create({
-      userId,
-      title,
-      message,
-      type,
-      category,
-      metadata
-    });
-    return notification;
-  } catch (error) {
-    console.error('Error creating scheduled notification:', error);
-  }
-};
+const { createNotification } = require('../controllers/notificationController');
 
 // Helper function to send system message to conversation
 const sendSystemMessageToConversation = async (conversationId, senderId, content, metadata = {}) => {

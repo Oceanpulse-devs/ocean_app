@@ -1,23 +1,6 @@
 const db = require('../../models');
 const { Op } = require('sequelize');
-
-// Helper function to create notifications
-const createNotification = async (userId, title, message, type = 'info', category = 'system', metadata = null) => {
-  try {
-    const notification = await db.Notification.create({
-      userId,
-      title,
-      message,
-      type,
-      category,
-      metadata
-    });
-    console.log(`📧 Buyer need notification created for user ${userId}: ${title}`);
-    return notification;
-  } catch (error) {
-    console.error('Error creating buyer need notification:', error);
-  }
-};
+const { createNotification } = require('./notificationController');
 
 class BuyerNeedResponseController {
   // Create a response to a buyer need

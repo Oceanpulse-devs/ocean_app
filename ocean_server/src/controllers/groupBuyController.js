@@ -11,6 +11,7 @@ const RankingService = require('../services/rankingService');
 const SpotlightService = require('../services/spotlightService');
 const TopPlacementService = require('../services/topPlacementService');
 const redisClient = require('../config/redisdb');
+const { createNotification } = require('./notificationController');
 
 // Helper function to map group buy field names for frontend
 const mapGroupBuyResponse = (groupBuy) => {
@@ -22,23 +23,6 @@ const mapGroupBuyResponse = (groupBuy) => {
     category: mapped.category, // Use category field directly
     categoryName: mapped.category // Explicit category name field
   };
-};
-
-// Helper function to create notifications
-const createNotification = async (userId, title, message, type = 'info', category = 'system', metadata = null) => {
-  try {
-    const notification = await db.Notification.create({
-      userId,
-      title,
-      message,
-      type,
-      category,
-      metadata
-    });
-    return notification;
-  } catch (error) {
-    console.error('Error creating group buy notification:', error);
-  }
 };
 
 // Helper function to send system message to conversation

@@ -4,23 +4,7 @@ const cloudinaryService = require('../services/cloudinaryService');
 const videoUploadService = require('../services/videoUploadService');
 const imageCompressionService = require('../services/imageCompressionService');
 const redisClient = require('../config/redisdb');
-
-// Helper function to create notifications
-const createNotification = async (userId, title, message, type = 'info', category = 'system', metadata = null) => {
-  try {
-    const notification = await db.Notification.create({
-      userId,
-      title,
-      message,
-      type,
-      category,
-      metadata
-    });
-    return notification;
-  } catch (error) {
-    console.error('Error creating notification:', error);
-  }
-};
+const { createNotification } = require('./notificationController');
 
 // Helper function to map buyer need response to match post structure
 const mapBuyerNeedResponse = (buyerNeed) => {

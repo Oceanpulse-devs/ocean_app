@@ -1,22 +1,5 @@
-const { UserTable, UserFollows, SellersTable, ProductCategory, Notification } = require('../../models');
-
-// Helper function to create notifications
-const createNotification = async (userId, title, message, type = 'info', category = 'system', metadata = null) => {
-    try {
-        const notification = await Notification.create({
-            userId,
-            title,
-            message,
-            type,
-            category,
-            metadata
-        });
-        console.log(`📧 Follow notification created for user ${userId}: ${title}`);
-        return notification;
-    } catch (error) {
-        console.error('Error creating follow notification:', error);
-    }
-};
+const { UserTable, UserFollows, SellersTable, ProductCategory } = require('../../models');
+const { createNotification } = require('./notificationController');
 
 // Follow a user
 const followUser = async (req, res) => {

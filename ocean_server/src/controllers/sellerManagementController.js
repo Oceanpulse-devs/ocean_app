@@ -383,6 +383,26 @@ class SellerManagementController {
         verificationScore: 0
       });
 
+      // Send in-app notification (and FCM if token registered)
+      await sendSellerApplicationNotification(seller.userId, 'rejected', rejectionReason);
+
+      // Send rejection email with reason
+      try {
+        const userEmail = seller.user?.email || seller.email;
+        const userName = seller.fullName || seller.user?.username || 'Seller';
+        const emailTemplate = emailTemplates.sellerApplicationRejected(userName, rejectionReason);
+        await sendEmail(
+          userEmail,
+          emailTemplate.subject,
+          emailTemplate.html,
+          'seller-rejection'
+        );
+        console.log('✅ Seller rejection email sent to:', userEmail);
+      } catch (emailError) {
+        console.error('❌ Failed to send seller rejection email:', emailError);
+        // Don't fail the reject API if email fails
+      }
+
       res.json({
         success: true,
         message: 'Seller rejected successfully',

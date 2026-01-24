@@ -8,31 +8,11 @@ const {
     Auction,
     SwapDeal,
     PostComment,
-    SellersTable,
-    Notification
+    SellersTable
 } = db;
 const { Op } = require('sequelize');
 const { v4: uuidv4 } = require('uuid');
-
-// Helper function to create notifications
-const createNotification = async (userId, title, message, type = 'info', category = 'system', metadata = null) => {
-    try {
-        const notification = await Notification.create({
-            userId,
-            title,
-            message,
-            type,
-            category,
-            metadata
-        });
-        console.log(`📧 Report notification created for user ${userId}: ${title}`);
-        return notification;
-    } catch (error) {
-        console.error('Error creating report notification:', error);
-        // Don't throw - notifications are optional
-        return null;
-    }
-};
+const { createNotification } = require('./notificationController');
 
 // Helper function to notify all admins
 const notifyAllAdmins = async (title, message, category = 'report', metadata = null) => {

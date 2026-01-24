@@ -1,4 +1,4 @@
-const { Product, ProductCategory, SavedItem, Post, PostMedia, UserTable, SellersTable, UserFollows, Notification, ProductLike, Auction, SwapDeal, GroupBuy } = require('../../models');
+const { Product, ProductCategory, SavedItem, Post, PostMedia, UserTable, SellersTable, UserFollows, ProductLike, Auction, SwapDeal, GroupBuy } = require('../../models');
 const db = require('../../models');
 const { Op, Sequelize } = require('sequelize');
 const cloudinaryService = require('../services/cloudinaryService');
@@ -12,6 +12,7 @@ const RankingService = require('../services/rankingService');
 const SpotlightService = require('../services/spotlightService');
 const TopPlacementService = require('../services/topPlacementService');
 const redisClient = require('../config/redisdb');
+const { createNotification } = require('./notificationController');
 
 // Helper function to map product field names for frontend
 const mapProductResponse = (product) => {
@@ -21,24 +22,6 @@ const mapProductResponse = (product) => {
     name: mapped.title,  // Map title → name for frontend
     arModel: mapped.arModel || null  // Include AR model URL
   };
-};
-
-// Helper function to create notifications
-const createNotification = async (userId, title, message, type = 'info', category = 'system', metadata = null) => {
-    try {
-        const notification = await Notification.create({
-            userId,
-            title,
-            message,
-            type,
-            category,
-            metadata
-        });
-        console.log(`📧 Product notification created for user ${userId}: ${title}`);
-        return notification;
-    } catch (error) {
-        console.error('Error creating product notification:', error);
-    }
 };
 
 // Get all products with search and filters

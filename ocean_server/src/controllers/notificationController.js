@@ -1,6 +1,7 @@
 const { UserTable, Notification } = require('../../models');
 const { mapArrayFields } = require('../../utils/fieldMapper');
 const redisClient = require('../config/redisdb');
+const fcmService = require('../services/fcmService');
 
 // Create and send notification
 const createNotification = async (userId, title, message, type = 'info', category = 'system', metadata = null) => {
@@ -16,6 +17,17 @@ const createNotification = async (userId, title, message, type = 'info', categor
 
     // Send email notification
     await sendEmailNotification(userId, title, message, type);
+
+    // Send FCM push (non-blocking; failures don't affect notification creation)
+    try {
+      await fcmService.sendPushNotification(
+        userId,
+        { title, body: message },
+        metadata && typeof metadata === 'object' ? metadata : {}
+      );
+    } catch (pushErr) {
+      console.error('Push notification send failed (notification still created):', pushErr?.message || pushErr);
+    }
 
     return notification;
   } catch (error) {

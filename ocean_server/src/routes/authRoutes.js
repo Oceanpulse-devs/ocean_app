@@ -8,6 +8,7 @@ const updateVerificationStatusBasedOnDocuments = require('../middleware/sellerdo
 const { updateBusinessInfo } = require('../controllers/sellerBusinessController')
 const { currentUserprofile, getUserProfileById } = require('../controllers/profilecontroller')
 const { updateProfile } = require('../controllers/profileUpdateController')
+const { registerFcmToken, unregisterFcmToken } = require('../controllers/fcmTokenController')
 
 const passport = require('passport')
 const jwt = require('jsonwebtoken')
@@ -117,6 +118,10 @@ router.get('/api/active-sessions', authMiddleware, async (req, res) => {
         res.status(500).json({ message: 'Error getting active sessions', error: error.message });
     }
 });
+
+// FCM push notification token (register / unregister)
+router.post('/api/fcm-token', authMiddleware, registerFcmToken);
+router.delete('/api/fcm-token', authMiddleware, unregisterFcmToken);
 
 // Get messaging token for messaging server
 router.get('/api/messaging-token', authMiddleware, (req, res) => {

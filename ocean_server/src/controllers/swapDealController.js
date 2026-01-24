@@ -9,6 +9,7 @@ const RankingService = require('../services/rankingService');
 const SpotlightService = require('../services/spotlightService');
 const TopPlacementService = require('../services/topPlacementService');
 const redisClient = require('../config/redisdb');
+const { createNotification } = require('./notificationController');
 
 // Helper function to map swap deal field names for frontend
 const mapSwapDealResponse = (swapDeal) => {
@@ -18,24 +19,6 @@ const mapSwapDealResponse = (swapDeal) => {
     myProductName: mapped.productToSwap,  // Map productToSwap → myProductName
     lookingForName: mapped.preferredItems || mapped.lookingFor || null  // Add lookingForName
   };
-};
-
-// Helper function to create notifications
-const createNotification = async (userId, title, message, type = 'info', category = 'system', metadata = null) => {
-  try {
-    const notification = await db.Notification.create({
-      userId,
-      title,
-      message,
-      type,
-      category,
-      metadata
-    });
-    console.log(`📧 Swap deal notification created for user ${userId}: ${title}`);
-    return notification;
-  } catch (error) {
-    console.error('Error creating swap deal notification:', error);
-  }
 };
 
 // Helper function to send DM notification

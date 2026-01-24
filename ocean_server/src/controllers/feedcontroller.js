@@ -1,28 +1,11 @@
-const { Post, PostMedia, PostLike, PostComment, PostShare, SavedItem, UserTable, SellersTable, UserFollows, ProductCategory, Notification } = require('../../models');
+const { Post, PostMedia, PostLike, PostComment, PostShare, SavedItem, UserTable, SellersTable, UserFollows, ProductCategory } = require('../../models');
 const { Op, Sequelize } = require('sequelize');
 const cloudinaryService = require('../services/cloudinaryService');
 const videoUploadService = require('../services/videoUploadService');
 const imageCompressionService = require('../services/imageCompressionService');
 const { mapNestedFields } = require('../../utils/fieldMapper');
 const redisClient = require('../config/redisdb');
-
-// Helper function to create notifications
-const createNotification = async (userId, title, message, type = 'info', category = 'system', metadata = null) => {
-    try {
-        const notification = await Notification.create({
-            userId,
-            title,
-            message,
-            type,
-            category,
-            metadata
-        });
-        // Removed verbose logging to reduce Railway log rate limiting
-        return notification;
-    } catch (error) {
-        console.error('Error creating notification:', error);
-    }
-};
+const { createNotification } = require('./notificationController');
 
 // Helper: Standardize user object across all post types
 const standardizeUserObject = (postData) => {

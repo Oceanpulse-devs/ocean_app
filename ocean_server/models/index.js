@@ -79,6 +79,7 @@ const SellerFeedbackLike = require('./SellerFeedbackLike');
 const SellerFeedbackResponse = require('./SellerFeedbackResponse');
 const SellerFeedbackResponseLike = require('./SellerFeedbackResponseLike');
 const Report = require('./Report');
+const UserFcmToken = require('./UserFcmToken');
 
 // Initialize all models
 db.UserTable = UserTable(sequelize, Sequelize.DataTypes);
@@ -145,6 +146,7 @@ db.ShareStats = ShareStats(sequelize, Sequelize.DataTypes);
   db.SellerFeedbackResponse = SellerFeedbackResponse(sequelize, Sequelize.DataTypes);
   db.SellerFeedbackResponseLike = SellerFeedbackResponseLike(sequelize, Sequelize.DataTypes);
   db.Report = Report(sequelize, Sequelize.DataTypes);
+  db.UserFcmToken = UserFcmToken(sequelize, Sequelize.DataTypes);
 
 // Set up associations
 const setupAssociations = () => {
@@ -250,6 +252,10 @@ const setupAssociations = () => {
   
   // Notification associations
   db.Notification.belongsTo(db.UserTable, { foreignKey: 'userId', as: 'user' });
+
+  // UserFcmToken associations
+  db.UserFcmToken.belongsTo(db.UserTable, { foreignKey: 'userId', as: 'user' });
+  db.UserTable.hasMany(db.UserFcmToken, { foreignKey: 'userId', as: 'fcmTokens' });
   
   // SellerDocument associations
   db.SellerDocument.belongsTo(db.UserTable, { foreignKey: 'userId', as: 'user' });
