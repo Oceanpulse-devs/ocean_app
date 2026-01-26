@@ -68,6 +68,11 @@ module.exports = (sequelize) => {
       type: DataTypes.UUID,
       allowNull: true,
       comment: 'Seller Table ID (Sellers table) - only for sellers'
+    },
+    verificationStatus: {
+      type: DataTypes.ENUM('pending', 'rejected', 'approved', 'suspended', 'active', 'expired'),
+      allowNull: true,
+      comment: 'Seller verification status - only for sellers'
     }
   }, {
     tableName: 'users',

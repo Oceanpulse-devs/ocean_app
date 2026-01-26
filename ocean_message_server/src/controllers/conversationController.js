@@ -7,13 +7,20 @@ const formatParticipant = (participant) => {
   const user = participant.user || participant;
   const userData = user.toJSON ? user.toJSON() : user;
   
+  // Only show businessName if seller is approved
+  // For rejected/pending sellers, show fullName instead
+  const shouldShowBusinessName = userData.accountType === 'seller' && 
+                                  userData.verificationStatus === 'approved' && 
+                                  userData.businessName;
+  
   const formatted = {
     userId: userData.id,  // User Table ID
     sellerId: userData.sellerId || null,  // Seller Table ID (if seller)
     fullName: userData.fullName,
     profilePicture: userData.profilePicture || null,
     accountType: userData.accountType || 'buyer',
-    businessName: userData.businessName || null,
+    businessName: shouldShowBusinessName ? userData.businessName : null,  // Only for approved sellers
+    verificationStatus: userData.verificationStatus || null,
     isOnline: false, // TODO: Add online status tracking if available
     user: {
       id: userData.id,
@@ -36,9 +43,9 @@ const syncUserFromMainServer = async (userId) => {
     if (existingUser) {
       console.log('✅ User already exists in messaging system:', userId);
       
-      // If businessName or sellerId is missing but user is a seller, try to fetch and update it
-      if (existingUser.accountType === 'seller' && (!existingUser.businessName || !existingUser.sellerId)) {
-        console.log('🔄 Seller missing businessName or sellerId, attempting to fetch...');
+      // Always refresh verificationStatus for sellers to ensure it's up-to-date (important for rejected sellers)
+      if (existingUser.accountType === 'seller') {
+        console.log('🔄 Seller missing data, attempting to fetch...');
         try {
           const response = await axios.get(`${mainServerUrl}/api/user/${userId}`, {
             timeout: 5000,
@@ -49,6 +56,23 @@ const syncUserFromMainServer = async (userId) => {
             const data = response.data.data;
             const updateData = {};
             
+            if (data.businessName && !existingUser.businessName) {
+              updateData.businessName = data.businessName;
+              console.log(`✅ Updated businessName: ${data.businessName}`);
+            }
+            
+            if (data.sellerId && !existingUser.sellerId) {
+              updateData.sellerId = data.sellerId;
+              console.log(`✅ Updated sellerId: ${data.sellerId}`);
+            }
+            
+            // Always update verificationStatus if available (important for rejected sellers)
+            if (data.verificationStatus !== undefined && data.verificationStatus !== null) {
+              updateData.verificationStatus = data.verificationStatus;
+              console.log(`✅ Updated verificationStatus: ${data.verificationStatus}`);
+            }
+            
+            // Also update businessName and sellerId if missing
             if (data.businessName && !existingUser.businessName) {
               updateData.businessName = data.businessName;
               console.log(`✅ Updated businessName: ${data.businessName}`);
@@ -101,6 +125,12 @@ const syncUserFromMainServer = async (userId) => {
           userData.sellerId = data.sellerId;
           console.log(`🏪 Found sellerId: ${userData.sellerId}`);
         }
+        
+        // Extract verificationStatus if available (important for rejected sellers)
+        if (data.verificationStatus !== undefined && data.verificationStatus !== null) {
+          userData.verificationStatus = data.verificationStatus;
+          console.log(`✅ Found verificationStatus: ${data.verificationStatus}`);
+        }
       }
     } catch (userError) {
       console.log(`⚠️ User not found in users table, trying seller endpoint...`);
@@ -122,12 +152,14 @@ const syncUserFromMainServer = async (userId) => {
           const sellerData = sellerResponse.data.data;
           userData = {
             id: sellerData.userId || sellerData.id || userId,
-            fullName: sellerData.businessName || sellerData.fullName || 'Unknown Seller',
+            fullName: sellerData.fullName || sellerData.businessName || 'Unknown Seller',
             email: sellerData.businessEmail || `${userId}@temp.com`,
             profilePicture: sellerData.businessLogo || null,
             role: 'seller',
             accountStatus: 'active',
-            sellerId: sellerData.id || sellerData.sellerId || null // Store Seller Table ID
+            sellerId: sellerData.id || sellerData.sellerId || null, // Store Seller Table ID
+            verificationStatus: sellerData.verificationStatus || 'pending', // Store verification status
+            businessName: sellerData.businessName || null // Store business name
           };
         }
       } catch (sellerError) {
@@ -152,7 +184,8 @@ const syncUserFromMainServer = async (userId) => {
         website: userData.website || null,
         emailVerified: userData.emailVerified || false,
         businessName: userData.businessName || null, // Store business name for sellers
-        sellerId: userData.sellerId || null // Store Seller Table ID if seller
+        sellerId: userData.sellerId || null, // Store Seller Table ID if seller
+        verificationStatus: userData.verificationStatus || null // Store verification status for sellers
       });
 
       console.log('✅ User synced successfully:', newUser.id);
@@ -175,7 +208,8 @@ const syncUserFromMainServer = async (userId) => {
       website: null,
       emailVerified: false,
       businessName: null,
-      sellerId: null
+      sellerId: null,
+      verificationStatus: null
     });
     
     console.log('⚠️ Created fallback user:', fallbackUser.id);
@@ -199,7 +233,8 @@ const syncUserFromMainServer = async (userId) => {
         location: null,
         website: null,
         emailVerified: false,
-        sellerId: null
+        sellerId: null,
+        verificationStatus: null
       });
       
       console.log('⚠️ Created fallback user:', fallbackUser.id);
@@ -338,7 +373,7 @@ const getConversation = async (req, res) => {
             {
               model: UserReference,
               as: 'user',
-              attributes: ['id', 'fullName', 'profilePicture', 'businessName', 'accountType', 'sellerId']
+              attributes: ['id', 'fullName', 'profilePicture', 'businessName', 'accountType', 'sellerId', 'verificationStatus']
             }
           ]
         },
@@ -593,7 +628,7 @@ const createConversation = async (req, res) => {
             {
               model: UserReference,
               as: 'user',
-              attributes: ['id', 'fullName', 'profilePicture', 'businessName', 'accountType', 'sellerId']
+              attributes: ['id', 'fullName', 'profilePicture', 'businessName', 'accountType', 'sellerId', 'verificationStatus']
             }
           ]
         },
