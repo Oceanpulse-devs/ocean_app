@@ -7,13 +7,17 @@ const formatParticipant = (participant) => {
   const user = participant.user || participant;
   const userData = user.toJSON ? user.toJSON() : user;
   
+  // Use businessName if it exists (only approved sellers have it), otherwise use fullName
+  const displayName = userData.businessName || userData.fullName;
+  
   const formatted = {
     userId: userData.id,  // User Table ID
     sellerId: userData.sellerId || null,  // Seller Table ID (if seller)
     fullName: userData.fullName,
     profilePicture: userData.profilePicture || null,
     accountType: userData.accountType || 'buyer',
-    businessName: userData.businessName || null,
+    businessName: userData.businessName || null, // Will be null for rejected sellers
+    displayName: displayName, // Use businessName for approved sellers, fullName otherwise
     isOnline: false, // TODO: Add online status tracking if available
     user: {
       id: userData.id,
@@ -38,7 +42,7 @@ const syncUserFromMainServer = async (userId) => {
       
       // If businessName or sellerId is missing but user is a seller, try to fetch and update it
       if (existingUser.accountType === 'seller' && (!existingUser.businessName || !existingUser.sellerId)) {
-        console.log('🔄 Seller missing businessName or sellerId, attempting to fetch...');
+        console.log('🔄 Seller missing data, attempting to fetch...');
         try {
           const response = await axios.get(`${mainServerUrl}/api/user/${userId}`, {
             timeout: 5000,
@@ -49,9 +53,14 @@ const syncUserFromMainServer = async (userId) => {
             const data = response.data.data;
             const updateData = {};
             
-            if (data.businessName && !existingUser.businessName) {
+            // Only update businessName if seller is approved
+            if (data.businessName && data.verificationStatus === 'approved' && !existingUser.businessName) {
               updateData.businessName = data.businessName;
-              console.log(`✅ Updated businessName: ${data.businessName}`);
+              console.log(`✅ Updated businessName: ${data.businessName} (approved seller)`);
+            } else if (data.verificationStatus !== 'approved' && existingUser.businessName) {
+              // Remove businessName if seller is no longer approved
+              updateData.businessName = null;
+              console.log(`🗑️ Removed businessName (seller not approved, status: ${data.verificationStatus})`);
             }
             
             if (data.sellerId && !existingUser.sellerId) {
@@ -91,9 +100,13 @@ const syncUserFromMainServer = async (userId) => {
         const data = response.data.data;
         userData = data;
         
-        // Extract businessName if available (getUserProfileById returns it directly for sellers)
-        if (data.businessName) {
-          console.log(`🏪 Found business name: ${data.businessName}`);
+        // Only store businessName if seller is approved
+        if (data.businessName && data.verificationStatus === 'approved') {
+          console.log(`🏪 Found business name: ${data.businessName} (approved seller)`);
+        } else if (data.businessName && data.verificationStatus !== 'approved') {
+          // Don't store businessName for rejected/pending sellers
+          userData.businessName = null;
+          console.log(`⚠️ Not storing businessName (verificationStatus: ${data.verificationStatus})`);
         }
         
         // Extract sellerId if user is a seller
@@ -120,13 +133,21 @@ const syncUserFromMainServer = async (userId) => {
 
         if (sellerResponse.data && sellerResponse.data.data) {
           const sellerData = sellerResponse.data.data;
+          // Only use businessName if seller is approved, otherwise use fullName
+          const displayName = (sellerData.verificationStatus === 'approved' && sellerData.businessName) 
+            ? sellerData.businessName 
+            : (sellerData.fullName || 'Unknown Seller');
+          
           userData = {
             id: sellerData.userId || sellerData.id || userId,
-            fullName: sellerData.businessName || sellerData.fullName || 'Unknown Seller',
+            fullName: sellerData.fullName || displayName || 'Unknown Seller',
             email: sellerData.businessEmail || `${userId}@temp.com`,
             profilePicture: sellerData.businessLogo || null,
             role: 'seller',
             accountStatus: 'active',
+            businessName: (sellerData.verificationStatus === 'approved' && sellerData.businessName) 
+              ? sellerData.businessName 
+              : null, // Only store if approved
             sellerId: sellerData.id || sellerData.sellerId || null // Store Seller Table ID
           };
         }
