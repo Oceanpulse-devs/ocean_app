@@ -1191,7 +1191,7 @@ const toggleLike = async (req, res) => {
                         postId: post.id,
                         likerId: userId,
                         likerName: user.fullName,
-                        postPreview: post.content ? post.content.substring(0, 100) : 'Your post'
+                        postPreview: post.content ? [...String(post.content)].slice(0, 100).join('') : 'Your post'
                     }
                 );
             }
@@ -1363,7 +1363,7 @@ const toggleShare = async (req, res) => {
                         postId: post.id,
                         sharerId: userId,
                         sharerName: user.fullName,
-                        postPreview: post.content ? post.content.substring(0, 100) : 'Your post'
+                        postPreview: post.content ? [...String(post.content)].slice(0, 100).join('') : 'Your post'
                     }
                 );
             }

@@ -66,6 +66,8 @@ const updateSaveCount = async (itemId, itemType, increment = true) => {
 };
 
 // Helper function to detect the correct item type by checking which table the item exists in
+// Order: Post is checked before GroupBuy/Product so UUIDs (Post ids) don't get misclassified
+// when MySQL coerces them to INT and matches a group_buy by id (e.g. "5bcab577-..." -> 5).
 const detectItemType = async (itemId) => {
   try {
     // Check Auction first
@@ -76,7 +78,11 @@ const detectItemType = async (itemId) => {
     const swapDeal = await SwapDeal.findByPk(itemId);
     if (swapDeal) return 'swap_deal';
     
-    // Check GroupBuy
+    // Check Post before GroupBuy/Product so UUIDs resolve to post, not int-key tables
+    const post = await Post.findByPk(itemId);
+    if (post) return 'post';
+    
+    // Check GroupBuy (id is INTEGER)
     const groupBuy = await GroupBuy.findByPk(itemId);
     if (groupBuy) return 'group_buy';
     
@@ -86,10 +92,6 @@ const detectItemType = async (itemId) => {
       if (product.isDistressSale) return 'distress_sale';
       return 'product';
     }
-    
-    // Check Post last (as it's the most generic)
-    const post = await Post.findByPk(itemId);
-    if (post) return 'post';
     
     return null; // Item not found in any table
   } catch (error) {

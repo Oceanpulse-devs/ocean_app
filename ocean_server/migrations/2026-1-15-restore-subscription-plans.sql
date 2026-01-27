@@ -24,8 +24,8 @@ INSERT INTO subscription_plans (
   FALSE, FALSE, FALSE, FALSE,
   FALSE, FALSE, FALSE, FALSE,
   FALSE, FALSE, 
-  JSON_ARRAY('Basic chat with buyers', 'Join group buys', 'Very limited exposure in search'),
-  'Perfect for new sellers getting started. Basic features with limited exposure.',
+  JSON_ARRAY('Up to 2 listings', 'Cannot create group buys', 'Cannot initiate swap deals, distress sales or auctions', 'Very limited exposure in search', 'Can DM only 1 buyer-need (product demand) post per day', 'Does not get category notifications when buyers post needs', 'No AR features'),
+  'Startup plan for new sellers. Up to 2 listings, no group buys, swaps or auctions, very limited search exposure, can DM only 1 buyer-need (product demand) post per day, no category notifications and no AR.',
   NOW(), NOW()
 );
 
@@ -41,12 +41,12 @@ INSERT INTO subscription_plans (
 ) VALUES (
   'wave', 'Wave', 3000.00, 8.00, 'NGN', 'monthly',
   5, 1, 1, 1, 4,
-  4, 1, 0, 1,
+  3, 1, 0, 1,
   TRUE, TRUE, TRUE, TRUE,
   FALSE, FALSE, FALSE, TRUE,
   FALSE, FALSE,
-  JSON_ARRAY('Highlighted in searches', 'Create 1 group buy post', '1 free promotional boost per month'),
-  'Great for growing sellers. More listings and basic promotional features.',
+  JSON_ARRAY('Up to 5 listings', 'Highlighted in searches', 'Create 1 group buy post', 'Can initiate 1 swap deal, 4 distress sales and 1 auction', 'Gets 1 notification per day when a buyer posts a need in their category', 'Can DM 3 individual buyer-need (product demand) posts per day', '1 free promotional boost per month', 'No AR features'),
+  'Basic plan for growing sellers. Up to 5 listings, highlighted in searches, 1 group buy, 1 swap deal, 4 distress sales and 1 auction, 1 daily buyer-need notification, can DM 3 buyer-need (product demand) posts per day, plus 1 free promotional boost per month and no AR.',
   NOW(), NOW()
 );
 
@@ -66,8 +66,8 @@ INSERT INTO subscription_plans (
   TRUE, TRUE, TRUE, TRUE,
   TRUE, TRUE, TRUE, TRUE,
   FALSE, FALSE,
-  JSON_ARRAY('Verified Seller Badge', 'Shopfront customization', 'AR for 20 products', 'Sale insights'),
-  'Perfect for business owners. Advanced features with verified badge and analytics.',
+  JSON_ARRAY('Everything in Wave', 'Up to 100 listings', 'Priority visibility in buyer searches', '3 promotional boosts per month', 'Verified Seller Badge', 'Can DM 20 buyer-need (product demand) posts per day', 'Receives 20 buyer-need notifications per day in their category', 'AR enabled for up to 20 products', 'Up to 10 group buys, 10 distress sales, 10 auctions and 10 swap deals', 'Shopfront customization (logo, banner, shop bio)', 'Sales insights / advanced analytics'),
+  'Business plan for serious vendors. Includes everything in Wave plus up to 100 listings, priority search visibility, 3 boosts/month, Verified Seller Badge, can DM 20 buyer-need (product demand) posts per day, 20 daily buyer-need notifications, AR for 20 products, 10 group buys/distress sales/auctions/swaps, full shopfront customization and sales insights analytics.',
   NOW(), NOW()
 );
 
@@ -87,8 +87,8 @@ INSERT INTO subscription_plans (
   TRUE, TRUE, TRUE, TRUE,
   TRUE, TRUE, TRUE, TRUE,
   TRUE, TRUE,
-  JSON_ARRAY('Everything unlimited', 'Top ranking in search & feeds', 'All products promotional boost', 'Top priority customer service', 'Access to buyer search insights'),
-  'Ultimate plan for serious sellers. Everything unlimited with premium support.',
+  JSON_ARRAY('Everything open and unlimited', 'Unlimited listings, group buys, swap deals, distress sales and auctions', 'Top ranking in search and feeds', 'All products posted are treated as promotional boosts', 'Verified Seller Badge', 'Top priority customer service', 'Access to buyer search insights', 'Access to product demand trends (see what buyers could not find and what sells the most)', 'Unlimited buyer-need (product demand) DMs per day', 'Full advanced analytics and insights'),
+  'Enterprise plan with everything unlimited. Unlimited listings and deal types, top ranking in search and feeds, every product acts as a promotional boost, Verified Seller Badge, top priority support, full access to buyer search insights and product demand trends, and unlimited buyer-need (product demand) DMs per day with advanced analytics.',
   NOW(), NOW()
 );
 

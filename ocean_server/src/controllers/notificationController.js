@@ -3,16 +3,36 @@ const { mapArrayFields } = require('../../utils/fieldMapper');
 const redisClient = require('../config/redisdb');
 const fcmService = require('../services/fcmService');
 
+// Remove lone Unicode surrogates from strings so MySQL JSON accepts them (avoids "surrogate pair invalid")
+function sanitizeMetadataForStorage(obj) {
+  if (obj == null) return obj;
+  if (typeof obj === 'string') {
+    return obj.replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g, '');
+  }
+  if (Array.isArray(obj)) {
+    return obj.map(sanitizeMetadataForStorage);
+  }
+  if (typeof obj === 'object') {
+    const out = {};
+    for (const k of Object.keys(obj)) {
+      out[k] = sanitizeMetadataForStorage(obj[k]);
+    }
+    return out;
+  }
+  return obj;
+}
+
 // Create and send notification
 const createNotification = async (userId, title, message, type = 'info', category = 'system', metadata = null) => {
   try {
+    const safeMetadata = metadata && typeof metadata === 'object' ? sanitizeMetadataForStorage(metadata) : metadata;
     const notification = await Notification.create({
       userId,
       title,
       message,
       type,
       category,
-      metadata
+      metadata: safeMetadata
     });
 
     // Send email notification
@@ -23,7 +43,7 @@ const createNotification = async (userId, title, message, type = 'info', categor
       await fcmService.sendPushNotification(
         userId,
         { title, body: message },
-        metadata && typeof metadata === 'object' ? metadata : {}
+        safeMetadata && typeof safeMetadata === 'object' ? safeMetadata : {}
       );
     } catch (pushErr) {
       console.error('Push notification send failed (notification still created):', pushErr?.message || pushErr);
