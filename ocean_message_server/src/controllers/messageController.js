@@ -156,6 +156,9 @@ const sendMessage = async (req, res) => {
       });
     }
 
+    // Normalize referenceType: frontend may send 'demand', DB stores 'buyer_need'
+    const normalizedReferenceType = referenceType === 'demand' ? 'buyer_need' : referenceType;
+
     // Create message
     const message = await Message.create({
       conversationId,
@@ -166,7 +169,7 @@ const sendMessage = async (req, res) => {
       mediaUrl,
       mediaType,
       // Reference fields for context tracking
-      referenceType,
+      referenceType: normalizedReferenceType,
       referenceId,
       referenceTitle,
       referenceCategory,
@@ -183,8 +186,8 @@ const sendMessage = async (req, res) => {
       { where: { id: conversationId } }
     );
 
-    // Handle reach increment for buyer need messages
-    if (buyerNeedId && referenceType === 'buyer_need') {
+    // Handle reach increment for buyer need messages (demand = buyer_need)
+    if (buyerNeedId && (referenceType === 'buyer_need' || referenceType === 'demand')) {
       try {
         console.log(`📈 Incrementing reach for buyer need: ${buyerNeedId}`);
         
@@ -267,8 +270,8 @@ const sendMessage = async (req, res) => {
         };
       }
 
-      // Add reach information if this is a buyer need message
-      if (buyerNeedId && referenceType === 'buyer_need') {
+      // Add reach information if this is a buyer need message (demand = buyer_need)
+      if (buyerNeedId && (referenceType === 'buyer_need' || referenceType === 'demand')) {
         notificationMetadata.buyerNeedId = buyerNeedId;
         notificationMetadata.isBuyerNeedMessage = true;
       }
