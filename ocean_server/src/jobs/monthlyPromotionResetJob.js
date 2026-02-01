@@ -75,12 +75,12 @@ class MonthlyPromotionResetJob {
 
             // Create new usage record for current month (counters start at 0)
             await PromotionUsage.create({
-              user_id: userId,
-              subscription_id: subscription.id,
-              usage_period: currentPeriod,
-              boosts_used: 0,
-              top_placements_used: 0,
-              spotlights_used: 0
+              userId: userId,
+              subscriptionId: subscription.id,
+              usagePeriod: currentPeriod,
+              boostsUsed: 0,
+              topPlacementsUsed: 0,
+              spotlightsUsed: 0
             });
 
             results.usageRecordsCreated++;
@@ -193,12 +193,12 @@ class MonthlyPromotionResetJob {
           }
 
           await PromotionUsage.create({
-            user_id: userId,
-            subscription_id: subscription.id,
-            usage_period: currentPeriod,
-            boosts_used: 0,
-            top_placements_used: 0,
-            spotlights_used: 0
+            userId: userId,
+            subscriptionId: subscription.id,
+            usagePeriod: currentPeriod,
+            boostsUsed: 0,
+            topPlacementsUsed: 0,
+            spotlightsUsed: 0
           });
 
           results.usageRecordsCreated++;

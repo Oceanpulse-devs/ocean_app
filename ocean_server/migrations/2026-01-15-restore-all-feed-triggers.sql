@@ -4,6 +4,7 @@
 -- Description: Restores all database triggers for unified feed system
 -- Fixed: Removed isFeatured from products, fixed LAST_INSERT_ID() issues,
 --        fixed table/column references to match actual schema
+-- Fixed: userCountry/userRegion now use seller's country/state (not hardcoded Nigeria/Lagos)
 -- =====================================================
 
 DELIMITER $$
@@ -39,11 +40,13 @@ BEGIN
     DECLARE content_type_var VARCHAR(50);
     DECLARE feed_priority_var INT;
     DECLARE new_post_id VARCHAR(255);
+    DECLARE country_var VARCHAR(100) DEFAULT NULL;
+    DECLARE region_var VARCHAR(100) DEFAULT NULL;
     
-    -- Get the user ID from the seller
-    SELECT userId INTO user_id_var 
-    FROM sellers 
-    WHERE id = NEW.sellerId 
+    -- Get the user ID and seller country/region from the seller
+    SELECT userId, country, state INTO user_id_var, country_var, region_var
+    FROM sellers
+    WHERE id = NEW.sellerId
     LIMIT 1;
     
     -- Determine content type and priority
@@ -100,8 +103,8 @@ BEGIN
         NEW.price,
         NEW.currency,
         NEW.location,
-        COALESCE(NEW.location, 'Lagos'),
-        'Nigeria',
+        COALESCE(region_var, NEW.location, 'Lagos'),
+        COALESCE(country_var, 'Nigeria'),
         content_type_var,
         NEW.id,
         'products',
@@ -228,12 +231,20 @@ END$$
 -- GROUP BUY TRIGGERS
 -- =====================================================
 
--- Group Buy to Feed Trigger (FIXED: Uses creator_id directly, uses UUID() instead of LAST_INSERT_ID())
+-- Group Buy to Feed Trigger (FIXED: Uses creator_id directly, uses UUID() instead of LAST_INSERT_ID(), seller country/region)
 CREATE TRIGGER `tr_group_buy_to_feed` 
 AFTER INSERT ON `group_buys` 
 FOR EACH ROW 
 BEGIN
     DECLARE new_post_id VARCHAR(255);
+    DECLARE country_var VARCHAR(100) DEFAULT NULL;
+    DECLARE region_var VARCHAR(100) DEFAULT NULL;
+    
+    -- Get creator's country/region from sellers (creator_id is user ID)
+    SELECT country, state INTO country_var, region_var
+    FROM sellers
+    WHERE userId = NEW.creator_id
+    LIMIT 1;
     
     -- Generate UUID for the post
     SET new_post_id = UUID();
@@ -272,8 +283,8 @@ BEGIN
         NEW.group_price,  -- Use group_price as the display price
         'NGN',  -- Default currency
         NEW.location,
-        COALESCE(NEW.location, 'Lagos'),
-        'Nigeria',
+        COALESCE(region_var, NEW.location, 'Lagos'),
+        COALESCE(country_var, 'Nigeria'),
         'group_buy',
         NEW.id,
         'group_buys',
@@ -357,12 +368,20 @@ END$$
 -- SWAP DEAL TRIGGERS
 -- =====================================================
 
--- Swap Deal to Feed Trigger (FIXED: Uses seller_id directly, uses images JSON field, uses UUID() instead of LAST_INSERT_ID())
+-- Swap Deal to Feed Trigger (FIXED: Uses seller_id directly, uses images JSON field, uses UUID() instead of LAST_INSERT_ID(), seller country/region)
 CREATE TRIGGER `tr_swap_deal_to_feed` 
 AFTER INSERT ON `swap_deals` 
 FOR EACH ROW 
 BEGIN
     DECLARE new_post_id VARCHAR(255);
+    DECLARE country_var VARCHAR(100) DEFAULT NULL;
+    DECLARE region_var VARCHAR(100) DEFAULT NULL;
+    
+    -- Get seller's country/region from sellers (seller_id is user ID)
+    SELECT country, state INTO country_var, region_var
+    FROM sellers
+    WHERE userId = NEW.seller_id
+    LIMIT 1;
     
     -- Generate UUID for the post
     SET new_post_id = UUID();
@@ -401,8 +420,8 @@ BEGIN
         NULL,
         'NGN',
         NEW.meeting_location,
-        COALESCE(NEW.meeting_location, 'Lagos'),
-        'Nigeria',
+        COALESCE(region_var, NEW.meeting_location, 'Lagos'),
+        COALESCE(country_var, 'Nigeria'),
         'swap_deal',
         NEW.id,
         'swap_deals',
@@ -482,18 +501,20 @@ END$$
 -- AUCTION TRIGGERS
 -- =====================================================
 
--- Auction to Feed Trigger (FIXED: Uses UUID() instead of LAST_INSERT_ID())
+-- Auction to Feed Trigger (FIXED: Uses UUID() instead of LAST_INSERT_ID(), seller country/region)
 CREATE TRIGGER `tr_auction_to_feed` 
 AFTER INSERT ON `auctions` 
 FOR EACH ROW 
 BEGIN
     DECLARE user_id_var VARCHAR(255);
     DECLARE new_post_id VARCHAR(255);
+    DECLARE country_var VARCHAR(100) DEFAULT NULL;
+    DECLARE region_var VARCHAR(100) DEFAULT NULL;
     
-    -- Get the user ID from the seller
-    SELECT userId INTO user_id_var 
-    FROM sellers 
-    WHERE id = NEW.sellerId 
+    -- Get the user ID and seller country/region from the seller
+    SELECT userId, country, state INTO user_id_var, country_var, region_var
+    FROM sellers
+    WHERE id = NEW.sellerId
     LIMIT 1;
     
     -- Generate UUID for the post
@@ -531,8 +552,8 @@ BEGIN
         NEW.startingPrice,
         'NGN',
         NEW.location,
-        COALESCE(NEW.location, 'Lagos'),
-        'Nigeria',
+        COALESCE(region_var, NEW.location, 'Lagos'),
+        COALESCE(country_var, 'Nigeria'),
         'auction',
         NEW.id,
         'auctions',
@@ -614,12 +635,20 @@ END$$
 -- BUYER NEED TRIGGERS
 -- =====================================================
 
--- Buyer Need to Feed Trigger (FIXED: Uses UUID() instead of LAST_INSERT_ID(), avoids title-description duplication)
+-- Buyer Need to Feed Trigger (FIXED: Uses UUID() instead of LAST_INSERT_ID(), avoids title-description duplication, seller country/region)
 CREATE TRIGGER `tr_buyer_need_to_feed` 
 AFTER INSERT ON `buyer_needs` 
 FOR EACH ROW 
 BEGIN
     DECLARE new_post_id VARCHAR(255);
+    DECLARE country_var VARCHAR(100) DEFAULT NULL;
+    DECLARE region_var VARCHAR(100) DEFAULT NULL;
+    
+    -- Get buyer's country/region from sellers if buyer is also a seller (buyer_id is user ID)
+    SELECT country, state INTO country_var, region_var
+    FROM sellers
+    WHERE userId = NEW.buyer_id
+    LIMIT 1;
     
     -- Generate UUID for the post
     SET new_post_id = UUID();
@@ -662,8 +691,8 @@ BEGIN
         NEW.title,
         NEW.category,  -- Category stored as string
         NULL,  -- Buyer needs don't have location in the main table
-        'Lagos',  -- Set default region (posts table requires NOT NULL)
-        'Nigeria',  -- Set default country
+        COALESCE(region_var, 'Lagos'),  -- Region from seller or default
+        COALESCE(country_var, 'Nigeria'),  -- Country from seller or default
         'product_demand',
         NEW.id,
         'buyer_needs',
