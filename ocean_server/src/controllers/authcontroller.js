@@ -582,8 +582,8 @@ const sellerRegistration = async(req,res)=>{
         }
 
         // Validate selected categories
-        if(!Array.isArray(parsedSelectedCategories) || parsedSelectedCategories.length === 0 || parsedSelectedCategories.length > 3){
-            return res.status(400).json({message:"You must select 1-3 main categories"})
+        if(!Array.isArray(parsedSelectedCategories) || parsedSelectedCategories.length === 0 || parsedSelectedCategories.length > 5){
+            return res.status(400).json({message:"You must select 1-5 main categories"})
         }
 
         // Validate business email if provided
@@ -856,7 +856,7 @@ const verifyEmail = async (req, res) => {
                 where: {
                     emailVerificationToken: token,
                     emailVerificationExpires: {
-                        [where.gt]: new Date() // Token not expired
+                        [Op.gt]: new Date() // Token not expired
                     }
                 }
             });
