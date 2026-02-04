@@ -231,6 +231,11 @@ class SellerManagementController {
       const { id } = req.params;
       const { verificationLevel = 'basic', verificationNotes } = req.body;
 
+      // Normalize verificationLevel: trim, allow only ENUM values (basic | premium | enterprise)
+      const allowedLevels = ['basic', 'premium', 'enterprise'];
+      const level = typeof verificationLevel === 'string' ? verificationLevel.trim().toLowerCase() : 'basic';
+      const safeVerificationLevel = allowedLevels.includes(level) ? level : 'basic';
+
       const seller = await db.SellersTable.findByPk(id, {
         include: [
           {
@@ -269,7 +274,7 @@ class SellerManagementController {
       // Update seller status
       await seller.update({
         verificationStatus: 'approved',
-        verificationLevel,
+        verificationLevel: safeVerificationLevel,
         verificationNotes,
         verifiedAt: new Date(),
         verificationExpiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year
