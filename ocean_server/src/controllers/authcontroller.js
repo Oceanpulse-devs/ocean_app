@@ -1285,6 +1285,10 @@ const deleteAccount = async (req, res) => {
             });
         }
 
+        // Save original email and name BEFORE update (user.update mutates the instance)
+        const originalEmail = user.email;
+        const originalFullName = user.fullName;
+
         // Start transaction for data consistency
         const transaction = await db.sequelize.transaction();
 
@@ -1317,6 +1321,21 @@ const deleteAccount = async (req, res) => {
             });
 
             if (seller) {
+                // Anonymize and deactivate the seller record
+                await SellersTable.update(
+                    {
+                        fullName: 'Deleted User',
+                        businessName: 'Deleted Business',
+                        email: `deleted_seller_${seller.id.substring(0, 8)}@deleted.local`,
+                        phoneNumber: 'deleted',
+                        businessAddress: 'Deleted',
+                        businessDescription: null,
+                        verificationStatus: 'suspended',
+                        isVerified: false
+                    },
+                    { where: { id: seller.id }, transaction }
+                );
+
                 await Product.update(
                     { 
                         status: 'inactive',
@@ -1432,16 +1451,10 @@ const deleteAccount = async (req, res) => {
             // Clear auth cookie
             res.clearCookie('token');
 
-            // Send confirmation email (optional - can be async)
+            // Send confirmation email to original address (optional - can be async)
             try {
-                await sendEmail(
-                    user.email, // Original email before anonymization
-                    'Account Deletion Confirmation',
-                    emailTemplates.accountDeleted({
-                        userName: user.fullName,
-                        deletionDate: new Date().toLocaleDateString()
-                    })
-                );
+                const emailTemplate = emailTemplates.accountDeleted(originalFullName, new Date().toLocaleDateString());
+                await sendEmail(originalEmail, emailTemplate.subject, emailTemplate.html, 'account-deletion');
             } catch (emailError) {
                 console.error('Error sending deletion confirmation email:', emailError);
                 // Don't fail the deletion if email fails

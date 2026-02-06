@@ -45,7 +45,9 @@ class SellerManagementController {
           {
             model: db.UserTable,
             as: 'user',
-            attributes: ['id', 'username', 'email', 'accountStatus', 'lastActive']
+            attributes: ['id', 'username', 'email', 'accountStatus', 'lastActive'],
+            required: true,
+            where: { accountStatus: { [Op.ne]: 'deactivated' } }
           },
           {
             model: db.SellerDocument,
@@ -112,7 +114,9 @@ class SellerManagementController {
           {
             model: db.UserTable,
             as: 'user',
-            attributes: ['id', 'username', 'email', 'accountStatus', 'lastActive']
+            attributes: ['id', 'username', 'email', 'accountStatus', 'lastActive'],
+            required: true,
+            where: { accountStatus: { [Op.ne]: 'deactivated' } }
           },
           {
             model: db.SellerDocument,
@@ -614,7 +618,9 @@ class SellerManagementController {
           {
             model: db.UserTable,
             as: 'user',
-            attributes: ['id', 'username', 'email', 'accountStatus']
+            attributes: ['id', 'username', 'email', 'accountStatus'],
+            required: true,
+            where: { accountStatus: { [Op.ne]: 'deactivated' } }
           },
           {
             model: db.SellerDocument,
@@ -670,10 +676,15 @@ class SellerManagementController {
     }
   }
 
-  // Get seller statistics
+  // Get seller statistics (exclude sellers whose user account was deleted)
   async getSellerStats(req, res) {
     try {
+      const excludeDeactivatedWhere = {
+        userId: { [Op.notIn]: db.sequelize.literal('(SELECT id FROM users WHERE accountStatus = "deactivated")') }
+      };
+
       const stats = await db.SellersTable.findAll({
+        where: excludeDeactivatedWhere,
         attributes: [
           'verificationStatus',
           [db.sequelize.fn('COUNT', db.sequelize.col('id')), 'count']
@@ -681,13 +692,14 @@ class SellerManagementController {
         group: ['verificationStatus']
       });
 
-      const totalSellers = await db.SellersTable.count();
+      const totalSellers = await db.SellersTable.count({ where: excludeDeactivatedWhere });
       const pendingDocuments = await db.SellerDocument.count({
         where: { status: 'pending' }
       });
 
       const recentSellers = await db.SellersTable.count({
         where: {
+          ...excludeDeactivatedWhere,
           createdAt: {
             [Op.gte]: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) // Last 30 days
           }
@@ -726,14 +738,16 @@ class SellerManagementController {
     try {
       const { limit = 3 } = req.query;
 
-      // Get all approved sellers
+      // Get all approved sellers (exclude those whose user account was deleted)
       const sellers = await db.SellersTable.findAll({
         where: { verificationStatus: 'approved' },
         include: [
           {
             model: db.UserTable,
             as: 'user',
-            attributes: ['id', 'fullName', 'username', 'profilePicture', 'email']
+            attributes: ['id', 'fullName', 'username', 'profilePicture', 'email'],
+            required: true,
+            where: { accountStatus: { [Op.ne]: 'deactivated' } }
           }
         ]
       });
