@@ -30,10 +30,23 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
 const app = express();
 const server = http.createServer(app);
 
+// Allowed CORS origins (used by Express and Socket.IO)
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  process.env.ADMIN_PANEL_URL
+].filter(Boolean);
+const isOriginAllowed = (origin) => {
+  if (!origin) return true;
+  return allowedOrigins.includes(origin) || /^http:\/\/localhost(:\d+)?$/.test(origin);
+};
+
 // Initialize Socket.IO
 const io = socketIo(server, {
   cors: {
-    origin: true, // Allow all origins for development and production
+    origin: (origin, callback) => {
+      if (isOriginAllowed(origin)) return callback(null, true);
+      callback(new Error('Not allowed by CORS'));
+    },
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     credentials: true,
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
@@ -833,13 +846,18 @@ app.get('/verify-email', async (req, res) => {
     }
 });
 
-app.use(cors({
-    origin: true,
-    credentials: true, // Allow cookies to be sent with requests
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
-    exposedHeaders: ['Content-Length', 'X-Total-Count']
-}));
+// CORS: Allow FRONTEND_URL, ADMIN_PANEL_URL, localhost; also allow requests with no origin (mobile, Postman)
+const corsOptions = {
+  origin: (origin, cb) => {
+    if (isOriginAllowed(origin)) return cb(null, true);
+    cb(new Error('Not allowed by CORS'));
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
+  exposedHeaders: ['Content-Length', 'X-Total-Count']
+};
+app.use(cors(corsOptions));
 
 
 
