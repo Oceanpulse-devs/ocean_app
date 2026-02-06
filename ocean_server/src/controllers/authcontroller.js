@@ -1451,8 +1451,7 @@ const deleteAccount = async (req, res) => {
                 success: true,
                 message: 'Your account has been successfully deleted. All your personal information has been anonymized and your content has been removed.',
                 data: {
-                    deletedAt: new Date(),
-                    recoveryPeriod: '30 days' // Inform user about recovery period
+                    deletedAt: new Date()
                 }
             });
 

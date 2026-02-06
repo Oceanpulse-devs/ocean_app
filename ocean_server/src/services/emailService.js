@@ -608,8 +608,6 @@ const emailTemplates = {
             <li>Your active listings and posts</li>
             <li>Your saved items and preferences</li>
           </ul>
-          <h3 style="color: #2c3e50; margin-top: 20px;">Recovery Period:</h3>
-          <p>You have <strong>30 days</strong> to recover your account if this was done by mistake. After 30 days, the deletion will be permanent.</p>
         </div>
         <p>If you did not request this deletion, please contact our support team immediately.</p>
         <p>We're sorry to see you go. If you change your mind, you're always welcome back!</p>
