@@ -92,10 +92,39 @@ const stringifyData = (data) => {
 };
 
 /**
+ * Map backend type/category to frontend category (social, marketplace, system).
+ */
+const mapToFrontendCategory = (type, category) => {
+  const socialTypes = ['follow', 'post_like', 'post_comment', 'post_share', 'like', 'share', 'engagement'];
+  const marketplaceTypes = ['product', 'product_like', 'buyer_need', 'swap', 'swap_proposal', 'swap_created', 'swap_accepted', 'swap_rejected', 'auction', 'group_buy', 'seller_application', 'item_saved', 'distress_sale', 'buyer_need_matched'];
+  const t = (type || '').toLowerCase();
+  if (socialTypes.includes(t) || category === 'follow') return 'social';
+  if (marketplaceTypes.includes(t) || ['seller_application', 'buyer_need', 'swap', 'group_buy'].includes(category)) return 'marketplace';
+  return 'system';
+};
+
+/**
+ * Build navigation path from type and entityId.
+ */
+const buildNavigationPath = (type, entityId) => {
+  if (!entityId) return '';
+  const t = (type || '').toLowerCase();
+  if (t.includes('post')) return `/posts/${entityId}`;
+  if (t.includes('product')) return `/products/${entityId}`;
+  if (t.includes('auction')) return `/auctions/${entityId}`;
+  if (t.includes('group_buy')) return `/group-buys/${entityId}`;
+  if (t.includes('swap')) return `/swap-deals/${entityId}`;
+  if (t.includes('buyer_need')) return `/buyer-needs/${entityId}`;
+  if (t.includes('chat') || t.includes('dm')) return `/chat/${entityId}`;
+  return '';
+};
+
+/**
  * Send push notification to all of a user's active devices.
+ * Uses unified FCM data format for frontend consistency.
  * @param {string} userId
  * @param {{ title: string, body: string }} notification
- * @param {object} data - Metadata (type, relatedEntityId, senderId, commentId, etc.). All values stringified.
+ * @param {object} data - Metadata (type, relatedEntityId, senderId, commentId, notificationId, createdAt, etc.)
  */
 const sendPushNotification = async (userId, notification, data = {}) => {
   if (!initializeFirebase()) return;
@@ -105,18 +134,32 @@ const sendPushNotification = async (userId, notification, data = {}) => {
     return;
   }
 
+  const type = data.type || '';
+  const entityId = data.relatedEntityId || data.entityId || data.postId || data.productId || data.auctionId || data.groupBuyId || data.swapDealId || data.buyerNeedId || '';
+  const frontendCategory = mapToFrontendCategory(type, data.category);
+
+  const unifiedData = {
+    notificationId: data.notificationId || '',
+    type,
+    category: frontendCategory,
+    title: notification.title || 'Notification',
+    body: notification.body || '',
+    createdAt: data.createdAt || new Date().toISOString(),
+    navigationPath: data.navigationPath || buildNavigationPath(type, entityId),
+    entityId,
+    commentId: data.commentId || '',
+    imageUrl: data.imageUrl || '',
+    senderId: data.senderId || '',
+    relatedEntityId: data.relatedEntityId || entityId
+  };
+
   const payload = {
+    priority: 'high',
     notification: {
       title: notification.title || 'Notification',
       body: notification.body || ''
     },
-    data: stringifyData({
-      type: data.type || '',
-      relatedEntityId: data.relatedEntityId || '',
-      senderId: data.senderId || '',
-      commentId: data.commentId || '',
-      ...data
-    }),
+    data: stringifyData({ ...unifiedData, ...data }),
     android: {
       priority: 'high',
       notification: {

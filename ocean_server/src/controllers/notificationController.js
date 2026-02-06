@@ -1,4 +1,5 @@
 const { UserTable, Notification } = require('../../models');
+const { Op } = require('sequelize');
 const { mapArrayFields } = require('../../utils/fieldMapper');
 const redisClient = require('../config/redisdb');
 const fcmService = require('../services/fcmService');
@@ -40,11 +41,10 @@ const createNotification = async (userId, title, message, type = 'info', categor
 
     // Send FCM push (non-blocking; failures don't affect notification creation)
     try {
-      await fcmService.sendPushNotification(
-        userId,
-        { title, body: message },
-        safeMetadata && typeof safeMetadata === 'object' ? safeMetadata : {}
-      );
+      const fcmData = safeMetadata && typeof safeMetadata === 'object' ? { ...safeMetadata } : {};
+      fcmData.notificationId = notification.id;
+      fcmData.createdAt = notification.createdAt ? new Date(notification.createdAt).toISOString() : new Date().toISOString();
+      await fcmService.sendPushNotification(userId, { title, body: message }, fcmData);
     } catch (pushErr) {
       console.error('Push notification send failed (notification still created):', pushErr?.message || pushErr);
     }
@@ -179,10 +179,17 @@ const getUserNotifications = async (req, res) => {
       const senderId = metadata.senderId || metadata.userId || metadata.likerId || metadata.followerId
         || metadata.sharerId || metadata.joinerId || metadata.proposerId || null;
 
+      const frontendCategory = mapToFrontendCategory(frontendType, notificationData.category);
+      const createdAtISO = notificationData.createdAt
+        ? new Date(notificationData.createdAt).toISOString()
+        : new Date().toISOString();
+
       // Map field names to match frontend expectations
       return {
         id: notificationData.id,
         type: frontendType,
+        category: frontendCategory,
+        createdAt: createdAtISO,
         isRead: notificationData.isRead,
         body: notificationData.message,
         data: metadata,
@@ -229,6 +236,16 @@ const getUserNotifications = async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: "Error retrieving notifications", error: error.message });
   }
+};
+
+// Map backend type/category to frontend category (social, marketplace, system)
+const mapToFrontendCategory = (type, category) => {
+  const socialTypes = ['follow', 'post_like', 'post_comment', 'post_share', 'like', 'share', 'engagement'];
+  const marketplaceTypes = ['product', 'product_like', 'buyer_need', 'swap', 'swap_proposal', 'swap_created', 'swap_accepted', 'swap_rejected', 'auction', 'group_buy', 'seller_application', 'item_saved', 'distress_sale', 'buyer_need_matched'];
+  const t = (type || '').toLowerCase();
+  if (socialTypes.includes(t) || category === 'follow') return 'social';
+  if (marketplaceTypes.includes(t) || ['seller_application', 'buyer_need', 'swap', 'group_buy'].includes(category)) return 'marketplace';
+  return 'system';
 };
 
 // Helper function to format time ago
@@ -289,6 +306,42 @@ const markAllNotificationsAsRead = async (req, res) => {
 
     res.status(200).json({
       message: "All notifications marked as read"
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Error marking notifications as read", error: error.message });
+  }
+};
+
+// Mark specific notifications as read (bulk by IDs)
+const markNotificationsAsRead = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { ids } = req.body;
+
+    if (!ids || !Array.isArray(ids)) {
+      return res.status(400).json({ message: "ids array is required" });
+    }
+
+    const MAX_IDS = 100;
+    const validIds = ids
+      .filter((id) => typeof id === 'string' && id.trim().length > 0)
+      .slice(0, MAX_IDS);
+
+    if (validIds.length === 0) {
+      return res.status(200).json({
+        message: "No valid IDs provided",
+        data: { updatedCount: 0 }
+      });
+    }
+
+    const [updatedCount] = await Notification.update(
+      { isRead: true, readAt: new Date() },
+      { where: { id: { [Op.in]: validIds }, userId } }
+    );
+
+    res.status(200).json({
+      message: `${updatedCount} notification(s) marked as read`,
+      data: { updatedCount }
     });
   } catch (error) {
     res.status(500).json({ message: "Error marking notifications as read", error: error.message });
@@ -476,6 +529,7 @@ module.exports = {
   getUserNotifications,
   markNotificationAsRead,
   markAllNotificationsAsRead,
+  markNotificationsAsRead,
   deleteNotification,
   getUnreadCount,
   sendSellerApplicationNotification,
