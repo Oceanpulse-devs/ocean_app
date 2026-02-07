@@ -16,13 +16,21 @@ const sendPush = async (req, res) => {
       });
     }
 
-    await fcmService.sendPushNotification(
+    const result = await fcmService.sendPushNotification(
       userId,
       { title, body: body || title },
       data
     );
 
-    res.status(200).json({ success: true });
+    const success = result.sentCount > 0;
+    res.status(200).json({
+      success,
+      firebaseInitialized: result.firebaseInitialized,
+      tokensFound: result.tokensFound,
+      sentCount: result.sentCount,
+      failedCount: result.failedCount,
+      message: result.message
+    });
   } catch (error) {
     console.error('Internal sendPush error:', error);
     res.status(500).json({

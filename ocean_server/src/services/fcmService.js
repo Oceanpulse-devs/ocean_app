@@ -125,13 +125,16 @@ const buildNavigationPath = (type, entityId) => {
  * @param {string} userId
  * @param {{ title: string, body: string }} notification
  * @param {object} data - Metadata (type, relatedEntityId, senderId, commentId, notificationId, createdAt, etc.)
+ * @returns {Promise<{firebaseInitialized: boolean, tokensFound: number, sentCount: number, failedCount: number, message: string}>}
  */
 const sendPushNotification = async (userId, notification, data = {}) => {
-  if (!initializeFirebase()) return;
+  if (!initializeFirebase()) {
+    return { firebaseInitialized: false, tokensFound: 0, sentCount: 0, failedCount: 0, message: 'Firebase not initialized - check FCM env vars' };
+  }
 
   const tokens = await getFCMTokensForUser(userId);
   if (!tokens.length) {
-    return;
+    return { firebaseInitialized: true, tokensFound: 0, sentCount: 0, failedCount: 0, message: 'No FCM tokens found for user - user must open app to register token' };
   }
 
   const type = data.type || '';
@@ -182,9 +185,15 @@ const sendPushNotification = async (userId, notification, data = {}) => {
     tokens.map((token) => admin.messaging().send({ ...payload, token }))
   );
 
+  let sentCount = 0;
+  let failedCount = 0;
+
   results.forEach((result, i) => {
-    if (result.status === 'rejected') {
-      const err = result.reason;
+    if (result.status === 'fulfilled') {
+      sentCount++;
+    } else {
+      failedCount++;
+      const err = result.reason || {};
       const code = err?.code || err?.errorInfo?.code || '';
       if (
         code === 'messaging/invalid-registration-token' ||
@@ -196,6 +205,12 @@ const sendPushNotification = async (userId, notification, data = {}) => {
       console.error('FCM: send error', code, err?.message || err);
     }
   });
+
+  const message = failedCount === 0
+    ? `Push sent to ${sentCount} device(s)`
+    : `Push sent to ${sentCount} device(s), ${failedCount} failed`;
+
+  return { firebaseInitialized: true, tokensFound: tokens.length, sentCount, failedCount, message };
 };
 
 module.exports = {
