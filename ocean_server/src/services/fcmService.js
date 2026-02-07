@@ -157,7 +157,6 @@ const sendPushNotification = async (userId, notification, data = {}) => {
   };
 
   const payload = {
-    priority: 'high',
     notification: {
       title: notification.title || 'Notification',
       body: notification.body || ''
