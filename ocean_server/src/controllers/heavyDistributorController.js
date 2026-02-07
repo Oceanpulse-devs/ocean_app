@@ -290,15 +290,8 @@ class HeavyDistributorController {
       });
       };
 
-      // Get sellers with pagination and sorting
-      let { count, rows: sellers } = await runPaginatedQuery(combinedWhereClause);
-
-      if (count === 0 && optionalFiltersApplied) {
-        console.log('⚠️ No sellers matched optional filters. Falling back to sellerType-only search.');
-        const fallbackResult = await runPaginatedQuery(baseWhereClause);
-        count = fallbackResult.count;
-        sellers = fallbackResult.rows;
-      }
+      // Get sellers with pagination and sorting (no fallback - return empty if no match)
+      const { count, rows: sellers } = await runPaginatedQuery(combinedWhereClause);
 
       console.log('✅ Found', sellers.length, 'sellers matching criteria');
 
@@ -792,8 +785,8 @@ class HeavyDistributorController {
           }
         : { ...baseWhereClause };
 
-      // Search directly from SellersTable
-      let sellers = await db.SellersTable.findAll({
+      // Search directly from SellersTable (no fallback - return empty if no match)
+      const sellers = await db.SellersTable.findAll({
         where: combinedWhereClause,
         attributes: [
           'id',
@@ -826,43 +819,6 @@ class HeavyDistributorController {
         ],
         limit: 50
       });
-
-      if (!sellers.length && optionalFiltersApplied) {
-        console.log('⚠️ No sellers matched optional filters. Falling back to sellerType-only search.');
-        sellers = await db.SellersTable.findAll({
-          where: baseWhereClause,
-          attributes: [
-            'id',
-            'userId',
-            'businessName',
-            'businessAddress',
-            'country',
-            'sellerType',
-            'selectedCategories',
-            'selectedSubcategories',
-            'businessEmail',
-            'businessPhone',
-            'rating',
-            'totalSales',
-            'verificationStatus',
-            'createdAt',
-            'updatedAt'
-          ],
-          include: [
-            {
-              model: db.UserTable,
-              as: 'user',
-              attributes: ['id', 'fullName', 'username', 'profilePicture']
-            }
-          ],
-          order: [
-            ['rating', 'DESC'],
-            ['totalSales', 'DESC'],
-            ['createdAt', 'DESC']
-          ],
-          limit: 50
-        });
-      }
 
       console.log('✅ Found', sellers.length, 'sellers matching criteria');
 
