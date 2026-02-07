@@ -115,7 +115,7 @@ const buildNavigationPath = (type, entityId) => {
   if (t.includes('group_buy')) return `/group-buys/${entityId}`;
   if (t.includes('swap')) return `/swap-deals/${entityId}`;
   if (t.includes('buyer_need')) return `/buyer-needs/${entityId}`;
-  if (t.includes('chat') || t.includes('dm')) return `/chat/${entityId}`;
+  if (t === 'message' || t.includes('chat') || t.includes('dm')) return `/chat/${entityId}`;
   return '';
 };
 

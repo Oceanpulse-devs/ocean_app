@@ -1,5 +1,29 @@
 const { Message, Conversation, ConversationParticipant, UserReference, MessageReaction, Notification } = require('../../models');
 const { Op } = require('sequelize');
+const axios = require('axios');
+
+// Helper: call main server to send FCM push (non-blocking)
+const sendPushViaMainServer = async (userId, title, body, data) => {
+  const mainUrl = process.env.MAIN_SERVER_URL || 'http://localhost:5000';
+  const token = process.env.INTERNAL_API_TOKEN;
+  if (!token) return;
+
+  try {
+    await axios.post(
+      `${mainUrl}/api/internal/send-push`,
+      { userId, title, body, data },
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        timeout: 5000
+      }
+    );
+  } catch (err) {
+    console.error('Push via main server failed:', err?.message || err);
+  }
+};
 
 // Helper function to create notifications
 const createNotification = async (userId, title, message, type = 'info', category = 'system', metadata = null) => {
@@ -276,7 +300,7 @@ const sendMessage = async (req, res) => {
         notificationMetadata.isBuyerNeedMessage = true;
       }
 
-      await createNotification(
+      const notification = await createNotification(
         participant.userId,
         'New Message Received',
         `${sender.businessName || sender.fullName}: ${content ? content.substring(0, 50) + (content.length > 50 ? '...' : '') : 'Sent a media message'}`,
@@ -284,6 +308,24 @@ const sendMessage = async (req, res) => {
         'message',
         notificationMetadata
       );
+
+      // Send push via main server (non-blocking)
+      if (notification) {
+        const pushData = {
+          ...notificationMetadata,
+          type: 'message',
+          category: 'message',
+          notificationId: notification.id,
+          createdAt: notification.createdAt ? new Date(notification.createdAt).toISOString() : new Date().toISOString(),
+          relatedEntityId: conversationId
+        };
+        sendPushViaMainServer(
+          participant.userId,
+          'New Message Received',
+          `${sender.businessName || sender.fullName}: ${content ? content.substring(0, 50) + (content.length > 50 ? '...' : '') : 'Sent a media message'}`,
+          pushData
+        );
+      }
     }
 
     // Load message with sender info

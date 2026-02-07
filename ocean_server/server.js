@@ -862,6 +862,7 @@ app.use(cors(corsOptions));
 
 
 //routes
+const internalRoutes = require('./src/routes/internalRoutes');
 const authRoutes = require('./src/routes/authRoutes');
 const adminRoutes = require('./src/routes/adminRoutes');
 const notificationRoutes = require('./src/routes/notificationRoutes');
@@ -887,6 +888,9 @@ const visibilityScoreRoutes = require('./src/routes/visibilityScoreRoutes');
 const topPlacementRoutes = require('./src/routes/topPlacementRoutes');
 const spotlightRoutes = require('./src/routes/spotlightRoutes');
 const StoryCleanupService = require('./src/services/storyCleanupService');
+
+// Internal API (no auth - uses API key)
+app.use('/', internalRoutes);
 
 // Register auctionRoutes BEFORE authRoutes to avoid route conflict with /api/user/:userId
 app.use('/', auctionRoutes);
