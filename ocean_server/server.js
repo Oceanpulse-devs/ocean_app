@@ -34,7 +34,8 @@ const server = http.createServer(app);
 // Allowed CORS origins (used by Express and Socket.IO)
 const allowedOrigins = [
   process.env.FRONTEND_URL,
-  process.env.ADMIN_PANEL_URL
+  process.env.ADMIN_PANEL_URL,
+  process.env.BASE_URL && process.env.BASE_URL.replace(/\/$/, '')
 ].filter(Boolean);
 const isOriginAllowed = (origin) => {
   if (!origin) return true;
