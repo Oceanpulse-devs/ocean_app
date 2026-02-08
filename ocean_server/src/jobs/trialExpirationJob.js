@@ -78,16 +78,13 @@ class TrialExpirationJob {
                   <h2 style="color: #2563eb;">Don't lose your premium features!</h2>
                   <p>Hi ${trial.user.fullName || trial.user.username},</p>
                   <p>Your 30-day free trial of <strong>${trial.plan.displayName}</strong> ends in <strong>${days} day${days > 1 ? 's' : ''}</strong>.</p>
-                  <p>Subscribe now for only <strong>₦${trial.plan.price}/month</strong> to keep all your premium benefits:</p>
+                  <p>Subscribe for only <strong>₦${trial.plan.price}/month</strong> to keep all your premium benefits:</p>
                   <ul>
                     ${trial.plan.features ? trial.plan.features.map(f => `<li>${f}</li>`).join('') : ''}
                   </ul>
-                  <div style="text-align: center; margin: 30px 0;">
-                    <a href="${process.env.FRONTEND_URL || 'https://ocean.app'}/subscription/plans" 
-                       style="background-color: #2563eb; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block;">
-                      Subscribe Now
-                    </a>
-                  </div>
+                  <p style="background-color: #eff6ff; padding: 16px; border-radius: 5px; margin: 20px 0;">
+                    <strong>To subscribe:</strong> Open the Ocean App → go to <strong>Settings</strong> → <strong>Subscription</strong> and choose your plan there.
+                  </p>
                   <p style="color: #666; font-size: 12px;">
                     You can continue using all features until ${new Date(trial.trialEndDate).toLocaleDateString()}.
                   </p>
@@ -158,16 +155,13 @@ class TrialExpirationJob {
                   <h2 style="color: #dc2626;">Your free trial has ended</h2>
                   <p>Hi ${trial.user.fullName || trial.user.username},</p>
                   <p>Your 30-day free trial of <strong>${trial.plan.displayName}</strong> has ended.</p>
-                  <p>To regain access to all premium features, subscribe now for only <strong>₦${trial.plan.price}/month</strong>:</p>
+                  <p>To regain access to all premium features, subscribe for only <strong>₦${trial.plan.price}/month</strong>:</p>
                   <ul>
                     ${trial.plan.features ? trial.plan.features.map(f => `<li>${f}</li>`).join('') : ''}
                   </ul>
-                  <div style="text-align: center; margin: 30px 0;">
-                    <a href="${process.env.FRONTEND_URL || 'https://ocean.app'}/subscription/plans" 
-                       style="background-color: #2563eb; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block;">
-                      Choose Your Plan
-                    </a>
-                  </div>
+                  <p style="background-color: #eff6ff; padding: 16px; border-radius: 5px; margin: 20px 0;">
+                    <strong>To subscribe:</strong> Open the Ocean App → go to <strong>Settings</strong> → <strong>Subscription</strong> and choose your plan there.
+                  </p>
                   <p style="color: #666; font-size: 12px;">
                     Start selling with Ocean again today!
                   </p>

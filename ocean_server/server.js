@@ -1,5 +1,6 @@
 const express = require('express');
 const http = require('http');
+const path = require('path');
 const cors = require('cors');
 const dotenv = require('dotenv').config();
 const session = require('express-session');
@@ -108,6 +109,8 @@ app.locals.upload = upload;
 
 // Serve uploaded files statically
 app.use('/uploads', express.static('uploads'));
+// Serve public assets (logo, etc.) for HTML pages
+app.use('/public', express.static(path.join(__dirname, 'public')));
 
 // Session configuration for OAuth
 app.use(session({
@@ -672,6 +675,9 @@ app.get('/verify-email', async (req, res) => {
                     <style>
                         body { font-family: Arial, sans-serif; text-align: center; padding: 20px; background: #f5f5f5; }
                         .container { max-width: 500px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+                        .brand-header { text-align: center; margin-bottom: 20px; }
+                        .brand-header img { width: 64px; height: 64px; border-radius: 8px; object-fit: contain; }
+                        .brand-header .brand-name { font-size: 1.1rem; color: #333; margin-top: 6px; }
                         .error { color: #e74c3c; }
                         .success { color: #27ae60; }
                         .btn { background: #3498db; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block; margin: 10px; }
@@ -679,6 +685,7 @@ app.get('/verify-email', async (req, res) => {
                 </head>
                 <body>
                     <div class="container">
+                        <div class="brand-header"><img src="/public/oceanLogo.jpeg" alt="Ocean App" /><div class="brand-name">Ocean App</div></div>
                         <h2 class="error">❌ Invalid Verification Link</h2>
                         <p>The verification link is missing or invalid.</p>
                         <a href="#" onclick="window.close()" class="btn">Close</a>
@@ -742,6 +749,9 @@ app.get('/verify-email', async (req, res) => {
                     <style>
                         body { font-family: Arial, sans-serif; text-align: center; padding: 20px; background: #f5f5f5; }
                         .container { max-width: 500px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+                        .brand-header { text-align: center; margin-bottom: 20px; }
+                        .brand-header img { width: 64px; height: 64px; border-radius: 8px; object-fit: contain; }
+                        .brand-header .brand-name { font-size: 1.1rem; color: #333; margin-top: 6px; }
                         .success { color: #27ae60; }
                         .btn { background: #3498db; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block; margin: 10px; }
                         .info { background: #e8f4fd; padding: 15px; border-radius: 5px; margin: 20px 0; }
@@ -749,6 +759,7 @@ app.get('/verify-email', async (req, res) => {
                 </head>
                 <body>
                     <div class="container">
+                        <div class="brand-header"><img src="/public/oceanLogo.jpeg" alt="Ocean App" /><div class="brand-name">Ocean App</div></div>
                         <h2 class="success">🎉 Email Verified Successfully!</h2>
                         <p>Your email has been verified. You can now use all features of Ocean App.</p>
                         <div class="info">
@@ -773,12 +784,16 @@ app.get('/verify-email', async (req, res) => {
                     <style>
                         body { font-family: Arial, sans-serif; text-align: center; padding: 20px; background: #f5f5f5; }
                         .container { max-width: 500px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+                        .brand-header { text-align: center; margin-bottom: 20px; }
+                        .brand-header img { width: 64px; height: 64px; border-radius: 8px; object-fit: contain; }
+                        .brand-header .brand-name { font-size: 1.1rem; color: #333; margin-top: 6px; }
                         .info { color: #3498db; }
                         .btn { background: #3498db; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block; margin: 10px; }
                     </style>
                 </head>
                 <body>
                     <div class="container">
+                        <div class="brand-header"><img src="/public/oceanLogo.jpeg" alt="Ocean App" /><div class="brand-name">Ocean App</div></div>
                         <h2 class="info">✅ Email Already Verified</h2>
                         <p>Your email is already verified! You can use all features of Ocean App.</p>
                         <div class="info">
@@ -803,12 +818,16 @@ app.get('/verify-email', async (req, res) => {
                     <style>
                         body { font-family: Arial, sans-serif; text-align: center; padding: 20px; background: #f5f5f5; }
                         .container { max-width: 500px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+                        .brand-header { text-align: center; margin-bottom: 20px; }
+                        .brand-header img { width: 64px; height: 64px; border-radius: 8px; object-fit: contain; }
+                        .brand-header .brand-name { font-size: 1.1rem; color: #333; margin-top: 6px; }
                         .error { color: #e74c3c; }
                         .btn { background: #3498db; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block; margin: 10px; }
                     </style>
                 </head>
                 <body>
                     <div class="container">
+                        <div class="brand-header"><img src="/public/oceanLogo.jpeg" alt="Ocean App" /><div class="brand-name">Ocean App</div></div>
                         <h2 class="error">❌ Verification Failed</h2>
                         <p>${result.message || 'The verification link is invalid or has expired.'}</p>
                         <p>Please request a new verification email from the app.</p>
@@ -830,12 +849,16 @@ app.get('/verify-email', async (req, res) => {
                 <style>
                     body { font-family: Arial, sans-serif; text-align: center; padding: 20px; background: #f5f5f5; }
                     .container { max-width: 500px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+                    .brand-header { text-align: center; margin-bottom: 20px; }
+                    .brand-header img { width: 64px; height: 64px; border-radius: 8px; object-fit: contain; }
+                    .brand-header .brand-name { font-size: 1.1rem; color: #333; margin-top: 6px; }
                     .error { color: #e74c3c; }
                     .btn { background: #3498db; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block; margin: 10px; }
                 </style>
             </head>
             <body>
                 <div class="container">
+                    <div class="brand-header"><img src="/public/oceanLogo.jpeg" alt="Ocean App" /><div class="brand-name">Ocean App</div></div>
                     <h2 class="error">⚠️ Server Error</h2>
                     <p>Something went wrong. Please try again later.</p>
                     <a href="#" onclick="window.close()" class="btn">Close</a>
@@ -891,6 +914,9 @@ const StoryCleanupService = require('./src/services/storyCleanupService');
 
 // Internal API (no auth - uses API key)
 app.use('/', internalRoutes);
+
+// Web delete account (Google Play requirement - public, no auth)
+app.use('/', require('./src/routes/webDeleteAccountRoutes'));
 
 // Register auctionRoutes BEFORE authRoutes to avoid route conflict with /api/user/:userId
 app.use('/', auctionRoutes);

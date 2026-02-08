@@ -1245,55 +1245,23 @@ const googleMobileAuth = async (req, res) => {
     }
 };
 
-// Delete user account (soft delete with anonymization)
-const deleteAccount = async (req, res) => {
+/**
+ * Perform account deletion (shared logic for in-app and web delete).
+ * @param {string} userId - User ID to delete
+ * @param {string} reason - Deletion reason
+ * @returns {Promise<void>}
+ */
+const performAccountDeletion = async (userId, reason = 'User requested account deletion') => {
+    const user = await UserTable.findByPk(userId);
+    if (!user) throw new Error('User not found');
+    if (user.accountStatus === 'deactivated') throw new Error('Account is already deleted');
+
+    const originalEmail = user.email;
+    const originalFullName = user.fullName;
+    const transaction = await db.sequelize.transaction();
+
     try {
-        const userId = req.user.id;
-        const { password, reason } = req.body;
-
-        // Validate password is provided
-        if (!password) {
-            return res.status(400).json({
-                success: false,
-                message: 'Password is required to delete your account'
-            });
-        }
-
-        // Get user and verify password
-        const user = await UserTable.findByPk(userId);
-        if (!user) {
-            return res.status(404).json({
-                success: false,
-                message: 'User not found'
-            });
-        }
-
-        // Verify password
-        const isPasswordValid = await bcrypt.compare(password, user.password);
-        if (!isPasswordValid) {
-            return res.status(401).json({
-                success: false,
-                message: 'Invalid password. Please provide the correct password to delete your account.'
-            });
-        }
-
-        // Check if account is already deactivated
-        if (user.accountStatus === 'deactivated') {
-            return res.status(400).json({
-                success: false,
-                message: 'Account is already deleted'
-            });
-        }
-
-        // Save original email and name BEFORE update (user.update mutates the instance)
-        const originalEmail = user.email;
-        const originalFullName = user.fullName;
-
-        // Start transaction for data consistency
-        const transaction = await db.sequelize.transaction();
-
-        try {
-            // 1. Soft delete and anonymize user account
+        // 1. Soft delete and anonymize user account
             const deletedEmail = `deleted_${userId.substring(0, 8)}@deleted.local`;
             const deletedUsername = `deleted_${userId.substring(0, 8)}`;
             
@@ -1310,7 +1278,7 @@ const deleteAccount = async (req, res) => {
                 google_Id: null,
                 emailVerificationToken: null,
                 emailVerificationExpires: null,
-                deleteReason: reason || 'User requested account deletion',
+                deleteReason: reason,
                 deletedAt: new Date()
             }, { transaction });
 
@@ -1445,35 +1413,64 @@ const deleteAccount = async (req, res) => {
                 await redisClient.del(sessionKeys);
             }
 
-            // Commit transaction
             await transaction.commit();
 
-            // Clear auth cookie
-            res.clearCookie('token');
-
-            // Send confirmation email to original address (optional - can be async)
             try {
                 const emailTemplate = emailTemplates.accountDeleted(originalFullName, new Date().toLocaleDateString());
                 await sendEmail(originalEmail, emailTemplate.subject, emailTemplate.html, 'account-deletion');
             } catch (emailError) {
                 console.error('Error sending deletion confirmation email:', emailError);
-                // Don't fail the deletion if email fails
             }
+    } catch (error) {
+        await transaction.rollback();
+        throw error;
+    }
+};
 
-            res.status(200).json({
-                success: true,
-                message: 'Your account has been successfully deleted. All your personal information has been anonymized and your content has been removed.',
-                data: {
-                    deletedAt: new Date()
-                }
+// Delete user account (soft delete with anonymization) - in-app
+const deleteAccount = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const { password, reason } = req.body;
+
+        if (!password) {
+            return res.status(400).json({
+                success: false,
+                message: 'Password is required to delete your account'
             });
-
-        } catch (error) {
-            // Rollback transaction on error
-            await transaction.rollback();
-            throw error;
         }
 
+        const user = await UserTable.findByPk(userId);
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found'
+            });
+        }
+
+        const isPasswordValid = await bcrypt.compare(password, user.password);
+        if (!isPasswordValid) {
+            return res.status(401).json({
+                success: false,
+                message: 'Invalid password. Please provide the correct password to delete your account.'
+            });
+        }
+
+        if (user.accountStatus === 'deactivated') {
+            return res.status(400).json({
+                success: false,
+                message: 'Account is already deleted'
+            });
+        }
+
+        await performAccountDeletion(userId, reason || 'User requested account deletion');
+
+        res.clearCookie('token');
+        res.status(200).json({
+            success: true,
+            message: 'Your account has been successfully deleted. All your personal information has been anonymized and your content has been removed.',
+            data: { deletedAt: new Date() }
+        });
     } catch (error) {
         console.error('Delete account error:', error);
         res.status(500).json({
@@ -1494,5 +1491,6 @@ module.exports = {
     verifyEmail,
     resendVerificationEmail,
     googleMobileAuth,
-    deleteAccount
+    deleteAccount,
+    performAccountDeletion
 };

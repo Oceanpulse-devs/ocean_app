@@ -502,13 +502,9 @@ const emailTemplates = {
             <li>👀 Access to Buyer Needs</li>
             <li>⚡ Priority customer support</li>
           </ul>
-          <div style="text-align: center; margin: 20px 0;">
-            <a href="${process.env.FRONTEND_URL || 'https://yourapp.com'}/subscription" 
-               style="background-color: #3498db; color: white; padding: 15px 30px; 
-                      text-decoration: none; border-radius: 5px; font-size: 16px; font-weight: bold; display: inline-block;">
-              Renew Subscription Now
-            </a>
-          </div>
+          <p style="background-color: #e7f3ff; padding: 16px; border-radius: 5px; margin: 20px 0;">
+            <strong>To renew:</strong> Open the Ocean App → go to <strong>Settings</strong> → <strong>Subscription</strong> and renew your plan there.
+          </p>
         </div>
 
         <div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin: 20px 0;">
@@ -544,13 +540,9 @@ const emailTemplates = {
             <li>🎯 Promotional boosts</li>
             <li>⚡ Priority support</li>
           </ul>
-          <div style="text-align: center; margin: 20px 0;">
-            <a href="${process.env.FRONTEND_URL || 'https://yourapp.com'}/subscription" 
-               style="background-color: #3498db; color: white; padding: 15px 30px; 
-                      text-decoration: none; border-radius: 5px; font-size: 16px;">
-              Renew Subscription
-            </a>
-          </div>
+          <p style="background-color: #e7f3ff; padding: 16px; border-radius: 5px; margin: 20px 0;">
+            <strong>To renew:</strong> Open the Ocean App → go to <strong>Settings</strong> → <strong>Subscription</strong> and renew your plan there.
+          </p>
         </div>
 
         <p>Thank you for being a valued Ocean App user!</p>
@@ -579,17 +571,34 @@ const emailTemplates = {
             <li>🔄 Try the payment again</li>
             <li>📞 Contact support if issues persist</li>
           </ul>
-          <div style="text-align: center; margin: 20px 0;">
-            <a href="${process.env.FRONTEND_URL || 'https://yourapp.com'}/subscription" 
-               style="background-color: #3498db; color: white; padding: 15px 30px; 
-                      text-decoration: none; border-radius: 5px; font-size: 16px;">
-              Retry Payment
-            </a>
-          </div>
+          <p style="background-color: #e7f3ff; padding: 16px; border-radius: 5px; margin: 20px 0;">
+            <strong>To retry payment:</strong> Open the Ocean App → go to <strong>Settings</strong> → <strong>Subscription</strong> and try again there.
+          </p>
         </div>
 
         <p>Don't worry, your account remains active. Please try again to complete your subscription.</p>
         <p>Best regards,<br>The Ocean App Team</p>
+      </div>
+    `
+  }),
+
+  accountDeletionMagicLink: (userName, confirmUrl) => ({
+    subject: "Delete Your Account - Ocean App",
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #000; color: #fff; padding: 24px;">
+        <h2 style="color: #fff;">Hello ${userName},</h2>
+        <p style="color: #b0b0b0;">You requested to delete your Ocean App account. Click the button below to confirm and complete the deletion.</p>
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${confirmUrl}" 
+             style="background-color: #7c3aed; color: white; padding: 14px 28px; 
+                    text-decoration: none; border-radius: 8px; font-size: 16px; display: inline-block;">
+            Confirm Account Deletion
+          </a>
+        </div>
+        <p style="color: #888; font-size: 14px;">If the button doesn't work, copy and paste this link into your browser:</p>
+        <p style="word-break: break-all; color: #7c3aed; font-size: 12px;">${confirmUrl}</p>
+        <p style="color: #888; font-size: 13px; margin-top: 24px;"><strong>This link expires in 15 minutes.</strong> If you didn't request this, you can safely ignore this email.</p>
+        <p style="color: #666; font-size: 12px;">Best regards,<br>The Ocean App Team</p>
       </div>
     `
   }),
