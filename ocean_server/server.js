@@ -39,7 +39,10 @@ const allowedOrigins = [
 ].filter(Boolean);
 const isOriginAllowed = (origin) => {
   if (!origin) return true;
-  return allowedOrigins.includes(origin) || /^http:\/\/localhost(:\d+)?$/.test(origin);
+  if (allowedOrigins.includes(origin)) return true;
+  // Only allow localhost in development
+  if (process.env.NODE_ENV === 'development' && /^http:\/\/localhost(:\d+)?$/.test(origin)) return true;
+  return false;
 };
 
 // Initialize Socket.IO
