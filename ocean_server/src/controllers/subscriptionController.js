@@ -1445,7 +1445,7 @@ class SubscriptionController {
       const paymentReference = transaction_id || tx_ref || flw_ref || reference;
       
       if (!paymentReference) {
-        console.error('No payment reference found in callback');
+        console.warn('No payment reference found in callback (user may not have completed payment)');
         return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/subscription/error?message=${encodeURIComponent('Payment reference not found')}`);
       }
 
@@ -1558,7 +1558,7 @@ class SubscriptionController {
         // Redirect to success page (mobile app deep link or web page)
         return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/subscription/success?reference=${paymentReference}`);
       } else {
-        console.error('Payment verification failed:', paymentResult);
+        console.warn('Payment verification failed (expected when user did not complete payment):', paymentResult.message);
         return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/subscription/error?message=${encodeURIComponent(paymentResult.message || 'Payment verification failed')}`);
       }
     } catch (error) {

@@ -734,6 +734,17 @@ class FlutterwaveProvider extends PaymentProviderInterface {
         throw new Error('Flutterwave SECRET_KEY not configured');
       }
 
+      // Early return for missing reference (user didn't complete payment, insufficient balance, etc.)
+      if (!paymentReference || String(paymentReference).trim() === '' || paymentReference === 'null') {
+        console.warn('Payment verification skipped: no transaction reference provided (user may not have completed payment)');
+        return {
+          success: false,
+          status: 'error',
+          message: 'No payment reference provided. Payment may not have been completed.',
+          error: { message: 'No payment reference' }
+        };
+      }
+
       console.log('Verifying Flutterwave payment:', paymentReference);
       console.log('Using base URL:', this.baseUrl);
 
@@ -752,17 +763,9 @@ class FlutterwaveProvider extends PaymentProviderInterface {
           }
         );
       } catch (verifyError) {
-        // If verification fails, log detailed error
-        console.error('Flutterwave verification request failed:', {
-          message: verifyError.message,
-          response: verifyError.response?.data,
-          status: verifyError.response?.status,
-          statusText: verifyError.response?.statusText,
-          url: verifyError.config?.url
-        });
-        
-        // If it's a "not found" error (404 or 400), provide helpful message
+        // If it's a "not found" error (404 or 400) - expected when user didn't complete payment
         if (verifyError.response?.status === 404 || verifyError.response?.status === 400) {
+          console.warn('Payment verification: no transaction found (user may not have completed payment):', paymentReference);
           return {
             success: false,
             status: 'error',
@@ -770,6 +773,14 @@ class FlutterwaveProvider extends PaymentProviderInterface {
             error: verifyError.response?.data || verifyError.message
           };
         }
+        // Real errors (network, 5xx, etc.) - log as error
+        console.error('Flutterwave verification request failed:', {
+          message: verifyError.message,
+          response: verifyError.response?.data,
+          status: verifyError.response?.status,
+          statusText: verifyError.response?.statusText,
+          url: verifyError.config?.url
+        });
         throw verifyError;
       }
 
