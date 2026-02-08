@@ -756,7 +756,7 @@ class SubscriptionService {
         // Update seller verification
         await seller.update({
           isVerified: true,
-          verificationStatus: 'active',
+          verificationStatus: 'approved',
           verifiedAt: new Date(),
           verificationExpiresAt: expiresAt,
           verificationLevel: verificationLevel,
