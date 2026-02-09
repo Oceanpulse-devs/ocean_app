@@ -37,11 +37,18 @@ const allowedOrigins = [
   process.env.ADMIN_PANEL_URL,
   process.env.BASE_URL && process.env.BASE_URL.replace(/\/$/, '')
 ].filter(Boolean);
+// When ADMIN_PANEL_URL is set to localhost, allow any localhost port (e.g. Flutter 4589, 3000, etc.)
+const adminPanelIsLocalhost = (() => {
+  const url = (process.env.ADMIN_PANEL_URL || '').replace(/\/$/, '').toLowerCase();
+  return url === 'http://localhost' || url === 'localhost';
+})();
 const isOriginAllowed = (origin) => {
   if (!origin) return true;
   if (allowedOrigins.includes(origin)) return true;
-  // Only allow localhost in development
-  if (process.env.NODE_ENV === 'development' && /^http:\/\/localhost(:\d+)?$/.test(origin)) return true;
+  // Allow any localhost port when ADMIN_PANEL_URL is set to localhost, or in development
+  if (/^http:\/\/localhost(:\d+)?$/.test(origin)) {
+    if (adminPanelIsLocalhost || process.env.NODE_ENV === 'development') return true;
+  }
   return false;
 };
 
