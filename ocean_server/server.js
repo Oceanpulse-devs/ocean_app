@@ -4,6 +4,7 @@ const path = require('path');
 const cors = require('cors');
 const dotenv = require('dotenv').config();
 const session = require('express-session');
+const RedisStore = require('connect-redis').default;
 const passport = require('passport');
 const multer = require('multer');
 const socketIo = require('socket.io');
@@ -123,8 +124,8 @@ app.use('/uploads', express.static('uploads'));
 // Serve public assets (logo, etc.) for HTML pages
 app.use('/public', express.static(path.join(__dirname, 'public')));
 
-// Session configuration for OAuth
-app.use(session({
+// Session configuration for OAuth (Redis store in production to avoid MemoryStore warning)
+const sessionConfig = {
     secret: process.env.SESSION_SECRET || 'your-secret-key',
     resave: false,
     saveUninitialized: false,
@@ -132,7 +133,14 @@ app.use(session({
         secure: process.env.NODE_ENV === 'production',
         maxAge: 24 * 60 * 60 * 1000 // 24 hours
     }
-}));
+};
+if (process.env.NODE_ENV === 'production' && redisClient) {
+    sessionConfig.store = new RedisStore({ client: redisClient, prefix: 'ocean_sess:' });
+    console.log('✅ Session store: Redis (production)');
+} else {
+    console.log('⚠️  Session store: Memory (development only)');
+}
+app.use(session(sessionConfig));
 
 // Initialize Passport middleware
 app.use(passport.initialize());
