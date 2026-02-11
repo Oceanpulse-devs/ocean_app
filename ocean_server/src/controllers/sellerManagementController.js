@@ -517,9 +517,9 @@ class SellerManagementController {
         });
       }
 
-      // Update seller status
+      // Update seller status (restore to approved when unsuspending; was incorrectly set to 'active')
       await seller.update({
-        verificationStatus: 'active',
+        verificationStatus: 'approved',
         suspensionReason: null,
         suspensionStartDate: null,
         suspensionEndDate: null,
