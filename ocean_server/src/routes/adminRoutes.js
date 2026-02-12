@@ -9,6 +9,7 @@ const securityModerationController = require('../controllers/securityModerationC
 const contentAdminController = require('../controllers/contentAdminController');
 const ReportController = require('../controllers/reportController');
 const financeController = require('../controllers/financeController');
+const adminDataController = require('../controllers/adminDataController');
 const authMiddleware = require('../middleware/authMiddleware');
 
 // Apply authentication middleware to all routes
@@ -157,5 +158,14 @@ router.get('/reports/stats', (req, res) => ReportController.getReportStats(req, 
 router.get('/reports/:id', (req, res) => ReportController.getReport(req, res));
 router.put('/reports/:id/status', (req, res) => ReportController.updateReportStatus(req, res));
 router.post('/reports/:id/resolve', (req, res) => ReportController.resolveReport(req, res));
+
+// ==================== ADMIN DATA EXPORT ROUTES ====================
+// All stored data per entity (no status/expiry filters); optional ?page=1&limit=100 (max 500)
+router.get('/data/buyer-needs', adminDataController.getAllBuyerNeedsData.bind(adminDataController));
+router.get('/data/products', adminDataController.getAllProductsData.bind(adminDataController));
+router.get('/data/distress-sales', adminDataController.getAllDistressSalesData.bind(adminDataController));
+router.get('/data/swap-deals', adminDataController.getAllSwapDealsData.bind(adminDataController));
+router.get('/data/auctions', adminDataController.getAllAuctionsData.bind(adminDataController));
+router.get('/data/group-buys', adminDataController.getAllGroupBuysData.bind(adminDataController));
 
 module.exports = router; 
