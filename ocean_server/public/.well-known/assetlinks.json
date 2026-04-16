@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.bluewhale.oceanpulse.tech",
+      "sha256_cert_fingerprints": [
+        "ED:B2:BB:83:D6:3D:44:28:12:F1:08:55:8B:2F:62:27:E3:27:74:AF:17:4C:02:CE:C8:E5:6E:E0:09:BB:56:FC"
+      ]
+    }
+  }
+]

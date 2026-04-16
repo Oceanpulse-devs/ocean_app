@@ -124,6 +124,16 @@ app.use('/uploads', express.static('uploads'));
 // Serve public assets (logo, etc.) for HTML pages
 app.use('/public', express.static(path.join(__dirname, 'public')));
 
+// Serve deep linking verification files
+app.get('/.well-known/assetlinks.json', (req, res) => {
+    res.setHeader('Content-Type', 'application/json');
+    res.sendFile(path.join(__dirname, 'public', '.well-known', 'assetlinks.json'));
+});
+app.get('/.well-known/apple-app-site-association', (req, res) => {
+    res.setHeader('Content-Type', 'application/json');
+    res.sendFile(path.join(__dirname, 'public', '.well-known', 'apple-app-site-association'));
+});
+
 // Session configuration for OAuth (Redis store in production to avoid MemoryStore warning)
 const sessionConfig = {
     secret: process.env.SESSION_SECRET || 'your-secret-key',
