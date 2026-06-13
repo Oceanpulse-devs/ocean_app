@@ -222,13 +222,15 @@ describe('Feed Controller', () => {
       expect(Array.isArray(response.body.data.posts)).toBe(true);
     });
 
-    it('should require authentication', async () => {
+    it('should allow unauthenticated access to home feed', async () => {
       const response = await request(app)
         .get('/api/home-feed')
-        .expect(401);
+        .expect(200);
 
-      expect(response.body.success).toBe(false);
-      expect(response.body.message).toContain('Token not found');
+      expect(response.body.success).toBe(true);
+      expect(response.body.data).toHaveProperty('posts');
+      expect(response.body.data).toHaveProperty('pagination');
+      expect(Array.isArray(response.body.data.posts)).toBe(true);
     });
 
     it('should support pagination', async () => {

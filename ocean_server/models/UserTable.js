@@ -22,6 +22,13 @@ module.exports = (sequelize, DataTypes) =>{
                 notEmpty:false,
             }
         },
+        apple_Id:{
+            type:DataTypes.STRING,
+            allowNull: true,
+            validate:{
+                notEmpty:false,
+            }
+        },
         fullName:{
             type:DataTypes.STRING,
             allowNull: false,

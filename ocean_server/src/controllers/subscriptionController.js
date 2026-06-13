@@ -557,6 +557,179 @@ class SubscriptionController {
   }
 
   /**
+   * Verify Apple In-App Purchase
+   * POST /api/subscriptions/verify-apple-purchase
+   */
+  static async verifyApplePurchase(req, res) {
+    try {
+      const userId = req.user.id;
+      const { receiptData, productId, transactionId } = req.body;
+
+      if (!receiptData || !productId) {
+        return res.status(400).json({
+          success: false,
+          message: 'Receipt data and productId are required'
+        });
+      }
+
+      console.log('Verifying Apple Purchase:', {
+        userId,
+        productId,
+        transactionId
+      });
+
+      const axios = require('axios');
+      // Apple's verification endpoint
+      // Use sandbox for test, production for live. The best practice is to call prod, if status=21007, call sandbox
+      const isProduction = process.env.NODE_ENV === 'production';
+      let verifyUrl = isProduction 
+        ? 'https://buy.itunes.apple.com/verifyReceipt' 
+        : 'https://sandbox.itunes.apple.com/verifyReceipt';
+
+      const verifyPayload = {
+        'receipt-data': receiptData,
+        'password': process.env.APPLE_SHARED_SECRET // required for auto-renewable subscriptions
+      };
+
+      let appleResponse = await axios.post(verifyUrl, verifyPayload);
+
+      // Status 21007 means this is a sandbox receipt, but it was sent to production
+      if (appleResponse.data.status === 21007 && isProduction) {
+          verifyUrl = 'https://sandbox.itunes.apple.com/verifyReceipt';
+          appleResponse = await axios.post(verifyUrl, verifyPayload);
+      }
+
+      if (appleResponse.data.status !== 0) {
+          return res.status(400).json({
+              success: false,
+              message: 'Invalid Apple receipt',
+              appleStatus: appleResponse.data.status
+          });
+      }
+
+      const latestReceiptInfo = appleResponse.data.latest_receipt_info;
+      if (!latestReceiptInfo || latestReceiptInfo.length === 0) {
+          return res.status(400).json({
+              success: false,
+              message: 'No subscription information found in receipt'
+          });
+      }
+
+      // Sort to get the most recent transaction
+      latestReceiptInfo.sort((a, b) => parseInt(b.expires_date_ms) - parseInt(a.expires_date_ms));
+      const latestSub = latestReceiptInfo[0];
+
+      // Validate bundle ID (optional but recommended)
+      if (appleResponse.data.receipt && appleResponse.data.receipt.bundle_id !== (process.env.APPLE_BUNDLE_ID || 'com.oceanpulse.bluewhale')) {
+          console.warn('Bundle ID mismatch:', appleResponse.data.receipt.bundle_id);
+      }
+
+      // Check if subscription has expired
+      const now = Date.now();
+      if (now > parseInt(latestSub.expires_date_ms)) {
+          return res.status(400).json({
+              success: false,
+              message: 'Apple subscription has expired'
+          });
+      }
+
+      // Map Apple productId to our internal planId
+      let targetPlan = null;
+      try {
+           const { SubscriptionPlan } = require('../../models');
+           targetPlan = await SubscriptionPlan.findOne({
+              where: { name: productId }
+           });
+           
+           if (!targetPlan) {
+              targetPlan = await SubscriptionPlan.findOne({ where: { isActive: true }}); // Fallback active plan
+           }
+      } catch (err) {
+           console.error("Could not fetch plan", err);
+      }
+      
+      const planId = targetPlan ? targetPlan.id : 1; 
+
+      // Make sure user is a seller
+      const { UserTable, SellersTable } = require('../../models');
+      await UserTable.update(
+          { accountType: 'seller' },
+          { where: { id: userId } }
+      );
+
+      // Create or update Seller record
+      const existingSeller = await SellersTable.findOne({ where: { userId } });
+      if (!existingSeller) {
+          const userObj = await UserTable.findByPk(userId);
+          await SellersTable.create({
+              userId,
+              fullName: userObj ? userObj.fullName : '',
+              verificationStatus: 'approved',
+              businessName: `Seller-${userId.substring(0,6)}`,
+          });
+      } else {
+          await SellersTable.update({ verificationStatus: 'approved' }, { where: { userId } });
+      }
+
+      // Update subscription status
+      const endDate = new Date(parseInt(latestSub.expires_date_ms));
+      await subscriptionService.updateUserSubscriptionStatus(
+        userId,
+        'active',
+        planId,
+        endDate
+      );
+
+      // Track transaction
+      const { UserSubscription } = require('../../models');
+      const reference = transactionId || latestSub.transaction_id || `APPLE_${Date.now()}`;
+      
+      let subscriptionObj = await UserSubscription.findOne({
+          where: { paymentReference: reference, userId }
+      });
+      
+      if (!subscriptionObj) {
+          subscriptionObj = await UserSubscription.create({
+              userId: userId,
+              planId: planId,
+              status: 'active',
+              startDate: new Date(),
+              endDate: endDate,
+              paymentReference: reference,
+              method: 'apple_iap',
+              amount: 0, 
+              currency: 'USD'
+          });
+      } else {
+          await subscriptionObj.update({ endDate, status: 'active' });
+      }
+
+      return res.status(200).json({
+          success: true,
+          message: 'Apple In-App Purchase verified successfully',
+          data: {
+              status: 'active',
+              expiresAt: endDate,
+              subscription: {
+                  id: subscriptionObj.id,
+                  planId: planId
+              }
+          }
+      });
+
+    } catch (error) {
+      console.error('Error verifying Apple purchase:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error verifying Apple purchase',
+        error: error.message
+      });
+    }
+  }
+
+
+
+  /**
    * Change subscription plan (upgrade/downgrade)
    * POST /api/subscriptions/change-plan
    */

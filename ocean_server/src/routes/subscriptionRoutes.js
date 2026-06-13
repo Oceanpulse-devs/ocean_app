@@ -57,6 +57,14 @@ router.post('/cancel', authMiddleware, SubscriptionController.cancelSubscription
  */
 router.post('/verify-payment', authMiddleware, SubscriptionController.verifyPayment);
 
+/**
+ * POST /api/subscriptions/verify-apple-purchase
+ * Verify Apple In-App Purchase Receipt and update subscription status
+ * Body: { receiptData, productId, transactionId }
+ * Requires authentication
+ */
+router.post('/verify-apple-purchase', authMiddleware, SubscriptionController.verifyApplePurchase);
+
 // =============================================
 // USAGE & ANALYTICS ROUTES
 // =============================================

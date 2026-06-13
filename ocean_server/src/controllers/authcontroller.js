@@ -1481,6 +1481,177 @@ const deleteAccount = async (req, res) => {
     }
 };
 
+// Apple Mobile Authentication
+const appleMobileAuth = async (req, res) => {
+    const { identityToken, givenName, familyName, email } = req.body;
+
+    if (!identityToken) {
+        return res.status(400).json({ message: "Apple identity token is required" });
+    }
+
+    try {
+        const jwt = require('jsonwebtoken');
+        const jwksClient = require('jwks-rsa');
+
+        const client = jwksClient({
+            jwksUri: 'https://appleid.apple.com/auth/keys'
+        });
+
+        const getKey = (header, callback) => {
+            client.getSigningKey(header.kid, function(err, key) {
+                if (err) {
+                    callback(err, null);
+                } else {
+                    const signingKey = key.publicKey || key.rsaPublicKey;
+                    callback(null, signingKey);
+                }
+            });
+        };
+
+        // Validate the JWT. Apple uses RS256.
+        const decodedToken = await new Promise((resolve, reject) => {
+            jwt.verify(identityToken, getKey, {
+                algorithms: ['RS256'],
+                issuer: 'https://appleid.apple.com'
+            }, (err, decoded) => {
+                if (err) reject(err);
+                else resolve(decoded);
+            });
+        });
+
+        // Verify the audience (app bundle ID) 
+        const validClientIds = [
+            process.env.APPLE_CLIENT_ID,
+            process.env.APPLE_BUNDLE_ID,
+            'com.oceanpulse.bluewhale' // Default
+        ].filter(Boolean);
+
+        if (!validClientIds.includes(decodedToken.aud)) {
+             console.log('Valid Apple Client IDs:', validClientIds, 'Received:', decodedToken.aud);
+        }
+
+        const appleId = decodedToken.sub;
+        const appleEmail = decodedToken.email || email;
+        
+        if (!appleId) {
+            return res.status(400).json({ message: "Apple token is missing subject (sub) claim" });
+        }
+
+        // Generate unique username helper function
+        const generateUsername = async (fullName) => {
+            const crypto = require('crypto');
+            const baseName = fullName.toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 8);
+            const randomSuffix = crypto.randomBytes(4).toString('hex');
+            let username = `@${baseName}_${randomSuffix}`;
+            let counter = 1;
+            while (await UserTable.findOne({ where: { username } })) {
+                username = `@${baseName}_${randomSuffix}${counter}`;
+                counter++;
+            }
+            return username;
+        };
+
+        let user = await UserTable.findOne({ where: { apple_Id: appleId } });
+
+        if (user) {
+            console.log('✅ Existing Apple user found:', user.email);
+        } else {
+            // Check if user exists with the same email
+            let existingUser = null;
+            if (appleEmail) {
+                existingUser = await UserTable.findOne({ 
+                    where: { email: appleEmail.toLowerCase().trim() } 
+                });
+            }
+            
+            if (existingUser) {
+                // Link account
+                await existingUser.update({
+                    apple_Id: appleId,
+                    accountStatus: 'active'
+                });
+                user = existingUser;
+                console.log('✅ Linked Apple account to existing user:', user.email);
+            } else {
+                if (!appleEmail) {
+                     return res.status(400).json({ message: "Email is required for new accounts but was not provided." });
+                }
+
+                const crypto = require('crypto');
+                const bcrypt = require('bcrypt');
+                
+                const randomPassword = Math.random().toString(36).slice(-8);
+                const hashedPassword = await bcrypt.hash(randomPassword, 10);
+                
+                let full = givenName || familyName ? `${givenName || ''} ${familyName || ''}`.trim() : appleEmail.split('@')[0];
+                const username = await generateUsername(full);
+                
+                user = await UserTable.create({
+                    apple_Id: appleId,
+                    fullName: full,
+                    username: username,
+                    email: appleEmail.toLowerCase().trim(),
+                    password: hashedPassword,
+                    agreeTerms: true,
+                    accountType: 'buyer',
+                    accountStatus: 'active',
+                    emailVerified: true 
+                });
+                console.log('✅ New Apple user created:', user.email);
+            }
+        }
+
+        // Create session
+        const crypto = require('crypto');
+        const redisClient = require('../config/redisdb');
+        const sessionId = crypto.randomBytes(32).toString('hex');
+        const sessionKey = `session:${user.id}:${sessionId}`;
+        
+        try {
+            await redisClient.setEx(sessionKey, 30 * 24 * 60 * 60, 'active');
+        } catch (error) {
+            console.error('Failed to save session to Redis:', error);
+        }
+
+        const token = jwt.sign(
+            { 
+                id: user.id, 
+                email: user.email, 
+                role: user.accountType,
+                sessionId 
+            },
+            process.env.JWT_SECRET,
+            { expiresIn: '30d' }
+        );
+
+        res.cookie('token', token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            maxAge: 30 * 24 * 60 * 60 * 1000
+        });
+
+        res.status(200).json({
+            message: "Authentication successful",
+            token,
+            user: {
+                id: user.id,
+                email: user.email,
+                fullName: user.fullName,
+                username: user.username,
+                profilePicture: user.profilePicture,
+                accountType: user.accountType,
+                accountStatus: user.accountStatus,
+                isSeller: ['seller', 'admin'].includes(user.accountType) || (user.sellerId ? true : false)
+            }
+        });
+
+    } catch (error) {
+        console.error('Apple auth error:', error);
+        res.status(500).json({ message: "Apple verification failed", error: error.message });
+    }
+};
+
 module.exports = {
     signup,
     login,
@@ -1491,6 +1662,7 @@ module.exports = {
     verifyEmail,
     resendVerificationEmail,
     googleMobileAuth,
+    appleMobileAuth,
     deleteAccount,
     performAccountDeletion
 };

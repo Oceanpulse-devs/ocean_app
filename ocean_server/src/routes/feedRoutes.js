@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const authMiddleware = require('../middleware/authMiddleware');
+const optionalAuthMiddleware = require('../middleware/optionalAuthMiddleware');
 const feedController = require('../controllers/feedcontroller');
 
 // Test route to check if server is working
@@ -9,8 +10,8 @@ router.get('/api/test', (req, res) => {
   res.json({ message: 'Feed routes are working!' });
 });
 
-// Public routes (no authentication required)
-router.get('/api/home-feed', authMiddleware, feedController.getHomeFeed);
+// Public routes (no authentication required / optional authentication)
+router.get('/api/home-feed', optionalAuthMiddleware, feedController.getHomeFeed);
 router.get('/api/feed', feedController.getFeed);
 router.get('/api/posts/:postId', feedController.getPost);
 router.get('/api/search', feedController.searchPosts);

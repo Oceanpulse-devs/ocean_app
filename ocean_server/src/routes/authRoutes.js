@@ -62,6 +62,10 @@ router.get('/api/auth/google/callback', passport.authenticate('google', { failur
     router.post('/api/auth/google/mobile', googleMobileAuth);
 }
 
+// Apple Mobile Authentication
+const { appleMobileAuth } = require('../controllers/authcontroller');
+router.post('/api/auth/apple/mobile', appleMobileAuth);
+
 
 
 router.post('/api/signup', signup)
