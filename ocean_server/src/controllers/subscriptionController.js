@@ -300,6 +300,48 @@ class SubscriptionController {
         }
       }
 
+      // Check if Apple payment method is requested
+      if (paymentMethod === 'apple' || paymentMethod === 'apple_iap') {
+        const reference = `APPLE_PENDING_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        const subscription = await subscriptionService.createSubscription(userId, plan.id, {
+          reference: reference,
+          method: 'apple_iap',
+          amount: price,
+          currency: currency
+        });
+
+        console.log('Created pending Apple subscription:', {
+          userId,
+          planId: plan.id,
+          reference
+        });
+
+        return res.status(201).json({
+          success: true,
+          message: 'Apple subscription initiated. Complete payment on device and verify receipt.',
+          data: {
+            subscription: {
+              id: subscription.id,
+              status: subscription.status,
+              flutterwaveSubscriptionId: null,
+              plan: {
+                name: plan.displayName || plan.display_name || plan.name,
+                price: price,
+                currency: currency
+              },
+              startDate: subscription.startDate || subscription.start_date,
+              endDate: subscription.endDate || subscription.end_date
+            },
+            payment: {
+              reference: reference,
+              paymentMethod: 'apple_iap',
+              hasCheckoutUrl: false,
+              checkoutUrl: null
+            }
+          }
+        });
+      }
+
       // Get the appropriate payment provider - default to Flutterwave
       const { PaymentProviderFactory } = require('../providers/PaymentProvider');
       // Default to Flutterwave if paymentMethod is not provided (Flutterwave subscriptions don't need explicit paymentMethod)
@@ -556,10 +598,6 @@ class SubscriptionController {
     }
   }
 
-  /**
-   * Verify Apple In-App Purchase
-   * POST /api/subscriptions/verify-apple-purchase
-   */
   static async verifyApplePurchase(req, res) {
     try {
       const userId = req.user.id;
@@ -607,7 +645,12 @@ class SubscriptionController {
           });
       }
 
-      const latestReceiptInfo = appleResponse.data.latest_receipt_info;
+      let latestReceiptInfo = appleResponse.data.latest_receipt_info;
+      // Fallback to checking receipt.in_app if latest_receipt_info is not present
+      if (!latestReceiptInfo && appleResponse.data.receipt && appleResponse.data.receipt.in_app) {
+          latestReceiptInfo = appleResponse.data.receipt.in_app;
+      }
+
       if (!latestReceiptInfo || latestReceiptInfo.length === 0) {
           return res.status(400).json({
               success: false,
@@ -616,7 +659,7 @@ class SubscriptionController {
       }
 
       // Sort to get the most recent transaction
-      latestReceiptInfo.sort((a, b) => parseInt(b.expires_date_ms) - parseInt(a.expires_date_ms));
+      latestReceiptInfo.sort((a, b) => parseInt(b.expires_date_ms || 0) - parseInt(a.expires_date_ms || 0));
       const latestSub = latestReceiptInfo[0];
 
       // Validate bundle ID (optional but recommended)
@@ -625,13 +668,16 @@ class SubscriptionController {
       }
 
       // Check if subscription has expired
+      let expiresDateMs = latestSub.expires_date_ms ? parseInt(latestSub.expires_date_ms) : null;
       const now = Date.now();
-      if (now > parseInt(latestSub.expires_date_ms)) {
+      if (expiresDateMs && now > expiresDateMs) {
           return res.status(400).json({
               success: false,
               message: 'Apple subscription has expired'
           });
       }
+
+      const endDate = expiresDateMs ? new Date(expiresDateMs) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
       // Map Apple productId to our internal planId
       let targetPlan = null;
@@ -640,6 +686,16 @@ class SubscriptionController {
            targetPlan = await SubscriptionPlan.findOne({
               where: { name: productId }
            });
+           
+           if (!targetPlan) {
+              const knownPlans = ['drift', 'wave', 'tide', 'surge'];
+              const matchedName = knownPlans.find(name => productId.toLowerCase().includes(name));
+              if (matchedName) {
+                targetPlan = await SubscriptionPlan.findOne({
+                  where: { name: matchedName }
+                });
+              }
+           }
            
            if (!targetPlan) {
               targetPlan = await SubscriptionPlan.findOne({ where: { isActive: true }}); // Fallback active plan
@@ -672,7 +728,6 @@ class SubscriptionController {
       }
 
       // Update subscription status
-      const endDate = new Date(parseInt(latestSub.expires_date_ms));
       await subscriptionService.updateUserSubscriptionStatus(
         userId,
         'active',
@@ -684,11 +739,28 @@ class SubscriptionController {
       const { UserSubscription } = require('../../models');
       const reference = transactionId || latestSub.transaction_id || `APPLE_${Date.now()}`;
       
+      // 1. Try to find by Apple transaction reference first
       let subscriptionObj = await UserSubscription.findOne({
           where: { paymentReference: reference, userId }
       });
       
+      // 2. If not found, try to find the most recent pending Apple subscription for this user
       if (!subscriptionObj) {
+          subscriptionObj = await UserSubscription.findOne({
+              where: { 
+                userId,
+                status: 'pending',
+                paymentMethod: 'apple_iap'
+              },
+              order: [['createdAt', 'DESC']]
+          });
+      }
+      
+      const planPrice = targetPlan ? targetPlan.price : 0;
+      const planCurrency = targetPlan ? targetPlan.currency : 'USD';
+
+      if (!subscriptionObj) {
+          // 3. Create a new active subscription if none exists
           subscriptionObj = await UserSubscription.create({
               userId: userId,
               planId: planId,
@@ -696,12 +768,21 @@ class SubscriptionController {
               startDate: new Date(),
               endDate: endDate,
               paymentReference: reference,
-              method: 'apple_iap',
-              amount: 0, 
-              currency: 'USD'
+              paymentMethod: 'apple_iap',
+              amountPaid: planPrice, 
+              currency: planCurrency
           });
       } else {
-          await subscriptionObj.update({ endDate, status: 'active' });
+          // 4. Update the existing subscription (either pending or active)
+          await subscriptionObj.update({ 
+              status: 'active',
+              planId: planId,
+              endDate: endDate, 
+              paymentReference: reference,
+              paymentMethod: 'apple_iap',
+              amountPaid: planPrice || subscriptionObj.amountPaid,
+              currency: planCurrency || subscriptionObj.currency
+          });
       }
 
       return res.status(200).json({
@@ -736,7 +817,7 @@ class SubscriptionController {
   static async changePlan(req, res) {
     try {
       const userId = req.user.id;
-      const { planId } = req.body;
+      const { planId, paymentMethod } = req.body;
 
       console.log('Change plan request:', { userId, planId, body: req.body });
 
@@ -816,6 +897,41 @@ class SubscriptionController {
           console.error('Error cancelling existing subscription:', error);
           // Continue with new subscription creation even if cancellation fails
         }
+      }
+
+      // Check if Apple payment method is requested
+      if (paymentMethod === 'apple' || paymentMethod === 'apple_iap') {
+        const reference = `APPLE_PENDING_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        const subscription = await subscriptionService.createSubscription(userId, targetPlan.id, {
+          reference: reference,
+          method: 'apple_iap',
+          amount: price,
+          currency: currency
+        });
+
+        console.log('Created pending Apple subscription for plan change:', {
+          userId,
+          planId: targetPlan.id,
+          reference
+        });
+
+        return res.json({
+          success: true,
+          message: 'Plan change initiated for Apple. Complete payment on device and verify receipt.',
+          data: {
+            currentPlan: eligibility.currentPlan,
+            targetPlan: targetPlan,
+            subscription: {
+              subscriptionId: reference,
+              hasCheckoutUrl: false,
+              checkoutUrl: null
+            },
+            payment: {
+              amount: price,
+              currency: currency
+            }
+          }
+        });
       }
 
       // Create new subscription for plan change
