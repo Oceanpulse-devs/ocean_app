@@ -177,7 +177,8 @@ class SubscriptionController {
   static async subscribeToPlan(req, res) {
     try {
       const userId = req.user.id;
-      const { planId, paymentMethod, skipTrial } = req.body;
+      const { planId, paymentMethod, actualPaymentMethod, skipTrial } = req.body;
+      console.log('Subscribe to plan request:', { userId, planId, paymentMethod, actualPaymentMethod, skipTrial });
 
       if (!planId) {
         return res.status(400).json({
@@ -301,7 +302,13 @@ class SubscriptionController {
       }
 
       // Check if Apple payment method is requested
-      if (paymentMethod === 'apple' || paymentMethod === 'apple_iap') {
+      const isApple = (val) => {
+        if (!val) return false;
+        const v = val.toLowerCase().trim();
+        return v === 'apple' || v === 'apple_iap' || v === 'applepay' || v === 'apple_pay' || v === 'iap';
+      };
+
+      if (isApple(paymentMethod) || isApple(actualPaymentMethod)) {
         const reference = `APPLE_PENDING_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
         const subscription = await subscriptionService.createSubscription(userId, plan.id, {
           reference: reference,
@@ -817,9 +824,9 @@ class SubscriptionController {
   static async changePlan(req, res) {
     try {
       const userId = req.user.id;
-      const { planId, paymentMethod } = req.body;
+      const { planId, paymentMethod, actualPaymentMethod } = req.body;
 
-      console.log('Change plan request:', { userId, planId, body: req.body });
+      console.log('Change plan request:', { userId, planId, paymentMethod, actualPaymentMethod, body: req.body });
 
       if (!planId) {
         return res.status(400).json({
@@ -900,7 +907,13 @@ class SubscriptionController {
       }
 
       // Check if Apple payment method is requested
-      if (paymentMethod === 'apple' || paymentMethod === 'apple_iap') {
+      const isApple = (val) => {
+        if (!val) return false;
+        const v = val.toLowerCase().trim();
+        return v === 'apple' || v === 'apple_iap' || v === 'applepay' || v === 'apple_pay' || v === 'iap';
+      };
+
+      if (isApple(paymentMethod) || isApple(actualPaymentMethod)) {
         const reference = `APPLE_PENDING_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
         const subscription = await subscriptionService.createSubscription(userId, targetPlan.id, {
           reference: reference,
