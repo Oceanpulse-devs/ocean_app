@@ -627,55 +627,102 @@ class SubscriptionController {
       // Apple's verification endpoint
       // Use sandbox for test, production for live. The best practice is to call prod, if status=21007, call sandbox
       const isProduction = process.env.NODE_ENV === 'production';
-      let verifyUrl = isProduction 
-        ? 'https://buy.itunes.apple.com/verifyReceipt' 
-        : 'https://sandbox.itunes.apple.com/verifyReceipt';
+      const hasSharedSecret = process.env.APPLE_SHARED_SECRET && process.env.APPLE_SHARED_SECRET.trim() !== "";
+      
+      let latestSub = null;
+      let expiresDateMs = null;
 
-      const verifyPayload = {
-        'receipt-data': receiptData,
-        'password': process.env.APPLE_SHARED_SECRET // required for auto-renewable subscriptions
-      };
+      if (!isProduction && !hasSharedSecret) {
+        console.warn('⚠️ WARNING: APPLE_SHARED_SECRET is not configured in .env. Bypassing Apple verification for local testing.');
+        latestSub = {
+          expires_date_ms: (Date.now() + 30 * 24 * 60 * 60 * 1000).toString(),
+          transaction_id: transactionId || `MOCK_APPLE_TX_${Date.now()}`
+        };
+        expiresDateMs = parseInt(latestSub.expires_date_ms);
+      } else {
+        let verifyUrl = isProduction 
+          ? 'https://buy.itunes.apple.com/verifyReceipt' 
+          : 'https://sandbox.itunes.apple.com/verifyReceipt';
 
-      let appleResponse = await axios.post(verifyUrl, verifyPayload);
+        const verifyPayload = {
+          'receipt-data': receiptData,
+          'password': process.env.APPLE_SHARED_SECRET // required for auto-renewable subscriptions
+        };
 
-      // Status 21007 means this is a sandbox receipt, but it was sent to production
-      if (appleResponse.data.status === 21007 && isProduction) {
-          verifyUrl = 'https://sandbox.itunes.apple.com/verifyReceipt';
-          appleResponse = await axios.post(verifyUrl, verifyPayload);
-      }
-
-      if (appleResponse.data.status !== 0) {
-          return res.status(400).json({
-              success: false,
-              message: 'Invalid Apple receipt',
-              appleStatus: appleResponse.data.status
+        console.log(`Sending receipt verification to Apple: ${verifyUrl}`);
+        let appleResponse;
+        try {
+          appleResponse = await axios.post(verifyUrl, verifyPayload, { timeout: 25000 });
+          console.log(`Apple verifyReceipt status: ${appleResponse.status}, status field in data: ${appleResponse.data.status}`);
+        } catch (postErr) {
+          console.error('Error posting to Apple verifyReceipt:', {
+            message: postErr.message,
+            code: postErr.code,
+            response: postErr.response ? {
+              status: postErr.response.status,
+              data: postErr.response.data
+            } : null
           });
-      }
+          throw postErr;
+        }
 
-      let latestReceiptInfo = appleResponse.data.latest_receipt_info;
-      // Fallback to checking receipt.in_app if latest_receipt_info is not present
-      if (!latestReceiptInfo && appleResponse.data.receipt && appleResponse.data.receipt.in_app) {
-          latestReceiptInfo = appleResponse.data.receipt.in_app;
-      }
+        // Status 21007 means this is a sandbox receipt, but it was sent to production
+        if (appleResponse.data.status === 21007 && isProduction) {
+            verifyUrl = 'https://sandbox.itunes.apple.com/verifyReceipt';
+            console.log(`Redirecting verification to Apple Sandbox: ${verifyUrl}`);
+            try {
+              appleResponse = await axios.post(verifyUrl, verifyPayload, { timeout: 25000 });
+              console.log(`Apple Sandbox verifyReceipt status: ${appleResponse.status}, status field in data: ${appleResponse.data.status}`);
+            } catch (sandboxErr) {
+              console.error('Error posting to Apple Sandbox verifyReceipt:', {
+                message: sandboxErr.message,
+                code: sandboxErr.code,
+                response: sandboxErr.response ? {
+                  status: sandboxErr.response.status,
+                  data: sandboxErr.response.data
+                } : null
+              });
+              throw sandboxErr;
+            }
+        }
 
-      if (!latestReceiptInfo || latestReceiptInfo.length === 0) {
-          return res.status(400).json({
-              success: false,
-              message: 'No subscription information found in receipt'
-          });
-      }
+        if (appleResponse.data.status !== 0) {
+            console.warn(`Apple verification failed with status code: ${appleResponse.data.status}`);
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid Apple receipt',
+                appleStatus: appleResponse.data.status
+            });
+        }
 
-      // Sort to get the most recent transaction
-      latestReceiptInfo.sort((a, b) => parseInt(b.expires_date_ms || 0) - parseInt(a.expires_date_ms || 0));
-      const latestSub = latestReceiptInfo[0];
+        let latestReceiptInfo = appleResponse.data.latest_receipt_info;
+        // Fallback to checking receipt.in_app if latest_receipt_info is not present
+        if (!latestReceiptInfo && appleResponse.data.receipt && appleResponse.data.receipt.in_app) {
+            latestReceiptInfo = appleResponse.data.receipt.in_app;
+        }
 
-      // Validate bundle ID (optional but recommended)
-      if (appleResponse.data.receipt && appleResponse.data.receipt.bundle_id !== (process.env.APPLE_BUNDLE_ID || 'com.oceanpulse.bluewhale')) {
-          console.warn('Bundle ID mismatch:', appleResponse.data.receipt.bundle_id);
+        if (!latestReceiptInfo || latestReceiptInfo.length === 0) {
+            console.warn('No subscription or in-app purchase information found in Apple response receipt');
+            return res.status(400).json({
+                success: false,
+                message: 'No subscription information found in receipt'
+            });
+        }
+
+        // Sort to get the most recent transaction
+        latestReceiptInfo.sort((a, b) => parseInt(b.expires_date_ms || 0) - parseInt(a.expires_date_ms || 0));
+        latestSub = latestReceiptInfo[0];
+        console.log(`Latest transaction found: transaction_id: ${latestSub.transaction_id}, product_id: ${latestSub.product_id}, expires_date: ${latestSub.expires_date}`);
+
+        // Validate bundle ID (optional but recommended)
+        if (appleResponse.data.receipt && appleResponse.data.receipt.bundle_id !== (process.env.APPLE_BUNDLE_ID || 'com.oceanpulse.bluewhale')) {
+            console.warn('Bundle ID mismatch:', appleResponse.data.receipt.bundle_id, 'expected:', process.env.APPLE_BUNDLE_ID || 'com.oceanpulse.bluewhale');
+        }
+
+        expiresDateMs = latestSub.expires_date_ms ? parseInt(latestSub.expires_date_ms) : null;
       }
 
       // Check if subscription has expired
-      let expiresDateMs = latestSub.expires_date_ms ? parseInt(latestSub.expires_date_ms) : null;
       const now = Date.now();
       if (expiresDateMs && now > expiresDateMs) {
           return res.status(400).json({
@@ -792,6 +839,7 @@ class SubscriptionController {
           });
       }
 
+      console.log('✅ Apple purchase verified and activated in DB successfully for user:', userId);
       return res.status(200).json({
           success: true,
           message: 'Apple In-App Purchase verified successfully',
