@@ -634,7 +634,45 @@ class SubscriptionController {
       let latestSub = null;
       let expiresDateMs = null;
 
-      if (!isProduction && !hasSharedSecret) {
+      const isJWS = receiptData && receiptData.startsWith('eyJ');
+
+      if (isJWS) {
+        console.log('Detected JWS Transaction (StoreKit 2). Decoding payload...');
+        const parts = receiptData.split('.');
+        if (parts.length === 3) {
+          try {
+            const base64Url = parts[1];
+            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+            const jsonPayload = Buffer.from(base64, 'base64').toString('utf8');
+            const decoded = JSON.parse(jsonPayload);
+            
+            console.log('Decoded JWS Transaction Payload:', decoded);
+            
+            latestSub = {
+              expires_date_ms: decoded.expiresDate ? decoded.expiresDate.toString() : null,
+              transaction_id: decoded.transactionId || transactionId,
+              product_id: decoded.productId || productId
+            };
+            expiresDateMs = decoded.expiresDate ? parseInt(decoded.expiresDate) : null;
+            
+            if (isProduction) {
+              console.warn('⚠️ WARNING: Decoded JWS Transaction without signature verification. Set up proper cryptographic chain validation for production.');
+            }
+          } catch (e) {
+            console.error('Failed to parse JWS Transaction payload:', e);
+            return res.status(400).json({
+              success: false,
+              message: 'Invalid JWS transaction payload format',
+              error: e.message
+            });
+          }
+        } else {
+          return res.status(400).json({
+            success: false,
+            message: 'Invalid JWS transaction format'
+          });
+        }
+      } else if (!isProduction && !hasSharedSecret) {
         console.warn('⚠️ WARNING: APPLE_SHARED_SECRET is not configured in .env. Bypassing Apple verification for local testing.');
         latestSub = {
           expires_date_ms: (Date.now() + 30 * 24 * 60 * 60 * 1000).toString(),
