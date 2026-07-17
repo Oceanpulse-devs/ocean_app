@@ -148,18 +148,22 @@ async function getUserActiveSubscription(userId) {
 async function getTodayUsage(userId, subscriptionId) {
   try {
     const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
-    // Removed verbose logging to reduce Railway log rate limiting
     
     let usage = await SubscriptionUsage.findOne({
       where: {
         userId: userId,
-        subscriptionId: subscriptionId,
         usagePeriod: today
       }
     });
 
-    // Create usage record if it doesn't exist
-    if (!usage) {
+    if (usage) {
+      // If user upgraded/changed plan today, update the record's subscriptionId
+      if (usage.subscriptionId !== subscriptionId) {
+        await usage.update({ subscriptionId: subscriptionId });
+        console.log(`Updated today's usage record with new subscriptionId: ${subscriptionId}`);
+      }
+    } else {
+      // Create usage record if it doesn't exist
       try {
         usage = await SubscriptionUsage.create({
           userId: userId,
@@ -167,16 +171,17 @@ async function getTodayUsage(userId, subscriptionId) {
           usagePeriod: today
         });
       } catch (error) {
-        console.error('Error creating usage record:', error);
         // Handle duplicate entry error - another process might have created it
         if (error.name === 'SequelizeUniqueConstraintError' || error.code === 'ER_DUP_ENTRY') {
           usage = await SubscriptionUsage.findOne({
             where: {
               userId: userId,
-              subscriptionId: subscriptionId,
               usagePeriod: today
             }
           });
+          if (usage && usage.subscriptionId !== subscriptionId) {
+            await usage.update({ subscriptionId: subscriptionId });
+          }
         } else {
           console.error('Error creating usage record:', error);
           throw error;
