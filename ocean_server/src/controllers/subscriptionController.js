@@ -620,7 +620,9 @@ class SubscriptionController {
       console.log('Verifying Apple Purchase:', {
         userId,
         productId,
-        transactionId
+        transactionId,
+        receiptDataLength: receiptData ? receiptData.length : 0,
+        receiptDataSnippet: receiptData ? receiptData.substring(0, 30) + '...' : 'null'
       });
 
       const axios = require('axios');
@@ -688,38 +690,48 @@ class SubscriptionController {
 
         if (appleResponse.data.status !== 0) {
             console.warn(`Apple verification failed with status code: ${appleResponse.data.status}`);
-            return res.status(400).json({
-                success: false,
-                message: 'Invalid Apple receipt',
-                appleStatus: appleResponse.data.status
-            });
+            if (!isProduction) {
+                console.warn(`⚠️ WARNING: Apple verification returned status ${appleResponse.data.status} in development/staging. Bypassing and activating subscription for StoreKit local testing.`);
+                latestSub = {
+                  expires_date_ms: (Date.now() + 30 * 24 * 60 * 60 * 1000).toString(),
+                  transaction_id: transactionId || `MOCK_APPLE_TX_${Date.now()}`,
+                  product_id: productId
+                };
+                expiresDateMs = parseInt(latestSub.expires_date_ms);
+            } else {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Invalid Apple receipt',
+                    appleStatus: appleResponse.data.status
+                });
+            }
+        } else {
+            let latestReceiptInfo = appleResponse.data.latest_receipt_info;
+            // Fallback to checking receipt.in_app if latest_receipt_info is not present
+            if (!latestReceiptInfo && appleResponse.data.receipt && appleResponse.data.receipt.in_app) {
+                latestReceiptInfo = appleResponse.data.receipt.in_app;
+            }
+
+            if (!latestReceiptInfo || latestReceiptInfo.length === 0) {
+                console.warn('No subscription or in-app purchase information found in Apple response receipt');
+                return res.status(400).json({
+                    success: false,
+                    message: 'No subscription information found in receipt'
+                });
+            }
+
+            // Sort to get the most recent transaction
+            latestReceiptInfo.sort((a, b) => parseInt(b.expires_date_ms || 0) - parseInt(a.expires_date_ms || 0));
+            latestSub = latestReceiptInfo[0];
+            console.log(`Latest transaction found: transaction_id: ${latestSub.transaction_id}, product_id: ${latestSub.product_id}, expires_date: ${latestSub.expires_date}`);
+
+            // Validate bundle ID (optional but recommended)
+            if (appleResponse.data.receipt && appleResponse.data.receipt.bundle_id !== (process.env.APPLE_BUNDLE_ID || 'com.oceanpulse.bluewhale')) {
+                console.warn('Bundle ID mismatch:', appleResponse.data.receipt.bundle_id, 'expected:', process.env.APPLE_BUNDLE_ID || 'com.oceanpulse.bluewhale');
+            }
+
+            expiresDateMs = latestSub.expires_date_ms ? parseInt(latestSub.expires_date_ms) : null;
         }
-
-        let latestReceiptInfo = appleResponse.data.latest_receipt_info;
-        // Fallback to checking receipt.in_app if latest_receipt_info is not present
-        if (!latestReceiptInfo && appleResponse.data.receipt && appleResponse.data.receipt.in_app) {
-            latestReceiptInfo = appleResponse.data.receipt.in_app;
-        }
-
-        if (!latestReceiptInfo || latestReceiptInfo.length === 0) {
-            console.warn('No subscription or in-app purchase information found in Apple response receipt');
-            return res.status(400).json({
-                success: false,
-                message: 'No subscription information found in receipt'
-            });
-        }
-
-        // Sort to get the most recent transaction
-        latestReceiptInfo.sort((a, b) => parseInt(b.expires_date_ms || 0) - parseInt(a.expires_date_ms || 0));
-        latestSub = latestReceiptInfo[0];
-        console.log(`Latest transaction found: transaction_id: ${latestSub.transaction_id}, product_id: ${latestSub.product_id}, expires_date: ${latestSub.expires_date}`);
-
-        // Validate bundle ID (optional but recommended)
-        if (appleResponse.data.receipt && appleResponse.data.receipt.bundle_id !== (process.env.APPLE_BUNDLE_ID || 'com.oceanpulse.bluewhale')) {
-            console.warn('Bundle ID mismatch:', appleResponse.data.receipt.bundle_id, 'expected:', process.env.APPLE_BUNDLE_ID || 'com.oceanpulse.bluewhale');
-        }
-
-        expiresDateMs = latestSub.expires_date_ms ? parseInt(latestSub.expires_date_ms) : null;
       }
 
       // Check if subscription has expired
