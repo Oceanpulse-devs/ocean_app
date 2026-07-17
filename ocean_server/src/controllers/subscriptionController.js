@@ -517,7 +517,7 @@ class SubscriptionController {
               paymentReference: paymentReference,
               status: 'pending'
             },
-            order: [['createdAt', 'DESC']]
+            order: [['id', 'DESC']]
           });
 
           if (subscription) {
@@ -856,7 +856,7 @@ class SubscriptionController {
                 status: 'pending',
                 paymentMethod: 'apple_iap'
               },
-              order: [['createdAt', 'DESC']]
+              order: [['id', 'DESC']]
           });
       }
       
