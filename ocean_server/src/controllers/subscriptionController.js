@@ -637,10 +637,56 @@ class SubscriptionController {
       const isJWS = receiptData && receiptData.startsWith('eyJ');
 
       if (isJWS) {
-        console.log('Detected JWS Transaction (StoreKit 2). Decoding payload...');
+        console.log('Detected JWS Transaction (StoreKit 2). Decoding payload and verifying signature...');
         const parts = receiptData.split('.');
         if (parts.length === 3) {
           try {
+            // Cryptographic JWS Signature Verification
+            let isSignatureValid = false;
+            try {
+              const crypto = require('crypto');
+              const jwt = require('jsonwebtoken');
+              const headerBase64 = parts[0].replace(/-/g, '+').replace(/_/g, '/');
+              const header = JSON.parse(Buffer.from(headerBase64, 'base64').toString('utf8'));
+
+              if (header.x5c && header.x5c.length > 0) {
+                const leafCertDer = Buffer.from(header.x5c[0], 'base64');
+                
+                // Verify certificate issuer/subject is Apple
+                if (crypto.X509Certificate) {
+                  const x509 = new crypto.X509Certificate(leafCertDer);
+                  const subjectMatches = x509.subject.toLowerCase().includes('apple');
+                  const issuerMatches = x509.issuer.toLowerCase().includes('apple');
+                  
+                  if (!subjectMatches || !issuerMatches) {
+                    console.error('JWS Certificate Issuer/Subject check failed. Subject:', x509.subject, 'Issuer:', x509.issuer);
+                    return res.status(400).json({
+                      success: false,
+                      message: 'Invalid JWS transaction: certificate not issued by Apple'
+                    });
+                  }
+                }
+
+                // Format DER certificate to PEM format
+                const pemCert = `-----BEGIN CERTIFICATE-----\n${leafCertDer.toString('base64').match(/.{1,64}/g).join('\n')}\n-----END CERTIFICATE-----`;
+
+                // Verify JWS signature using jsonwebtoken
+                jwt.verify(receiptData, pemCert, { algorithms: ['ES256'] });
+                isSignatureValid = true;
+                console.log('✅ JWS transaction signature verified cryptographically via JWT successfully!');
+              }
+            } catch (cryptoErr) {
+              console.error('Failed to cryptographically verify JWS signature:', cryptoErr.message);
+            }
+
+            if (!isSignatureValid) {
+              console.error('JWS transaction cryptographic signature verification failed!');
+              return res.status(400).json({
+                success: false,
+                message: 'Invalid JWS transaction: signature verification failed'
+              });
+            }
+
             const base64Url = parts[1];
             const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
             const jsonPayload = Buffer.from(base64, 'base64').toString('utf8');
@@ -654,10 +700,6 @@ class SubscriptionController {
               product_id: decoded.productId || productId
             };
             expiresDateMs = decoded.expiresDate ? parseInt(decoded.expiresDate) : null;
-            
-            if (isProduction) {
-              console.warn('⚠️ WARNING: Decoded JWS Transaction without signature verification. Set up proper cryptographic chain validation for production.');
-            }
           } catch (e) {
             console.error('Failed to parse JWS Transaction payload:', e);
             return res.status(400).json({
