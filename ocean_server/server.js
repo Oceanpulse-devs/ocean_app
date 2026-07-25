@@ -1568,6 +1568,15 @@ syncDatabase()
         } else {
             console.log('\n⚠️  Database sync had issues, but continuing...');
             console.log(`   Error: ${result.error}`);
+
+            // Initialize trigger manager to verify/restore triggers
+            try {
+                const TriggerManager = require('./src/utils/triggerManager');
+                TriggerManager.initialize();
+            } catch (e) {
+                console.log('⚠️  Could not initialize trigger manager:', e.message);
+            }
+
             // Still initialize scheduler, but it might fail if tables don't exist
             try {
                 const AuctionScheduler = require('./src/services/auctionScheduler');
