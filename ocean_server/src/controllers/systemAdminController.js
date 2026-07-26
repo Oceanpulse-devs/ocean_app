@@ -10,7 +10,7 @@ class SystemAdminController {
       const config = {
         // Application settings
         app: {
-          name: process.env.APP_NAME || 'Ocean App',
+          name: process.env.APP_NAME || 'BlueWhale',
           version: process.env.APP_VERSION || '1.0.0',
           environment: process.env.NODE_ENV || 'development',
           port: process.env.PORT || 5000,

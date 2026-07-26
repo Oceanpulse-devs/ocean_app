@@ -177,7 +177,7 @@ const currentUserprofile = async(req,res)=>{
      // Use actual database values with fallbacks
      profilePicture: currentUser.profilePicture || "/default-avatar.jpg",
      coverPicture: currentUser.coverPicture || "/default-cover.jpg",
-     bio: currentUser.bio || (role === "seller" ? "Professional seller on Ocean App" : "Ocean App user"),
+     bio: currentUser.bio || (role === "seller" ? "Professional seller on BlueWhale" : "BlueWhale user"),
      location: currentUser.location || "Not specified",
      website: currentUser.website || null,
      // Add missing fields that frontend expects
@@ -391,7 +391,7 @@ const getUserProfileById = async(req, res) => {
       // Use actual database values with fallbacks
       profilePicture: user.profilePicture || "/default-avatar.jpg",
       coverPicture: user.coverPicture || "/default-cover.jpg",
-      bio: user.bio || (role === "seller" ? "Professional seller on Ocean App" : "Ocean App user"),
+      bio: user.bio || (role === "seller" ? "Professional seller on BlueWhale" : "BlueWhale user"),
       location: user.location || "Not specified",
       website: user.website || null
     }
@@ -411,7 +411,7 @@ const getUserProfileById = async(req, res) => {
       profileInfo.state = alsoSeller.state;
       profileInfo.rating = alsoSeller.rating || 0;
       profileInfo.totalSales = alsoSeller.totalSales || 0;
-      profileInfo.bio = alsoSeller.businessDescription || "Professional seller on Ocean App";
+      profileInfo.bio = alsoSeller.businessDescription || "Professional seller on BlueWhale";
       
       // NEW: Add seller-specific tab counts
       profileInfo.auctionsCount = auctionsCount;

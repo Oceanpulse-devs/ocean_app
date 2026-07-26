@@ -83,7 +83,7 @@ class TrialExpirationJob {
                     ${trial.plan.features ? trial.plan.features.map(f => `<li>${f}</li>`).join('') : ''}
                   </ul>
                   <p style="background-color: #eff6ff; padding: 16px; border-radius: 5px; margin: 20px 0;">
-                    <strong>To subscribe:</strong> Open the Ocean App → go to <strong>Settings</strong> → <strong>Subscription</strong> and choose your plan there.
+                    <strong>To subscribe:</strong> Open the BlueWhale app → go to <strong>Settings</strong> → <strong>Subscription</strong> and choose your plan there.
                   </p>
                   <p style="color: #666; font-size: 12px;">
                     You can continue using all features until ${new Date(trial.trialEndDate).toLocaleDateString()}.
@@ -160,10 +160,10 @@ class TrialExpirationJob {
                     ${trial.plan.features ? trial.plan.features.map(f => `<li>${f}</li>`).join('') : ''}
                   </ul>
                   <p style="background-color: #eff6ff; padding: 16px; border-radius: 5px; margin: 20px 0;">
-                    <strong>To subscribe:</strong> Open the Ocean App → go to <strong>Settings</strong> → <strong>Subscription</strong> and choose your plan there.
+                    <strong>To subscribe:</strong> Open the BlueWhale app → go to <strong>Settings</strong> → <strong>Subscription</strong> and choose your plan there.
                   </p>
                   <p style="color: #666; font-size: 12px;">
-                    Start selling with Ocean again today!
+                    Start selling with BlueWhale again today!
                   </p>
                 </div>
               `

@@ -139,7 +139,7 @@ const updateProfile = async (req, res) => {
         role: updatedUser.accountType,
         profilePicture: updatedUser.profilePicture || "/default-avatar.jpg",
         coverPicture: updatedUser.coverPicture || "/default-cover.jpg",
-        bio: updatedUser.bio || "Ocean App user",
+        bio: updatedUser.bio || "BlueWhale user",
         location: updatedUser.location || "Not specified",
         website: updatedUser.website || null
       }
