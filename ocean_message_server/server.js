@@ -510,6 +510,12 @@ function startServer() {
     console.log(`🚀 BlueWhale Message Server running on port ${PORT}`);
     console.log(`📡 WebSocket server ready for connections`);
     console.log(`🔗 Health check: http://localhost:${PORT}/health`);
+
+    // After startup logs print, mute subsequent verbose console.log in production
+    if (process.env.NODE_ENV === 'production') {
+      console.log = () => {};
+      console.info = () => {};
+    }
   });
 }
 

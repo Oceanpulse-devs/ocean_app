@@ -1677,6 +1677,12 @@ if (process.env.NODE_ENV !== 'test' && require.main === module) {
         server.listen(port, () => {
             console.log(`● Server running on port ${port} ✅`);
             console.log(`● WebSocket server initialized for real-time auction updates ✅`);
+
+            // After startup logs print, mute subsequent verbose console.log in production
+            if (process.env.NODE_ENV === 'production') {
+                console.log = () => {};
+                console.info = () => {};
+            }
         });
     }, 2000); // 2 second delay to ensure sync completes
 }
