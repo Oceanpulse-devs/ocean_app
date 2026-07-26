@@ -96,14 +96,14 @@ const getDeleteAccountForm = (req, res) => {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Delete Account - Ocean App</title>
+  <title>Delete Account - BlueWhale</title>
   <style>${pageStyles}</style>
 </head>
 <body>
   <div class="container">
     <div class="brand-header">
-      <img src="/public/oceanLogo.jpeg" alt="Ocean App" />
-      <div class="brand-name">Ocean App</div>
+      <img src="/public/bluewhale.png" alt="BlueWhale" />
+      <div class="brand-name">BlueWhale</div>
     </div>
     <h1>Delete Your Account</h1>
     <p>
@@ -211,14 +211,14 @@ function renderCheckEmailPage() {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Check Your Email - Ocean App</title>
+  <title>Check Your Email - BlueWhale</title>
   <style>${pageStyles}</style>
 </head>
 <body>
   <div class="container">
     <div class="brand-header">
-      <img src="/public/oceanLogo.jpeg" alt="Ocean App" />
-      <div class="brand-name">Ocean App</div>
+      <img src="/public/bluewhale.png" alt="BlueWhale" />
+      <div class="brand-name">BlueWhale</div>
     </div>
     <h1>Check Your Email</h1>
     <p class="success">
@@ -239,18 +239,18 @@ function renderSuccessPage(message) {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Account Deleted - Ocean App</title>
+  <title>Account Deleted - BlueWhale</title>
   <style>${pageStyles}</style>
 </head>
 <body>
   <div class="container">
     <div class="brand-header">
-      <img src="/public/oceanLogo.jpeg" alt="Ocean App" />
-      <div class="brand-name">Ocean App</div>
+      <img src="/public/bluewhale.png" alt="BlueWhale" />
+      <div class="brand-name">BlueWhale</div>
     </div>
     <h1>Account Deleted</h1>
     <p class="success">${message}</p>
-    <p>Thank you for using Ocean App.</p>
+    <p>Thank you for using BlueWhale.</p>
   </div>
 </body>
 </html>`;
@@ -263,14 +263,14 @@ function renderErrorPage(message) {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Error - Ocean App</title>
+  <title>Error - BlueWhale</title>
   <style>${pageStyles}</style>
 </head>
 <body>
   <div class="container">
     <div class="brand-header">
-      <img src="/public/oceanLogo.jpeg" alt="Ocean App" />
-      <div class="brand-name">Ocean App</div>
+      <img src="/public/bluewhale.png" alt="BlueWhale" />
+      <div class="brand-name">BlueWhale</div>
     </div>
     <h1>Unable to Complete</h1>
     <p class="error">${message}</p>

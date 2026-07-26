@@ -100,7 +100,7 @@ const sendEmail = async (to, subject, message, type = 'info') => {
       const emailData = {
         sender: {
           email: process.env.BREVO_FROM_EMAIL || process.env.FROM_EMAIL,
-          name: 'Ocean App'
+          name: 'BlueWhale'
         },
         to: [
           {
@@ -170,7 +170,7 @@ const sendEmail = async (to, subject, message, type = 'info') => {
 // Email templates
 const emailTemplates = {
   sellerApplicationSubmitted: (userName) => ({
-    subject: "Seller Application Submitted - Ocean App",
+    subject: "Seller Application Submitted - BlueWhale",
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #2c3e50;">Hello ${userName}!</h2>
@@ -184,14 +184,14 @@ const emailTemplates = {
             <li>You'll receive an email with the decision</li>
           </ul>
         </div>
-        <p>Thank you for choosing Ocean App!</p>
-        <p>Best regards,<br>The Ocean App Team</p>
+        <p>Thank you for choosing BlueWhale!</p>
+        <p>Best regards,<br>The BlueWhale Team</p>
       </div>
     `
   }),
   
   sellerApplicationApproved: (userName, businessName) => ({
-    subject: "🎉 Your Seller Application is Approved! - Ocean App",
+    subject: "🎉 Your Seller Application is Approved! - BlueWhale",
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #27ae60;">Congratulations ${userName}!</h2>
@@ -205,14 +205,14 @@ const emailTemplates = {
             <li>Manage your business profile</li>
           </ul>
         </div>
-        <p>Welcome to the Ocean App seller community!</p>
-        <p>Best regards,<br>The Ocean App Team</p>
+        <p>Welcome to the BlueWhale seller community!</p>
+        <p>Best regards,<br>The BlueWhale Team</p>
       </div>
     `
   }),
   
   sellerApplicationRejected: (userName, reason) => ({
-    subject: "Seller Application Update - Ocean App",
+    subject: "Seller Application Update - BlueWhale",
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #e74c3c;">Hello ${userName}</h2>
@@ -223,13 +223,13 @@ const emailTemplates = {
         </div>
         <p>You can submit a new application after addressing the issues mentioned above.</p>
         <p>If you have any questions, please don't hesitate to contact our support team.</p>
-        <p>Best regards,<br>The Ocean App Team</p>
+        <p>Best regards,<br>The BlueWhale Team</p>
       </div>
     `
   }),
   
   accountSuspended: (userName, reason) => ({
-    subject: "Account Suspended - Ocean App",
+    subject: "Account Suspended - BlueWhale",
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #e74c3c;">Hello ${userName}</h2>
@@ -239,30 +239,30 @@ const emailTemplates = {
           <p>${reason}</p>
         </div>
         <p>Please contact our support team to discuss reinstating your account.</p>
-        <p>Best regards,<br>The Ocean App Team</p>
+        <p>Best regards,<br>The BlueWhale Team</p>
       </div>
     `
   }),
   
   accountActivated: (userName) => ({
-    subject: "Account Reactivated - Ocean App",
+    subject: "Account Reactivated - BlueWhale",
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #27ae60;">Hello ${userName}</h2>
         <p>Great news! Your account has been reactivated.</p>
         <p>You can now continue using our platform normally.</p>
         <p>Thank you for your patience.</p>
-        <p>Best regards,<br>The Ocean App Team</p>
+        <p>Best regards,<br>The BlueWhale Team</p>
       </div>
     `
   }),
 
   emailVerification: (userName, verificationLink) => ({
-    subject: "Verify Your Email - Ocean App",
+    subject: "Verify Your Email - BlueWhale",
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #2c3e50;">Hello ${userName}!</h2>
-        <p>Welcome to Ocean App! Please verify your email address to complete your registration.</p>
+        <p>Welcome to BlueWhale! Please verify your email address to complete your registration.</p>
         <div style="text-align: center; margin: 30px 0;">
           <a href="${verificationLink}" 
              style="background-color: #3498db; color: white; padding: 15px 30px; 
@@ -277,18 +277,18 @@ const emailTemplates = {
           <ul>
             <li>Click the verification link above</li>
             <li>Your account will be activated</li>
-            <li>You can start using Ocean App</li>
+            <li>You can start using BlueWhale</li>
           </ul>
         </div>
         <p><strong>Note:</strong> This link will expire in 15 minutes for security reasons.</p>
-        <p>If you didn't create an account with Ocean App, please ignore this email.</p>
-        <p>Best regards,<br>The Ocean App Team</p>
+        <p>If you didn't create an account with BlueWhale, please ignore this email.</p>
+        <p>Best regards,<br>The BlueWhale Team</p>
       </div>
     `
   }),
 
   emailVerified: (userName) => ({
-    subject: "Email Verified Successfully - Ocean App",
+    subject: "Email Verified Successfully - BlueWhale",
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #27ae60;">Hello ${userName}!</h2>
@@ -300,21 +300,21 @@ const emailTemplates = {
             <li>Browse and purchase products</li>
             <li>Create posts and listings</li>
             <li>Connect with other users</li>
-            <li>Access all Ocean App features</li>
+            <li>Access all BlueWhale features</li>
           </ul>
         </div>
-        <p>Welcome to the Ocean App community!</p>
-        <p>Best regards,<br>The Ocean App Team</p>
+        <p>Welcome to the BlueWhale community!</p>
+        <p>Best regards,<br>The BlueWhale Team</p>
       </div>
     `
   }),
 
   passwordReset: (userName, resetCode) => ({
-    subject: "Reset Your Password - Ocean App",
+    subject: "Reset Your Password - BlueWhale",
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #2c3e50;">Hello ${userName}!</h2>
-        <p>You requested to reset your password for your Ocean App account.</p>
+        <p>You requested to reset your password for your BlueWhale account.</p>
         <div style="text-align: center; margin: 30px 0;">
           <div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; border: 2px solid #e74c3c;">
             <h3 style="color: #e74c3c; margin: 0 0 10px 0;">Your Reset Code</h3>
@@ -334,14 +334,14 @@ const emailTemplates = {
           </ul>
         </div>
         <p><strong>Important:</strong> If you didn't request a password reset, please contact our support team immediately.</p>
-        <p>Best regards,<br>The Ocean App Team</p>
+        <p>Best regards,<br>The BlueWhale Team</p>
       </div>
     `
   }),
 
   // Subscription Email Templates
   subscriptionCreated: (userName, planName, price, currency, expiresAt) => ({
-    subject: `🎉 Subscription Activated - ${planName} Plan - Ocean App`,
+    subject: `🎉 Subscription Activated - ${planName} Plan - BlueWhale`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #27ae60;">Hello ${userName}!</h2>
@@ -377,14 +377,14 @@ const emailTemplates = {
           </ul>
         </div>
 
-        <p>Thank you for choosing Ocean App for your business needs!</p>
-        <p>Best regards,<br>The Ocean App Team</p>
+        <p>Thank you for choosing BlueWhale for your business needs!</p>
+        <p>Best regards,<br>The BlueWhale Team</p>
       </div>
     `
   }),
 
   subscriptionChanged: (userName, oldPlanName, newPlanName, price, currency, expiresAt) => ({
-    subject: `📈 Subscription Updated - ${newPlanName} Plan - Ocean App`,
+    subject: `📈 Subscription Updated - ${newPlanName} Plan - BlueWhale`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #3498db;">Hello ${userName}!</h2>
@@ -424,14 +424,14 @@ const emailTemplates = {
           </ul>
         </div>
 
-        <p>Thank you for upgrading your Ocean App experience!</p>
-        <p>Best regards,<br>The Ocean App Team</p>
+        <p>Thank you for upgrading your BlueWhale experience!</p>
+        <p>Best regards,<br>The BlueWhale Team</p>
       </div>
     `
   }),
 
   subscriptionCancelled: (userName, planName, reason, expiresAt) => ({
-    subject: `📋 Subscription Cancelled - Ocean App`,
+    subject: `📋 Subscription Cancelled - BlueWhale`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #e67e22;">Hello ${userName}!</h2>
@@ -466,13 +466,13 @@ const emailTemplates = {
         </div>
 
         <p>We're sorry to see you go! If you change your mind, you can resubscribe anytime.</p>
-        <p>Best regards,<br>The Ocean App Team</p>
+        <p>Best regards,<br>The BlueWhale Team</p>
       </div>
     `
   }),
 
   subscriptionExpiringReminder: (userName, planName, expiresAt) => ({
-    subject: `⏰ Your ${planName} Plan Expires in 3 Days - Ocean App`,
+    subject: `⏰ Your ${planName} Plan Expires in 3 Days - BlueWhale`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #f59e0b;">Hello ${userName}!</h2>
@@ -503,7 +503,7 @@ const emailTemplates = {
             <li>⚡ Priority customer support</li>
           </ul>
           <p style="background-color: #e7f3ff; padding: 16px; border-radius: 5px; margin: 20px 0;">
-            <strong>To renew:</strong> Open the Ocean App → go to <strong>Settings</strong> → <strong>Subscription</strong> and renew your plan there.
+            <strong>To renew:</strong> Open the BlueWhale app → go to <strong>Settings</strong> → <strong>Subscription</strong> and renew your plan there.
           </p>
         </div>
 
@@ -513,14 +513,14 @@ const emailTemplates = {
           </p>
         </div>
 
-        <p>Thank you for being a valued Ocean App user!</p>
-        <p>Best regards,<br>The Ocean App Team</p>
+        <p>Thank you for being a valued BlueWhale user!</p>
+        <p>Best regards,<br>The BlueWhale Team</p>
       </div>
     `
   }),
 
   subscriptionExpired: (userName, planName) => ({
-    subject: `⏰ Subscription Expired - Ocean App`,
+    subject: `⏰ Subscription Expired - BlueWhale`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #e74c3c;">Hello ${userName}!</h2>
@@ -541,18 +541,18 @@ const emailTemplates = {
             <li>⚡ Priority support</li>
           </ul>
           <p style="background-color: #e7f3ff; padding: 16px; border-radius: 5px; margin: 20px 0;">
-            <strong>To renew:</strong> Open the Ocean App → go to <strong>Settings</strong> → <strong>Subscription</strong> and renew your plan there.
+            <strong>To renew:</strong> Open the BlueWhale app → go to <strong>Settings</strong> → <strong>Subscription</strong> and renew your plan there.
           </p>
         </div>
 
-        <p>Thank you for being a valued Ocean App user!</p>
-        <p>Best regards,<br>The Ocean App Team</p>
+        <p>Thank you for being a valued BlueWhale user!</p>
+        <p>Best regards,<br>The BlueWhale Team</p>
       </div>
     `
   }),
 
   paymentFailed: (userName, planName, reason) => ({
-    subject: `💳 Payment Failed - Ocean App`,
+    subject: `💳 Payment Failed - BlueWhale`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #e74c3c;">Hello ${userName}!</h2>
@@ -572,22 +572,22 @@ const emailTemplates = {
             <li>📞 Contact support if issues persist</li>
           </ul>
           <p style="background-color: #e7f3ff; padding: 16px; border-radius: 5px; margin: 20px 0;">
-            <strong>To retry payment:</strong> Open the Ocean App → go to <strong>Settings</strong> → <strong>Subscription</strong> and try again there.
+            <strong>To retry payment:</strong> Open the BlueWhale app → go to <strong>Settings</strong> → <strong>Subscription</strong> and try again there.
           </p>
         </div>
 
         <p>Don't worry, your account remains active. Please try again to complete your subscription.</p>
-        <p>Best regards,<br>The Ocean App Team</p>
+        <p>Best regards,<br>The BlueWhale Team</p>
       </div>
     `
   }),
 
   accountDeletionMagicLink: (userName, confirmUrl) => ({
-    subject: "Delete Your Account - Ocean App",
+    subject: "Delete Your Account - BlueWhale",
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #000; color: #fff; padding: 24px;">
         <h2 style="color: #fff;">Hello ${userName},</h2>
-        <p style="color: #b0b0b0;">You requested to delete your Ocean App account. Click the button below to confirm and complete the deletion.</p>
+        <p style="color: #b0b0b0;">You requested to delete your BlueWhale account. Click the button below to confirm and complete the deletion.</p>
         <div style="text-align: center; margin: 30px 0;">
           <a href="${confirmUrl}" 
              style="background-color: #7c3aed; color: white; padding: 14px 28px; 
@@ -598,17 +598,17 @@ const emailTemplates = {
         <p style="color: #888; font-size: 14px;">If the button doesn't work, copy and paste this link into your browser:</p>
         <p style="word-break: break-all; color: #7c3aed; font-size: 12px;">${confirmUrl}</p>
         <p style="color: #888; font-size: 13px; margin-top: 24px;"><strong>This link expires in 15 minutes.</strong> If you didn't request this, you can safely ignore this email.</p>
-        <p style="color: #666; font-size: 12px;">Best regards,<br>The Ocean App Team</p>
+        <p style="color: #666; font-size: 12px;">Best regards,<br>The BlueWhale Team</p>
       </div>
     `
   }),
 
   accountDeleted: (userName, deletionDate) => ({
-    subject: "Account Deletion Confirmation - Ocean App",
+    subject: "Account Deletion Confirmation - BlueWhale",
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #2c3e50;">Hello ${userName},</h2>
-        <p>This email confirms that your Ocean App account has been successfully deleted on ${deletionDate}.</p>
+        <p>This email confirms that your BlueWhale account has been successfully deleted on ${deletionDate}.</p>
         <div style="background-color: #f8f9fa; padding: 20px; border-radius: 5px; margin: 20px 0;">
           <h3 style="color: #2c3e50;">What was deleted:</h3>
           <ul>
@@ -620,7 +620,7 @@ const emailTemplates = {
         </div>
         <p>If you did not request this deletion, please contact our support team immediately.</p>
         <p>We're sorry to see you go. If you change your mind, you're always welcome back!</p>
-        <p>Best regards,<br>The Ocean App Team</p>
+        <p>Best regards,<br>The BlueWhale Team</p>
       </div>
     `
   })

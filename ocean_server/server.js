@@ -256,7 +256,7 @@ app.get('/health', async (req, res) => {
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Ocean Backend Health Check</title>
+  <title>BlueWhale Backend Health Check</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     :root {
@@ -699,7 +699,7 @@ app.get('/verify-email', async (req, res) => {
                 <!DOCTYPE html>
                 <html>
                 <head>
-                    <title>Email Verification - Ocean App</title>
+                    <title>Email Verification - BlueWhale</title>
                     <meta name="viewport" content="width=device-width, initial-scale=1.0">
                     <style>
                         body { font-family: Arial, sans-serif; text-align: center; padding: 20px; background: #f5f5f5; }
@@ -714,7 +714,7 @@ app.get('/verify-email', async (req, res) => {
                 </head>
                 <body>
                     <div class="container">
-                        <div class="brand-header"><img src="/public/oceanLogo.jpeg" alt="Ocean App" /><div class="brand-name">Ocean App</div></div>
+                        <div class="brand-header"><img src="/public/bluewhale.png" alt="BlueWhale" /><div class="brand-name">BlueWhale</div></div>
                         <h2 class="error">❌ Invalid Verification Link</h2>
                         <p>The verification link is missing or invalid.</p>
                         <a href="#" onclick="window.close()" class="btn">Close</a>
@@ -773,7 +773,7 @@ app.get('/verify-email', async (req, res) => {
                 <!DOCTYPE html>
                 <html>
                 <head>
-                    <title>Email Verified - Ocean App</title>
+                    <title>Email Verified - BlueWhale</title>
                     <meta name="viewport" content="width=device-width, initial-scale=1.0">
                     <style>
                         body { font-family: Arial, sans-serif; text-align: center; padding: 20px; background: #f5f5f5; }
@@ -788,12 +788,12 @@ app.get('/verify-email', async (req, res) => {
                 </head>
                 <body>
                     <div class="container">
-                        <div class="brand-header"><img src="/public/oceanLogo.jpeg" alt="Ocean App" /><div class="brand-name">Ocean App</div></div>
+                        <div class="brand-header"><img src="/public/bluewhale.png" alt="BlueWhale" /><div class="brand-name">BlueWhale</div></div>
                         <h2 class="success">🎉 Email Verified Successfully!</h2>
-                        <p>Your email has been verified. You can now use all features of Ocean App.</p>
+                        <p>Your email has been verified. You can now use all features of BlueWhale.</p>
                         <div class="info">
                             <h3>📱 Next Steps:</h3>
-                            <p>1. Open the Ocean App on your mobile device</p>
+                            <p>1. Open the BlueWhale app on your mobile device</p>
                             <p>2. Log in with your verified account</p>
                             <p>3. Start exploring and connecting!</p>
                         </div>
@@ -808,7 +808,7 @@ app.get('/verify-email', async (req, res) => {
                 <!DOCTYPE html>
                 <html>
                 <head>
-                    <title>Already Verified - Ocean App</title>
+                    <title>Already Verified - BlueWhale</title>
                     <meta name="viewport" content="width=device-width, initial-scale=1.0">
                     <style>
                         body { font-family: Arial, sans-serif; text-align: center; padding: 20px; background: #f5f5f5; }
@@ -822,12 +822,12 @@ app.get('/verify-email', async (req, res) => {
                 </head>
                 <body>
                     <div class="container">
-                        <div class="brand-header"><img src="/public/oceanLogo.jpeg" alt="Ocean App" /><div class="brand-name">Ocean App</div></div>
+                        <div class="brand-header"><img src="/public/bluewhale.png" alt="BlueWhale" /><div class="brand-name">BlueWhale</div></div>
                         <h2 class="info">✅ Email Already Verified</h2>
-                        <p>Your email is already verified! You can use all features of Ocean App.</p>
+                        <p>Your email is already verified! You can use all features of BlueWhale.</p>
                         <div class="info">
                             <h3>📱 Next Steps:</h3>
-                            <p>1. Open the Ocean App on your mobile device</p>
+                            <p>1. Open the BlueWhale app on your mobile device</p>
                             <p>2. Log in with your verified account</p>
                             <p>3. Start exploring and connecting!</p>
                         </div>
@@ -842,7 +842,7 @@ app.get('/verify-email', async (req, res) => {
                 <!DOCTYPE html>
                 <html>
                 <head>
-                    <title>Verification Failed - Ocean App</title>
+                    <title>Verification Failed - BlueWhale</title>
                     <meta name="viewport" content="width=device-width, initial-scale=1.0">
                     <style>
                         body { font-family: Arial, sans-serif; text-align: center; padding: 20px; background: #f5f5f5; }
@@ -856,7 +856,7 @@ app.get('/verify-email', async (req, res) => {
                 </head>
                 <body>
                     <div class="container">
-                        <div class="brand-header"><img src="/public/oceanLogo.jpeg" alt="Ocean App" /><div class="brand-name">Ocean App</div></div>
+                        <div class="brand-header"><img src="/public/bluewhale.png" alt="BlueWhale" /><div class="brand-name">BlueWhale</div></div>
                         <h2 class="error">❌ Verification Failed</h2>
                         <p>${result.message || 'The verification link is invalid or has expired.'}</p>
                         <p>Please request a new verification email from the app.</p>
@@ -873,7 +873,7 @@ app.get('/verify-email', async (req, res) => {
             <!DOCTYPE html>
             <html>
             <head>
-                <title>Server Error - Ocean App</title>
+                <title>Server Error - BlueWhale</title>
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
                 <style>
                     body { font-family: Arial, sans-serif; text-align: center; padding: 20px; background: #f5f5f5; }
@@ -887,7 +887,7 @@ app.get('/verify-email', async (req, res) => {
             </head>
             <body>
                 <div class="container">
-                    <div class="brand-header"><img src="/public/oceanLogo.jpeg" alt="Ocean App" /><div class="brand-name">Ocean App</div></div>
+                    <div class="brand-header"><img src="/public/bluewhale.png" alt="BlueWhale" /><div class="brand-name">BlueWhale</div></div>
                     <h2 class="error">⚠️ Server Error</h2>
                     <p>Something went wrong. Please try again later.</p>
                     <a href="#" onclick="window.close()" class="btn">Close</a>
@@ -976,7 +976,7 @@ app.get('/subscription/success', (req, res) => {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Payment Successful - Ocean Marketplace</title>
+    <title>Payment Successful - BlueWhale Marketplace</title>
     <style>
         * {
             margin: 0;
@@ -1100,7 +1100,7 @@ app.get('/subscription/error', (req, res) => {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Payment Error - Ocean Marketplace</title>
+    <title>Payment Error - BlueWhale Marketplace</title>
     <style>
         * {
             margin: 0;
@@ -1223,7 +1223,7 @@ app.get('/subscription/pending', (req, res) => {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Payment Pending - Ocean Marketplace</title>
+    <title>Payment Pending - BlueWhale Marketplace</title>
     <style>
         * {
             margin: 0;
