@@ -88,13 +88,14 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Static files
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/public', express.static(path.join(__dirname, 'public')));
 
 // Health check endpoint (monitoring / browser)
 app.get('/health', (req, res) => {
   const health = {
     status: 'OK',
-    service: 'Ocean Message Server',
-    message: 'Ocean Message Server is running',
+    service: 'BlueWhale Message Server',
+    message: 'BlueWhale Message Server is running',
     environment: process.env.NODE_ENV || 'development',
     version: process.env.APP_VERSION || 'v1',
     timestamp: new Date().toISOString(),
@@ -123,7 +124,7 @@ app.get('/health', (req, res) => {
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Ocean Message Server Health</title>
+  <title>BlueWhale Message Server Health</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     :root {
@@ -353,7 +354,8 @@ app.get('/health', (req, res) => {
     <header class="header">
       <div class="title-group">
         <h1>
-          Ocean Message Server Health
+          <img src="/public/bluewhale.png" alt="BlueWhale" style="width: 36px; height: 36px; object-fit: contain; border-radius: 8px; vertical-align: middle; margin-right: 8px;" />
+          BlueWhale Message Server Health
           <span class="title-pill">Messaging & Realtime</span>
         </h1>
         <p class="subtitle">
@@ -505,7 +507,7 @@ testConnection()
 
 function startServer() {
   server.listen(PORT, () => {
-    console.log(`🚀 Ocean Message Server running on port ${PORT}`);
+    console.log(`🚀 BlueWhale Message Server running on port ${PORT}`);
     console.log(`📡 WebSocket server ready for connections`);
     console.log(`🔗 Health check: http://localhost:${PORT}/health`);
   });

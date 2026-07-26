@@ -46,7 +46,7 @@ class SystemAdminController {
           port: process.env.EMAIL_PORT || 587,
           secure: process.env.EMAIL_SECURE === 'true',
           user: process.env.EMAIL_USER || null,
-          from: process.env.EMAIL_FROM || 'noreply@oceanapp.com'
+          from: process.env.EMAIL_FROM || 'noreply@bluewhale.com'
         },
         
         // Cloudinary settings

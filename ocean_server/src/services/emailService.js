@@ -167,12 +167,24 @@ const sendEmail = async (to, subject, message, type = 'info') => {
   }
 };
 
+const getEmailHeader = () => {
+  const baseUrl = (process.env.BASE_URL || 'https://oceanpulse.tech').replace(/\/$/, '');
+  const logoUrl = `${baseUrl}/public/bluewhale.png`;
+  return `
+    <div style="text-align: center; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid #eaeaea;">
+      <img src="${logoUrl}" alt="BlueWhale" style="width: 72px; height: 72px; object-fit: contain; border-radius: 12px; margin-bottom: 8px;" />
+      <div style="font-size: 20px; font-weight: 700; color: #1e293b; letter-spacing: 0.5px;">BlueWhale</div>
+    </div>
+  `;
+};
+
 // Email templates
 const emailTemplates = {
   sellerApplicationSubmitted: (userName) => ({
     subject: "Seller Application Submitted - BlueWhale",
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        ${getEmailHeader()}
         <h2 style="color: #2c3e50;">Hello ${userName}!</h2>
         <p>Your seller application has been submitted successfully and is currently under review.</p>
         <p>We'll notify you once the review process is complete. This usually takes 1-3 business days.</p>
@@ -194,6 +206,7 @@ const emailTemplates = {
     subject: "🎉 Your Seller Application is Approved! - BlueWhale",
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        ${getEmailHeader()}
         <h2 style="color: #27ae60;">Congratulations ${userName}!</h2>
         <p>Great news! Your seller application for <strong>${businessName}</strong> has been approved!</p>
         <div style="background-color: #d4edda; padding: 20px; border-radius: 5px; margin: 20px 0;">
@@ -215,6 +228,7 @@ const emailTemplates = {
     subject: "Seller Application Update - BlueWhale",
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        ${getEmailHeader()}
         <h2 style="color: #e74c3c;">Hello ${userName}</h2>
         <p>We regret to inform you that your seller application was not approved at this time.</p>
         <div style="background-color: #f8d7da; padding: 20px; border-radius: 5px; margin: 20px 0;">
@@ -232,6 +246,7 @@ const emailTemplates = {
     subject: "Account Suspended - BlueWhale",
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        ${getEmailHeader()}
         <h2 style="color: #e74c3c;">Hello ${userName}</h2>
         <p>Your account has been suspended due to a policy violation.</p>
         <div style="background-color: #f8d7da; padding: 20px; border-radius: 5px; margin: 20px 0;">
@@ -248,6 +263,7 @@ const emailTemplates = {
     subject: "Account Reactivated - BlueWhale",
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        ${getEmailHeader()}
         <h2 style="color: #27ae60;">Hello ${userName}</h2>
         <p>Great news! Your account has been reactivated.</p>
         <p>You can now continue using our platform normally.</p>
@@ -261,6 +277,7 @@ const emailTemplates = {
     subject: "Verify Your Email - BlueWhale",
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        ${getEmailHeader()}
         <h2 style="color: #2c3e50;">Hello ${userName}!</h2>
         <p>Welcome to BlueWhale! Please verify your email address to complete your registration.</p>
         <div style="text-align: center; margin: 30px 0;">
@@ -291,6 +308,7 @@ const emailTemplates = {
     subject: "Email Verified Successfully - BlueWhale",
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        ${getEmailHeader()}
         <h2 style="color: #27ae60;">Hello ${userName}!</h2>
         <p>🎉 Congratulations! Your email has been verified successfully.</p>
         <div style="background-color: #d4edda; padding: 20px; border-radius: 5px; margin: 20px 0;">
@@ -313,6 +331,7 @@ const emailTemplates = {
     subject: "Reset Your Password - BlueWhale",
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        ${getEmailHeader()}
         <h2 style="color: #2c3e50;">Hello ${userName}!</h2>
         <p>You requested to reset your password for your BlueWhale account.</p>
         <div style="text-align: center; margin: 30px 0;">
@@ -344,6 +363,7 @@ const emailTemplates = {
     subject: `🎉 Subscription Activated - ${planName} Plan - BlueWhale`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        ${getEmailHeader()}
         <h2 style="color: #27ae60;">Hello ${userName}!</h2>
         <p>🎉 Congratulations! Your subscription has been successfully activated.</p>
         
@@ -387,6 +407,7 @@ const emailTemplates = {
     subject: `📈 Subscription Updated - ${newPlanName} Plan - BlueWhale`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        ${getEmailHeader()}
         <h2 style="color: #3498db;">Hello ${userName}!</h2>
         <p>📈 Your subscription plan has been successfully updated.</p>
         
@@ -434,6 +455,7 @@ const emailTemplates = {
     subject: `📋 Subscription Cancelled - BlueWhale`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        ${getEmailHeader()}
         <h2 style="color: #e67e22;">Hello ${userName}!</h2>
         <p>📋 Your subscription has been cancelled as requested.</p>
         
@@ -475,6 +497,7 @@ const emailTemplates = {
     subject: `⏰ Your ${planName} Plan Expires in 3 Days - BlueWhale`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        ${getEmailHeader()}
         <h2 style="color: #f59e0b;">Hello ${userName}!</h2>
         <p>⏰ This is a friendly reminder that your <strong>${planName}</strong> subscription will expire in <strong>3 days</strong>.</p>
         
@@ -523,6 +546,7 @@ const emailTemplates = {
     subject: `⏰ Subscription Expired - BlueWhale`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        ${getEmailHeader()}
         <h2 style="color: #e74c3c;">Hello ${userName}!</h2>
         <p>⏰ Your ${planName} subscription has expired.</p>
         
@@ -555,6 +579,7 @@ const emailTemplates = {
     subject: `💳 Payment Failed - BlueWhale`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        ${getEmailHeader()}
         <h2 style="color: #e74c3c;">Hello ${userName}!</h2>
         <p>💳 We encountered an issue processing your payment for the ${planName} plan.</p>
         
@@ -586,6 +611,7 @@ const emailTemplates = {
     subject: "Delete Your Account - BlueWhale",
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #000; color: #fff; padding: 24px;">
+        ${getEmailHeader()}
         <h2 style="color: #fff;">Hello ${userName},</h2>
         <p style="color: #b0b0b0;">You requested to delete your BlueWhale account. Click the button below to confirm and complete the deletion.</p>
         <div style="text-align: center; margin: 30px 0;">
@@ -607,6 +633,7 @@ const emailTemplates = {
     subject: "Account Deletion Confirmation - BlueWhale",
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        ${getEmailHeader()}
         <h2 style="color: #2c3e50;">Hello ${userName},</h2>
         <p>This email confirms that your BlueWhale account has been successfully deleted on ${deletionDate}.</p>
         <div style="background-color: #f8f9fa; padding: 20px; border-radius: 5px; margin: 20px 0;">

@@ -163,7 +163,7 @@ app.use(responseWrapper);
 app.get('/health', async (req, res) => {
     const baseHealth = {
         status: 'OK', 
-        service: 'Ocean Backend API',
+        service: 'BlueWhale Backend API',
         environment: process.env.NODE_ENV || 'development',
         version: process.env.APP_VERSION || process.env.MOBILE_API_VERSION || 'v1',
         timestamp: new Date().toISOString(),
@@ -522,11 +522,12 @@ app.get('/health', async (req, res) => {
     <header class="header">
       <div class="title-group">
         <h1>
-          Ocean Backend Health
+          <img src="/public/bluewhale.png" alt="BlueWhale" style="width: 36px; height: 36px; object-fit: contain; border-radius: 8px; vertical-align: middle; margin-right: 8px;" />
+          BlueWhale Backend Health
           <span class="title-pill">Status Endpoint</span>
         </h1>
         <p class="subtitle">
-          Operational status and runtime metrics for the Ocean backend API service.
+          Operational status and runtime metrics for the BlueWhale backend API service.
         </p>
       </div>
       <div>
@@ -654,7 +655,7 @@ app.get('/health', async (req, res) => {
 app.get('/api/mobile/health', (req, res) => {
     res.status(200).json({ 
         status: 'OK', 
-        service: 'Ocean Backend API',
+        service: 'BlueWhale Backend API',
         version: process.env.MOBILE_API_VERSION || 'v1',
         timestamp: new Date().toISOString(),
         uptime: process.uptime(),

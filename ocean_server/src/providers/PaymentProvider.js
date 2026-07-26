@@ -592,7 +592,7 @@ class FlutterwaveProvider extends PaymentProviderInterface {
           ...(paymentData.phone && { phonenumber: paymentData.phone })
         },
         customizations: {
-          title: `Ocean Subscription - ${paymentData.planName || 'Plan'}`,
+          title: `BlueWhale Subscription - ${paymentData.planName || 'Plan'}`,
           description: `Subscription payment for ${paymentData.planName || 'plan'}`,
           ...(process.env.APP_LOGO_URL && { logo: process.env.APP_LOGO_URL })
         },
@@ -669,7 +669,7 @@ class FlutterwaveProvider extends PaymentProviderInterface {
             },
             paymentOptions: 'card,googlepay',
             customizations: {
-              title: `Ocean Subscription - ${paymentData.planName || 'Plan'}`,
+              title: `BlueWhale Subscription - ${paymentData.planName || 'Plan'}`,
               description: `Subscription payment for ${paymentData.planName || 'plan'}`,
               logo: process.env.APP_LOGO_URL || ''
             },
@@ -874,7 +874,7 @@ class FlutterwaveProvider extends PaymentProviderInterface {
           ...(subscriptionData.phone && { phonenumber: subscriptionData.phone })
         },
         customizations: {
-          title: `Ocean Subscription - ${subscriptionData.planName || 'Plan'}`,
+          title: `BlueWhale Subscription - ${subscriptionData.planName || 'Plan'}`,
           description: `Subscription payment for ${subscriptionData.planName || 'plan'}`,
           ...(process.env.APP_LOGO_URL && { logo: process.env.APP_LOGO_URL })
         },

@@ -201,7 +201,7 @@ const currentUserprofile = async(req,res)=>{
      profileInfo.state = alsoSeller.state;
      profileInfo.rating = alsoSeller.rating || 0;
      profileInfo.totalSales = alsoSeller.totalSales || 0;
-     profileInfo.bio = alsoSeller.businessDescription || "Professional seller on Ocean App";
+     profileInfo.bio = alsoSeller.businessDescription || "Professional seller on BlueWhale";
      
      // NEW: Add seller-specific tab counts
      profileInfo.auctionsCount = auctionsCount;
