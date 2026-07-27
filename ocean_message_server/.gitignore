@@ -1,0 +1,19 @@
+# Node dependencies
+node_modules/
+
+# Environment configuration files
+.env
+.env.*
+config.env
+
+# Uploads and temporary files
+uploads/*
+!uploads/.gitkeep
+*.tmp
+*.log
+
+# Operating System and IDE files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
