@@ -8,10 +8,12 @@ router.get('/distress-sales/:id', webPreviewController.getDistressSalePreview);
 router.get('/auctions/:id', webPreviewController.getAuctionPreview);
 
 // Generic fallbacks for deep-linked paths when opened via web browser / bots
-router.get('/feed*', webPreviewController.getGenericPreview);
-router.get('/videos*', webPreviewController.getGenericPreview);
-router.get('/swap-deals/*', webPreviewController.getGenericPreview);
-router.get('/bulk-purchase-*', webPreviewController.getGenericPreview);
-router.get('/posts/*', webPreviewController.getGenericPreview);
+router.get('/feed', webPreviewController.getGenericPreview);
+router.get('/feed/:id', webPreviewController.getGenericPreview);
+router.get('/videos', webPreviewController.getGenericPreview);
+router.get('/videos/:id', webPreviewController.getGenericPreview);
+router.get('/swap-deals/:id', webPreviewController.getGenericPreview);
+router.get('/bulk-purchase-:id', webPreviewController.getGenericPreview);
+router.get('/posts/:id', webPreviewController.getGenericPreview);
 
 module.exports = router;
