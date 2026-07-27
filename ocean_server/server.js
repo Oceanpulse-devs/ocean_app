@@ -948,6 +948,9 @@ app.use('/', internalRoutes);
 // Web delete account (Google Play requirement - public, no auth)
 app.use('/', require('./src/routes/webDeleteAccountRoutes'));
 
+// Web social preview cards (WhatsApp, Twitter, Telegram OpenGraph metadata cards)
+app.use('/', require('./src/routes/webPreviewRoutes'));
+
 // Register auctionRoutes BEFORE authRoutes to avoid route conflict with /api/user/:userId
 app.use('/', auctionRoutes);
 app.use('/', authRoutes);
