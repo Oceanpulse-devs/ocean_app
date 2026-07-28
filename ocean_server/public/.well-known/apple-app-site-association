@@ -5,12 +5,14 @@
       {
         "appID": "M36GDT653Q.com.bluewhale.oceanpulse.tech",
         "paths": [
+          "/feed*",
+          "/videos*",
           "/products/*",
-          "/posts/*",
-          "/distress-sales/*",
           "/auctions/*",
           "/swap-deals/*",
-          "/bulk-purchase-*"
+          "/distress-sales/*",
+          "/bulk-purchase-*",
+          "/posts/*"
         ]
       }
     ]
