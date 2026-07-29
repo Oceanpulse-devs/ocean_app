@@ -2008,6 +2008,199 @@ class SubscriptionController {
       return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/subscription/error?message=${encodeURIComponent(error.message || 'Error processing payment')}`);
     }
   }
+
+  /**
+   * POST /api/subscriptions/verify-google-purchase
+   * Verify Google Play Purchase and update subscription status
+   * Body: { productId, purchaseToken, transactionId }
+   * Requires authentication
+   */
+  static async verifyGooglePurchase(req, res) {
+    try {
+      const userId = req.user.id;
+      const { productId, purchaseToken, transactionId } = req.body;
+
+      if (!productId || !purchaseToken) {
+        return res.status(400).json({
+          success: false,
+          message: 'productId and purchaseToken are required'
+        });
+      }
+
+      // Map Google Play productId to our internal plan name
+      let planSlug = 'wave'; // default fallback
+      const idLower = productId.toLowerCase();
+      if (idLower.includes('drift')) planSlug = 'drift';
+      else if (idLower.includes('wave')) planSlug = 'wave';
+      else if (idLower.includes('tide')) planSlug = 'tide';
+      else if (idLower.includes('surge')) planSlug = 'surge';
+
+      // Find the corresponding plan ID inside subscription_plans
+      const { SubscriptionPlan, UserSubscription, UserTable, SellersTable } = require('../../models');
+      let targetPlan = await SubscriptionPlan.findOne({
+        where: { name: planSlug }
+      });
+
+      if (!targetPlan) {
+        targetPlan = await SubscriptionPlan.findOne({ where: { isActive: true } }); // Fallback active plan
+      }
+
+      const planId = targetPlan ? targetPlan.id : 1;
+      const planPrice = targetPlan ? targetPlan.price : 0;
+      const planCurrency = targetPlan ? targetPlan.currency : 'USD';
+
+      // Initialize Google Play Developer API Client
+      if (!process.env.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON) {
+        console.error('Error: GOOGLE_PLAY_SERVICE_ACCOUNT_JSON is not configured in env variables');
+        return res.status(500).json({
+          success: false,
+          message: 'Google Play Service Account JSON key is not configured'
+        });
+      }
+
+      const credentials = JSON.parse(process.env.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON.trim());
+      const { google } = require('googleapis');
+      
+      const auth = new google.auth.GoogleAuth({
+        credentials,
+        scopes: ['https://www.googleapis.com/auth/androidpublisher']
+      });
+
+      const play = google.androidpublisher({
+        version: 'v3',
+        auth
+      });
+
+      console.log(`📡 Sending purchaseToken verification to Google Play API: ${purchaseToken.substring(0, 15)}...`);
+      
+      // Execute Android publisher query using subscriptionsv2
+      const response = await play.purchases.subscriptionsv2.get({
+        packageName: 'com.bluewhale.oceanpulse.tech',
+        token: purchaseToken
+      });
+
+      console.log(`Google Play verification response status: ${response.status}, state: ${response.data.subscriptionState}`);
+
+      // Verify that subscriptionState is active
+      const state = response.data.subscriptionState;
+      const isActive = state === 'SUBSCRIPTION_STATE_ACTIVE';
+
+      if (!isActive) {
+        return res.status(400).json({
+          success: false,
+          message: `Google verification failed. Subscription state: ${state}`
+        });
+      }
+
+      // Calculate the end date
+      let endDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // Default to 30 days
+      if (response.data.expiryTime) {
+        endDate = new Date(response.data.expiryTime);
+      }
+
+      // Check if subscription has expired
+      if (endDate < new Date()) {
+        return res.status(400).json({
+          success: false,
+          message: 'Google subscription has expired'
+        });
+      }
+
+      // 1. Promote user role in UserTable
+      await UserTable.update(
+        { accountType: 'seller' },
+        { where: { id: userId } }
+      );
+
+      // 2. Create or update Seller record in SellersTable
+      const existingSeller = await SellersTable.findOne({ where: { userId } });
+      if (!existingSeller) {
+        const userObj = await UserTable.findByPk(userId);
+        await SellersTable.create({
+          userId,
+          fullName: userObj ? userObj.fullName : '',
+          verificationStatus: 'approved',
+          businessName: `Seller-${userId.substring(0, 6)}`,
+        });
+      } else {
+        await SellersTable.update({ verificationStatus: 'approved' }, { where: { userId } });
+      }
+
+      // 3. Update subscription status & reset usage counters in subscriptionService
+      await subscriptionService.updateUserSubscriptionStatus(
+        userId,
+        'active',
+        planId,
+        endDate
+      );
+
+      // 4. Track transaction in UserSubscription (idempotency checks)
+      const reference = transactionId || purchaseToken;
+      let subscriptionObj = await UserSubscription.findOne({
+        where: { paymentReference: reference, userId }
+      });
+
+      if (!subscriptionObj) {
+        // Fallback to check if there's a pending Google subscription row for this user
+        subscriptionObj = await UserSubscription.findOne({
+          where: {
+            userId,
+            status: 'pending',
+            paymentMethod: 'google_play'
+          },
+          order: [['id', 'DESC']]
+        });
+      }
+
+      if (!subscriptionObj) {
+        // Create new active subscription
+        subscriptionObj = await UserSubscription.create({
+          userId: userId,
+          planId: planId,
+          status: 'active',
+          startDate: new Date(),
+          endDate: endDate,
+          paymentReference: reference,
+          paymentMethod: 'google_play',
+          amountPaid: planPrice,
+          currency: planCurrency
+        });
+      } else {
+        // Update existing record
+        await subscriptionObj.update({
+          status: 'active',
+          planId: planId,
+          endDate: endDate,
+          paymentReference: reference,
+          paymentMethod: 'google_play',
+          amountPaid: planPrice || subscriptionObj.amountPaid,
+          currency: planCurrency || subscriptionObj.currency
+        });
+      }
+
+      console.log('✅ Google Play purchase verified and activated in DB successfully for user:', userId);
+      return res.status(200).json({
+        success: true,
+        message: 'Google Play Purchase verified successfully',
+        data: {
+          status: 'active',
+          expiresAt: endDate,
+          subscription: {
+            id: subscriptionObj.id,
+            planId: planId
+          }
+        }
+      });
+
+    } catch (error) {
+      console.error('Error verifying Google purchase:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Error verifying Google Play purchase',
+        error: error.message
+      });
+    }
+  }
 }
 
 module.exports = SubscriptionController;

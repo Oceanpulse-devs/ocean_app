@@ -65,6 +65,14 @@ router.post('/verify-payment', authMiddleware, SubscriptionController.verifyPaym
  */
 router.post('/verify-apple-purchase', authMiddleware, SubscriptionController.verifyApplePurchase);
 
+/**
+ * POST /api/subscriptions/verify-google-purchase
+ * Verify Google Play Purchase and update subscription status
+ * Body: { productId, purchaseToken, transactionId }
+ * Requires authentication
+ */
+router.post('/verify-google-purchase', authMiddleware, SubscriptionController.verifyGooglePurchase);
+
 // =============================================
 // USAGE & ANALYTICS ROUTES
 // =============================================
