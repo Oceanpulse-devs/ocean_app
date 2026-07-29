@@ -23,30 +23,132 @@ function sanitizeMetadataForStorage(obj) {
   return obj;
 }
 
+// Helper to map category strings to UserNotificationPreference ENUM types
+function mapCategoryToPreferenceType(category) {
+  if (!category) return 'system_alert';
+  const catLower = category.toLowerCase().trim();
+  switch (catLower) {
+    case 'price_drop':
+    case 'pricedrop':
+      return 'price_drop';
+    case 'group_buy':
+    case 'groupbuy':
+    case 'group_buy_update':
+      return 'group_buy_update';
+    case 'swap':
+    case 'swap_offer':
+      return 'swap_offer';
+    case 'buyer_need':
+    case 'buyerneed':
+    case 'buyer_need_match':
+      return 'buyer_need_match';
+    case 'auction':
+    case 'auction_ending':
+      return 'auction_ending';
+    case 'follower':
+    case 'new_follower':
+      return 'new_follower';
+    case 'message':
+    case 'chat':
+    case 'message_received':
+      return 'message_received';
+    case 'product_view':
+    case 'product_viewed':
+      return 'product_viewed';
+    case 'search':
+    case 'search_insight':
+      return 'search_insight';
+    case 'market':
+    case 'market_trend':
+      return 'market_trend';
+    case 'verification':
+    case 'verification_status':
+      return 'verification_status';
+    case 'subscription':
+    case 'subscription_update':
+      return 'subscription_update';
+    case 'system':
+    case 'system_alert':
+    default:
+      return 'system_alert';
+  }
+}
+
 // Create and send notification
-const createNotification = async (userId, title, message, type = 'info', category = 'system', metadata = null) => {
+const createNotification = async (userId, title, message, type = 'info', category = 'system', metadata = null, options = {}) => {
   try {
-    const safeMetadata = metadata && typeof metadata === 'object' ? sanitizeMetadataForStorage(metadata) : metadata;
-    const notification = await Notification.create({
-      userId,
-      title,
-      message,
-      type,
-      category,
-      metadata: safeMetadata
+    const { UserNotificationPreference } = require('../../models');
+    const prefType = mapCategoryToPreferenceType(category);
+
+    // Check user preference settings
+    const preference = await UserNotificationPreference.findOne({
+      where: { user_id: userId, notification_type: prefType }
     });
 
-    // Send email notification
-    await sendEmailNotification(userId, title, message, type);
+    // If the preference exists and is disabled, we abort early
+    if (preference && !preference.is_enabled) {
+      console.log(`🔕 Notification skipped for user ${userId} because preference ${prefType} is disabled.`);
+      return null;
+    }
 
-    // Send FCM push (non-blocking; failures don't affect notification creation)
-    try {
-      const fcmData = safeMetadata && typeof safeMetadata === 'object' ? { ...safeMetadata } : {};
-      fcmData.notificationId = notification.id;
-      fcmData.createdAt = notification.createdAt ? new Date(notification.createdAt).toISOString() : new Date().toISOString();
-      await fcmService.sendPushNotification(userId, { title, body: message }, fcmData);
-    } catch (pushErr) {
-      console.error('Push notification send failed (notification still created):', pushErr?.message || pushErr);
+    // Determine enabled delivery channels (default to all if no preferences set)
+    const deliveryMethods = preference && Array.isArray(preference.delivery_methods)
+      ? preference.delivery_methods
+      : ['in_app', 'email', 'push'];
+
+    const hasInApp = deliveryMethods.includes('in_app');
+    const hasEmail = deliveryMethods.includes('email');
+    const hasPush = deliveryMethods.includes('push');
+
+    // If both push and in_app are disabled and they aren't getting emails, we skip saving
+    if (!hasInApp && !hasEmail && !hasPush) {
+      console.log(`🔕 Notification skipped for user ${userId} because all delivery channels are disabled.`);
+      return null;
+    }
+
+    const safeMetadata = metadata && typeof metadata === 'object' ? sanitizeMetadataForStorage(metadata) : metadata;
+    
+    // Save notification to database if in_app channel is active
+    let notification = null;
+    if (hasInApp) {
+      notification = await Notification.create({
+        userId,
+        title,
+        message,
+        type,
+        category,
+        metadata: safeMetadata,
+        priority: options.priority || 'medium',
+        deliveryMethods: deliveryMethods,
+        targetEntityType: options.targetEntityType || null,
+        targetEntityId: options.targetEntityId || null,
+        scheduledFor: options.scheduledFor || null,
+        expiresAt: options.expiresAt || null
+      });
+    }
+
+    // Send email notification if allowed
+    if (hasEmail) {
+      await sendEmailNotification(userId, title, message, type);
+    }
+
+    // Send FCM push if allowed
+    if (hasPush) {
+      try {
+        const fcmData = safeMetadata && typeof safeMetadata === 'object' ? { ...safeMetadata } : {};
+        if (notification) fcmData.notificationId = notification.id;
+        fcmData.createdAt = notification && notification.createdAt 
+          ? new Date(notification.createdAt).toISOString() 
+          : new Date().toISOString();
+        
+        // Include deep-link routing identifiers for the client
+        if (options.targetEntityType) fcmData.targetEntityType = options.targetEntityType;
+        if (options.targetEntityId) fcmData.targetEntityId = options.targetEntityId;
+        
+        await fcmService.sendPushNotification(userId, { title, body: message }, fcmData);
+      } catch (pushErr) {
+        console.error('Push notification send failed:', pushErr?.message || pushErr);
+      }
     }
 
     return notification;

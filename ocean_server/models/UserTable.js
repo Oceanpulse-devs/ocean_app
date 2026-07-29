@@ -233,9 +233,43 @@ module.exports = (sequelize, DataTypes) =>{
         createdAt: 'createdAt',
         updatedAt: 'updatedAt',
         paranoid: false // We handle soft delete manually
-    })
+    });
 
+    // Lifecycle Hook: Seed default notification preferences for every new user
+    UserTable.afterCreate(async (user, options) => {
+        try {
+            const defaultCategories = [
+                'price_drop',
+                'group_buy_update',
+                'swap_offer',
+                'buyer_need_match',
+                'auction_ending',
+                'new_follower',
+                'message_received',
+                'product_viewed',
+                'search_insight',
+                'market_trend',
+                'verification_status',
+                'subscription_update',
+                'system_alert'
+            ];
 
+            const seedPromises = defaultCategories.map(category => {
+                return sequelize.models.UserNotificationPreference.create({
+                    user_id: user.id,
+                    notification_type: category,
+                    is_enabled: true,
+                    delivery_methods: ['in_app', 'email', 'push'],
+                    priority_threshold: 'low'
+                });
+            });
+
+            await Promise.all(seedPromises);
+            console.log(`✅ Seeded default notification preferences for user ID: ${user.id}`);
+        } catch (err) {
+            console.error(`⚠️ Failed to seed notification preferences for user ID: ${user.id}`, err);
+        }
+    });
 
     return UserTable;
 }

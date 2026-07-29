@@ -46,6 +46,32 @@ module.exports = (sequelize) => {
     metadata: {
       type: DataTypes.JSON,
       allowNull: true,
+    },
+    priority: {
+      type: DataTypes.ENUM('low', 'medium', 'high', 'urgent'),
+      defaultValue: 'medium',
+    },
+    deliveryMethods: {
+      type: DataTypes.JSON,
+      allowNull: true,
+      comment: 'Methods to deliver this alert: push, email, sms, in_app'
+    },
+    targetEntityType: {
+      type: DataTypes.STRING(100),
+      allowNull: true,
+      comment: 'e.g., product, auction, group_buy'
+    },
+    targetEntityId: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+    },
+    scheduledFor: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    expiresAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
     }
   }, {
     tableName: 'notifications',

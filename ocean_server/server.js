@@ -1414,8 +1414,11 @@ async function syncDatabase() {
         for (const modelName of modelNames) {
             try {
                 const model = sequelizeModels[modelName];
-                // Sync individual model
-                await model.sync({ force: false, alter: false });
+                // Sync individual model - auto-update schema for Notification to append new columns
+                const syncOptions = modelName === 'Notification'
+                    ? { force: false, alter: true }
+                    : { force: false, alter: false };
+                await model.sync(syncOptions);
                 successCount++;
                 if (successCount % 10 === 0) {
                     console.log(`   ✅ Synced ${successCount}/${modelNames.length} models...`);
