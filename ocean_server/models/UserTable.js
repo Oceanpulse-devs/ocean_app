@@ -201,19 +201,7 @@ module.exports = (sequelize, DataTypes) =>{
             field: 'subscription_expires_at',
             comment: 'When current subscription expires'
         },
-        // Free Trial Tracking (Lifetime)
-        hasUsedTrial: {
-            type: DataTypes.BOOLEAN,
-            defaultValue: false,
-            field: 'has_used_trial',
-            comment: 'Track if user ever had trial (lifetime)'
-        },
-        trialPlanUsed: {
-            type: DataTypes.STRING(50),
-            allowNull: true,
-            field: 'trial_plan_used',
-            comment: 'Which plan they trialed (drift/wave/tide/surge)'
-        },
+
         // Account deletion fields
         deletedAt: {
             type: DataTypes.DATE,

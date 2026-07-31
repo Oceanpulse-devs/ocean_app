@@ -99,7 +99,7 @@ class SubscriptionService {
    */
   async updateUserSubscriptionStatus(userId, status, planId, expiresAt) {
     try {
-      const { UserTable, UserSubscription } = require('../../models');
+      const { UserTable, UserSubscription, SellersTable, SubscriptionPlan } = require('../../models');
       
       // Only cancel existing subscriptions if setting to 'active'
       // For 'pending', we might have multiple pending subscriptions
@@ -124,10 +124,13 @@ class SubscriptionService {
         console.log('Reset usage counters for plan change');
       }
       
-      // Update users table - only for active subscriptions
+      // Update users and sellers tables based on subscription status
       if (planId && status === 'active') {
-        // Only update users table when subscription is actually active
-        // For pending, we don't update the users table yet
+        // Fetch the plan details to copy features
+        const plan = await SubscriptionPlan.findByPk(planId);
+        const features = plan ? plan.features : null;
+
+        // 1. Update users table with active plan
         await UserTable.update({
           subscription_status: status,
           current_plan_id: planId,
@@ -135,12 +138,39 @@ class SubscriptionService {
         }, {
           where: { id: userId }
         });
-        console.log('Updated users table with active subscription:', { userId, status, planId, expiresAt });
+
+        // 2. Update sellers table with active plan
+        await SellersTable.update({
+          subscriptionPlanId: planId,
+          subscriptionFeatures: features
+        }, {
+          where: { userId }
+        });
+
+        console.log('Updated users and sellers tables with active subscription:', { userId, status, planId, expiresAt });
       } else if (status === 'pending') {
-        // For pending subscriptions, don't update users table
-        // Keep existing subscription status until payment is verified
+        // For pending subscriptions, don't update users/sellers tables yet
         console.log('Subscription is pending payment. Not updating user subscription status yet.');
         return; // Exit early for pending status
+      } else if (status === 'cancelled' || status === 'expired' || status === 'suspended') {
+        // 1. Clear subscription columns in users table
+        await UserTable.update({
+          subscription_status: status,
+          current_plan_id: null,
+          subscription_expires_at: null
+        }, {
+          where: { id: userId }
+        });
+
+        // 2. Clear subscription columns in sellers table
+        await SellersTable.update({
+          subscriptionPlanId: null,
+          subscriptionFeatures: null
+        }, {
+          where: { userId }
+        });
+
+        console.log(`Cleared active subscription status in users and sellers tables (status: ${status}) for user:`, userId);
       }
 
       // Also update user_subscriptions table if we have a planId and status is active
@@ -816,34 +846,7 @@ class SubscriptionService {
     }
   }
 
-  /**
-   * Check if user is eligible for free trial
-   * @param {string} userId - User ID
-   * @param {string} planName - Plan name to trial
-   * @returns {Object} {eligible: boolean, reason: string}
-   */
-  async checkTrialEligibility(userId, planName) {
-    try {
-      console.log('Checking trial eligibility - Free trials decommissioned');
-      return {
-        eligible: false,
-        reason: 'Free trials are no longer available. Please select a plan to subscribe.'
-      };
-    } catch (error) {
-      console.error('Error checking trial eligibility:', error);
-      throw error;
-    }
-  }
 
-  /**
-   * Create trial subscription (no payment required)
-   * @param {string} userId - User ID
-   * @param {string} planName - Plan name
-   * @returns {Object} Created trial subscription
-   */
-  async createTrialSubscription(userId, planName) {
-    throw new Error('Free trials are no longer available. Please select a plan to subscribe.');
-  }
 }
 
 module.exports = new SubscriptionService();

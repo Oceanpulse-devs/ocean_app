@@ -61,29 +61,10 @@ class SubscriptionController {
       
       const plans = await subscriptionService.getAvailablePlans();
       
-      // Check if user is eligible for trial
-      let userTrialStatus = { eligible: false, hasUsedTrial: false };
-      if (userId) {
-        try {
-          const user = await UserTable.findByPk(userId, {
-            attributes: ['hasUsedTrial', 'trialPlanUsed']
-          });
-          userTrialStatus = {
-            eligible: !user.hasUsedTrial,
-            hasUsedTrial: user.hasUsedTrial,
-            trialPlanUsed: user.trialPlanUsed
-          };
-        } catch (error) {
-          console.log('Could not check trial status:', error.message);
-        }
-      }
-      
       res.json({
         success: true,
         message: 'Subscription plans retrieved successfully',
         currency, // Include detected currency in response
-        trialAvailable: userTrialStatus.eligible,
-        trialDays: 30,
         data: plans.map(plan => {
           // Use price_usd if currency is USD, otherwise use price (NGN)
           const price = currency === 'USD' && plan.priceUsd 
@@ -124,15 +105,7 @@ class SubscriptionController {
               hasPrioritySearch: plan.has_priority_search,
               hasBuyerInsights: plan.has_buyer_insights,
               hasUnlimitedFeatures: plan.has_unlimited_features
-            },
-            // Trial information
-            trialAvailable: userTrialStatus.eligible,
-            trialDays: 30,
-            trialMessage: userTrialStatus.eligible 
-              ? 'Start your 30-day free trial - no card required!' 
-              : (userTrialStatus.hasUsedTrial 
-                  ? `Trial already used on ${userTrialStatus.trialPlanUsed}` 
-                  : null)
+            }
           };
         })
       });
@@ -241,45 +214,7 @@ class SubscriptionController {
         is_active: plan.isActive
       });
 
-      // ✅ CHECK TRIAL ELIGIBILITY FIRST (NO PAYMENT METHOD REQUIRED IF TAKING TRIAL)
-      const trialCheck = await subscriptionService.checkTrialEligibility(userId, planId);
 
-      // User is eligible for trial AND hasn't chosen to skip it
-      if (trialCheck.eligible && !skipTrial) {
-        // 🎁 OFFER TRIAL - NO PAYMENT NEEDED
-        console.log('User eligible for trial and accepting it, creating trial subscription');
-        
-        try {
-          const trialSubscription = await subscriptionService.createTrialSubscription(userId, planId);
-          
-          return res.status(201).json({
-            success: true,
-            message: `🎉 Welcome to ${plan.displayName}! Your 30-day free trial has started. No card required!`,
-            isTrial: true,
-            trialDays: 30,
-            trialEndsAt: trialSubscription.trialEndDate,
-            data: {
-              subscription: trialSubscription,
-              plan: plan,
-              nextSteps: 'Enjoy all premium features for 30 days. You\'ll be prompted to subscribe before your trial ends.'
-            }
-          });
-        } catch (error) {
-          console.error('Error creating trial subscription:', error);
-          return res.status(500).json({
-            success: false,
-            message: 'Failed to start trial subscription',
-            error: error.message
-          });
-        }
-      }
-
-      // 🚫 NOT ELIGIBLE FOR TRIAL OR USER CHOSE TO SKIP - REQUIRE PAYMENT
-      if (skipTrial && trialCheck.eligible) {
-        console.log('User is eligible for trial but chose to skip it, requiring payment');
-      } else {
-        console.log('User not eligible for trial:', trialCheck.reason);
-      }
 
       // Check if user already has an active subscription
       const currentStatus = await SubscriptionStatusChecker.getUserSubscriptionStatus(userId);

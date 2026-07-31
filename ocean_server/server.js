@@ -1517,6 +1517,39 @@ async function syncDatabase() {
                 console.log('⚠️  Could not update timestamps:', error.message);
             }
         }
+
+        // Cleanup free trial columns from database if they exist
+        try {
+            console.log('🧹 Cleaning up free trial columns from database tables...');
+            const dropUserCols = [
+                'ALTER TABLE `users` DROP COLUMN IF EXISTS `has_used_trial`',
+                'ALTER TABLE `users` DROP COLUMN IF EXISTS `trial_plan_used`'
+            ];
+            for (const q of dropUserCols) {
+                try {
+                    await db.sequelize.query(q);
+                } catch (e) {
+                    // Suppress if column doesn't exist or already dropped
+                }
+            }
+
+            const dropSubCols = [
+                'ALTER TABLE `user_subscriptions` DROP COLUMN IF EXISTS `is_trial`',
+                'ALTER TABLE `user_subscriptions` DROP COLUMN IF EXISTS `trial_start_date`',
+                'ALTER TABLE `user_subscriptions` DROP COLUMN IF EXISTS `trial_end_date`',
+                'ALTER TABLE `user_subscriptions` DROP COLUMN IF EXISTS `has_used_trial`'
+            ];
+            for (const q of dropSubCols) {
+                try {
+                    await db.sequelize.query(q);
+                } catch (e) {
+                    // Suppress if column doesn't exist or already dropped
+                }
+            }
+            console.log('✅ Free trial columns cleanup completed');
+        } catch (error) {
+            console.log('⚠️  Failed to drop free trial columns:', error.message);
+        }
     
     // Initialize story cleanup service and buyer need matching scheduler (only if not in test mode)
     if (process.env.NODE_ENV !== 'test') {
