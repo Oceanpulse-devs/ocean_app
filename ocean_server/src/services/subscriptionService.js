@@ -132,9 +132,9 @@ class SubscriptionService {
 
         // 1. Update users table with active plan
         await UserTable.update({
-          subscription_status: status,
-          current_plan_id: planId,
-          subscription_expires_at: expiresAt
+          subscriptionStatus: status,
+          currentPlanId: planId,
+          subscriptionExpiresAt: expiresAt
         }, {
           where: { id: userId }
         });
@@ -155,9 +155,9 @@ class SubscriptionService {
       } else if (status === 'cancelled' || status === 'expired' || status === 'suspended') {
         // 1. Clear subscription columns in users table
         await UserTable.update({
-          subscription_status: status,
-          current_plan_id: null,
-          subscription_expires_at: null
+          subscriptionStatus: status,
+          currentPlanId: null,
+          subscriptionExpiresAt: null
         }, {
           where: { id: userId }
         });
@@ -879,16 +879,16 @@ class SubscriptionService {
 
           // 1. Update user record
           const [userUpdated] = await UserTable.update({
-            subscription_status: 'active',
-            current_plan_id: planId,
-            subscription_expires_at: endDate
+            subscriptionStatus: 'active',
+            currentPlanId: planId,
+            subscriptionExpiresAt: endDate
           }, {
             where: { 
               id: userId,
               [Op.or]: [
-                { subscription_status: { [Op.ne]: 'active' } },
-                { current_plan_id: { [Op.ne]: planId } },
-                { subscription_expires_at: { [Op.ne]: endDate } }
+                { subscriptionStatus: { [Op.ne]: 'active' } },
+                { currentPlanId: { [Op.ne]: planId } },
+                { subscriptionExpiresAt: { [Op.ne]: endDate } }
               ]
             }
           });
