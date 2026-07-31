@@ -685,6 +685,11 @@ class BuyerNeedController {
             attributes: ['id', 'name', 'description', 'icon', 'isCustom', 'usageCount']
           },
           {
+            model: db.BuyerNeedMedia,
+            as: 'media',
+            attributes: ['id', 'mediaType', 'mediaUrl', 'thumbnailUrl', 'mediaOrder']
+          },
+          {
             model: db.BuyerNeedResponse,
             as: 'responses',
             attributes: ['id', 'status', 'created_at']
