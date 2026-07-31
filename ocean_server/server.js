@@ -1550,6 +1550,14 @@ async function syncDatabase() {
         } catch (error) {
             console.log('⚠️  Failed to drop free trial columns:', error.message);
         }
+
+        // Sync active subscriptions for backward compatibility (users/sellers tables)
+        try {
+            const subscriptionService = require('./src/services/subscriptionService');
+            await subscriptionService.syncActiveSubscriptions();
+        } catch (syncErr) {
+            console.log('⚠️  Failed to sync active subscriptions at boot:', syncErr.message);
+        }
     
     // Initialize story cleanup service and buyer need matching scheduler (only if not in test mode)
     if (process.env.NODE_ENV !== 'test') {

@@ -846,6 +846,81 @@ class SubscriptionService {
     }
   }
 
+  /**
+   * Sync active subscriptions from user_subscriptions back into the users and sellers tables.
+   * This ensures backward compatibility for users who subscribed previously.
+   */
+  async syncActiveSubscriptions() {
+    try {
+      const { UserTable, UserSubscription, SellersTable, SubscriptionPlan } = require('../../models');
+      const { Op } = require('sequelize');
+
+      console.log('🔄 Checking for active subscriptions to sync...');
+
+      // Find all subscriptions that are active and not expired
+      const activeSubscriptions = await UserSubscription.findAll({
+        where: {
+          status: 'active',
+          endDate: { [Op.gt]: new Date() }
+        }
+      });
+
+      console.log(`📋 Found ${activeSubscriptions.length} active subscription record(s) to synchronize.`);
+
+      let syncCount = 0;
+
+      for (const sub of activeSubscriptions) {
+        try {
+          const { userId, planId, endDate } = sub;
+          
+          // Get the plan features
+          const plan = await SubscriptionPlan.findByPk(planId);
+          const features = plan ? plan.features : null;
+
+          // 1. Update user record
+          const [userUpdated] = await UserTable.update({
+            subscription_status: 'active',
+            current_plan_id: planId,
+            subscription_expires_at: endDate
+          }, {
+            where: { 
+              id: userId,
+              [Op.or]: [
+                { subscription_status: { [Op.ne]: 'active' } },
+                { current_plan_id: { [Op.ne]: planId } },
+                { subscription_expires_at: { [Op.ne]: endDate } }
+              ]
+            }
+          });
+
+          // 2. Update seller record
+          const [sellerUpdated] = await SellersTable.update({
+            subscriptionPlanId: planId,
+            subscriptionFeatures: features
+          }, {
+            where: { 
+              userId,
+              [Op.or]: [
+                { subscriptionPlanId: { [Op.ne]: planId } },
+                { subscriptionFeatures: { [Op.is]: null } }
+              ]
+            }
+          });
+
+          if (userUpdated > 0 || sellerUpdated > 0) {
+            syncCount++;
+            console.log(`   ✅ Synced subscription for User ID ${userId} (Plan ID: ${planId})`);
+          }
+        } catch (subErr) {
+          console.error(`   ⚠️ Failed to sync active subscription ID ${sub.id}:`, subErr.message);
+        }
+      }
+
+      console.log(`✅ Subscription synchronization completed. Synced ${syncCount} outdated records.`);
+    } catch (error) {
+      console.error('❌ Error executing syncActiveSubscriptions:', error.message);
+    }
+  }
 
 }
 
