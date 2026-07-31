@@ -16,6 +16,7 @@ class SellerVerificationController {
         businessEmail,
         businessPhone,
         country,
+        state,
         documents
       } = req.body;
 
@@ -282,6 +283,7 @@ class SellerVerificationController {
           businessAddress,
           businessDescription,
           country,
+          state: state !== undefined ? state : seller.state, // Update state if provided
           sellerType: sellerTypes[0], // Use first seller type as primary
           selectedCategories: selectedCategories, // Store as JSON array
           selectedSubcategories: parsedSubcategories || {}, // Store as JSON object (parsed)
@@ -302,6 +304,7 @@ class SellerVerificationController {
           businessAddress,
           businessDescription,
           country,
+          state: state || null, // Store state if provided
           sellerType: sellerTypes[0], // Use first seller type as primary
           selectedCategories: selectedCategories, // Store as JSON array
           selectedSubcategories: parsedSubcategories || {}, // Store as JSON object (parsed)

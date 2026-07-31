@@ -943,6 +943,7 @@ const visibilityScoreRoutes = require('./src/routes/visibilityScoreRoutes');
 const topPlacementRoutes = require('./src/routes/topPlacementRoutes');
 const spotlightRoutes = require('./src/routes/spotlightRoutes');
 const StoryCleanupService = require('./src/services/storyCleanupService');
+const BuyerNeedSchedulerService = require('./src/services/buyerNeedSchedulerService');
 
 // Internal API (no auth - uses API key)
 app.use('/', internalRoutes);
@@ -1414,8 +1415,9 @@ async function syncDatabase() {
         for (const modelName of modelNames) {
             try {
                 const model = sequelizeModels[modelName];
-                // Sync individual model - auto-update schema for Notification to append new columns
-                const syncOptions = modelName === 'Notification'
+                // Sync individual model - auto-update schema for key models to append new columns
+                const alterModels = ['Notification', 'BuyerNeed', 'BuyerNeedMatch'];
+                const syncOptions = alterModels.includes(modelName)
                     ? { force: false, alter: true }
                     : { force: false, alter: false };
                 await model.sync(syncOptions);
@@ -1516,9 +1518,53 @@ async function syncDatabase() {
             }
         }
     
-    // Initialize story cleanup service (only if not in test mode)
+    // Initialize story cleanup service and buyer need matching scheduler (only if not in test mode)
     if (process.env.NODE_ENV !== 'test') {
-    StoryCleanupService.scheduleCleanup();
+        StoryCleanupService.scheduleCleanup();
+        BuyerNeedSchedulerService.scheduleMatchingRunner();
+    }
+
+    // Clean up legacy database triggers that post buyer needs to the public feed
+    try {
+        console.log('🗑️ Dropping legacy buyer need feed triggers...');
+        await db.sequelize.query('DROP TRIGGER IF EXISTS tr_buyer_need_to_feed');
+        await db.sequelize.query('DROP TRIGGER IF EXISTS tr_buyer_need_update_feed');
+        await db.sequelize.query('DROP TRIGGER IF EXISTS tr_buyer_need_media_to_feed');
+        console.log('✅ Legacy buyer need triggers dropped successfully');
+
+        // Delete legacy buyer needs from the public posts table
+        console.log('🗑️ Cleaning up legacy buyer needs from the public feed posts...');
+        await db.sequelize.query("DELETE FROM posts WHERE source_table = 'buyer_needs'");
+        console.log('✅ Public feed cleaned of legacy buyer needs');
+    } catch (dbCleanupError) {
+        console.error('⚠️ Database triggers drop / posts cleanup warning:', dbCleanupError.message);
+    }
+
+    // Auto-seed subscription plans if the table is empty
+    try {
+        const planCount = await db.SubscriptionPlan.count();
+        if (planCount === 0) {
+            console.log('🌱 Subscription plans table is empty. Running auto-seeder SQL...');
+            const fs = require('fs');
+            const path = require('path');
+            const sqlPath = path.join(__dirname, 'migrations', '2026-1-15-restore-subscription-plans.sql');
+            if (fs.existsSync(sqlPath)) {
+                const rawSql = fs.readFileSync(sqlPath, 'utf8');
+                const sqlStatements = rawSql
+                    .split(';')
+                    .map(stmt => stmt.trim())
+                    .filter(stmt => stmt.length > 0 && !stmt.startsWith('--') && !stmt.startsWith('/*'));
+                
+                for (const statement of sqlStatements) {
+                    await db.sequelize.query(statement);
+                }
+                console.log('✅ Subscription plans successfully seeded');
+            } else {
+                console.warn('⚠️ Seeder SQL file not found at:', sqlPath);
+            }
+        }
+    } catch (seederErr) {
+        console.error('❌ Failed to auto-seed subscription plans:', seederErr.message);
     }
     
         return { 

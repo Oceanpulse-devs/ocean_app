@@ -42,6 +42,10 @@ router.get('/search-insights', (req, res) => buyerNeedController.getBuyerSearchI
 // Seller response management (must come before /:id routes)
 router.get('/seller/responses', (req, res) => buyerNeedResponseController.getSellerResponses(req, res));
 
+// Seller incoming / accepted match routes
+router.get('/incoming', (req, res) => buyerNeedController.getIncomingDemands(req, res));
+router.get('/accepted', (req, res) => buyerNeedController.getAcceptedDemands(req, res));
+
 // Parameterized routes (must come after all specific routes)
 router.get('/:id', (req, res) => buyerNeedController.getBuyerNeedById(req, res));
 router.put('/:id', (req, res) => buyerNeedController.updateBuyerNeed(req, res));
@@ -50,6 +54,10 @@ router.delete('/:id', (req, res) => buyerNeedController.deleteBuyerNeed(req, res
 // Buyer Need actions
 router.put('/:id/cancel', (req, res) => buyerNeedController.cancelBuyerNeed(req, res));
 router.put('/:id/fulfill', (req, res) => buyerNeedController.markBuyerNeedFulfilled(req, res));
+
+// Seller routing actions
+router.post('/:id/accept', (req, res) => buyerNeedController.acceptDemand(req, res));
+router.post('/:id/decline', (req, res) => buyerNeedController.declineDemand(req, res));
 
 // Reach management routes
 router.post('/:id/increment-reach', (req, res) => buyerNeedController.incrementReach(req, res));

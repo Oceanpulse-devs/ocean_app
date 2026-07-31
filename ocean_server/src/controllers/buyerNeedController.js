@@ -52,7 +52,9 @@ class BuyerNeedController {
         content, 
         caption,  // Accept caption as alternative to content
         reach_limit, 
-        category  // Accept category as string name (not category_id)
+        category,  // Accept category as string name (not category_id)
+        country,
+        state
       } = formData;
       
       const buyer_id = req.user.id;
@@ -113,7 +115,11 @@ class BuyerNeedController {
         expires_at: expirationDate,
         status: 'active',
         current_reach: 0,
-        reach_exceeded: false
+        reach_exceeded: false,
+        country: country || null,
+        state: state || null,
+        current_batch: 1,
+        batch_started_at: new Date()
       });
 
       // Add images if provided (optional - field name changed from media to images)
@@ -968,21 +974,47 @@ class BuyerNeedController {
     }
   }
 
-  // Helper method to notify matching sellers about new buyer need
+  // Helper method to notify matching sellers about new buyer need - starts the dispatch routing loop
   async notifyMatchingSellers(buyerNeed, categoryName) {
     if (!categoryName) {
       return;
     }
-
     try {
-      // Find all active sellers with matching category in their selectedCategories
+      console.log(`📡 Starting batch dispatch matching for BuyerNeed ID: ${buyerNeed.id}`);
+      await this.routeNextBatch(buyerNeed.id);
+    } catch (error) {
+      console.error(`⚠️ Error starting matching routing for BuyerNeed ${buyerNeed.id}:`, error);
+    }
+  }
+
+  // Core router: dispatches the demand to the next 5 sorted/eligible sellers
+  async routeNextBatch(buyerNeedId) {
+    try {
+      const buyerNeed = await db.BuyerNeed.findByPk(buyerNeedId);
+      if (!buyerNeed || buyerNeed.status !== 'active' || buyerNeed.reach_exceeded) {
+        return;
+      }
+
+      const categoryName = buyerNeed.category;
+      if (!categoryName) return;
+
+      // Find sellers already routed in previous batches (to exclude them)
+      const alreadyNotifiedMatches = await db.BuyerNeedMatch.findAll({
+        where: { buyer_need_id: buyerNeed.id },
+        attributes: ['seller_id']
+      });
+      const excludedSellerIds = alreadyNotifiedMatches.map(m => m.seller_id);
+      
+      // Exclude the buyer themselves
+      excludedSellerIds.push(buyerNeed.buyer_id);
+
+      // Query active, verified sellers matching the category
       const matchingSellers = await db.SellersTable.findAll({
         where: {
           verificationStatus: { [Op.in]: ['approved', 'active'] },
-          // Check if selectedCategories JSON array contains the category name
+          userId: { [Op.notIn]: excludedSellerIds },
           [Op.or]: [
             db.sequelize.literal(`JSON_CONTAINS(selectedCategories, JSON_QUOTE('${categoryName}'))`),
-            // Also check if category matches directly (case-insensitive search in JSON)
             db.sequelize.literal(`selectedCategories LIKE '%${categoryName}%'`)
           ]
         },
@@ -990,41 +1022,469 @@ class BuyerNeedController {
           {
             model: db.UserTable,
             as: 'user',
-            attributes: ['id', 'email', 'accountStatus']
+            attributes: ['id', 'email', 'accountStatus', 'currentPlanId']
           }
-        ],
-        limit: 100 // Limit to avoid too many notifications
+        ]
       });
 
-      // Send notification to each matching seller
-      const notificationPromises = matchingSellers.map(async (seller) => {
+      // Load all active plans from database to verify limits dynamically
+      const plans = await db.SubscriptionPlan.findAll({ where: { isActive: true } });
+      const planMap = {};
+      plans.forEach(plan => {
+        planMap[plan.id] = plan;
+        planMap[plan.name.toLowerCase().trim()] = plan; // Map both by ID and Name just to be safe!
+      });
+
+      const eligibleSellers = [];
+      const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+      for (const seller of matchingSellers) {
+        const user = seller.user;
+        if (!user) continue;
+
+        // Retrieve plan using user's currentPlanId
+        const plan = user.currentPlanId ? planMap[user.currentPlanId] : null;
+        
+        // Default limit to 0 if they don't have a plan
+        const dailyLimit = plan ? plan.maxDailyNotifications : 0;
+        const planName = plan ? plan.name.toLowerCase().trim() : 'free';
+
+        // 🚫 RESTRICTION: Wave, Drift, and Free plans receive 0 leads (maxDailyNotifications = 0)
+        // Only plans with dailyLimit > 0 (Tide: 7, Surge: 15) are eligible
+        if (dailyLimit <= 0) {
+          continue;
+        }
+
+        // 📊 Enforce Daily Limits dynamically from the database
+        const matchCountToday = await db.BuyerNeedMatch.count({
+          where: {
+            seller_id: user.id,
+            created_at: { [Op.gt]: oneDayAgo }
+          }
+        });
+
+        if (matchCountToday >= dailyLimit) {
+          continue; // Skip seller since they hit their daily lead limit
+        }
+
+        // Calculate proximity sorting priority
+        let locationScore = 3; // Global/Category fallback
+        if (seller.country && buyerNeed.country && seller.country.toLowerCase().trim() === buyerNeed.country.toLowerCase().trim()) {
+          if (seller.state && buyerNeed.state && seller.state.toLowerCase().trim() === buyerNeed.state.toLowerCase().trim()) {
+            locationScore = 1; // Same Country + State (Best match)
+          } else {
+            locationScore = 2; // Same Country only (Fallback)
+          }
+        }
+
+        eligibleSellers.push({
+          seller,
+          planPriority: planName === 'surge' ? 1 : (planName === 'tide' ? 2 : 3), // Surge gets priority over Tide
+          locationScore,
+          rating: seller.rating || 0.0,
+          trustScore: seller.trustScore || 0
+        });
+      }
+
+      // Sort: 1) Location closeness asc, 2) Plan priority asc, 3) Rating desc, 4) Trust score desc
+      eligibleSellers.sort((a, b) => {
+        if (a.locationScore !== b.locationScore) return a.locationScore - b.locationScore;
+        if (a.planPriority !== b.planPriority) return a.planPriority - b.planPriority;
+        if (b.rating !== a.rating) return b.rating - a.rating;
+        return b.trustScore - a.trustScore;
+      });
+
+      // Get next 5 candidates
+      const sellersToNotify = eligibleSellers.slice(0, 5);
+      if (sellersToNotify.length === 0) {
+        console.log(`ℹ️ Out of matching eligible sellers for BuyerNeed ID: ${buyerNeed.id}`);
+        return;
+      }
+
+      const nextBatchNumber = buyerNeed.current_batch;
+
+      // Log matches as 'notified'
+      const matchPromises = sellersToNotify.map(item => {
+        return db.BuyerNeedMatch.create({
+          buyerNeedId: buyerNeed.id,
+          sellerId: item.seller.userId,
+          batchNumber: nextBatchNumber,
+          status: 'notified',
+          notifiedAt: new Date()
+        });
+      });
+      await Promise.all(matchPromises);
+
+      // Increment batch parameters in demand record
+      await buyerNeed.update({
+        current_batch: nextBatchNumber + 1,
+        batch_started_at: new Date()
+      });
+
+      // Dispatch push notifications to candidate batch
+      const pushPromises = sellersToNotify.map(async (item) => {
         try {
           await createNotification(
-            seller.userId,
-            'New Buyer Demand Available',
-            `A buyer is looking for "${buyerNeed.title}" in ${categoryName}. Tap to view and respond.`,
+            item.seller.userId,
+            'New Product Demand Match',
+            `A buyer in ${buyerNeed.state || 'your area'} is looking for "${buyerNeed.title}". Accept within 3 minutes!`,
             'info',
-            'buyer_need',
+            'buyer_need_match',
             {
-              type: 'buyer_need',
+              type: 'buyer_need_match',
               relatedEntityId: buyerNeed.id,
-              senderId: buyerNeed.buyer_id,
               buyerNeedId: buyerNeed.id,
               buyerNeedTitle: buyerNeed.title,
               category: categoryName,
-              buyerId: buyerNeed.buyer_id,
-              createdAt: buyerNeed.created_at
+              expiresAt: new Date(Date.now() + 3 * 60 * 1000).toISOString()
             }
           );
-        } catch (notifyError) {
-          console.error(`Error sending notification to seller ${seller.userId}:`, notifyError);
+        } catch (pushErr) {
+          console.error(`Failed to send push alert to matching seller ${item.seller.userId}:`, pushErr.message);
+        }
+      });
+      await Promise.all(pushPromises);
+      console.log(`📡 Dispatched batch #${nextBatchNumber} of 5 sellers for BuyerNeed ID: ${buyerNeed.id}`);
+    } catch (error) {
+      console.error('Error executing routeNextBatch:', error);
+    }
+  }
+
+  // Get active incoming requests routed to a seller (Tab 1)
+  async getIncomingDemands(req, res) {
+    try {
+      const sellerId = req.user.id;
+
+      // Find active matches
+      const activeMatches = await db.BuyerNeedMatch.findAll({
+        where: {
+          seller_id: sellerId,
+          status: 'notified'
+        },
+        include: [
+          {
+            model: db.BuyerNeed,
+            as: 'buyerNeed',
+            where: { status: 'active', reach_exceeded: false },
+            include: [
+              {
+                model: db.UserTable,
+                as: 'buyer',
+                attributes: ['fullName', 'profilePicture']
+              },
+              {
+                model: db.BuyerNeedMedia,
+                as: 'media',
+                attributes: ['mediaUrl', 'mediaType', 'thumbnailUrl']
+              }
+            ]
+          }
+        ],
+        order: [['notified_at', 'DESC']]
+      });
+
+      const formattedIncoming = [];
+      const now = new Date();
+
+      for (const match of activeMatches) {
+        const notifiedTime = new Date(match.notifiedAt);
+        const expiresTime = new Date(notifiedTime.getTime() + 3 * 60 * 1000); // 3 minutes timeout
+        const secondsRemaining = Math.max(0, Math.floor((expiresTime - now) / 1000));
+
+        if (secondsRemaining <= 0) {
+          // Auto-expire match state on reading if timer expired
+          await match.update({ status: 'expired' });
+          continue;
+        }
+
+        const demand = match.buyerNeed;
+        formattedIncoming.push({
+          matchId: match.id,
+          id: demand.id,
+          title: demand.title,
+          description: demand.description,
+          category: demand.category,
+          country: demand.country,
+          state: demand.state,
+          reachLimit: demand.reach_limit,
+          currentReach: demand.current_reach,
+          expiresAt: expiresTime.toISOString(),
+          secondsRemaining,
+          buyer: demand.buyer ? {
+            fullName: demand.buyer.fullName,
+            profilePicture: demand.buyer.profilePicture
+          } : null,
+          media: demand.media || []
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        data: formattedIncoming
+      });
+    } catch (error) {
+      console.error('Error fetching incoming demands:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Internal server error',
+        error: error.message
+      });
+    }
+  }
+
+  // Get accepted demands for a seller (Tab 2)
+  async getAcceptedDemands(req, res) {
+    try {
+      const sellerId = req.user.id;
+
+      const acceptedMatches = await db.BuyerNeedMatch.findAll({
+        where: {
+          seller_id: sellerId,
+          status: 'accepted'
+        },
+        include: [
+          {
+            model: db.BuyerNeed,
+            as: 'buyerNeed',
+            include: [
+              {
+                model: db.UserTable,
+                as: 'buyer',
+                attributes: ['id', 'fullName', 'profilePicture']
+              }
+            ]
+          }
+        ],
+        order: [['updated_at', 'DESC']]
+      });
+
+      const formattedAccepted = acceptedMatches.map(match => {
+        const demand = match.buyerNeed;
+        return {
+          matchId: match.id,
+          id: demand.id,
+          title: demand.title,
+          category: demand.category,
+          acceptedAt: match.updatedAt,
+          buyer: demand.buyer ? {
+            id: demand.buyer.id,
+            fullName: demand.buyer.fullName,
+            profilePicture: demand.buyer.profilePicture
+          } : null
+        };
+      });
+
+      return res.status(200).json({
+        success: true,
+        data: formattedAccepted
+      });
+    } catch (error) {
+      console.error('Error fetching accepted demands:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Internal server error',
+        error: error.message
+      });
+    }
+  }
+
+  // Seller Accept Demand Action
+  async acceptDemand(req, res) {
+    const transaction = await db.sequelize.transaction();
+    try {
+      const buyerNeedId = req.params.id;
+      const sellerId = req.user.id;
+
+      // 1. Fetch active match record
+      const match = await db.BuyerNeedMatch.findOne({
+        where: {
+          buyer_need_id: buyerNeedId,
+          seller_id: sellerId,
+          status: 'notified'
         }
       });
 
-      await Promise.all(notificationPromises);
+      if (!match) {
+        await transaction.rollback();
+        return res.status(400).json({
+          success: false,
+          message: 'Lead request has expired or does not exist.'
+        });
+      }
+
+      // Check timer expiration
+      const notifiedTime = new Date(match.notifiedAt);
+      const expiresTime = new Date(notifiedTime.getTime() + 3 * 60 * 1000);
+      if (new Date() > expiresTime) {
+        await match.update({ status: 'expired' }, { transaction });
+        await transaction.commit();
+        return res.status(400).json({
+          success: false,
+          message: 'Lead request expired (3-minute accept window passed).'
+        });
+      }
+
+      // 2. Fetch and Lock BuyerNeed
+      const buyerNeed = await db.BuyerNeed.findByPk(buyerNeedId, {
+        lock: transaction.LOCK.UPDATE,
+        transaction
+      });
+
+      if (!buyerNeed || buyerNeed.status !== 'active') {
+        await transaction.rollback();
+        return res.status(404).json({
+          success: false,
+          message: 'Buyer request is no longer active.'
+        });
+      }
+
+      // 3. Verify reach limits
+      if (buyerNeed.current_reach >= buyerNeed.reach_limit || buyerNeed.reach_exceeded) {
+        await match.update({ status: 'expired' }, { transaction });
+        await transaction.commit();
+        return res.status(400).json({
+          success: false,
+          message: 'Sorry, this request has already been accepted by other sellers.'
+        });
+      }
+
+      // 4. Update match status
+      await match.update({ status: 'accepted' }, { transaction });
+
+      // 5. Increment current_reach
+      const newReach = buyerNeed.current_reach + 1;
+      const isLimitExceeded = newReach >= buyerNeed.reach_limit;
+
+      await buyerNeed.update({
+        current_reach: newReach,
+        reach_exceeded: isLimitExceeded,
+        status: isLimitExceeded ? 'in_progress' : 'active'
+      }, { transaction });
+
+      // 6. Create compatible BuyerNeedResponse row (Preserves existing analytics & statistics)
+      const bidResponse = await db.BuyerNeedResponse.create({
+        buyer_need_id: buyerNeed.id,
+        seller_id: sellerId,
+        message: 'Accepted Lead request',
+        offer_price: null,
+        currency: 'USD',
+        response_type: 'offer',
+        status: 'accepted'
+      }, { transaction });
+
+      // 7. Setup direct chat room conversation between buyer and seller
+      let conversation = await db.Conversation.findOne({
+        where: {
+          type: 'direct',
+          [Op.and]: [
+            db.sequelize.literal(`EXISTS(SELECT 1 FROM conversation_participants WHERE conversation_id = Conversation.id AND user_id = '${buyerNeed.buyer_id}')`),
+            db.sequelize.literal(`EXISTS(SELECT 1 FROM conversation_participants WHERE conversation_id = Conversation.id AND user_id = '${sellerId}')`)
+          ]
+        },
+        transaction
+      });
+
+      if (!conversation) {
+        conversation = await db.Conversation.create({ type: 'direct' }, { transaction });
+        await db.ConversationParticipant.bulkCreate([
+          { conversationId: conversation.id, userId: buyerNeed.buyer_id },
+          { conversationId: conversation.id, userId: sellerId }
+        ], { transaction });
+      }
+
+      // Notify the buyer (demander) that a seller accepted their lead
+      try {
+        await createNotification(
+          buyerNeed.buyer_id,
+          'Product Demand Accepted',
+          `A matching seller has accepted your demand. Tap to start chatting!`,
+          'success',
+          'buyer_need_match',
+          {
+            type: 'buyer_need_match',
+            relatedEntityId: buyerNeed.id,
+            buyerNeedId: buyerNeed.id,
+            sellerId: sellerId,
+            conversationId: conversation.id
+          }
+        );
+      } catch (notifyErr) {
+        console.error('Error notifying buyer of accept:', notifyErr.message);
+      }
+
+      await transaction.commit();
+
+      return res.status(200).json({
+        success: true,
+        message: 'Demand request accepted successfully',
+        conversationId: conversation.id
+      });
     } catch (error) {
-      console.error('Error in notifyMatchingSellers:', error);
-      throw error;
+      await transaction.rollback();
+      console.error('Error accepting demand:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Error accepting demand request',
+        error: error.message
+      });
+    }
+  }
+
+  // Seller Decline Demand Action
+  async declineDemand(req, res) {
+    try {
+      const buyerNeedId = req.params.id;
+      const sellerId = req.user.id;
+
+      const match = await db.BuyerNeedMatch.findOne({
+        where: {
+          buyer_need_id: buyerNeedId,
+          seller_id: sellerId,
+          status: 'notified'
+        }
+      });
+
+      if (!match) {
+        return res.status(400).json({
+          success: false,
+          message: 'Lead request not found or already processed.'
+        });
+      }
+
+      // Update match status to declined
+      await match.update({ status: 'declined' });
+
+      // Check if all 5 sellers in the active batch have declined.
+      // If yes, we fast-forward the timer and trigger the next batch immediately!
+      const currentBatchNumber = match.batchNumber;
+      
+      const pendingSellersCount = await db.BuyerNeedMatch.count({
+        where: {
+          buyer_need_id: buyerNeedId,
+          batch_number: currentBatchNumber,
+          status: 'notified'
+        }
+      });
+
+      if (pendingSellersCount === 0) {
+        console.log(`⚡ All sellers in batch #${currentBatchNumber} declined/expired. Immediately routing next batch...`);
+        // Trigger next batch asynchronously
+        this.routeNextBatch(buyerNeedId).catch(err => {
+          console.error('Error routing next batch on decline:', err);
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        message: 'Demand request declined successfully'
+      });
+    } catch (error) {
+      console.error('Error declining demand:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Error declining demand request',
+        error: error.message
+      });
     }
   }
 }

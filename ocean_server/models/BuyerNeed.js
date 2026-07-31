@@ -73,6 +73,29 @@ module.exports = (sequelize, DataTypes) => {
       defaultValue: false,
       comment: 'Whether the reach limit has been exceeded'
     },
+    country: {
+      type: DataTypes.STRING(100),
+      allowNull: true,
+      comment: 'Country where the product is needed'
+    },
+    state: {
+      type: DataTypes.STRING(100),
+      allowNull: true,
+      comment: 'State/Region where the product is needed'
+    },
+    current_batch: {
+      type: DataTypes.INTEGER,
+      defaultValue: 1,
+      allowNull: false,
+      field: 'current_batch',
+      comment: 'Active dispatch routing batch iteration'
+    },
+    batch_started_at: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      field: 'batch_started_at',
+      comment: 'Timestamp when the active routing batch started'
+    },
     created_at: {
       type: DataTypes.DATE,
       defaultValue: DataTypes.NOW

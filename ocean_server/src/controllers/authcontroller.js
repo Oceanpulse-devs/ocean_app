@@ -501,6 +501,7 @@ const sellerRegistration = async(req,res)=>{
         businessEmail,
         businessPhone,
         country,
+        state,
         documentType, 
         documentNumber, 
         personalIdType,
@@ -700,7 +701,7 @@ const sellerRegistration = async(req,res)=>{
             phoneNumber: businessPhone || '', // Use business phone if provided, otherwise empty string
             businessAddress: businessAddress.trim(),
             country: country, // Use provided country
-            state: '', // State not available in user table
+            state: state || '', // Store state if provided
             businessDescription: businessDescription.trim(),
             sellerType: parsedSellerTypes[0], // Use first seller type as primary (can be updated later)
             selectedCategories: parsedSelectedCategories, // Store as JSON array
