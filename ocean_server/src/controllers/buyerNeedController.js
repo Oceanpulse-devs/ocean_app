@@ -1404,24 +1404,42 @@ class BuyerNeedController {
         status: 'accepted'
       }, { transaction });
 
-      // 7. Setup direct chat room conversation between buyer and seller
-      let conversation = await db.Conversation.findOne({
-        where: {
-          type: 'direct',
-          [Op.and]: [
-            db.sequelize.literal(`EXISTS(SELECT 1 FROM conversation_participants WHERE conversation_id = Conversation.id AND user_id = '${buyerNeed.buyer_id}')`),
-            db.sequelize.literal(`EXISTS(SELECT 1 FROM conversation_participants WHERE conversation_id = Conversation.id AND user_id = '${sellerId}')`)
-          ]
-        },
-        transaction
-      });
+      // 7. Setup direct chat room conversation between buyer and seller (Sequelize-native matching)
+      let conversation = null;
+      try {
+        const directParticipants = await db.ConversationParticipant.findAll({
+          where: {
+            userId: [buyerNeed.buyer_id, sellerId]
+          },
+          attributes: ['conversationId'],
+          group: ['conversationId'],
+          having: db.sequelize.literal('COUNT(DISTINCT userId) = 2'),
+          transaction
+        });
 
-      if (!conversation) {
-        conversation = await db.Conversation.create({ type: 'direct' }, { transaction });
-        await db.ConversationParticipant.bulkCreate([
-          { conversationId: conversation.id, userId: buyerNeed.buyer_id },
-          { conversationId: conversation.id, userId: sellerId }
-        ], { transaction });
+        if (directParticipants.length > 0) {
+          const conversationIds = directParticipants.map(cp => cp.conversationId);
+          conversation = await db.Conversation.findOne({
+            where: {
+              id: conversationIds,
+              type: 'direct'
+            },
+            transaction
+          });
+        }
+
+        if (!conversation) {
+          conversation = await db.Conversation.create({ type: 'direct' }, { transaction });
+          await db.ConversationParticipant.bulkCreate([
+            { conversationId: conversation.id, userId: buyerNeed.buyer_id, role: 'member' },
+            { conversationId: conversation.id, userId: sellerId, role: 'member' }
+          ], { transaction });
+          console.log(`💬 Created new direct conversation ID ${conversation.id} between buyer and seller`);
+        } else {
+          console.log(`💬 Found existing direct conversation ID ${conversation.id}`);
+        }
+      } catch (chatError) {
+        console.error('⚠️ Failed to establish direct chat conversation, continuing without chat room:', chatError.message);
       }
 
       // Notify the buyer (demander) that a seller accepted their lead
@@ -1437,7 +1455,7 @@ class BuyerNeedController {
             relatedEntityId: buyerNeed.id,
             buyerNeedId: buyerNeed.id,
             sellerId: sellerId,
-            conversationId: conversation.id
+            conversationId: conversation ? conversation.id : null
           }
         );
       } catch (notifyErr) {
@@ -1449,7 +1467,7 @@ class BuyerNeedController {
       return res.status(200).json({
         success: true,
         message: 'Demand request accepted successfully',
-        conversationId: conversation.id
+        conversationId: conversation ? conversation.id : null
       });
     } catch (error) {
       await transaction.rollback();
