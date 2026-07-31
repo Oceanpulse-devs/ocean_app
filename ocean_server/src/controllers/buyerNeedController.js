@@ -1003,6 +1003,11 @@ class BuyerNeedController {
       const categoryName = buyerNeed.category;
       if (!categoryName) return;
 
+      console.log(`📡 [DEBUG routeNextBatch] Starting matching engine for BuyerNeed ID: ${buyerNeedId}`);
+      console.log(`   - Title: "${buyerNeed.title}"`);
+      console.log(`   - Category: "${categoryName}"`);
+      console.log(`   - Location: Country = "${buyerNeed.country}", State = "${buyerNeed.state}"`);
+
       // Find sellers already routed in previous batches (to exclude them)
       const alreadyNotifiedMatches = await db.BuyerNeedMatch.findAll({
         where: { buyer_need_id: buyerNeed.id },
@@ -1012,6 +1017,7 @@ class BuyerNeedController {
       
       // Exclude the buyer themselves
       excludedSellerIds.push(buyerNeed.buyer_id);
+      console.log(`   - Excluded User IDs (previously notified + buyer):`, excludedSellerIds);
 
       // Query active, verified sellers matching the category
       const matchingSellers = await db.SellersTable.findAll({
@@ -1032,6 +1038,14 @@ class BuyerNeedController {
         ]
       });
 
+      console.log(`   - Raw Matching Sellers found in DB: ${matchingSellers.length}`);
+      matchingSellers.forEach(s => {
+        console.log(`     * Seller: "${s.fullName}" (UserId: ${s.userId})`);
+        console.log(`       - Verification Status: "${s.verificationStatus}"`);
+        console.log(`       - Categories:`, s.selectedCategories);
+        console.log(`       - User loaded: ${!!s.user}`);
+      });
+
       // Load all active plans from database to verify limits dynamically
       const plans = await db.SubscriptionPlan.findAll({ where: { isActive: true } });
       const planMap = {};
@@ -1044,19 +1058,26 @@ class BuyerNeedController {
       const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
       for (const seller of matchingSellers) {
+        console.log(`\n   🔍 Evaluating eligibility for Seller: "${seller.fullName}" (UserId: ${seller.userId})`);
         const user = seller.user;
-        if (!user) continue;
+        if (!user) {
+          console.log(`     ⚠️ Rejected: Seller has no associated user row in Users table!`);
+          continue;
+        }
 
         // Retrieve plan using user's currentPlanId
+        console.log(`     - User currentPlanId: ${user.currentPlanId}`);
         const plan = user.currentPlanId ? planMap[user.currentPlanId] : null;
         
         // Default limit to 0 if they don't have a plan
         const dailyLimit = plan ? plan.maxDailyNotifications : 0;
         const planName = plan ? plan.name.toLowerCase().trim() : 'free';
+        console.log(`     - Resolved Plan: name = "${planName}", maxDailyNotifications = ${dailyLimit}`);
 
         // 🚫 RESTRICTION: Wave, Drift, and Free plans receive 0 leads (maxDailyNotifications = 0)
         // Only plans with dailyLimit > 0 (Tide: 7, Surge: 15) are eligible
         if (dailyLimit <= 0) {
+          console.log(`     🚫 Rejected: plan has daily limit <= 0. Not eligible to receive direct leads.`);
           continue;
         }
 
@@ -1067,8 +1088,10 @@ class BuyerNeedController {
             created_at: { [Op.gt]: oneDayAgo }
           }
         });
+        console.log(`     - Matching leads routed in past 24h: ${matchCountToday} (Limit: ${dailyLimit})`);
 
         if (matchCountToday >= dailyLimit) {
+          console.log(`     🚫 Rejected: Daily limit reached for this user (${matchCountToday}/${dailyLimit})`);
           continue; // Skip seller since they hit their daily lead limit
         }
 
@@ -1081,6 +1104,7 @@ class BuyerNeedController {
             locationScore = 2; // Same Country only (Fallback)
           }
         }
+        console.log(`     ✅ Accepted: locationScore = ${locationScore}`);
 
         eligibleSellers.push({
           seller,
@@ -1090,6 +1114,8 @@ class BuyerNeedController {
           trustScore: seller.trustScore || 0
         });
       }
+
+      console.log(`\n📡 [DEBUG routeNextBatch] Total Eligible Sellers: ${eligibleSellers.length}`);
 
       // Sort: 1) Location closeness asc, 2) Plan priority asc, 3) Rating desc, 4) Trust score desc
       eligibleSellers.sort((a, b) => {
