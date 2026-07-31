@@ -92,10 +92,7 @@ class TriggerManager {
         'tr_swap_deal_to_feed',
         'tr_swap_deal_update_feed',
         'tr_auction_to_feed',
-        'tr_auction_update_feed',
-        'tr_buyer_need_to_feed',
-        'tr_buyer_need_update_feed',
-        'tr_buyer_need_media_to_feed'
+        'tr_auction_update_feed'
       ];
 
       const existingTriggers = results.map(r => r.TRIGGER_NAME);
