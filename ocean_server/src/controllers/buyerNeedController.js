@@ -1400,6 +1400,7 @@ class BuyerNeedController {
         offer_price: null,
         currency: 'USD',
         response_type: 'offer',
+        contact_method: 'message',
         status: 'accepted'
       }, { transaction });
 
