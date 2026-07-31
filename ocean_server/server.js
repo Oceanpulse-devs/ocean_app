@@ -1522,8 +1522,8 @@ async function syncDatabase() {
         try {
             console.log('🧹 Cleaning up free trial columns from database tables...');
             const dropUserCols = [
-                'ALTER TABLE `users` DROP COLUMN IF EXISTS `has_used_trial`',
-                'ALTER TABLE `users` DROP COLUMN IF EXISTS `trial_plan_used`'
+                'ALTER TABLE `users` DROP COLUMN `has_used_trial`',
+                'ALTER TABLE `users` DROP COLUMN `trial_plan_used`'
             ];
             for (const q of dropUserCols) {
                 try {
@@ -1534,10 +1534,10 @@ async function syncDatabase() {
             }
 
             const dropSubCols = [
-                'ALTER TABLE `user_subscriptions` DROP COLUMN IF EXISTS `is_trial`',
-                'ALTER TABLE `user_subscriptions` DROP COLUMN IF EXISTS `trial_start_date`',
-                'ALTER TABLE `user_subscriptions` DROP COLUMN IF EXISTS `trial_end_date`',
-                'ALTER TABLE `user_subscriptions` DROP COLUMN IF EXISTS `has_used_trial`'
+                'ALTER TABLE `user_subscriptions` DROP COLUMN `is_trial`',
+                'ALTER TABLE `user_subscriptions` DROP COLUMN `trial_start_date`',
+                'ALTER TABLE `user_subscriptions` DROP COLUMN `trial_end_date`',
+                'ALTER TABLE `user_subscriptions` DROP COLUMN `has_used_trial`'
             ];
             for (const q of dropSubCols) {
                 try {
