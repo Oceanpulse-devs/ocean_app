@@ -1282,6 +1282,11 @@ class BuyerNeedController {
                 model: db.UserTable,
                 as: 'buyer',
                 attributes: ['id', 'fullName', 'profilePicture']
+              },
+              {
+                model: db.BuyerNeedMedia,
+                as: 'media',
+                attributes: ['id', 'mediaType', 'mediaUrl', 'thumbnailUrl', 'mediaOrder']
               }
             ]
           }
@@ -1301,7 +1306,8 @@ class BuyerNeedController {
             id: demand.buyer.id,
             fullName: demand.buyer.fullName,
             profilePicture: demand.buyer.profilePicture
-          } : null
+          } : null,
+          media: demand.media || []
         };
       });
 
