@@ -286,8 +286,7 @@ const setupAssociations = () => {
 
   // Buyer Need associations
   db.BuyerNeed.belongsTo(db.UserTable, { foreignKey: 'buyer_id', as: 'buyer' });
-  // Removed ProductCategory association - now using category (string) field directly
-  // db.BuyerNeed.belongsTo(db.ProductCategory, { foreignKey: 'category_id', as: 'category' });
+  db.BuyerNeed.belongsTo(db.ProductCategory, { foreignKey: 'category_id', as: 'productCategory' });
   db.BuyerNeed.hasMany(db.BuyerNeedResponse, { foreignKey: 'buyer_need_id', as: 'responses' });
   db.BuyerNeed.hasMany(db.BuyerNeedMedia, { foreignKey: 'buyerNeedId', as: 'media' });
   
@@ -297,6 +296,12 @@ const setupAssociations = () => {
   // Buyer Need Response associations
   db.BuyerNeedResponse.belongsTo(db.BuyerNeed, { foreignKey: 'buyer_need_id', as: 'buyerNeed' });
   db.BuyerNeedResponse.belongsTo(db.UserTable, { foreignKey: 'seller_id', as: 'seller' });
+
+  // Buyer Need Match associations
+  db.BuyerNeedMatch.belongsTo(db.BuyerNeed, { foreignKey: 'buyer_need_id', as: 'buyerNeed' });
+  db.BuyerNeedMatch.belongsTo(db.UserTable, { foreignKey: 'seller_id', as: 'seller' });
+  db.BuyerNeed.hasMany(db.BuyerNeedMatch, { foreignKey: 'buyer_need_id', as: 'matches' });
+  db.UserTable.hasMany(db.BuyerNeedMatch, { foreignKey: 'seller_id', as: 'matches' });
   
   // User associations for buyer needs
   db.UserTable.hasMany(db.BuyerNeed, { foreignKey: 'buyer_id', as: 'buyerNeeds' });

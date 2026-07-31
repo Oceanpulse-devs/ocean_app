@@ -681,7 +681,7 @@ class BuyerNeedController {
         include: [
           {
             model: db.ProductCategory,
-            as: 'category',
+            as: 'productCategory',
             attributes: ['id', 'name', 'description', 'icon', 'isCustom', 'usageCount']
           },
           {

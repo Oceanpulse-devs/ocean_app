@@ -3,10 +3,15 @@ dotenv.config();
 
 const redis = require('redis');
 
+const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
+const isTls = redisUrl.startsWith('rediss://');
+
 // Create Redis client with proper configuration
 const redisClient = redis.createClient({
-  url: process.env.REDIS_URL || 'redis://localhost:6379',
+  url: redisUrl,
   socket: {
+    tls: isTls,
+    rejectUnauthorized: false, // Required for self-signed/Aiven certificates
     reconnectStrategy: (retries) => Math.min(retries * 50, 1000)
   }
 });

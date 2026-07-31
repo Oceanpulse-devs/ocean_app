@@ -1550,10 +1550,15 @@ async function syncDatabase() {
             const sqlPath = path.join(__dirname, 'migrations', '2026-1-15-restore-subscription-plans.sql');
             if (fs.existsSync(sqlPath)) {
                 const rawSql = fs.readFileSync(sqlPath, 'utf8');
-                const sqlStatements = rawSql
+                // Strip comments robustly before splitting statements
+                let cleanedSql = rawSql
+                    .replace(/\/\*[\s\S]*?\*\//g, '') // Remove multi-line comments
+                    .replace(/--.*$/gm, '');          // Remove single-line comments
+                
+                const sqlStatements = cleanedSql
                     .split(';')
                     .map(stmt => stmt.trim())
-                    .filter(stmt => stmt.length > 0 && !stmt.startsWith('--') && !stmt.startsWith('/*'));
+                    .filter(stmt => stmt.length > 0);
                 
                 for (const statement of sqlStatements) {
                     await db.sequelize.query(statement);
