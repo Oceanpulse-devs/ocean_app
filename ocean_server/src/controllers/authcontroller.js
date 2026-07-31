@@ -1,5 +1,5 @@
 const db = require('../../models')
-const {UserTable, SellersTable, SellerDocument, Product, Post, Auction, GroupBuy, SwapDeal, BuyerNeed, UserFollows, SavedItem, PostLike, ProductLike, Notification} = db
+const { UserTable, SellersTable, SellerDocument, Product, Post, Auction, GroupBuy, SwapDeal, BuyerNeed, UserFollows, SavedItem, PostLike, ProductLike, Notification } = db
 const { sendSellerApplicationNotification, sendAdminNotification } = require('./notificationController')
 const { sendEmail, emailTemplates } = require('../services/emailService')
 const CloudinaryService = require('../services/cloudinaryService')
@@ -35,377 +35,377 @@ const validatePassword = (password) => {
 };
 
 //signing up
-const signup = async(req, res) => {
-   const {fullName, email, password, confirmPassword, agreeTerms} = req.body;
+const signup = async (req, res) => {
+    const { fullName, email, password, confirmPassword, agreeTerms } = req.body;
 
-   try{
-    // Input validation
-    if(!fullName || !email || !password || !confirmPassword){
-        return res.status(400).json({message:"All required fields must be provided"})
-    }
-
-    if(fullName.trim().length < 2){
-        return res.status(400).json({message:"Full name must be at least 2 characters long"})
-    }
-
-    if(!validateEmail(email)){
-        return res.status(400).json({message:"Please provide a valid email address"})
-    }
-
-    if(!validatePassword(password)){
-        return res.status(400).json({message:"Password must be at least 8 characters with uppercase, lowercase, and number"})
-    }
-
-    if(password !== confirmPassword){
-        return res.status(400).json({message:"Password and confirm password do not match"})
-    }
-
-    if(!agreeTerms){
-        return res.status(400).json({message:"You must agree to the terms and conditions"})
-    }
-
-    //checking if user already exist
-   const existingUser = await UserTable.findOne({where:{ email }})
-   if(existingUser){
-        return res.status(400).json({message:"User already exists with this email"})
-   }
-
-   //hashing the password
-    const hashedPassword = await bcrypt.hash(password, 10)
-    
-    // Generate email verification token
-    const emailVerificationToken = crypto.randomBytes(32).toString('hex')
-    const emailVerificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours
-    
-    // Generate unique username
-    const generateUsername = async (fullName) => {
-        const baseName = fullName.toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 8);
-        const randomSuffix = crypto.randomBytes(4).toString('hex');
-        let username = `@${baseName}_${randomSuffix}`;
-        
-        // Ensure username is unique
-        let counter = 1;
-        while (await UserTable.findOne({ where: { username } })) {
-            username = `@${baseName}_${randomSuffix}${counter}`;
-            counter++;
+    try {
+        // Input validation
+        if (!fullName || !email || !password || !confirmPassword) {
+            return res.status(400).json({ message: "All required fields must be provided" })
         }
-        
-        return username;
-    };
 
-    const username = await generateUsername(fullName);
+        if (fullName.trim().length < 2) {
+            return res.status(400).json({ message: "Full name must be at least 2 characters long" })
+        }
 
-    const newUser = await UserTable.create({
-        fullName: fullName.trim(),
-        email: email.toLowerCase().trim(),
-        username: username,
-        password: hashedPassword,
-        agreeTerms,
-        accountType: 'buyer', // Default to buyer
-        accountStatus: 'pending', // Pending until email verification
-        emailVerified: false,
-        emailVerificationToken,
-        emailVerificationExpires
-    })
+        if (!validateEmail(email)) {
+            return res.status(400).json({ message: "Please provide a valid email address" })
+        }
 
-    // Cache verification token in Redis for faster verification
-    try {
-        const redisKey = `email_verification:${emailVerificationToken}`;
-        await redisClient.setEx(redisKey, 86400, JSON.stringify({ // 24 hours
-            userId: newUser.id,
-            email: newUser.email,
-            fullName: newUser.fullName,
-            createdAt: new Date().toISOString()
-        }));
-        console.log('✅ Verification token cached in Redis:', redisKey);
-    } catch (redisError) {
-        console.error('❌ Redis caching failed (continuing without cache):', redisError.message);
-        // Continue without Redis caching - the system will still work
-    }
+        if (!validatePassword(password)) {
+            return res.status(400).json({ message: "Password must be at least 8 characters with uppercase, lowercase, and number" })
+        }
 
-    // Send verification email
-    const backendUrl = process.env.NODE_ENV === 'production' 
-        ? process.env.RAILWAY_PUBLIC_DOMAIN || process.env.BACKEND_URL || 'https://your-backend-domain.com'
-        : 'http://localhost:5000';
-    const verificationLink = `${backendUrl}/verify-email?token=${emailVerificationToken}`
-    const emailTemplate = emailTemplates.emailVerification(newUser.fullName, verificationLink)
-    
-    try {
-        await sendEmail(newUser.email, emailTemplate.subject, emailTemplate.html, 'verification')
-        console.log('✅ Verification email sent to:', newUser.email)
-    } catch (emailError) {
-        console.error('❌ Failed to send verification email:', emailError)
-        // Don't fail the signup if email fails, but log the error
-    }
+        if (password !== confirmPassword) {
+            return res.status(400).json({ message: "Password and confirm password do not match" })
+        }
 
-    res.status(201).json({
-        message:"User created successfully. Please check your email to verify your account.",
-        user: {
-            id: newUser.id,
-            fullName: newUser.fullName,
-            email: newUser.email,
-            role: newUser.accountType, // Current role for permissions
-            accountType: newUser.accountType, // Account classification
-            accountStatus: newUser.accountStatus,
-            emailVerified: newUser.emailVerified
-        },
-        requiresVerification: true
-    })
-}catch(error){
+        if (!agreeTerms) {
+            return res.status(400).json({ message: "You must agree to the terms and conditions" })
+        }
+
+        //checking if user already exist
+        const existingUser = await UserTable.findOne({ where: { email } })
+        if (existingUser) {
+            return res.status(400).json({ message: "User already exists with this email" })
+        }
+
+        //hashing the password
+        const hashedPassword = await bcrypt.hash(password, 10)
+
+        // Generate email verification token
+        const emailVerificationToken = crypto.randomBytes(32).toString('hex')
+        const emailVerificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours
+
+        // Generate unique username
+        const generateUsername = async (fullName) => {
+            const baseName = fullName.toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 8);
+            const randomSuffix = crypto.randomBytes(4).toString('hex');
+            let username = `@${baseName}_${randomSuffix}`;
+
+            // Ensure username is unique
+            let counter = 1;
+            while (await UserTable.findOne({ where: { username } })) {
+                username = `@${baseName}_${randomSuffix}${counter}`;
+                counter++;
+            }
+
+            return username;
+        };
+
+        const username = await generateUsername(fullName);
+
+        const newUser = await UserTable.create({
+            fullName: fullName.trim(),
+            email: email.toLowerCase().trim(),
+            username: username,
+            password: hashedPassword,
+            agreeTerms,
+            accountType: 'buyer', // Default to buyer
+            accountStatus: 'pending', // Pending until email verification
+            emailVerified: false,
+            emailVerificationToken,
+            emailVerificationExpires
+        })
+
+        // Cache verification token in Redis for faster verification
+        try {
+            const redisKey = `email_verification:${emailVerificationToken}`;
+            await redisClient.setEx(redisKey, 86400, JSON.stringify({ // 24 hours
+                userId: newUser.id,
+                email: newUser.email,
+                fullName: newUser.fullName,
+                createdAt: new Date().toISOString()
+            }));
+            console.log('✅ Verification token cached in Redis:', redisKey);
+        } catch (redisError) {
+            console.error('❌ Redis caching failed (continuing without cache):', redisError.message);
+            // Continue without Redis caching - the system will still work
+        }
+
+        // Send verification email
+        const backendUrl = process.env.NODE_ENV === 'production'
+            ? process.env.BASE_URL || process.env.RAILWAY_PUBLIC_DOMAIN || process.env.BACKEND_URL
+            : 'http://localhost:5000';
+        const verificationLink = `${backendUrl}/verify-email?token=${emailVerificationToken}`
+        const emailTemplate = emailTemplates.emailVerification(newUser.fullName, verificationLink)
+
+        try {
+            await sendEmail(newUser.email, emailTemplate.subject, emailTemplate.html, 'verification')
+            console.log('✅ Verification email sent to:', newUser.email)
+        } catch (emailError) {
+            console.error('❌ Failed to send verification email:', emailError)
+            // Don't fail the signup if email fails, but log the error
+        }
+
+        res.status(201).json({
+            message: "User created successfully. Please check your email to verify your account.",
+            user: {
+                id: newUser.id,
+                fullName: newUser.fullName,
+                email: newUser.email,
+                role: newUser.accountType, // Current role for permissions
+                accountType: newUser.accountType, // Account classification
+                accountStatus: newUser.accountStatus,
+                emailVerified: newUser.emailVerified
+            },
+            requiresVerification: true
+        })
+    } catch (error) {
         console.error('Signup error:', error);
-        res.status(500).json({message:"Error creating user", error:error.message})
-}
+        res.status(500).json({ message: "Error creating user", error: error.message })
+    }
 };
 
 // login or signing in
-const login = async(req,res)=>{
-   const {email, password} = req.body;
+const login = async (req, res) => {
+    const { email, password } = req.body;
 
-   try{
-    // Input validation
-    if(!email || !password){
-        return res.status(400).json({message:"Email and password are required"})
-    }
-
-    if(!validateEmail(email)){
-        return res.status(400).json({message:"Please provide a valid email address"})
-    }
-
-    //checking if email is already existing 
-    const existingUser = await UserTable.findOne({where:{ email: email.toLowerCase().trim() }})
-    if(!existingUser){
-        return res.status(400).json({message:"Invalid email or password."})
-    }
-
-    //checking if account is active
-    if(existingUser.accountStatus !== 'active'){
-        if(existingUser.accountStatus === 'suspended'){
-            return res.status(403).json({message:"Your account has been suspended. Please contact support for assistance."})
+    try {
+        // Input validation
+        if (!email || !password) {
+            return res.status(400).json({ message: "Email and password are required" })
         }
-        if(existingUser.accountStatus === 'pending'){
+
+        if (!validateEmail(email)) {
+            return res.status(400).json({ message: "Please provide a valid email address" })
+        }
+
+        //checking if email is already existing 
+        const existingUser = await UserTable.findOne({ where: { email: email.toLowerCase().trim() } })
+        if (!existingUser) {
+            return res.status(400).json({ message: "Invalid email or password." })
+        }
+
+        //checking if account is active
+        if (existingUser.accountStatus !== 'active') {
+            if (existingUser.accountStatus === 'suspended') {
+                return res.status(403).json({ message: "Your account has been suspended. Please contact support for assistance." })
+            }
+            if (existingUser.accountStatus === 'pending') {
+                return res.status(403).json({
+                    message: "Please verify your email address before logging in. Check your email for a verification link.",
+                    requiresVerification: true,
+                    email: existingUser.email
+                })
+            }
+            return res.status(403).json({ message: "Account is not active. Please contact support." })
+        }
+
+        //checking if email is verified
+        if (!existingUser.emailVerified) {
             return res.status(403).json({
-                message:"Please verify your email address before logging in. Check your email for a verification link.",
+                message: "Please verify your email address before logging in. Check your email for a verification link.",
                 requiresVerification: true,
                 email: existingUser.email
             })
         }
-        return res.status(403).json({message:"Account is not active. Please contact support."})
-    }
 
-    //checking if email is verified
-    if(!existingUser.emailVerified){
-        return res.status(403).json({
-            message:"Please verify your email address before logging in. Check your email for a verification link.",
-            requiresVerification: true,
-            email: existingUser.email
-        })
-    }
+        // Check for account lockout
+        const lockoutKey = `lockout:${existingUser.id}`;
+        const lockoutData = await redisClient.get(lockoutKey);
 
-    // Check for account lockout
-    const lockoutKey = `lockout:${existingUser.id}`;
-    const lockoutData = await redisClient.get(lockoutKey);
+        if (lockoutData) {
+            const lockoutInfo = JSON.parse(lockoutData);
+            const timeElapsed = Date.now() - lockoutInfo.timestamp;
+            const remainingTime = Math.ceil((LOCKOUT_DURATION * 1000 - timeElapsed) / 1000 / 60);
 
-    if(lockoutData) {
-        const lockoutInfo = JSON.parse(lockoutData);
-        const timeElapsed = Date.now() - lockoutInfo.timestamp;
-        const remainingTime = Math.ceil((LOCKOUT_DURATION * 1000 - timeElapsed) / 1000 / 60);
-
-        if(lockoutInfo.attempts >= MAX_LOGIN_ATTEMPTS && timeElapsed < LOCKOUT_DURATION * 1000) {
-            return res.status(429).json({
-                message: `Account temporarily locked. Try again in ${remainingTime} minutes.`
-            });
-        } else if(timeElapsed >= LOCKOUT_DURATION * 1000) {
-            // Reset lockout after duration expires
-            await redisClient.del(lockoutKey);
+            if (lockoutInfo.attempts >= MAX_LOGIN_ATTEMPTS && timeElapsed < LOCKOUT_DURATION * 1000) {
+                return res.status(429).json({
+                    message: `Account temporarily locked. Try again in ${remainingTime} minutes.`
+                });
+            } else if (timeElapsed >= LOCKOUT_DURATION * 1000) {
+                // Reset lockout after duration expires
+                await redisClient.del(lockoutKey);
+            }
         }
-    }
 
-    //checking if password matches
-    const passwordMatched = await bcrypt.compare(password, existingUser.password)
-    if(!passwordMatched){
-        // Increment failed attempts
-        const currentAttempts = lockoutData ? JSON.parse(lockoutData).attempts : 0;
-        const newAttempts = currentAttempts + 1;
+        //checking if password matches
+        const passwordMatched = await bcrypt.compare(password, existingUser.password)
+        if (!passwordMatched) {
+            // Increment failed attempts
+            const currentAttempts = lockoutData ? JSON.parse(lockoutData).attempts : 0;
+            const newAttempts = currentAttempts + 1;
 
-        if(newAttempts >= MAX_LOGIN_ATTEMPTS) {
-            await redisClient.set(lockoutKey, JSON.stringify({
-                attempts: newAttempts,
-                timestamp: Date.now()
-            }), {EX: LOCKOUT_DURATION});
+            if (newAttempts >= MAX_LOGIN_ATTEMPTS) {
+                await redisClient.set(lockoutKey, JSON.stringify({
+                    attempts: newAttempts,
+                    timestamp: Date.now()
+                }), { EX: LOCKOUT_DURATION });
 
-            return res.status(429).json({
-                message: `Too many failed attempts. Account locked for ${LOCKOUT_DURATION / 60} minutes.`
-            });
-        } else {
-            await redisClient.set(lockoutKey, JSON.stringify({
-                attempts: newAttempts,
-                timestamp: Date.now()
-            }), {EX: LOCKOUT_DURATION});
+                return res.status(429).json({
+                    message: `Too many failed attempts. Account locked for ${LOCKOUT_DURATION / 60} minutes.`
+                });
+            } else {
+                await redisClient.set(lockoutKey, JSON.stringify({
+                    attempts: newAttempts,
+                    timestamp: Date.now()
+                }), { EX: LOCKOUT_DURATION });
 
-            return res.status(400).json({
-                message: `Invalid email or password. ${MAX_LOGIN_ATTEMPTS - newAttempts} attempts remaining.`
-            });
+                return res.status(400).json({
+                    message: `Invalid email or password. ${MAX_LOGIN_ATTEMPTS - newAttempts} attempts remaining.`
+                });
+            }
         }
-    }
 
-    // Successful login - clear lockout data
-    await redisClient.del(lockoutKey);
+        // Successful login - clear lockout data
+        await redisClient.del(lockoutKey);
 
-    // Generate unique session ID for this login
-    const sessionId = require('crypto').randomBytes(32).toString('hex');
+        // Generate unique session ID for this login
+        const sessionId = require('crypto').randomBytes(32).toString('hex');
 
-    //generating jwt token with session ID
-    const token = jwt.sign(
-        {
+        //generating jwt token with session ID
+        const token = jwt.sign(
+            {
+                id: existingUser.id,
+                email: existingUser.email,
+                role: existingUser.accountType,
+                sessionId: sessionId
+            },
+            JWT_SECRET,
+            { expiresIn: '7d' }
+        );
+
+        // Store session in Redis for logout from all devices functionality
+        await redisClient.set(`session:${existingUser.id}:${sessionId}`, 'active', { EX: 7 * 24 * 60 * 60 });
+
+        //send token in http-only cookie
+        res.cookie('token', token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            maxAge: 7 * 24 * 60 * 60 * 1000 //7days
+        });
+
+        // Build user object with all fields frontend expects
+        const userResponse = {
             id: existingUser.id,
+            fullName: existingUser.fullName,
             email: existingUser.email,
-            role: existingUser.accountType,
-            sessionId: sessionId
-        },
-        JWT_SECRET,
-        {expiresIn: '7d'}
-    );
+            role: existingUser.accountType, // Current role for permissions
+            accountType: existingUser.accountType, // Account classification
+            accountStatus: existingUser.accountStatus,
+            profilePicture: existingUser.profilePicture || null,
+            username: existingUser.username || null,
+            bio: existingUser.bio || null,
+            location: existingUser.location || null,
+            emailVerified: existingUser.emailVerified || false
+        };
 
-    // Store session in Redis for logout from all devices functionality
-    await redisClient.set(`session:${existingUser.id}:${sessionId}`, 'active', {EX: 7 * 24 * 60 * 60});
-
-    //send token in http-only cookie
-    res.cookie('token', token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: 7 * 24 * 60 * 60 * 1000 //7days
-    });
-
-    // Build user object with all fields frontend expects
-    const userResponse = {
-        id: existingUser.id,
-        fullName: existingUser.fullName,
-        email: existingUser.email,
-        role: existingUser.accountType, // Current role for permissions
-        accountType: existingUser.accountType, // Account classification
-        accountStatus: existingUser.accountStatus,
-        profilePicture: existingUser.profilePicture || null,
-        username: existingUser.username || null,
-        bio: existingUser.bio || null,
-        location: existingUser.location || null,
-        emailVerified: existingUser.emailVerified || false
-    };
-
-    res.status(200).json({
-        message:"User successfully signed in.",
-        user: userResponse,
-        token: token // Include token in response for Flutter Web
-    })
-   }catch(error){
-    res.status(500).json({message:"Error signing user in", error:error.message})
-   }
+        res.status(200).json({
+            message: "User successfully signed in.",
+            user: userResponse,
+            token: token // Include token in response for Flutter Web
+        })
+    } catch (error) {
+        res.status(500).json({ message: "Error signing user in", error: error.message })
+    }
 };
 
 //forgot password
-const forgotPassword = async(req,res)=>{
-    const {email} = req.body;
+const forgotPassword = async (req, res) => {
+    const { email } = req.body;
 
-    if(!email){
-       return res.status(400).json({message:"Email is required."})
+    if (!email) {
+        return res.status(400).json({ message: "Email is required." })
     }
 
-    if(!validateEmail(email)){
-        return res.status(400).json({message:"Please provide a valid email address"})
+    if (!validateEmail(email)) {
+        return res.status(400).json({ message: "Please provide a valid email address" })
     }
 
-    try{
-     const userEmail = await UserTable.findOne({where: {email: email.toLowerCase().trim()}})
-     if(!userEmail){
-        return res.status(404).json({message:"No user found with this email."})
-     }
+    try {
+        const userEmail = await UserTable.findOne({ where: { email: email.toLowerCase().trim() } })
+        if (!userEmail) {
+            return res.status(404).json({ message: "No user found with this email." })
+        }
 
-     // Check if account is active
-     if(userEmail.accountStatus !== 'active'){
-        return res.status(403).json({message:"Account is not active. Please contact support."})
-     }
+        // Check if account is active
+        if (userEmail.accountStatus !== 'active') {
+            return res.status(403).json({ message: "Account is not active. Please contact support." })
+        }
 
-     //generating reset code
-     const resetcode = Math.floor(10000 + Math.random() * 90000)//5 digits
-     //store in redis
-     await redisClient.set(`reset:${email.toLowerCase().trim()}`, resetcode, {EX: 600})
-     console.log("saved reset to redis.")
-     
-     //sending reset code via email
-     try {
-         const emailTemplate = emailTemplates.passwordReset(userEmail.fullName, resetcode);
-         await sendEmail(email, emailTemplate.subject, emailTemplate.html, 'password-reset');
-         console.log(`✅ Password reset code sent to: ${email}`);
-     } catch (emailError) {
-         console.error('❌ Failed to send password reset email:', emailError);
-         // Don't fail the request if email fails, but log the error
-     }
+        //generating reset code
+        const resetcode = Math.floor(10000 + Math.random() * 90000)//5 digits
+        //store in redis
+        await redisClient.set(`reset:${email.toLowerCase().trim()}`, resetcode, { EX: 600 })
+        console.log("saved reset to redis.")
 
-     res.json({ message: 'Reset code sent to your email address.' });
+        //sending reset code via email
+        try {
+            const emailTemplate = emailTemplates.passwordReset(userEmail.fullName, resetcode);
+            await sendEmail(email, emailTemplate.subject, emailTemplate.html, 'password-reset');
+            console.log(`✅ Password reset code sent to: ${email}`);
+        } catch (emailError) {
+            console.error('❌ Failed to send password reset email:', emailError);
+            // Don't fail the request if email fails, but log the error
+        }
 
-    }catch(error){
+        res.json({ message: 'Reset code sent to your email address.' });
+
+    } catch (error) {
         res.status(500).json({ message: 'Error generating reset code', error: error.message });
     }
 };
 
 //verify reset code
-const verifyResetCode = async(req,res)=>{
+const verifyResetCode = async (req, res) => {
     // Accept both 'otp' and 'resetCode' field names for frontend compatibility
-    const {email, resetCode: resetCodeFromBody, otp} = req.body;
-    
+    const { email, resetCode: resetCodeFromBody, otp } = req.body;
+
     // Use whichever field is provided
     const resetCode = resetCodeFromBody || otp;
 
-    if(!email || !resetCode){
-        return res.status(400).json({message:"Email and reset code are required."})
+    if (!email || !resetCode) {
+        return res.status(400).json({ message: "Email and reset code are required." })
     }
 
-    if(!validateEmail(email)){
-        return res.status(400).json({message:"Please provide a valid email address"})
+    if (!validateEmail(email)) {
+        return res.status(400).json({ message: "Please provide a valid email address" })
     }
 
-    if(!resetCode.toString().match(/^\d{5}$/)){
-        return res.status(400).json({message:"Reset code must be 5 digits."})
+    if (!resetCode.toString().match(/^\d{5}$/)) {
+        return res.status(400).json({ message: "Reset code must be 5 digits." })
     }
 
     try {
         const storedCode = await redisClient.get(`reset:${email.toLowerCase().trim()}`);
 
         if (!storedCode) {
-          return res.status(400).json({ message: 'Reset code has expired.'});
+            return res.status(400).json({ message: 'Reset code has expired.' });
         }
-    
+
         if (storedCode !== resetCode) {
-          return res.status(400).json({ message: 'Invalid reset code.'});
+            return res.status(400).json({ message: 'Invalid reset code.' });
         }
-    
+
         res.status(200).json({ message: 'Reset code verified successfully.' });
-      } catch (error) {
-        res.status(500).json({ message: 'Error verifying code', error: error.message});
-      }
+    } catch (error) {
+        res.status(500).json({ message: 'Error verifying code', error: error.message });
+    }
 };
 
-const resetPassword = async(req,res)=>{
-    const {email, resetCode, newPassword, confirmNewPassword} = req.body;
+const resetPassword = async (req, res) => {
+    const { email, resetCode, newPassword, confirmNewPassword } = req.body;
 
-    if(!email || !resetCode || !newPassword || !confirmNewPassword){
-        return res.status(400).json({message:"All fields are required."})
+    if (!email || !resetCode || !newPassword || !confirmNewPassword) {
+        return res.status(400).json({ message: "All fields are required." })
     }
 
-    if(!validateEmail(email)){
-        return res.status(400).json({message:"Please provide a valid email address"})
+    if (!validateEmail(email)) {
+        return res.status(400).json({ message: "Please provide a valid email address" })
     }
 
-    if(!resetCode.toString().match(/^\d{5}$/)){
-        return res.status(400).json({message:"Reset code must be 5 digits."})
+    if (!resetCode.toString().match(/^\d{5}$/)) {
+        return res.status(400).json({ message: "Reset code must be 5 digits." })
     }
 
-    if(!validatePassword(newPassword)){
-        return res.status(400).json({message:"Password must be at least 8 characters with uppercase, lowercase, and number"})
+    if (!validatePassword(newPassword)) {
+        return res.status(400).json({ message: "Password must be at least 8 characters with uppercase, lowercase, and number" })
     }
 
-    if(newPassword !== confirmNewPassword){
-        return res.status(400).json({message:"New password and confirm password do not match."})
+    if (newPassword !== confirmNewPassword) {
+        return res.status(400).json({ message: "New password and confirm password do not match." })
     }
 
     try {
@@ -413,22 +413,22 @@ const resetPassword = async(req,res)=>{
         const storedCode = await redisClient.get(`reset:${email.toLowerCase().trim()}`);
 
         if (!storedCode) {
-            return res.status(400).json({ message: 'Reset code has expired.'});
+            return res.status(400).json({ message: 'Reset code has expired.' });
         }
 
         if (storedCode !== resetCode) {
-            return res.status(400).json({ message: 'Invalid reset code.'});
+            return res.status(400).json({ message: 'Invalid reset code.' });
         }
 
         // Find the user
-        const user = await UserTable.findOne({where: {email: email.toLowerCase().trim()}});
-        if(!user){
-            return res.status(404).json({message:"User not found."})
+        const user = await UserTable.findOne({ where: { email: email.toLowerCase().trim() } });
+        if (!user) {
+            return res.status(404).json({ message: "User not found." })
         }
 
         // Check if account is active
-        if(user.accountStatus !== 'active'){
-            return res.status(403).json({message:"Account is not active. Please contact support."})
+        if (user.accountStatus !== 'active') {
+            return res.status(403).json({ message: "Account is not active. Please contact support." })
         }
 
         // Hash the new password
@@ -445,7 +445,7 @@ const resetPassword = async(req,res)=>{
 
         res.status(200).json({ message: 'Password reset successfully.' });
     } catch (error) {
-        res.status(500).json({ message: 'Error resetting password', error: error.message});
+        res.status(500).json({ message: 'Error resetting password', error: error.message });
     }
 };
 
@@ -454,7 +454,7 @@ const validateBusinessCategory = async (category) => {
     try {
         // Import ProductCategory model
         const { ProductCategory } = require('../models');
-        
+
         // Check if category exists in the universal category system
         // Support both UUID and name lookup
         let categoryRecord;
@@ -463,14 +463,14 @@ const validateBusinessCategory = async (category) => {
             categoryRecord = await ProductCategory.findByPk(category);
         } else {
             // Name format
-            categoryRecord = await ProductCategory.findOne({ 
-                where: { 
+            categoryRecord = await ProductCategory.findOne({
+                where: {
                     name: category,
-                    isActive: true 
-                } 
+                    isActive: true
+                }
             });
         }
-        
+
         return !!categoryRecord; // Return true if category exists
     } catch (error) {
         console.error('Error validating business category:', error);
@@ -490,10 +490,10 @@ const validateImageUrl = (imageUrl) => {
     return imageRegex.test(imageUrl) || imageUrl.startsWith('data:image/');
 };
 
-const sellerRegistration = async(req,res)=>{
+const sellerRegistration = async (req, res) => {
     const {
-        businessName, 
-        businessAddress, 
+        businessName,
+        businessAddress,
         businessDescription,
         sellerTypes, // Array of seller types (retailer, wholesaler, etc.)
         selectedCategories, // Array of main categories
@@ -502,8 +502,8 @@ const sellerRegistration = async(req,res)=>{
         businessPhone,
         country,
         state,
-        documentType, 
-        documentNumber, 
+        documentType,
+        documentNumber,
         personalIdType,
         personalIdNumber
     } = req.body;
@@ -531,7 +531,7 @@ const sellerRegistration = async(req,res)=>{
         try {
             parsedSellerTypes = JSON.parse(sellerTypes);
         } catch (error) {
-            return res.status(400).json({message:"Invalid sellerTypes format. Must be a valid JSON array."})
+            return res.status(400).json({ message: "Invalid sellerTypes format. Must be a valid JSON array." })
         }
     }
 
@@ -540,7 +540,7 @@ const sellerRegistration = async(req,res)=>{
         try {
             parsedSelectedCategories = JSON.parse(selectedCategories);
         } catch (error) {
-            return res.status(400).json({message:"Invalid selectedCategories format. Must be a valid JSON array."})
+            return res.status(400).json({ message: "Invalid selectedCategories format. Must be a valid JSON array." })
         }
     }
 
@@ -549,70 +549,70 @@ const sellerRegistration = async(req,res)=>{
         try {
             parsedSelectedSubcategories = JSON.parse(selectedSubcategories);
         } catch (error) {
-            return res.status(400).json({message:"Invalid selectedSubcategories format. Must be a valid JSON object."})
+            return res.status(400).json({ message: "Invalid selectedSubcategories format. Must be a valid JSON object." })
         }
     }
 
     try {
         // Input validation
-        if(!businessName || !businessAddress || !businessDescription || !parsedSellerTypes || !parsedSelectedCategories || !country || !documentType || !businessDocumentFile){
-            return res.status(400).json({message:"All required fields must be provided"})
+        if (!businessName || !businessAddress || !businessDescription || !parsedSellerTypes || !parsedSelectedCategories || !country || !documentType || !businessDocumentFile) {
+            return res.status(400).json({ message: "All required fields must be provided" })
         }
 
-        if(businessName.trim().length < 2){
-            return res.status(400).json({message:"Business name must be at least 2 characters long"})
+        if (businessName.trim().length < 2) {
+            return res.status(400).json({ message: "Business name must be at least 2 characters long" })
         }
 
-        if(businessAddress.trim().length < 10){
-            return res.status(400).json({message:"Business address must be at least 10 characters long"})
+        if (businessAddress.trim().length < 10) {
+            return res.status(400).json({ message: "Business address must be at least 10 characters long" })
         }
 
-        if(businessDescription.trim().length < 10){
-            return res.status(400).json({message:"Business description must be at least 10 characters long"})
+        if (businessDescription.trim().length < 10) {
+            return res.status(400).json({ message: "Business description must be at least 10 characters long" })
         }
 
         // Validate seller types
         const validSellerTypes = ['retailer', 'wholesaler', 'distributor', 'manufacturer'];
-        if(!Array.isArray(parsedSellerTypes) || parsedSellerTypes.length === 0){
-            return res.status(400).json({message:"Please select at least one seller type. You can select multiple types if applicable to your business."})
+        if (!Array.isArray(parsedSellerTypes) || parsedSellerTypes.length === 0) {
+            return res.status(400).json({ message: "Please select at least one seller type. You can select multiple types if applicable to your business." })
         }
-        for(const type of parsedSellerTypes){
-            if(!validSellerTypes.includes(type)){
-                return res.status(400).json({message:`Invalid seller type: ${type}`})
+        for (const type of parsedSellerTypes) {
+            if (!validSellerTypes.includes(type)) {
+                return res.status(400).json({ message: `Invalid seller type: ${type}` })
             }
         }
 
         // Validate selected categories
-        if(!Array.isArray(parsedSelectedCategories) || parsedSelectedCategories.length === 0 || parsedSelectedCategories.length > 5){
-            return res.status(400).json({message:"You must select 1-5 main categories"})
+        if (!Array.isArray(parsedSelectedCategories) || parsedSelectedCategories.length === 0 || parsedSelectedCategories.length > 5) {
+            return res.status(400).json({ message: "You must select 1-5 main categories" })
         }
 
         // Validate business email if provided
-        if(businessEmail && !businessEmail.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)){
-            return res.status(400).json({message:"Invalid business email format"})
+        if (businessEmail && !businessEmail.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
+            return res.status(400).json({ message: "Invalid business email format" })
         }
 
         // Validate business phone if provided
-        if(businessPhone && businessPhone.trim().length < 10){
-            return res.status(400).json({message:"Business phone number must be at least 10 characters long"})
+        if (businessPhone && businessPhone.trim().length < 10) {
+            return res.status(400).json({ message: "Business phone number must be at least 10 characters long" })
         }
 
-        if(!validateDocumentType(documentType)){
-            return res.status(400).json({message:"Invalid document type"})
+        if (!validateDocumentType(documentType)) {
+            return res.status(400).json({ message: "Invalid document type" })
         }
 
-        if(documentNumber && documentNumber.trim().length < 3){
-            return res.status(400).json({message:"Document number must be at least 3 characters long"})
+        if (documentNumber && documentNumber.trim().length < 3) {
+            return res.status(400).json({ message: "Document number must be at least 3 characters long" })
         }
 
         // Validate business document file
-        if(!businessDocumentFile || !businessDocumentFile[0]){
-            return res.status(400).json({message:"Business document file is required"})
+        if (!businessDocumentFile || !businessDocumentFile[0]) {
+            return res.status(400).json({ message: "Business document file is required" })
         }
 
         // Validate personal ID file if provided
-        if(personalIdType && (!personalIdFile || !personalIdFile[0])){
-            return res.status(400).json({message:"Personal ID file is required when personal ID type is provided"})
+        if (personalIdType && (!personalIdFile || !personalIdFile[0])) {
+            return res.status(400).json({ message: "Personal ID file is required when personal ID type is provided" })
         }
 
         const currentUserId = req.user.id;
@@ -626,34 +626,34 @@ const sellerRegistration = async(req,res)=>{
         });
 
         // Check if user already has a seller account
-        const existingSeller = await SellersTable.findOne({where: {userId: currentUserId}});
-            if(existingSeller){
-                console.log('Existing seller found:', {
-                    id: existingSeller.id,
-                    userId: existingSeller.userId,
-                    verificationStatus: existingSeller.verificationStatus,
-                    businessName: existingSeller.businessName,
-                    createdAt: existingSeller.createdAt
-                });
-                
-                if(existingSeller.verificationStatus === 'approved'){
+        const existingSeller = await SellersTable.findOne({ where: { userId: currentUserId } });
+        if (existingSeller) {
+            console.log('Existing seller found:', {
+                id: existingSeller.id,
+                userId: existingSeller.userId,
+                verificationStatus: existingSeller.verificationStatus,
+                businessName: existingSeller.businessName,
+                createdAt: existingSeller.createdAt
+            });
+
+            if (existingSeller.verificationStatus === 'approved') {
                 return res.status(400).json({
-                    message:"You are already an approved seller.",
+                    message: "You are already an approved seller.",
                     sellerId: existingSeller.id,
                     businessName: existingSeller.businessName,
                     verificationStatus: existingSeller.verificationStatus
                 })
-            }else if(existingSeller.verificationStatus === 'pending'){
+            } else if (existingSeller.verificationStatus === 'pending') {
                 return res.status(400).json({
-                    message:"Your seller application is currently under review.",
+                    message: "Your seller application is currently under review.",
                     sellerId: existingSeller.id,
                     businessName: existingSeller.businessName,
                     verificationStatus: existingSeller.verificationStatus,
                     submittedAt: existingSeller.createdAt
                 })
-            }else if(existingSeller.verificationStatus === 'rejected'){
+            } else if (existingSeller.verificationStatus === 'rejected') {
                 return res.status(400).json({
-                    message:"Your previous seller application was rejected. Please contact support for appeal.",
+                    message: "Your previous seller application was rejected. Please contact support for appeal.",
                     sellerId: existingSeller.id,
                     businessName: existingSeller.businessName,
                     verificationStatus: existingSeller.verificationStatus,
@@ -662,7 +662,7 @@ const sellerRegistration = async(req,res)=>{
             } else {
                 console.log('Unknown verification status:', existingSeller.verificationStatus);
                 return res.status(400).json({
-                    message:`Your seller account has an unknown status: ${existingSeller.verificationStatus}. Please contact support.`,
+                    message: `Your seller account has an unknown status: ${existingSeller.verificationStatus}. Please contact support.`,
                     sellerId: existingSeller.id,
                     businessName: existingSeller.businessName,
                     verificationStatus: existingSeller.verificationStatus
@@ -673,16 +673,16 @@ const sellerRegistration = async(req,res)=>{
         }
 
         // Check if business name is already taken
-        const existingBusiness = await SellersTable.findOne({where: {businessName: businessName.trim()}});
-        if(existingBusiness){
-            return res.status(400).json({message:"Business name is already registered. Please choose a different name."})
+        const existingBusiness = await SellersTable.findOne({ where: { businessName: businessName.trim() } });
+        if (existingBusiness) {
+            return res.status(400).json({ message: "Business name is already registered. Please choose a different name." })
         }
 
-        const currentuser = await UserTable.findOne({where: {id: currentUserId}});
-        
+        const currentuser = await UserTable.findOne({ where: { id: currentUserId } });
+
         // Check if user exists
         if (!currentuser) {
-            return res.status(404).json({message: "User not found. Please log in again."});
+            return res.status(404).json({ message: "User not found. Please log in again." });
         }
 
         // Create seller record with all new fields
@@ -692,7 +692,7 @@ const sellerRegistration = async(req,res)=>{
         console.log('   Business Name:', businessName.trim());
         console.log('   Business Address:', businessAddress.trim());
         console.log('   Country:', country);
-        
+
         const newSeller = await SellersTable.create({
             userId: currentUserId,
             fullName: currentuser.fullName,
@@ -713,19 +713,19 @@ const sellerRegistration = async(req,res)=>{
 
         // Upload files to Cloudinary and create document records
         const documents = [];
-        
+
         try {
             // Upload business document (from multipart/form-data buffer)
             const businessDocUpload = await CloudinaryService.uploadFile(
                 businessDocumentFile[0].buffer,
                 `seller-documents/${newSeller.id}/business-document`,
-                { 
-                    folder: 'seller-documents', 
+                {
+                    folder: 'seller-documents',
                     resource_type: 'auto',
                     public_id: `business-doc-${newSeller.id}`
                 }
             );
-            
+
             documents.push({
                 sellerId: newSeller.id,
                 documentType,
@@ -733,19 +733,19 @@ const sellerRegistration = async(req,res)=>{
                 documentImage: businessDocUpload.secure_url,
                 status: 'pending'
             });
-            
+
             // Upload personal ID document (if provided)
-            if(personalIdType && personalIdFile && personalIdFile[0]){
+            if (personalIdType && personalIdFile && personalIdFile[0]) {
                 const personalIdUpload = await CloudinaryService.uploadFile(
                     personalIdFile[0].buffer,
                     `seller-documents/${newSeller.id}/personal-id`,
-                    { 
-                        folder: 'seller-documents', 
+                    {
+                        folder: 'seller-documents',
                         resource_type: 'auto',
                         public_id: `personal-id-${newSeller.id}`
                     }
                 );
-                
+
                 documents.push({
                     sellerId: newSeller.id,
                     documentType: personalIdType,
@@ -754,10 +754,10 @@ const sellerRegistration = async(req,res)=>{
                     status: 'pending'
                 });
             }
-            
+
             // Create all documents
             await SellerDocument.bulkCreate(documents);
-            
+
         } catch (uploadError) {
             console.error('File upload error:', uploadError);
             // If file upload fails, delete the seller record
@@ -818,7 +818,7 @@ const sellerRegistration = async(req,res)=>{
             }
         });
     } catch (error) {
-        res.status(500).json({message:"Seller registration failed.", error: error.message})
+        res.status(500).json({ message: "Seller registration failed.", error: error.message })
     }
 }
 
@@ -840,7 +840,7 @@ const verifyEmail = async (req, res) => {
         const redisKey = `email_verification:${token}`;
         try {
             const cachedUserData = await redisClient.get(redisKey);
-            
+
             if (cachedUserData) {
                 // Token found in Redis cache
                 const userData = JSON.parse(cachedUserData);
@@ -850,7 +850,7 @@ const verifyEmail = async (req, res) => {
         } catch (redisError) {
             console.error('❌ Redis lookup failed (falling back to database):', redisError.message);
         }
-        
+
         // Fallback to database lookup if Redis failed or no cache found
         if (!user) {
             user = await UserTable.findOne({
@@ -864,15 +864,15 @@ const verifyEmail = async (req, res) => {
         }
 
         if (!user) {
-            return res.status(400).json({ 
-                message: "Invalid or expired verification token" 
+            return res.status(400).json({
+                message: "Invalid or expired verification token"
             });
         }
 
         // Check if already verified (prevent double verification)
         if (user.emailVerified) {
-            return res.status(400).json({ 
-                message: "Email is already verified" 
+            return res.status(400).json({
+                message: "Email is already verified"
             });
         }
 
@@ -887,7 +887,7 @@ const verifyEmail = async (req, res) => {
         // Clear Redis cache
         try {
             await redisClient.del(redisKey);
-            
+
             // Set user session in Redis for faster future logins
             const sessionKey = `user_session:${user.id}`;
             await redisClient.setEx(sessionKey, 3600, JSON.stringify({
@@ -939,9 +939,9 @@ const resendVerificationEmail = async (req, res) => {
         // Rate limiting: Check if user has exceeded resend attempts
         const rateLimitKey = `resend_rate_limit:${email.toLowerCase().trim()}`;
         const resendAttempts = await redisClient.get(rateLimitKey);
-        
+
         if (resendAttempts && parseInt(resendAttempts) >= 5) {
-            return res.status(429).json({ 
+            return res.status(429).json({
                 message: "Too many resend attempts. Please wait 1 hour before trying again.",
                 retryAfter: 3600 // 1 hour in seconds
             });
@@ -972,7 +972,7 @@ const resendVerificationEmail = async (req, res) => {
         const resendKey = `resend_count:${user.id}`;
         const currentCount = await redisClient.get(resendKey) || 0;
         const newResendCount = parseInt(currentCount) + 1;
-        
+
         // Cache new verification token in Redis
         const redisKey = `email_verification:${emailVerificationToken}`;
         try {
@@ -990,8 +990,8 @@ const resendVerificationEmail = async (req, res) => {
         }
 
         // Send verification email
-        const backendUrl = process.env.NODE_ENV === 'production' 
-            ? process.env.RAILWAY_PUBLIC_DOMAIN || process.env.BACKEND_URL || 'https://your-backend-domain.com'
+        const backendUrl = process.env.NODE_ENV === 'production'
+            ? process.env.BASE_URL || process.env.RAILWAY_PUBLIC_DOMAIN || process.env.BACKEND_URL || 'https://your-backend-domain.com'
             : 'http://localhost:5000';
         const verificationLink = `${backendUrl}/verify-email?token=${emailVerificationToken}`;
         const emailTemplate = emailTemplates.emailVerification(user.fullName, verificationLink);
@@ -1000,7 +1000,7 @@ const resendVerificationEmail = async (req, res) => {
             await sendEmail(user.email, emailTemplate.subject, emailTemplate.html, 'verification');
             console.log('✅ Resend verification email sent to:', user.email);
             console.log('✅ New verification token cached in Redis:', redisKey);
-            
+
             // Increment rate limiting counter
             try {
                 await redisClient.incr(rateLimitKey);
@@ -1008,7 +1008,7 @@ const resendVerificationEmail = async (req, res) => {
             } catch (redisError) {
                 console.error('❌ Redis rate limiting failed:', redisError.message);
             }
-            
+
             res.status(200).json({
                 message: "Verification email sent successfully. Please check your email.",
                 resendCount: newResendCount,
@@ -1016,8 +1016,8 @@ const resendVerificationEmail = async (req, res) => {
             });
         } catch (emailError) {
             console.error('❌ Failed to resend verification email:', emailError);
-            res.status(500).json({ 
-                message: "Failed to send verification email. Please try again later." 
+            res.status(500).json({
+                message: "Failed to send verification email. Please try again later."
             });
         }
 
@@ -1034,7 +1034,7 @@ const googleMobileAuth = async (req, res) => {
 
     try {
         let googleUserInfo;
-        
+
         // Get all valid Google Client IDs (web, Android, iOS)
         const getValidClientIds = () => {
             const clientIds = [
@@ -1042,16 +1042,16 @@ const googleMobileAuth = async (req, res) => {
                 process.env.GOOGLE_ANDROID_CLIENT_ID,   // Android client ID
                 process.env.GOOGLE_IOS_CLIENT_ID        // iOS client ID
             ].filter(Boolean); // Remove undefined/null values
-            
+
             return clientIds;
         };
-        
+
         // Handle ID token (mobile) or access token (web)
         if (idToken) {
             // Mobile: Verify ID token (Android & iOS)
             // Updated to use the correct Google OAuth 2.0 endpoint
             const tokenInfoUrl = `https://oauth2.googleapis.com/tokeninfo?id_token=${idToken}`;
-            
+
             try {
                 const response = await axios.get(tokenInfoUrl);
                 googleUserInfo = response.data;
@@ -1066,13 +1066,13 @@ const googleMobileAuth = async (req, res) => {
                         hasAndroid: !!process.env.GOOGLE_ANDROID_CLIENT_ID,
                         hasIOS: !!process.env.GOOGLE_IOS_CLIENT_ID
                     });
-                    return res.status(401).json({ 
-                        message: "Invalid token: token was not issued for this application. Please ensure you're using the correct Google Sign-In configuration for your platform (web/Android/iOS)." 
+                    return res.status(401).json({
+                        message: "Invalid token: token was not issued for this application. Please ensure you're using the correct Google Sign-In configuration for your platform (web/Android/iOS)."
                     });
                 }
             } catch (verifyError) {
                 console.error('Google token verification error:', verifyError);
-                return res.status(401).json({ 
+                return res.status(401).json({
                     message: "Invalid or expired Google ID token",
                     error: verifyError.response?.data?.error_description || verifyError.message
                 });
@@ -1083,7 +1083,7 @@ const googleMobileAuth = async (req, res) => {
             try {
                 const verifyUrl = `https://oauth2.googleapis.com/tokeninfo?access_token=${accessToken}`;
                 const verifyResponse = await axios.get(verifyUrl);
-                
+
                 // Verify the token was issued for one of our apps (web, Android, or iOS)
                 const validClientIds = getValidClientIds();
                 if (!validClientIds.includes(verifyResponse.data.audience)) {
@@ -1094,11 +1094,11 @@ const googleMobileAuth = async (req, res) => {
                         hasAndroid: !!process.env.GOOGLE_ANDROID_CLIENT_ID,
                         hasIOS: !!process.env.GOOGLE_IOS_CLIENT_ID
                     });
-                    return res.status(401).json({ 
-                        message: "Invalid token: token was not issued for this application. Please ensure you're using the correct Google Sign-In configuration for your platform (web/Android/iOS)." 
+                    return res.status(401).json({
+                        message: "Invalid token: token was not issued for this application. Please ensure you're using the correct Google Sign-In configuration for your platform (web/Android/iOS)."
                     });
                 }
-                
+
                 // Use provided user info (already verified by Google Sign-In SDK)
                 googleUserInfo = {
                     sub: userInfo.id,
@@ -1108,14 +1108,14 @@ const googleMobileAuth = async (req, res) => {
                 };
             } catch (verifyError) {
                 console.error('Google access token verification error:', verifyError);
-                return res.status(401).json({ 
+                return res.status(401).json({
                     message: "Invalid or expired Google access token",
                     error: verifyError.response?.data?.error_description || verifyError.message
                 });
             }
         } else {
-            return res.status(400).json({ 
-                message: "Either Google ID token or access token with user info is required" 
+            return res.status(400).json({
+                message: "Either Google ID token or access token with user info is required"
             });
         }
 
@@ -1132,8 +1132,8 @@ const googleMobileAuth = async (req, res) => {
         }
 
         if (!email) {
-            return res.status(400).json({ 
-                message: "Email not provided in Google token" 
+            return res.status(400).json({
+                message: "Email not provided in Google token"
             });
         }
 
@@ -1142,29 +1142,29 @@ const googleMobileAuth = async (req, res) => {
             const baseName = fullName.toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 8);
             const randomSuffix = crypto.randomBytes(4).toString('hex');
             let username = `@${baseName}_${randomSuffix}`;
-            
+
             // Ensure username is unique
             let counter = 1;
             while (await UserTable.findOne({ where: { username } })) {
                 username = `@${baseName}_${randomSuffix}${counter}`;
                 counter++;
             }
-            
+
             return username;
         };
 
         // Check if user already exists with this Google ID
         let user = await UserTable.findOne({ where: { google_Id: googleId } });
-        
+
         if (user) {
             // User already exists with Google ID
             console.log('✅ Existing Google user found:', user.email);
         } else {
             // Check if user exists with this email (from regular signup)
-            const existingUser = await UserTable.findOne({ 
-                where: { email: email.toLowerCase().trim() } 
+            const existingUser = await UserTable.findOne({
+                where: { email: email.toLowerCase().trim() }
             });
-            
+
             if (existingUser) {
                 // User exists with this email, link Google ID to existing account
                 // Preserve existing profile picture - only use Google's if user has none
@@ -1180,7 +1180,7 @@ const googleMobileAuth = async (req, res) => {
                 const randomPassword = Math.random().toString(36).slice(-8);
                 const hashedPassword = await bcrypt.hash(randomPassword, 10);
                 const username = await generateUsername(fullName);
-                
+
                 user = await UserTable.create({
                     google_Id: googleId,
                     fullName: fullName.trim(),
@@ -1239,9 +1239,9 @@ const googleMobileAuth = async (req, res) => {
 
     } catch (error) {
         console.error('Google mobile auth error:', error);
-        res.status(500).json({ 
-            message: "Error authenticating with Google", 
-            error: error.message 
+        res.status(500).json({
+            message: "Error authenticating with Google",
+            error: error.message
         });
     }
 };
@@ -1263,165 +1263,165 @@ const performAccountDeletion = async (userId, reason = 'User requested account d
 
     try {
         // 1. Soft delete and anonymize user account
-            const deletedEmail = `deleted_${userId.substring(0, 8)}@deleted.local`;
-            const deletedUsername = `deleted_${userId.substring(0, 8)}`;
-            
-            await user.update({
-                accountStatus: 'deactivated',
-                fullName: 'Deleted User',
-                email: deletedEmail,
-                username: deletedUsername,
-                profilePicture: null,
-                coverPicture: null,
-                bio: null,
-                location: null,
-                website: null,
-                google_Id: null,
-                emailVerificationToken: null,
-                emailVerificationExpires: null,
-                deleteReason: reason,
-                deletedAt: new Date()
-            }, { transaction });
+        const deletedEmail = `deleted_${userId.substring(0, 8)}@deleted.local`;
+        const deletedUsername = `deleted_${userId.substring(0, 8)}`;
 
-            // 2. Soft delete user's products (if seller)
-            const seller = await SellersTable.findOne({
+        await user.update({
+            accountStatus: 'deactivated',
+            fullName: 'Deleted User',
+            email: deletedEmail,
+            username: deletedUsername,
+            profilePicture: null,
+            coverPicture: null,
+            bio: null,
+            location: null,
+            website: null,
+            google_Id: null,
+            emailVerificationToken: null,
+            emailVerificationExpires: null,
+            deleteReason: reason,
+            deletedAt: new Date()
+        }, { transaction });
+
+        // 2. Soft delete user's products (if seller)
+        const seller = await SellersTable.findOne({
+            where: { userId: userId },
+            transaction
+        });
+
+        if (seller) {
+            // Anonymize and deactivate the seller record
+            await SellersTable.update(
+                {
+                    fullName: 'Deleted User',
+                    businessName: 'Deleted Business',
+                    email: `deleted_seller_${seller.id.substring(0, 8)}@deleted.local`,
+                    phoneNumber: 'deleted',
+                    businessAddress: 'Deleted',
+                    businessDescription: null,
+                    verificationStatus: 'suspended',
+                    isVerified: false
+                },
+                { where: { id: seller.id }, transaction }
+            );
+
+            await Product.update(
+                {
+                    status: 'inactive',
+                    isAvailable: false
+                },
+                {
+                    where: { sellerId: seller.id },
+                    transaction
+                }
+            );
+        }
+
+        // 3. Soft delete user's posts
+        await Post.update(
+            { status: 'inactive' },
+            {
                 where: { userId: userId },
                 transaction
-            });
-
-            if (seller) {
-                // Anonymize and deactivate the seller record
-                await SellersTable.update(
-                    {
-                        fullName: 'Deleted User',
-                        businessName: 'Deleted Business',
-                        email: `deleted_seller_${seller.id.substring(0, 8)}@deleted.local`,
-                        phoneNumber: 'deleted',
-                        businessAddress: 'Deleted',
-                        businessDescription: null,
-                        verificationStatus: 'suspended',
-                        isVerified: false
-                    },
-                    { where: { id: seller.id }, transaction }
-                );
-
-                await Product.update(
-                    { 
-                        status: 'inactive',
-                        isAvailable: false 
-                    },
-                    { 
-                        where: { sellerId: seller.id },
-                        transaction 
-                    }
-                );
             }
+        );
 
-            // 3. Soft delete user's posts
-            await Post.update(
-                { status: 'inactive' },
-                { 
-                    where: { userId: userId },
-                    transaction 
-                }
-            );
-
-            // 4. Cancel/soft delete user's auctions
-            await Auction.update(
-                { status: 'cancelled' },
-                { 
-                    where: { 
-                        sellerId: userId,
-                        status: { [Op.in]: ['draft', 'active', 'paused'] }
-                    },
-                    transaction 
-                }
-            );
-
-            // 5. Cancel/soft delete user's group buys
-            await GroupBuy.update(
-                { status: 'cancelled' },
-                { 
-                    where: { 
-                        creator_id: userId,
-                        status: { [Op.in]: ['pending', 'active'] }
-                    },
-                    transaction 
-                }
-            );
-
-            // 6. Cancel/soft delete user's swap deals
-            await SwapDeal.update(
-                { status: 'cancelled' },
-                { 
-                    where: { 
-                        sellerId: userId,
-                        status: { [Op.in]: ['pending', 'active'] }
-                    },
-                    transaction 
-                }
-            );
-
-            // 7. Cancel/soft delete user's buyer needs
-            await BuyerNeed.update(
-                { status: 'cancelled' },
-                { 
-                    where: { 
-                        buyer_id: userId,
-                        status: { [Op.in]: ['active', 'in_progress'] }
-                    },
-                    transaction 
-                }
-            );
-
-            // 8. Remove user's follows and followers
-            await UserFollows.destroy({
+        // 4. Cancel/soft delete user's auctions
+        await Auction.update(
+            { status: 'cancelled' },
+            {
                 where: {
-                    [Op.or]: [
-                        { user_id: userId },
-                        { follows_user_id: userId }
-                    ]
+                    sellerId: userId,
+                    status: { [Op.in]: ['draft', 'active', 'paused'] }
                 },
                 transaction
-            });
-
-            // 9. Remove user's saved items (unified system)
-            await SavedItem.destroy({
-                where: { userId: userId },
-                transaction
-            });
-
-            // 10. Remove user's likes
-            await PostLike.destroy({
-                where: { userId: userId },
-                transaction
-            });
-
-            await ProductLike.destroy({
-                where: { userId: userId },
-                transaction
-            });
-
-            // 11. Delete user's notifications (personal notifications)
-            await Notification.destroy({
-                where: { userId: userId },
-                transaction
-            });
-
-            // 12. Clear all user sessions from Redis
-            const sessionKeys = await redisClient.keys(`session:${userId}:*`);
-            if (sessionKeys.length > 0) {
-                await redisClient.del(sessionKeys);
             }
+        );
 
-            await transaction.commit();
-
-            try {
-                const emailTemplate = emailTemplates.accountDeleted(originalFullName, new Date().toLocaleDateString());
-                await sendEmail(originalEmail, emailTemplate.subject, emailTemplate.html, 'account-deletion');
-            } catch (emailError) {
-                console.error('Error sending deletion confirmation email:', emailError);
+        // 5. Cancel/soft delete user's group buys
+        await GroupBuy.update(
+            { status: 'cancelled' },
+            {
+                where: {
+                    creator_id: userId,
+                    status: { [Op.in]: ['pending', 'active'] }
+                },
+                transaction
             }
+        );
+
+        // 6. Cancel/soft delete user's swap deals
+        await SwapDeal.update(
+            { status: 'cancelled' },
+            {
+                where: {
+                    sellerId: userId,
+                    status: { [Op.in]: ['pending', 'active'] }
+                },
+                transaction
+            }
+        );
+
+        // 7. Cancel/soft delete user's buyer needs
+        await BuyerNeed.update(
+            { status: 'cancelled' },
+            {
+                where: {
+                    buyer_id: userId,
+                    status: { [Op.in]: ['active', 'in_progress'] }
+                },
+                transaction
+            }
+        );
+
+        // 8. Remove user's follows and followers
+        await UserFollows.destroy({
+            where: {
+                [Op.or]: [
+                    { user_id: userId },
+                    { follows_user_id: userId }
+                ]
+            },
+            transaction
+        });
+
+        // 9. Remove user's saved items (unified system)
+        await SavedItem.destroy({
+            where: { userId: userId },
+            transaction
+        });
+
+        // 10. Remove user's likes
+        await PostLike.destroy({
+            where: { userId: userId },
+            transaction
+        });
+
+        await ProductLike.destroy({
+            where: { userId: userId },
+            transaction
+        });
+
+        // 11. Delete user's notifications (personal notifications)
+        await Notification.destroy({
+            where: { userId: userId },
+            transaction
+        });
+
+        // 12. Clear all user sessions from Redis
+        const sessionKeys = await redisClient.keys(`session:${userId}:*`);
+        if (sessionKeys.length > 0) {
+            await redisClient.del(sessionKeys);
+        }
+
+        await transaction.commit();
+
+        try {
+            const emailTemplate = emailTemplates.accountDeleted(originalFullName, new Date().toLocaleDateString());
+            await sendEmail(originalEmail, emailTemplate.subject, emailTemplate.html, 'account-deletion');
+        } catch (emailError) {
+            console.error('Error sending deletion confirmation email:', emailError);
+        }
     } catch (error) {
         await transaction.rollback();
         throw error;
@@ -1499,7 +1499,7 @@ const appleMobileAuth = async (req, res) => {
         });
 
         const getKey = (header, callback) => {
-            client.getSigningKey(header.kid, function(err, key) {
+            client.getSigningKey(header.kid, function (err, key) {
                 if (err) {
                     callback(err, null);
                 } else {
@@ -1528,12 +1528,12 @@ const appleMobileAuth = async (req, res) => {
         ].filter(Boolean);
 
         if (!validClientIds.includes(decodedToken.aud)) {
-             console.log('Valid Apple Client IDs:', validClientIds, 'Received:', decodedToken.aud);
+            console.log('Valid Apple Client IDs:', validClientIds, 'Received:', decodedToken.aud);
         }
 
         const appleId = decodedToken.sub;
         const appleEmail = decodedToken.email || email;
-        
+
         if (!appleId) {
             return res.status(400).json({ message: "Apple token is missing subject (sub) claim" });
         }
@@ -1560,11 +1560,11 @@ const appleMobileAuth = async (req, res) => {
             // Check if user exists with the same email
             let existingUser = null;
             if (appleEmail) {
-                existingUser = await UserTable.findOne({ 
-                    where: { email: appleEmail.toLowerCase().trim() } 
+                existingUser = await UserTable.findOne({
+                    where: { email: appleEmail.toLowerCase().trim() }
                 });
             }
-            
+
             if (existingUser) {
                 // Link account
                 await existingUser.update({
@@ -1575,18 +1575,18 @@ const appleMobileAuth = async (req, res) => {
                 console.log('✅ Linked Apple account to existing user:', user.email);
             } else {
                 if (!appleEmail) {
-                     return res.status(400).json({ message: "Email is required for new accounts but was not provided." });
+                    return res.status(400).json({ message: "Email is required for new accounts but was not provided." });
                 }
 
                 const crypto = require('crypto');
                 const bcrypt = require('bcrypt');
-                
+
                 const randomPassword = Math.random().toString(36).slice(-8);
                 const hashedPassword = await bcrypt.hash(randomPassword, 10);
-                
+
                 let full = givenName || familyName ? `${givenName || ''} ${familyName || ''}`.trim() : appleEmail.split('@')[0];
                 const username = await generateUsername(full);
-                
+
                 user = await UserTable.create({
                     apple_Id: appleId,
                     fullName: full,
@@ -1596,7 +1596,7 @@ const appleMobileAuth = async (req, res) => {
                     agreeTerms: true,
                     accountType: 'buyer',
                     accountStatus: 'active',
-                    emailVerified: true 
+                    emailVerified: true
                 });
                 console.log('✅ New Apple user created:', user.email);
             }
@@ -1607,7 +1607,7 @@ const appleMobileAuth = async (req, res) => {
         const redisClient = require('../config/redisdb');
         const sessionId = crypto.randomBytes(32).toString('hex');
         const sessionKey = `session:${user.id}:${sessionId}`;
-        
+
         try {
             await redisClient.setEx(sessionKey, 30 * 24 * 60 * 60, 'active');
         } catch (error) {
@@ -1615,11 +1615,11 @@ const appleMobileAuth = async (req, res) => {
         }
 
         const token = jwt.sign(
-            { 
-                id: user.id, 
-                email: user.email, 
+            {
+                id: user.id,
+                email: user.email,
                 role: user.accountType,
-                sessionId 
+                sessionId
             },
             process.env.JWT_SECRET,
             { expiresIn: '30d' }
