@@ -944,6 +944,7 @@ const topPlacementRoutes = require('./src/routes/topPlacementRoutes');
 const spotlightRoutes = require('./src/routes/spotlightRoutes');
 const StoryCleanupService = require('./src/services/storyCleanupService');
 const BuyerNeedSchedulerService = require('./src/services/buyerNeedSchedulerService');
+const DistressSaleCleanupService = require('./src/services/distressSaleCleanupService');
 
 // Internal API (no auth - uses API key)
 app.use('/', internalRoutes);
@@ -1551,18 +1552,13 @@ async function syncDatabase() {
             console.log('⚠️  Failed to drop free trial columns:', error.message);
         }
 
-        // Sync active subscriptions for backward compatibility (users/sellers tables)
-        try {
-            const subscriptionService = require('./src/services/subscriptionService');
-            await subscriptionService.syncActiveSubscriptions();
-        } catch (syncErr) {
-            console.log('⚠️  Failed to sync active subscriptions at boot:', syncErr.message);
-        }
+
     
-    // Initialize story cleanup service and buyer need matching scheduler (only if not in test mode)
+    // Initialize story cleanup service, distress sale cleanup service, and buyer need matching scheduler (only if not in test mode)
     if (process.env.NODE_ENV !== 'test') {
         StoryCleanupService.scheduleCleanup();
         BuyerNeedSchedulerService.scheduleMatchingRunner();
+        DistressSaleCleanupService.scheduleCleanup();
     }
 
     // Clean up legacy database triggers that post buyer needs to the public feed
@@ -1581,36 +1577,41 @@ async function syncDatabase() {
         console.error('⚠️ Database triggers drop / posts cleanup warning:', dbCleanupError.message);
     }
 
-    // Auto-seed subscription plans if the table is empty
+    // Auto-seed and synchronize subscription plans from SQL file
     try {
-        const planCount = await db.SubscriptionPlan.count();
-        if (planCount === 0) {
-            console.log('🌱 Subscription plans table is empty. Running auto-seeder SQL...');
-            const fs = require('fs');
-            const path = require('path');
-            const sqlPath = path.join(__dirname, 'migrations', '2026-1-15-restore-subscription-plans.sql');
-            if (fs.existsSync(sqlPath)) {
-                const rawSql = fs.readFileSync(sqlPath, 'utf8');
-                // Strip comments robustly before splitting statements
-                let cleanedSql = rawSql
-                    .replace(/\/\*[\s\S]*?\*\//g, '') // Remove multi-line comments
-                    .replace(/--.*$/gm, '');          // Remove single-line comments
-                
-                const sqlStatements = cleanedSql
-                    .split(';')
-                    .map(stmt => stmt.trim())
-                    .filter(stmt => stmt.length > 0);
-                
-                for (const statement of sqlStatements) {
-                    await db.sequelize.query(statement);
-                }
-                console.log('✅ Subscription plans successfully seeded');
-            } else {
-                console.warn('⚠️ Seeder SQL file not found at:', sqlPath);
+        console.log('🌱 Synchronizing subscription plans from SQL file...');
+        const fs = require('fs');
+        const path = require('path');
+        const sqlPath = path.join(__dirname, 'migrations', '2026-1-15-restore-subscription-plans.sql');
+        if (fs.existsSync(sqlPath)) {
+            const rawSql = fs.readFileSync(sqlPath, 'utf8');
+            // Strip comments robustly before splitting statements
+            let cleanedSql = rawSql
+                .replace(/\/\*[\s\S]*?\*\//g, '') // Remove multi-line comments
+                .replace(/--.*$/gm, '');          // Remove single-line comments
+            
+            const sqlStatements = cleanedSql
+                .split(';')
+                .map(stmt => stmt.trim())
+                .filter(stmt => stmt.length > 0);
+            
+            for (const statement of sqlStatements) {
+                await db.sequelize.query(statement);
             }
+            console.log('✅ Subscription plans successfully synchronized');
+        } else {
+            console.warn('⚠️ Seeder SQL file not found at:', sqlPath);
         }
     } catch (seederErr) {
-        console.error('❌ Failed to auto-seed subscription plans:', seederErr.message);
+        console.error('❌ Failed to synchronize subscription plans:', seederErr.message);
+    }
+
+    // Sync active subscriptions for backward compatibility (users/sellers tables)
+    try {
+        const subscriptionService = require('./src/services/subscriptionService');
+        await subscriptionService.syncActiveSubscriptions();
+    } catch (syncErr) {
+        console.log('⚠️  Failed to sync active subscriptions at boot:', syncErr.message);
     }
     
         return { 
