@@ -944,7 +944,6 @@ const topPlacementRoutes = require('./src/routes/topPlacementRoutes');
 const spotlightRoutes = require('./src/routes/spotlightRoutes');
 const StoryCleanupService = require('./src/services/storyCleanupService');
 const BuyerNeedSchedulerService = require('./src/services/buyerNeedSchedulerService');
-const DistressSaleCleanupService = require('./src/services/distressSaleCleanupService');
 
 // Internal API (no auth - uses API key)
 app.use('/', internalRoutes);
@@ -1554,11 +1553,10 @@ async function syncDatabase() {
 
 
     
-    // Initialize story cleanup service, distress sale cleanup service, and buyer need matching scheduler (only if not in test mode)
+    // Initialize story cleanup service and buyer need matching scheduler (only if not in test mode)
     if (process.env.NODE_ENV !== 'test') {
         StoryCleanupService.scheduleCleanup();
         BuyerNeedSchedulerService.scheduleMatchingRunner();
-        DistressSaleCleanupService.scheduleCleanup();
     }
 
     // Clean up legacy database triggers that post buyer needs to the public feed
