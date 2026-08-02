@@ -680,7 +680,7 @@ class SellerManagementController {
   async getSellerStats(req, res) {
     try {
       const excludeDeactivatedWhere = {
-        userId: { [Op.notIn]: db.sequelize.literal('(SELECT id FROM users WHERE accountStatus = "deactivated")') }
+        userId: { [Op.notIn]: db.sequelize.literal("(SELECT id FROM users WHERE accountStatus = 'deactivated')") }
       };
 
       const stats = await db.SellersTable.findAll({
