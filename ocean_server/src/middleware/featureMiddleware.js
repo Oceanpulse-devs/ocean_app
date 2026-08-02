@@ -194,7 +194,7 @@ const searchPriorityMiddleware = async (req, res, next) => {
 
     const subscription = await subscriptionMiddleware.getUserActiveSubscription(userId);
     
-    if (subscription && subscription.plan.has_priority_search) {
+    if (subscription && subscription.plan && subscription.plan.has_priority_search) {
       // Add priority boost based on plan
       const priorityMap = {
         'wave': 1,
@@ -232,7 +232,7 @@ const verifiedBadgeMiddleware = async (req, res, next) => {
 
     const subscription = await subscriptionMiddleware.getUserActiveSubscription(userId);
     
-    if (subscription && subscription.plan.has_verified_badge) {
+    if (subscription && subscription.plan && subscription.plan.has_verified_badge) {
       req.hasVerifiedBadge = true;
     } else {
       req.hasVerifiedBadge = false;

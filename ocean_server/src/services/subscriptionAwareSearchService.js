@@ -63,7 +63,7 @@ class SubscriptionAwareSearchService {
       // Priority 2: Verified sellers (if user has subscription)
       if (userId) {
         const userSubscription = await this.getUserActiveSubscription(userId);
-        if (userSubscription && userSubscription.plan.has_priority_search) {
+        if (userSubscription && userSubscription.plan && userSubscription.plan.has_priority_search) {
           orderClause.push(['sellerVerified', 'DESC']);
         }
       }
@@ -347,7 +347,7 @@ class SubscriptionAwareSearchService {
   static async userHasSearchPriority(userId) {
     try {
       const subscription = await this.getUserActiveSubscription(userId);
-      return subscription && subscription.plan.has_priority_search;
+      return subscription && subscription.plan && subscription.plan.has_priority_search;
     } catch (error) {
       console.error('Error checking search priority:', error);
       return false;
@@ -496,7 +496,7 @@ class SubscriptionAwareSearchService {
       // Priority 3: Verified sellers (if user has subscription)
       if (userId) {
         const userSubscription = await this.getUserActiveSubscription(userId);
-        if (userSubscription && userSubscription.plan.has_priority_search) {
+        if (userSubscription && userSubscription.plan && userSubscription.plan.has_priority_search) {
           // This would require a join with user verification status
           // For now, we'll prioritize by views and creation date
         }
