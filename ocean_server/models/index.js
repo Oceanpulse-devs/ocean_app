@@ -494,6 +494,22 @@ const setupAssociations = () => {
   db.UserTable.hasMany(db.Report, { foreignKey: 'reporter_id', as: 'reportsMade' });
   db.UserTable.hasMany(db.Report, { foreignKey: 'reported_user_id', as: 'reportsReceived' });
   db.UserTable.hasMany(db.Report, { foreignKey: 'resolved_by', as: 'reportsResolved' });
+
+  // RequestRoom & RequestRoomSeller & SellerDailySlot associations
+  if (db.RequestRoom && db.RequestRoomSeller && db.BuyerSearchInsight) {
+    db.RequestRoom.belongsTo(db.BuyerSearchInsight, { foreignKey: 'insightId', as: 'insight' });
+    db.RequestRoom.belongsTo(db.UserTable, { foreignKey: 'buyerId', as: 'buyer' });
+    db.RequestRoom.hasMany(db.RequestRoomSeller, { foreignKey: 'requestRoomId', as: 'sellers' });
+
+    db.RequestRoomSeller.belongsTo(db.RequestRoom, { foreignKey: 'requestRoomId', as: 'requestRoom' });
+    db.RequestRoomSeller.belongsTo(db.UserTable, { foreignKey: 'sellerId', as: 'seller' });
+
+    db.BuyerSearchInsight.hasOne(db.RequestRoom, { foreignKey: 'insightId', as: 'requestRoom' });
+  }
+
+  if (db.SellerDailySlot && db.UserTable) {
+    db.SellerDailySlot.belongsTo(db.UserTable, { foreignKey: 'sellerId', as: 'seller' });
+  }
 };
 
 // Setup associations
