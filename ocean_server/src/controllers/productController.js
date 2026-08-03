@@ -81,42 +81,7 @@ const getProducts = async (req, res) => {
         // Include promotion fields and sort by promotion priority
         mappedProducts = PromotionHelperService.processItemsForResponse(mappedProducts);
 
-        // Track failed search if no results found and search query exists
-        if (mappedProducts.length === 0 && search && search.trim().length > 0) {
-          try {
-            const { BuyerSearchInsight } = require('../../models');
-            const userAgent = req.headers['user-agent'] || '';
-            let deviceType = null;
-            if (userAgent.match(/mobile|android|iphone/i)) {
-              deviceType = 'mobile';
-            } else if (userAgent.match(/tablet|ipad/i)) {
-              deviceType = 'tablet';
-            } else if (userAgent.match(/desktop|windows|mac|linux/i)) {
-              deviceType = 'desktop';
-            }
 
-            const searchFilters = {};
-            if (minPrice) searchFilters.minPrice = minPrice;
-            if (maxPrice) searchFilters.maxPrice = maxPrice;
-            if (brand) searchFilters.brand = brand;
-            if (condition) searchFilters.condition = condition;
-
-            await BuyerSearchInsight.create({
-              search_term: search.trim(),
-              user_id: currentUserId || null,
-              category_id: category || null,
-              location: location || null,
-              search_filters: Object.keys(searchFilters).length > 0 ? searchFilters : null,
-              device_type: deviceType,
-              ip_address: req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress || null
-            });
-            
-            console.log('✅ Tracked failed search:', search);
-          } catch (trackingError) {
-            console.error('Error tracking failed search:', trackingError);
-            // Don't fail the request if tracking fails
-          }
-        }
 
         // Wrap products in proper structure {data: {products: [...], pagination: {...}}}
         const response = wrapProductsList({
