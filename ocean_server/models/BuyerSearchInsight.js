@@ -20,6 +20,11 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: true,
       comment: 'Category name or filter used during search (if any)'
     },
+    subcategory: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+      comment: 'Subcategory name or filter used during search (if any)'
+    },
     location: {
       type: DataTypes.STRING(255),
       allowNull: true,
@@ -63,6 +68,9 @@ module.exports = (sequelize, DataTypes) => {
       },
       {
         fields: ['category_id']
+      },
+      {
+        fields: ['subcategory']
       },
       {
         fields: ['location']

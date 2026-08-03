@@ -847,6 +847,7 @@ class BuyerNeedController {
       const {
         search_term,
         category_id,
+        subcategory,
         location,
         search_filters,
         device_type
@@ -868,6 +869,7 @@ class BuyerNeedController {
         search_term: search_term.trim(),
         user_id: user_id,
         category_id: category_id || null,
+        subcategory: subcategory || null,
         location: location || null,
         search_filters: search_filters ? JSON.parse(JSON.stringify(search_filters)) : null,
         device_type: device_type || null,
@@ -948,7 +950,8 @@ class BuyerNeedController {
           profilePicture: insight.user?.profilePicture || null, // Backend field name (camelCase from UserTable)
           search_term: insight.search_term, // Backend field name (snake_case)
           created_at: insight.created_at, // Backend field name (snake_case)
-          category: insight.category_id || null // category_id now stores category name directly
+          category: insight.category_id || null, // category_id now stores category name directly
+          subcategory: insight.subcategory || null
         };
       });
 
