@@ -944,6 +944,8 @@ const topPlacementRoutes = require('./src/routes/topPlacementRoutes');
 const spotlightRoutes = require('./src/routes/spotlightRoutes');
 const StoryCleanupService = require('./src/services/storyCleanupService');
 const BuyerNeedSchedulerService = require('./src/services/buyerNeedSchedulerService');
+const requestRoomRoutes = require('./src/routes/requestRoomRoutes');
+const RequestRoomScheduler = require('./src/services/requestRoomScheduler');
 
 // Internal API (no auth - uses API key)
 app.use('/', internalRoutes);
@@ -972,6 +974,7 @@ app.use('/api/distress-sales', distressSaleRoutes);
 app.use('/api/heavy-distributors', heavyDistributorRoutes);
 app.use('/api/seller-verification', sellerVerificationRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
+app.use('/', requestRoomRoutes);
 
 // Subscription HTML pages (root level for web testing)
 // These routes serve HTML pages for payment callbacks when testing on web
@@ -1416,7 +1419,7 @@ async function syncDatabase() {
             try {
                 const model = sequelizeModels[modelName];
                 // Sync individual model - auto-update schema for key models to append new columns
-                const alterModels = ['Notification', 'BuyerNeed', 'BuyerNeedMatch', 'BuyerSearchInsight'];
+                const alterModels = ['Notification', 'BuyerNeed', 'BuyerNeedMatch', 'BuyerSearchInsight', 'SellerDailySlot', 'RequestRoom', 'RequestRoomSeller'];
                 const syncOptions = alterModels.includes(modelName)
                     ? { force: false, alter: true }
                     : { force: false, alter: false };
@@ -1553,10 +1556,11 @@ async function syncDatabase() {
 
 
     
-    // Initialize story cleanup service and buyer need matching scheduler (only if not in test mode)
+    // Initialize story cleanup service, buyer need matching scheduler, and request room expiration scheduler (only if not in test mode)
     if (process.env.NODE_ENV !== 'test') {
         StoryCleanupService.scheduleCleanup();
         BuyerNeedSchedulerService.scheduleMatchingRunner();
+        RequestRoomScheduler.scheduleChecks();
     }
 
     // Clean up legacy database triggers that post buyer needs to the public feed

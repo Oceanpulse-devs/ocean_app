@@ -941,17 +941,42 @@ class BuyerNeedController {
         offset: (parseInt(page) - 1) * parseInt(limit)
       });
 
-      // Map insights to flat list with user info (using backend field names)
+      // Get IDs of rooms where this calling seller expressed interest
+      const callingSellerUserId = req.user.id;
+      const sellerJoinedRooms = await db.RequestRoomSeller.findAll({
+        where: { sellerId: callingSellerUserId },
+        attributes: ['requestRoomId'],
+        include: [
+          {
+            model: db.RequestRoom,
+            as: 'requestRoom',
+            attributes: ['insightId']
+          }
+        ]
+      });
+
+      const joinedInsightIds = new Set(
+        sellerJoinedRooms
+          .map(s => s.requestRoom?.insightId)
+          .filter(Boolean)
+      );
+
+      // Map insights to flat list with user info and room status
       const insightsArray = insights.rows.map(insight => {
         return {
           id: `insight_${insight.id}`, // String format
+          rawId: insight.id,
           user_id: insight.user_id, // Backend field name (snake_case)
           fullName: insight.user?.fullName || null, // Backend field name (camelCase from UserTable)
           profilePicture: insight.user?.profilePicture || null, // Backend field name (camelCase from UserTable)
           search_term: insight.search_term, // Backend field name (snake_case)
-          created_at: insight.created_at, // Backend field name (snake_case)
           category: insight.category_id || null, // category_id now stores category name directly
-          subcategory: insight.subcategory || null
+          subcategory: insight.subcategory || null,
+          current_seller_count: insight.current_seller_count || 0,
+          max_seller_slots: insight.max_seller_slots || 10,
+          status: insight.status || 'OPEN',
+          hasExpressedInterest: joinedInsightIds.has(insight.id),
+          created_at: insight.created_at // Backend field name (snake_case)
         };
       });
 

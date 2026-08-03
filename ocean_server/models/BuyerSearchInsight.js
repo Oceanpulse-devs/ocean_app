@@ -45,6 +45,26 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: true,
       comment: 'IP address (for location detection if user location not provided)'
     },
+    max_seller_slots: {
+      type: DataTypes.INTEGER,
+      defaultValue: 10,
+      comment: 'Maximum sellers that can express interest in this search insight'
+    },
+    current_seller_count: {
+      type: DataTypes.INTEGER,
+      defaultValue: 0,
+      comment: 'Current number of sellers who expressed interest'
+    },
+    status: {
+      type: DataTypes.ENUM('OPEN', 'CLOSED_FULL', 'FULFILLED', 'EXPIRED'),
+      defaultValue: 'OPEN',
+      comment: 'Status of the buyer search insight room'
+    },
+    expires_at: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      comment: 'When the search insight room expires'
+    },
     created_at: {
       type: DataTypes.DATE,
       defaultValue: DataTypes.NOW,
