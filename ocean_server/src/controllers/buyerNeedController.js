@@ -847,6 +847,7 @@ class BuyerNeedController {
       const {
         search_term,
         category_id,
+        category,
         subcategory,
         location,
         search_filters,
@@ -863,12 +864,13 @@ class BuyerNeedController {
 
       const user_id = req.user?.id || null;
       const ip_address = req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress || null;
+      const resolvedCategory = category_id || category || null;
 
       // Create buyer search insight record
       const searchInsight = await db.BuyerSearchInsight.create({
         search_term: search_term.trim(),
         user_id: user_id,
-        category_id: category_id || null,
+        category_id: resolvedCategory,
         subcategory: subcategory || null,
         location: location || null,
         search_filters: search_filters ? JSON.parse(JSON.stringify(search_filters)) : null,
