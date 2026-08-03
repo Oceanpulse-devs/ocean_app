@@ -99,7 +99,8 @@ class SubscriptionStatusChecker {
           displayName: plan.display_name,
           price: plan.price,
           currency: plan.currency,
-          billingPeriod: plan.billing_period
+          billingPeriod: plan.billingPeriod || plan.billing_period || 'monthly',
+          billing_period: plan.billingPeriod || plan.billing_period || 'monthly'
         },
         status: subscription.status,
         isTrial: isTrial,

@@ -26,10 +26,10 @@ class RequestRoomController {
       }
 
       // 2. Plan Access Check: Only Tide and Surge plans allowed
-      const { subscriptionMiddleware } = require('../middleware/subscriptionMiddleware');
+      const { getUserActiveSubscription } = require('../middleware/subscriptionMiddleware');
       let activeSub = null;
       try {
-        activeSub = await subscriptionMiddleware.getUserActiveSubscription(userId);
+        activeSub = await getUserActiveSubscription(userId);
       } catch (subErr) {
         console.warn('Subscription check warning:', subErr.message);
       }
@@ -162,10 +162,10 @@ class RequestRoomController {
   async getSellerDailySlots(req, res) {
     try {
       const userId = req.user.id;
-      const { subscriptionMiddleware } = require('../middleware/subscriptionMiddleware');
+      const { getUserActiveSubscription } = require('../middleware/subscriptionMiddleware');
       let activeSub = null;
       try {
-        activeSub = await subscriptionMiddleware.getUserActiveSubscription(userId);
+        activeSub = await getUserActiveSubscription(userId);
       } catch (err) {
         console.warn('Subscription check error:', err.message);
       }

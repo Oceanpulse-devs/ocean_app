@@ -80,7 +80,8 @@ class SubscriptionController {
             priceNgn: parseFloat(plan.price), // Always include NGN price
             priceUsd: plan.priceUsd ? parseFloat(plan.priceUsd) : null, // Always include USD price
             currency: planCurrency,
-            billingPeriod: plan.billing_period,
+            billingPeriod: plan.billingPeriod || plan.billing_period || 'monthly',
+            billing_period: plan.billingPeriod || plan.billing_period || 'monthly',
             features: plan.features,
             description: plan.description,
             limits: {
