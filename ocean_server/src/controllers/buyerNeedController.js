@@ -926,7 +926,8 @@ class BuyerNeedController {
             [Op.gte]: sevenDaysAgo
           },
           user_id: {
-            [Op.ne]: null // Only logged-in users
+            [Op.ne]: null,
+            [Op.ne]: req.user.id // Exclude caller's own search insights
           }
         },
         include: [

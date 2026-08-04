@@ -9,6 +9,12 @@ router.post('/api/buyer-needs/search-insight/:id/express-interest', authMiddlewa
 // 2. Fetch seller's daily Express Interest slots quota status (3 max/day)
 router.get('/api/sellers/daily-slots', authMiddleware, (req, res) => requestRoomController.getSellerDailySlots(req, res));
 
+// Fetch all request rooms owned by the calling buyer
+router.get('/api/request-rooms/my-rooms', authMiddleware, (req, res) => requestRoomController.getMyBuyerRooms(req, res));
+
+// Fetch all request rooms joined by the calling seller
+router.get('/api/request-rooms/joined', authMiddleware, (req, res) => requestRoomController.getJoinedSellerRooms(req, res));
+
 // 3. Fetch temporary request room details
 router.get('/api/request-rooms/:roomId', authMiddleware, (req, res) => requestRoomController.getRequestRoomDetails(req, res));
 

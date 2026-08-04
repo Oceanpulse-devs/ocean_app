@@ -80,6 +80,13 @@ class RequestRoomController {
         });
       }
 
+      if (insight.user_id === userId) {
+        return res.status(400).json({
+          success: false,
+          message: 'You cannot express interest in your own search insight'
+        });
+      }
+
       if (insight.status !== 'OPEN' || insight.current_seller_count >= insight.max_seller_slots) {
         return res.status(400).json({
           success: false,
@@ -413,6 +420,138 @@ class RequestRoomController {
       res.status(500).json({
         success: false,
         message: 'Failed to select seller',
+        error: error.message
+      });
+    }
+  }
+
+  /**
+   * Fetch all request rooms owned by the calling buyer
+   */
+  async getMyBuyerRooms(req, res) {
+    try {
+      const buyerUserId = req.user.id;
+
+      const rooms = await db.RequestRoom.findAll({
+        where: { buyerId: buyerUserId },
+        include: [
+          {
+            model: db.BuyerSearchInsight,
+            as: 'insight',
+            attributes: ['id', 'search_term', 'category_id', 'subcategory', 'status', 'current_seller_count', 'max_seller_slots']
+          },
+          {
+            model: db.RequestRoomSeller,
+            as: 'sellers',
+            attributes: ['id', 'sellerId', 'joinedAt']
+          }
+        ],
+        order: [['created_at', 'DESC']]
+      });
+
+      const now = new Date();
+      const mappedRooms = rooms.map(room => {
+        const expiresAt = new Date(room.expiresAt);
+        const remainingSeconds = Math.max(0, Math.floor((expiresAt.getTime() - now.getTime()) / 1000));
+        return {
+          id: room.id,
+          insightId: room.insightId,
+          searchTerm: room.insight?.search_term || '',
+          category: room.insight?.category_id || null,
+          subcategory: room.insight?.subcategory || null,
+          current_seller_count: room.insight?.current_seller_count || 0,
+          max_seller_slots: room.insight?.max_seller_slots || 10,
+          status: room.status,
+          expiresAt: room.expiresAt,
+          remainingSeconds: remainingSeconds
+        };
+      });
+
+      res.json({
+        success: true,
+        data: {
+          rooms: mappedRooms
+        }
+      });
+
+    } catch (error) {
+      console.error('Error fetching buyer rooms:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to fetch buyer request rooms',
+        error: error.message
+      });
+    }
+  }
+
+  /**
+   * Fetch all request rooms joined by the calling seller
+   */
+  async getJoinedSellerRooms(req, res) {
+    try {
+      const sellerUserId = req.user.id;
+
+      const joinedRecords = await db.RequestRoomSeller.findAll({
+        where: { sellerId: sellerUserId },
+        include: [
+          {
+            model: db.RequestRoom,
+            as: 'requestRoom',
+            include: [
+              {
+                model: db.BuyerSearchInsight,
+                as: 'insight',
+                attributes: ['id', 'search_term', 'category_id', 'subcategory', 'status', 'current_seller_count', 'max_seller_slots']
+              },
+              {
+                model: db.UserTable,
+                as: 'buyer',
+                attributes: ['id', 'fullName', 'profilePicture']
+              }
+            ]
+          }
+        ],
+        order: [['created_at', 'DESC']]
+      });
+
+      const now = new Date();
+      const mappedRooms = joinedRecords
+        .map(record => {
+          const room = record.requestRoom;
+          if (!room) return null;
+          const expiresAt = new Date(room.expiresAt);
+          const remainingSeconds = Math.max(0, Math.floor((expiresAt.getTime() - now.getTime()) / 1000));
+          return {
+            id: room.id,
+            insightId: room.insightId,
+            searchTerm: room.insight?.search_term || '',
+            category: room.insight?.category_id || null,
+            subcategory: room.insight?.subcategory || null,
+            buyer: room.buyer ? {
+              id: room.buyer.id,
+              fullName: room.buyer.fullName,
+              profilePicture: room.buyer.profilePicture
+            } : null,
+            joinedAt: record.joinedAt,
+            status: room.status,
+            expiresAt: room.expiresAt,
+            remainingSeconds: remainingSeconds
+          };
+        })
+        .filter(Boolean);
+
+      res.json({
+        success: true,
+        data: {
+          rooms: mappedRooms
+        }
+      });
+
+    } catch (error) {
+      console.error('Error fetching joined seller rooms:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to fetch seller joined rooms',
         error: error.message
       });
     }
