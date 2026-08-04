@@ -242,7 +242,14 @@ class RequestRoomController {
               {
                 model: db.UserTable,
                 as: 'seller',
-                attributes: ['id', 'fullName', 'profilePicture', 'email']
+                attributes: ['id', 'fullName', 'profilePicture', 'email'],
+                include: [
+                  {
+                    model: db.SellersTable,
+                    as: 'seller',
+                    attributes: ['id', 'businessName', 'businessAddress', 'verificationStatus']
+                  }
+                ]
               }
             ]
           }
@@ -260,12 +267,17 @@ class RequestRoomController {
       const expiresAt = new Date(room.expiresAt);
       const remainingSeconds = Math.max(0, Math.floor((expiresAt.getTime() - now.getTime()) / 1000));
 
-      const sellersList = (room.sellers || []).map(item => ({
-        id: item.seller?.id || item.sellerId,
-        fullName: item.seller?.fullName || 'Seller',
-        profilePicture: item.seller?.profilePicture || null,
-        joinedAt: item.joinedAt
-      }));
+      const sellersList = (room.sellers || []).map(item => {
+        const sellerProfile = item.seller?.seller; // SellersTable instance
+        return {
+          id: item.seller?.id || item.sellerId,
+          businessName: sellerProfile?.businessName || item.seller?.fullName || 'Business Seller',
+          fullName: item.seller?.fullName || null,
+          profilePicture: item.seller?.profilePicture || null,
+          verificationStatus: sellerProfile?.verificationStatus || null,
+          joinedAt: item.joinedAt
+        };
+      });
 
       res.json({
         success: true,
