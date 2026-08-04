@@ -1608,14 +1608,7 @@ async function syncDatabase() {
         console.error('❌ Failed to synchronize subscription plans:', seederErr.message);
     }
 
-    // Sync active subscriptions for backward compatibility (users/sellers tables)
-    try {
-        const subscriptionService = require('./src/services/subscriptionService');
-        await subscriptionService.syncActiveSubscriptions();
-    } catch (syncErr) {
-        console.log('⚠️  Failed to sync active subscriptions at boot:', syncErr.message);
-    }
-    
+
         return { 
             success: successCount > 0, 
             tablesCreated: createdTables.length, 
