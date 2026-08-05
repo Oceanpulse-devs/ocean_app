@@ -124,10 +124,27 @@ const signup = async (req, res) => {
         }
 
         // Send verification email
-        const backendUrl = process.env.NODE_ENV === 'production'
-            ? process.env.BASE_URL || process.env.RAILWAY_PUBLIC_DOMAIN || process.env.BACKEND_URL
-            : 'http://localhost:5000';
-        const verificationLink = `${backendUrl}/verify-email?token=${emailVerificationToken}`
+        const getBackendUrl = (req) => {
+            const envUrl = process.env.BASE_URL || process.env.RENDER_EXTERNAL_URL;
+            if (envUrl && envUrl.trim().length > 0) {
+                let formatted = envUrl.trim();
+                if (!formatted.startsWith('http://') && !formatted.startsWith('https://')) {
+                    formatted = `https://${formatted}`;
+                }
+                return formatted.replace(/\/$/, '');
+            }
+            if (req) {
+                const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'https';
+                const host = req.headers['x-forwarded-host'] || req.get('host');
+                if (host && !host.includes('localhost') && !host.includes('127.0.0.1')) {
+                    return `${protocol}://${host}`.replace(/\/$/, '');
+                }
+            }
+            return `http://localhost:${process.env.PORT || 5000}`;
+        };
+
+        const backendUrl = getBackendUrl(req);
+        const verificationLink = `${backendUrl}/verify-email?token=${emailVerificationToken}`;
         const emailTemplate = emailTemplates.emailVerification(newUser.fullName, verificationLink)
 
         try {
@@ -990,9 +1007,7 @@ const resendVerificationEmail = async (req, res) => {
         }
 
         // Send verification email
-        const backendUrl = process.env.NODE_ENV === 'production'
-            ? process.env.BASE_URL || process.env.RAILWAY_PUBLIC_DOMAIN || process.env.BACKEND_URL || 'https://your-backend-domain.com'
-            : 'http://localhost:5000';
+        const backendUrl = getBackendUrl(req);
         const verificationLink = `${backendUrl}/verify-email?token=${emailVerificationToken}`;
         const emailTemplate = emailTemplates.emailVerification(user.fullName, verificationLink);
 
