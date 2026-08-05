@@ -2481,68 +2481,66 @@ class GroupBuyController {
   }
 
   /**
-   * Auto-repair migration: Find all group buys missing a real UUID conversation and create real conversation & participant rows in DB.
+   * Auto-repair migration: Find all group buys missing a real UUID conversation and sync all group_buy_participants into conversationparticipants.
    */
   async repairMissingGroupBuyConversations() {
     try {
-      const { GroupBuy, Conversation, ConversationParticipant, UserTable, SellersTable } = db;
+      const { GroupBuy, GroupBuyParticipant, Conversation, ConversationParticipant, UserTable, SellersTable } = db;
       const { Op } = require('sequelize');
 
-      const unlinkedGroupBuys = await GroupBuy.findAll({
-        where: {
-          [Op.or]: [
-            { conversation_id: null },
-            { conversation_id: '' },
-            { conversation_id: 'null' },
-            { conversation_id: { [Op.like]: 'gb_conv_%' } }
-          ]
-        },
-        include: [{
-          model: UserTable,
-          as: 'creator',
-          attributes: ['id', 'fullName'],
-          include: [{ model: SellersTable, as: 'seller', attributes: ['businessName'], required: false }]
-        }]
-      });
-
-      if (!unlinkedGroupBuys || unlinkedGroupBuys.length === 0) {
-        return;
-      }
-
-      console.log(`🛠️ [GroupBuy Repair] Found ${unlinkedGroupBuys.length} group buy(s) missing real conversation UUIDs. Repairing DB records...`);
-
-      for (const gb of unlinkedGroupBuys) {
-        try {
-          const businessName = gb.creator?.seller?.businessName || gb.creator?.fullName || 'Bulk Purchase';
-          const groupName = `BP ${businessName} - ${gb.product_name || 'Group Buy'}`;
-
-          // Create real Conversation row in `conversations` table
-          const nativeConv = await Conversation.create({
-            type: 'group',
-            name: groupName,
-            description: gb.description ? gb.description.substring(0, 200) : '',
-            createdBy: gb.creator_id || null
-          });
-
-          // Add creator as participant in `conversationparticipants` table
-          if (gb.creator_id) {
-            await ConversationParticipant.findOrCreate({
-              where: { conversationId: nativeConv.id, userId: gb.creator_id },
-              defaults: { role: 'admin' }
-            });
-          }
-
-          // Update `group_buys` table with the real UUID
-          await gb.update({ conversation_id: nativeConv.id });
-          console.log(`   ✅ Created real Conversation UUID ${nativeConv.id} & participant for Group Buy ID ${gb.id}`);
-        } catch (err) {
-          console.error(`   ⚠️ Failed to repair Group Buy ID ${gb.id}:`, err.message);
-        }
-      }
-
-      // Sync all existing GroupBuyParticipant rows to ConversationParticipant table
+      // 1. Repair missing conversation UUIDs for Group Buys
       try {
-        const { GroupBuyParticipant } = db;
+        const unlinkedGroupBuys = await GroupBuy.findAll({
+          where: {
+            [Op.or]: [
+              { conversation_id: null },
+              { conversation_id: '' },
+              { conversation_id: 'null' },
+              { conversation_id: { [Op.like]: 'gb_conv_%' } }
+            ]
+          },
+          include: [{
+            model: UserTable,
+            as: 'creator',
+            attributes: ['id', 'fullName'],
+            include: [{ model: SellersTable, as: 'seller', attributes: ['businessName'], required: false }]
+          }]
+        });
+
+        if (unlinkedGroupBuys && unlinkedGroupBuys.length > 0) {
+          console.log(`🛠️ [GroupBuy Repair] Found ${unlinkedGroupBuys.length} group buy(s) missing real conversation UUIDs. Repairing DB records...`);
+          for (const gb of unlinkedGroupBuys) {
+            try {
+              const businessName = gb.creator?.seller?.businessName || gb.creator?.fullName || 'Bulk Purchase';
+              const groupName = `BP ${businessName} - ${gb.product_name || 'Group Buy'}`;
+
+              const nativeConv = await Conversation.create({
+                type: 'group',
+                name: groupName,
+                description: gb.description ? gb.description.substring(0, 200) : '',
+                createdBy: gb.creator_id || null
+              });
+
+              if (gb.creator_id) {
+                await ConversationParticipant.findOrCreate({
+                  where: { conversationId: nativeConv.id, userId: gb.creator_id },
+                  defaults: { role: 'admin' }
+                });
+              }
+
+              await gb.update({ conversation_id: nativeConv.id });
+              console.log(`   ✅ Created real Conversation UUID ${nativeConv.id} for Group Buy ID ${gb.id}`);
+            } catch (err) {
+              console.error(`   ⚠️ Failed to repair Group Buy ID ${gb.id}:`, err.message);
+            }
+          }
+        }
+      } catch (gbErr) {
+        console.error('⚠️ Group buy conversation repair error:', gbErr.message);
+      }
+
+      // 2. ALWAYS sync all existing GroupBuyParticipant rows to ConversationParticipant table
+      try {
         const allParticipants = await GroupBuyParticipant.findAll({
           include: [{ model: GroupBuy, as: 'groupBuy', attributes: ['id', 'conversation_id'] }]
         });
@@ -2551,7 +2549,7 @@ class GroupBuyController {
         for (const part of allParticipants) {
           const convId = part.groupBuy?.conversation_id;
           const uId = part.user_id || part.userId;
-          if (convId && uId) {
+          if (convId && uId && !convId.startsWith('gb_conv_')) {
             const [cp, created] = await ConversationParticipant.findOrCreate({
               where: { conversationId: convId, userId: uId },
               defaults: { role: 'member' }
@@ -2559,9 +2557,7 @@ class GroupBuyController {
             if (created) syncedCount++;
           }
         }
-        if (syncedCount > 0) {
-          console.log(`✅ [Group Chat Sync] Synced ${syncedCount} missing group buy participant(s) into conversationparticipants table.`);
-        }
+        console.log(`✅ [Group Chat Sync] Participant sync complete. Synced ${syncedCount} missing participant(s) into conversationparticipants table.`);
       } catch (syncErr) {
         console.error('⚠️ Failed to sync group buy participants:', syncErr.message);
       }
