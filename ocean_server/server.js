@@ -1561,6 +1561,12 @@ async function syncDatabase() {
         StoryCleanupService.scheduleCleanup();
         BuyerNeedSchedulerService.scheduleMatchingRunner();
         RequestRoomScheduler.scheduleChecks();
+        
+        // Auto-repair any legacy Group Buy database records missing a conversation ID
+        const groupBuyController = require('./src/controllers/groupBuyController');
+        groupBuyController.repairMissingGroupBuyConversations().catch(err => {
+            console.error('⚠️ Group Buy conversation auto-repair error:', err.message);
+        });
     }
 
     // Clean up legacy database triggers that post buyer needs to the public feed

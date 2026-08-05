@@ -2458,6 +2458,56 @@ class GroupBuyController {
       });
     }
   }
+
+  /**
+   * Auto-repair migration: Find all group buys with missing conversation_id and populate them in DB.
+   */
+  async repairMissingGroupBuyConversations() {
+    try {
+      const missingConvGroupBuys = await db.GroupBuy.findAll({
+        where: {
+          [Op.or]: [
+            { conversation_id: null },
+            { conversation_id: '' }
+          ]
+        },
+        include: [{
+          model: db.UserTable,
+          as: 'creator',
+          attributes: ['id', 'fullName'],
+          include: [{ model: db.SellersTable, as: 'seller', attributes: ['businessName'], required: false }]
+        }]
+      });
+
+      if (!missingConvGroupBuys || missingConvGroupBuys.length === 0) {
+        return;
+      }
+
+      console.log(`🛠️ [GroupBuy Auto-Repair] Found ${missingConvGroupBuys.length} group buy(s) with missing conversation IDs. Repairing DB records...`);
+
+      for (const gb of missingConvGroupBuys) {
+        try {
+          const businessName = gb.creator?.seller?.businessName || gb.creator?.fullName || 'Bulk Purchase';
+          const groupName = `BP ${businessName} - ${gb.product_name || 'Group Buy'}`;
+
+          const nativeConv = await db.Conversation.create({ type: 'group', title: groupName });
+          if (gb.creator_id) {
+            await db.ConversationParticipant.findOrCreate({
+              where: { conversationId: nativeConv.id, userId: gb.creator_id },
+              defaults: { role: 'admin' }
+            });
+          }
+
+          await gb.update({ conversation_id: nativeConv.id });
+          console.log(`   ✅ Auto-repaired Group Buy ID ${gb.id} -> Saved Conversation ID ${nativeConv.id} to DB`);
+        } catch (err) {
+          console.error(`   ⚠️ Failed to repair Group Buy ID ${gb.id}:`, err.message);
+        }
+      }
+    } catch (error) {
+      console.error('❌ Error executing repairMissingGroupBuyConversations:', error.message);
+    }
+  }
 }
 
 module.exports = new GroupBuyController();
