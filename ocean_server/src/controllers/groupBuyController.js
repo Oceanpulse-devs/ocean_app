@@ -16,7 +16,7 @@ const { createNotification } = require('./notificationController');
 // Helper function to map group buy field names for frontend
 const mapGroupBuyResponse = (groupBuy) => {
   const mapped = groupBuy.toJSON ? groupBuy.toJSON() : { ...groupBuy };
-  const convId = mapped.conversation_id || mapped.conversationId || (mapped.id ? `gb_conv_${mapped.id}` : null);
+  const convId = mapped.conversation_id || mapped.conversationId || null;
   return {
     ...mapped,
     pricePerUnit: mapped.group_price,
@@ -2465,13 +2465,64 @@ class GroupBuyController {
   }
 
   /**
-   * Auto-repair migration: Find all group buys with missing conversation_id and populate them directly in DB.
+   * Auto-repair migration: Find all group buys missing a real UUID conversation and create real conversation & participant rows in DB.
    */
   async repairMissingGroupBuyConversations() {
     try {
-      console.log('🛠️ [GroupBuy Auto-Repair] Checking database for missing conversation IDs...');
-      await db.sequelize.query("UPDATE group_buys SET conversation_id = CONCAT('gb_conv_', id) WHERE conversation_id IS NULL OR conversation_id = '' OR conversation_id = 'null';");
-      console.log('✅ [GroupBuy Auto-Repair] Database conversation ID repair completed successfully.');
+      const { GroupBuy, Conversation, ConversationParticipant, UserTable, SellersTable } = db;
+      const { Op } = require('sequelize');
+
+      const unlinkedGroupBuys = await GroupBuy.findAll({
+        where: {
+          [Op.or]: [
+            { conversation_id: null },
+            { conversation_id: '' },
+            { conversation_id: 'null' },
+            { conversation_id: { [Op.like]: 'gb_conv_%' } }
+          ]
+        },
+        include: [{
+          model: UserTable,
+          as: 'creator',
+          attributes: ['id', 'fullName'],
+          include: [{ model: SellersTable, as: 'seller', attributes: ['businessName'], required: false }]
+        }]
+      });
+
+      if (!unlinkedGroupBuys || unlinkedGroupBuys.length === 0) {
+        return;
+      }
+
+      console.log(`🛠️ [GroupBuy Repair] Found ${unlinkedGroupBuys.length} group buy(s) missing real conversation UUIDs. Repairing DB records...`);
+
+      for (const gb of unlinkedGroupBuys) {
+        try {
+          const businessName = gb.creator?.seller?.businessName || gb.creator?.fullName || 'Bulk Purchase';
+          const groupName = `BP ${businessName} - ${gb.product_name || 'Group Buy'}`;
+
+          // Create real Conversation row in `conversations` table
+          const nativeConv = await Conversation.create({
+            type: 'group',
+            name: groupName,
+            description: gb.description ? gb.description.substring(0, 200) : '',
+            createdBy: gb.creator_id || null
+          });
+
+          // Add creator as participant in `conversationparticipants` table
+          if (gb.creator_id) {
+            await ConversationParticipant.findOrCreate({
+              where: { conversationId: nativeConv.id, userId: gb.creator_id },
+              defaults: { role: 'admin' }
+            });
+          }
+
+          // Update `group_buys` table with the real UUID
+          await gb.update({ conversation_id: nativeConv.id });
+          console.log(`   ✅ Created real Conversation UUID ${nativeConv.id} & participant for Group Buy ID ${gb.id}`);
+        } catch (err) {
+          console.error(`   ⚠️ Failed to repair Group Buy ID ${gb.id}:`, err.message);
+        }
+      }
     } catch (error) {
       console.error('❌ Error executing repairMissingGroupBuyConversations:', error.message);
     }

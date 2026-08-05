@@ -187,6 +187,8 @@ class SubscriptionService {
         if (subscription) {
           await subscription.update({
             status: 'active',
+            isTrial: false,
+            trialEndDate: null,
             startDate: new Date(),
             endDate: expiresAt
           });

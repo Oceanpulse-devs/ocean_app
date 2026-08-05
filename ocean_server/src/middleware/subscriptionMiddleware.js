@@ -122,16 +122,6 @@ async function getUserActiveSubscription(userId) {
       order: [['created_at', 'DESC']] // Get most recent subscription
     });
 
-    // ⚠️ CHECK IF TRIAL EXPIRED
-    if (activeSubscription && activeSubscription.isTrial && activeSubscription.trialEndDate) {
-      const now = new Date();
-      if (now > new Date(activeSubscription.trialEndDate)) {
-        // Trial has expired - return null to indicate no active subscription
-        console.log('Trial expired for user:', userId);
-        return null;
-      }
-    }
-
     return activeSubscription;
   } catch (error) {
     console.error('Error getting user active subscription:', error);
@@ -217,20 +207,7 @@ async function checkSubscriptionLimit(userId, actionType) {
       };
     }
 
-    // Additional trial expiration check for feature access
-    if (subscription.isTrial && subscription.trialEndDate) {
-      const now = new Date();
-      if (now > new Date(subscription.trialEndDate)) {
-        return {
-          allowed: false,
-          reason: 'Your 30-day free trial has ended. Subscribe now to continue using premium features.',
-          usage: null,
-          plan: subscription.plan,
-          trialExpired: true,
-          trialExpiredAt: subscription.trialEndDate
-        };
-      }
-    }
+
 
     const plan = subscription.plan;
     // Removed verbose logging to reduce Railway log rate limiting

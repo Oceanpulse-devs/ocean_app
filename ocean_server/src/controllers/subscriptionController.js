@@ -475,14 +475,15 @@ class SubscriptionController {
           await UserSubscription.update(
             {
               status: 'active',
+              isTrial: false,
+              trialEndDate: null,
               startDate: new Date(),
               endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
             },
             {
               where: {
                 userId: userId,
-                paymentReference: paymentReference,
-                status: 'pending'
+                paymentReference: paymentReference
               }
             }
           );
@@ -1877,10 +1878,14 @@ class SubscriptionController {
           }
         }
 
+        const activeEndDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
         // Activate subscription
         await subscription.update({
           status: 'active',
-          startDate: new Date()
+          isTrial: false,
+          trialEndDate: null,
+          startDate: new Date(),
+          endDate: activeEndDate
         });
 
         // Update user subscription status
@@ -1888,7 +1893,7 @@ class SubscriptionController {
           subscription.userId,
           'active',
           subscription.planId,
-          subscription.endDate
+          activeEndDate
         );
         
         // Send subscription confirmation email
