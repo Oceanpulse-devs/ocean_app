@@ -16,103 +16,153 @@ const { createNotification } = require('./notificationController');
 // Helper function to map group buy field names for frontend
 const mapGroupBuyResponse = (groupBuy) => {
   const mapped = groupBuy.toJSON ? groupBuy.toJSON() : { ...groupBuy };
+  const convId = mapped.conversation_id || mapped.conversationId || (mapped.id ? `gb_conv_${mapped.id}` : null);
   return {
     ...mapped,
     pricePerUnit: mapped.group_price,
     endDate: mapped.deadline,
     category: mapped.category, // Use category field directly
-    categoryName: mapped.category // Explicit category name field
+    categoryName: mapped.category, // Explicit category name field
+    conversationId: convId,
+    conversation_id: convId
   };
 };
 
-// Helper function to send system message to conversation
-const sendSystemMessageToConversation = async (conversationId, senderId, content, metadata = {}) => {
+// Helper function to send system message to conversation with retries for cold-start wakeups
+const sendSystemMessageToConversation = async (conversationId, senderId, content, metadata = {}, retries = 2) => {
   if (!conversationId || !senderId || !content) {
     return;
   }
   
-  try {
-    let messageServerUrl = process.env.MESSAGE_SERVER_URL || 'https://messageserver-production-88ba.up.railway.app';
-    
-    // Trim whitespace and remove trailing slashes
-    messageServerUrl = messageServerUrl.trim().replace(/\/$/, '');
-    
-    // Auto-add https:// if protocol is missing
-    if (messageServerUrl && !messageServerUrl.startsWith('http://') && !messageServerUrl.startsWith('https://')) {
-      messageServerUrl = `https://${messageServerUrl}`;
-    }
-    
-    await axios.post(
-      `${messageServerUrl}/api/messages`,
-      {
-        conversationId,
-        content,
-        type: 'system',
-        senderId,
-        metadata
-      },
-      {
-        headers: {
-          'Authorization': `Bearer ${process.env.INTERNAL_API_TOKEN || 'internal-token'}`
+  let messageServerUrl = process.env.MESSAGE_SERVER_URL || 'https://messageserver-production-88ba.up.railway.app';
+  messageServerUrl = messageServerUrl.trim().replace(/\/$/, '');
+  if (messageServerUrl && !messageServerUrl.startsWith('http://') && !messageServerUrl.startsWith('https://')) {
+    messageServerUrl = `https://${messageServerUrl}`;
+  }
+
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      await axios.post(
+        `${messageServerUrl}/api/messages`,
+        {
+          conversationId,
+          content,
+          type: 'system',
+          senderId,
+          metadata
         },
-        timeout: 10000
+        {
+          headers: {
+            'Authorization': `Bearer ${process.env.INTERNAL_API_TOKEN || 'internal-token'}`
+          },
+          timeout: 40000 // 40-second timeout to allow free Render server to wake up
+        }
+      );
+      return; // Success
+    } catch (error) {
+      console.warn(`⚠️ [Message Server] System message attempt ${attempt}/${retries} failed:`, error.message);
+      if (attempt === retries) {
+        console.error('❌ Error sending system message after retries:', error.message);
+      } else {
+        await new Promise(res => setTimeout(res, 2000)); // Wait 2s before retry
       }
-    );
-  } catch (error) {
-    console.error('❌ Error sending system message to conversation:', error.message);
+    }
   }
 };
 
-// Helper function to create group conversation in messaging server
-const createGroupConversation = async (groupBuy, creatorId, authToken) => {
-  try {
-    let messageServerUrl = process.env.MESSAGE_SERVER_URL || 'https://messageserver-production-88ba.up.railway.app';
-    
-    // Trim whitespace and remove trailing slashes
-    messageServerUrl = messageServerUrl.trim().replace(/\/$/, '');
-    
-    // Auto-add https:// if protocol is missing
-    if (messageServerUrl && !messageServerUrl.startsWith('http://') && !messageServerUrl.startsWith('https://')) {
-      messageServerUrl = `https://${messageServerUrl}`;
-    }
+// Helper function to create group conversation in messaging server (with cold-start retry)
+const createGroupConversation = async (groupBuy, creatorId, authToken, retries = 2) => {
+  let messageServerUrl = process.env.MESSAGE_SERVER_URL || 'https://messageserver-production-88ba.up.railway.app';
+  messageServerUrl = messageServerUrl.trim().replace(/\/$/, '');
+  if (messageServerUrl && !messageServerUrl.startsWith('http://') && !messageServerUrl.startsWith('https://')) {
+    messageServerUrl = `https://${messageServerUrl}`;
+  }
 
-    const creator = await db.UserTable.findByPk(creatorId, {
-      include: [{
-        model: db.SellersTable,
-        as: 'seller',
-        attributes: ['businessName']
-      }]
+  const creator = await db.UserTable.findByPk(creatorId, {
+    include: [{
+      model: db.SellersTable,
+      as: 'seller',
+      attributes: ['businessName']
+    }]
+  });
+
+  const businessName = creator?.seller?.businessName || creator?.fullName || 'Bulk Purchase';
+  const groupName = `BP ${businessName} - ${groupBuy.product_name || 'Group Buy'}`;
+
+  // Attempt external call with retries
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      console.log(`📡 [Message Server] Creating group conversation (Attempt ${attempt}/${retries})...`);
+      const response = await axios.post(
+        `${messageServerUrl}/api/conversations`,
+        {
+          type: 'group',
+          name: groupName,
+          description: groupBuy.description ? groupBuy.description.substring(0, 200) : '',
+          participants: [creatorId]
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${authToken || process.env.INTERNAL_API_TOKEN || 'internal-token'}`
+          },
+          timeout: 40000 // 40-second timeout allows free Render server to finish cold-start boot
+        }
+      );
+
+      if (response.data?.data?.id) {
+        console.log(`✅ [Message Server] Group conversation created successfully: ${response.data.data.id}`);
+        return response.data.data.id;
+      }
+    } catch (msgErr) {
+      console.warn(`⚠️ [Message Server] Attempt ${attempt}/${retries} failed (${msgErr.message}). Waiting for server wakeup...`);
+      if (attempt < retries) {
+        await new Promise(res => setTimeout(res, 3000)); // Wait 3s for server boot
+      }
+    }
+  }
+
+  // Native DB Fallback if external service still unavailable
+  console.log('🔄 Creating native DB fallback conversation room...');
+  try {
+    const nativeConv = await db.Conversation.create({ type: 'group', title: groupName });
+    await db.ConversationParticipant.create({
+      conversationId: nativeConv.id,
+      userId: creatorId,
+      role: 'admin'
     });
-
-    if (!creator) {
-      throw new Error('Creator not found');
-    }
-
-    const businessName = creator.seller?.businessName || creator.fullName;
-    const groupName = `BP ${businessName} - ${groupBuy.product_name}`;
-
-    const response = await axios.post(
-      `${messageServerUrl}/api/conversations`,
-      {
-        type: 'group',
-        name: groupName,
-        description: groupBuy.description ? groupBuy.description.substring(0, 200) : '',
-        participants: [creatorId]
-      },
-      {
-        headers: {
-          'Authorization': `Bearer ${authToken || process.env.INTERNAL_API_TOKEN || 'internal-token'}`
-        },
-        timeout: 10000
-      }
-    );
-
-    return response.data.data?.id || null;
-  } catch (error) {
-    console.error('❌ Error creating group conversation:', error.message);
-    return null;
+    return nativeConv.id;
+  } catch (dbErr) {
+    console.error('❌ Native DB fallback conversation error:', dbErr.message);
+    return groupBuy?.id ? `gb_conv_${groupBuy.id}` : null;
   }
 };
+
+// Background Keep-Alive Pinger to keep the free Render message server awake 24/7
+const startMessageServerKeepAlive = () => {
+  let messageServerUrl = process.env.MESSAGE_SERVER_URL || 'https://messageserver-production-88ba.up.railway.app';
+  messageServerUrl = messageServerUrl.trim().replace(/\/$/, '');
+  if (!messageServerUrl.startsWith('http://') && !messageServerUrl.startsWith('https://')) {
+    messageServerUrl = `https://${messageServerUrl}`;
+  }
+
+  const ping = async () => {
+    try {
+      await axios.get(`${messageServerUrl}/health`, { timeout: 15000 }).catch(() => {
+        return axios.get(`${messageServerUrl}/`, { timeout: 15000 });
+      });
+      console.log('⚡ [Keep-Alive] Pinged message server to keep instance awake');
+    } catch (err) {
+      console.log('⚡ [Keep-Alive] Ping sent to message server (waking up instance)');
+    }
+  };
+
+  // Ping immediately on boot, then every 10 minutes
+  ping();
+  setInterval(ping, 10 * 60 * 1000);
+};
+
+// Start keep-alive runner
+startMessageServerKeepAlive();
 
 const updateParticipantStatus = async (participant, updates = {}, metadata = null, conversationId = null, creatorId = null) => {
   const timestampedUpdates = {
