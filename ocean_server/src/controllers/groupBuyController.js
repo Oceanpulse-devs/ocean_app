@@ -845,10 +845,34 @@ class GroupBuyController {
       // Include promotion fields
       mappedResponse = PromotionHelperService.includePromotionFields(mappedResponse);
       
+      // Ensure conversation_id is guaranteed (auto-repair if missing)
+      let resolvedConversationId = groupBuyJson.conversation_id || groupBuyJson.conversationId;
+      if (!resolvedConversationId) {
+        try {
+          const businessName = groupBuyJson.creator?.seller?.businessName || groupBuyJson.creator?.fullName || 'Bulk Purchase';
+          const groupName = `BP ${businessName} - ${groupBuy.product_name || 'Group Buy'}`;
+
+          const nativeConv = await db.Conversation.create({ type: 'group', title: groupName });
+          await db.ConversationParticipant.create({
+            conversationId: nativeConv.id,
+            userId: groupBuy.creator_id,
+            role: 'admin'
+          });
+
+          resolvedConversationId = nativeConv.id;
+          await groupBuy.update({ conversation_id: nativeConv.id });
+          groupBuyJson.conversation_id = nativeConv.id;
+          console.log(`✅ [Group Buy Auto-Repair] Created missing conversation ID ${nativeConv.id} for Group Buy ID ${groupBuy.id}`);
+        } catch (repairErr) {
+          console.error('⚠️ [Group Buy Auto-Repair] Failed to create fallback conversation:', repairErr.message);
+        }
+      }
+
       // Ensure conversation_id is included in response (also as conversationId for frontend compatibility)
       const responseData = {
         ...mappedResponse,
-        conversationId: groupBuyJson.conversation_id || groupBuyJson.conversationId,
+        conversationId: resolvedConversationId,
+        conversation_id: resolvedConversationId,
         // Preserve nested relationships
         creator: groupBuyJson.creator,
         participants: groupBuyJson.participants
