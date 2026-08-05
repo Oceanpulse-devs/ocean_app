@@ -234,31 +234,47 @@ const updateParticipantStatus = async (participant, updates = {}, metadata = nul
 // Helper function to add participant to group conversation
 const addParticipantToGroupChat = async (conversationId, userId) => {
   try {
+    if (!conversationId || !userId) {
+      return false;
+    }
+
+    // 1. Always create row in native DB `ConversationParticipant` table first
+    try {
+      await db.ConversationParticipant.findOrCreate({
+        where: {
+          conversationId: conversationId,
+          userId: userId
+        },
+        defaults: {
+          role: 'member'
+        }
+      });
+      console.log(`✅ [Group Chat] Added user ${userId} to native DB conversation ${conversationId}`);
+    } catch (dbErr) {
+      console.error('⚠️ [Group Chat] Failed to add participant to native DB table:', dbErr.message);
+    }
+
+    // 2. Also notify external message server if configured
     let messageServerUrl = process.env.MESSAGE_SERVER_URL || 'https://messageserver-production-88ba.up.railway.app';
-    
-    // Trim whitespace and remove trailing slashes
     messageServerUrl = messageServerUrl.trim().replace(/\/$/, '');
-    
-    // Auto-add https:// if protocol is missing
     if (messageServerUrl && !messageServerUrl.startsWith('http://') && !messageServerUrl.startsWith('https://')) {
       messageServerUrl = `https://${messageServerUrl}`;
     }
     
-    const response = await axios.post(
+    await axios.post(
       `${messageServerUrl}/api/conversations/${conversationId}/participants`,
       { userId },
       {
         headers: {
           'Authorization': `Bearer ${process.env.INTERNAL_API_TOKEN || 'internal-token'}`
         },
-        timeout: 10000
+        timeout: 5000
       }
-    );
+    ).catch(() => {});
     
     return true;
   } catch (error) {
-    console.error('❌ Error adding participant to group chat:', error.message);
-    // Don't throw - group buy join can still succeed without chat
+    console.error('❌ Error in addParticipantToGroupChat:', error.message);
     return false;
   }
 };
@@ -2522,6 +2538,32 @@ class GroupBuyController {
         } catch (err) {
           console.error(`   ⚠️ Failed to repair Group Buy ID ${gb.id}:`, err.message);
         }
+      }
+
+      // Sync all existing GroupBuyParticipant rows to ConversationParticipant table
+      try {
+        const { GroupBuyParticipant } = db;
+        const allParticipants = await GroupBuyParticipant.findAll({
+          include: [{ model: GroupBuy, as: 'groupBuy', attributes: ['id', 'conversation_id'] }]
+        });
+
+        let syncedCount = 0;
+        for (const part of allParticipants) {
+          const convId = part.groupBuy?.conversation_id;
+          const uId = part.user_id;
+          if (convId && uId) {
+            const [cp, created] = await ConversationParticipant.findOrCreate({
+              where: { conversationId: convId, userId: uId },
+              defaults: { role: 'member' }
+            });
+            if (created) syncedCount++;
+          }
+        }
+        if (syncedCount > 0) {
+          console.log(`✅ [Group Chat Sync] Synced ${syncedCount} missing group buy participant(s) into conversationparticipants table.`);
+        }
+      } catch (syncErr) {
+        console.error('⚠️ Failed to sync group buy participants:', syncErr.message);
       }
     } catch (error) {
       console.error('❌ Error executing repairMissingGroupBuyConversations:', error.message);
