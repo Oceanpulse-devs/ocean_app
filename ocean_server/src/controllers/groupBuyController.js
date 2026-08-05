@@ -2550,7 +2550,7 @@ class GroupBuyController {
         let syncedCount = 0;
         for (const part of allParticipants) {
           const convId = part.groupBuy?.conversation_id;
-          const uId = part.user_id;
+          const uId = part.user_id || part.userId;
           if (convId && uId) {
             const [cp, created] = await ConversationParticipant.findOrCreate({
               where: { conversationId: convId, userId: uId },
