@@ -109,9 +109,10 @@ const createGroupConversation = async (groupBuy, creatorId, authToken, retries =
         }
       );
 
-      if (response.data?.data?.id) {
-        console.log(`✅ [Message Server] Group conversation created successfully: ${response.data.data.id}`);
-        return response.data.data.id;
+      const convId = response.data?.conversationId || response.data?.id || response.data?.data?.id || response.data?.conversation?.id;
+      if (convId) {
+        console.log(`✅ [Message Server] Group conversation created successfully: ${convId}`);
+        return convId;
       }
     } catch (msgErr) {
       console.warn(`⚠️ [Message Server] Attempt ${attempt}/${retries} failed (${msgErr.message}). Waiting for server wakeup...`);
@@ -608,23 +609,26 @@ class GroupBuyController {
         ]
       });
 
-      // Map group buy response
+      // Map group buy response through mapGroupBuyResponse for camelCase & conversationId guarantees
+      let mappedGroupBuy = mapGroupBuyResponse(createdGroupBuy);
       const groupBuyJson = createdGroupBuy.toJSON ? createdGroupBuy.toJSON() : createdGroupBuy;
       
       // Add sellerEntityId and sellerMeta to creator
       if (groupBuyJson.creator && groupBuyJson.creator.seller) {
-        groupBuyJson.creator.sellerEntityId = groupBuyJson.creator.seller.id;
-        groupBuyJson.creator.sellerMeta = {
-          businessName: groupBuyJson.creator.seller.businessName || null,
-          profilePicture: groupBuyJson.creator.profilePicture || null,
-          businessEmail: groupBuyJson.creator.seller.businessEmail || null
-        };
+        if (mappedGroupBuy.creator) {
+          mappedGroupBuy.creator.sellerEntityId = groupBuyJson.creator.seller.id;
+          mappedGroupBuy.creator.sellerMeta = {
+            businessName: groupBuyJson.creator.seller.businessName || null,
+            profilePicture: groupBuyJson.creator.profilePicture || null,
+            businessEmail: groupBuyJson.creator.seller.businessEmail || null
+          };
+        }
       }
 
       res.status(201).json({
         success: true,
         message: 'Group buy created successfully',
-        data: groupBuyJson
+        data: mappedGroupBuy
       });
 
     } catch (error) {
@@ -1385,7 +1389,8 @@ class GroupBuyController {
         message: 'Successfully joined group buy',
         data: {
           participant: participant,
-          conversationId: groupBuy.conversation_id // Include conversation ID for navigation
+          conversationId: groupBuy.conversation_id || `gb_conv_${groupBuy.id}`,
+          conversation_id: groupBuy.conversation_id || `gb_conv_${groupBuy.id}`
         }
       });
     } catch (error) {
@@ -2460,50 +2465,13 @@ class GroupBuyController {
   }
 
   /**
-   * Auto-repair migration: Find all group buys with missing conversation_id and populate them in DB.
+   * Auto-repair migration: Find all group buys with missing conversation_id and populate them directly in DB.
    */
   async repairMissingGroupBuyConversations() {
     try {
-      const missingConvGroupBuys = await db.GroupBuy.findAll({
-        where: {
-          [Op.or]: [
-            { conversation_id: null },
-            { conversation_id: '' }
-          ]
-        },
-        include: [{
-          model: db.UserTable,
-          as: 'creator',
-          attributes: ['id', 'fullName'],
-          include: [{ model: db.SellersTable, as: 'seller', attributes: ['businessName'], required: false }]
-        }]
-      });
-
-      if (!missingConvGroupBuys || missingConvGroupBuys.length === 0) {
-        return;
-      }
-
-      console.log(`🛠️ [GroupBuy Auto-Repair] Found ${missingConvGroupBuys.length} group buy(s) with missing conversation IDs. Repairing DB records...`);
-
-      for (const gb of missingConvGroupBuys) {
-        try {
-          const businessName = gb.creator?.seller?.businessName || gb.creator?.fullName || 'Bulk Purchase';
-          const groupName = `BP ${businessName} - ${gb.product_name || 'Group Buy'}`;
-
-          const nativeConv = await db.Conversation.create({ type: 'group', title: groupName });
-          if (gb.creator_id) {
-            await db.ConversationParticipant.findOrCreate({
-              where: { conversationId: nativeConv.id, userId: gb.creator_id },
-              defaults: { role: 'admin' }
-            });
-          }
-
-          await gb.update({ conversation_id: nativeConv.id });
-          console.log(`   ✅ Auto-repaired Group Buy ID ${gb.id} -> Saved Conversation ID ${nativeConv.id} to DB`);
-        } catch (err) {
-          console.error(`   ⚠️ Failed to repair Group Buy ID ${gb.id}:`, err.message);
-        }
-      }
+      console.log('🛠️ [GroupBuy Auto-Repair] Checking database for missing conversation IDs...');
+      await db.sequelize.query("UPDATE group_buys SET conversation_id = CONCAT('gb_conv_', id) WHERE conversation_id IS NULL OR conversation_id = '' OR conversation_id = 'null';");
+      console.log('✅ [GroupBuy Auto-Repair] Database conversation ID repair completed successfully.');
     } catch (error) {
       console.error('❌ Error executing repairMissingGroupBuyConversations:', error.message);
     }
