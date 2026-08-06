@@ -104,14 +104,16 @@ async function incrementUsageInRedis(userId, actionType) {
  */
 async function getUserActiveSubscription(userId) {
   try {
-    // Removed verbose logging to reduce Railway log rate limiting
-    
-    const activeSubscription = await UserSubscription.findOne({
+    const { UserTable, SubscriptionPlan, UserSubscription } = require('../../models');
+    const { Op } = require('sequelize');
+
+    // 1. Try finding active subscription in UserSubscription table
+    let activeSubscription = await UserSubscription.findOne({
       where: {
         userId: userId,
         status: 'active',
         endDate: {
-          [require('sequelize').Op.gt]: new Date() // Not expired
+          [Op.gt]: new Date() // Not expired
         }
       },
       include: [{
@@ -119,8 +121,46 @@ async function getUserActiveSubscription(userId) {
         as: 'plan',
         where: { isActive: true }
       }],
-      order: [['created_at', 'DESC']] // Get most recent subscription
+      order: [['id', 'DESC']]
     });
+
+    // 2. Fallback: If not found with future endDate, check if UserTable has active subscription
+    if (!activeSubscription) {
+      const user = await UserTable.findByPk(userId);
+      if (user && user.subscriptionStatus === 'active' && user.currentPlanId) {
+        const plan = await SubscriptionPlan.findByPk(user.currentPlanId);
+        if (plan && plan.isActive) {
+          let subRecord = await UserSubscription.findOne({
+            where: { userId: userId, planId: user.currentPlanId },
+            order: [['id', 'DESC']]
+          });
+
+          const validExpiresAt = user.subscriptionExpiresAt || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+
+          if (subRecord) {
+            await subRecord.update({
+              status: 'active',
+              endDate: validExpiresAt,
+              isTrial: false,
+              trialEndDate: null
+            });
+            subRecord.plan = plan;
+            activeSubscription = subRecord;
+          } else {
+            activeSubscription = await UserSubscription.create({
+              userId: userId,
+              planId: user.currentPlanId,
+              status: 'active',
+              startDate: new Date(),
+              endDate: validExpiresAt,
+              autoRenew: true,
+              isTrial: false
+            });
+            activeSubscription.plan = plan;
+          }
+        }
+      }
+    }
 
     return activeSubscription;
   } catch (error) {

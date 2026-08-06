@@ -83,21 +83,30 @@ class SubscriptionStatusChecker {
       let trialDaysRemaining = null;
       let trialEndsAt = null;
 
+      const expirationDate = subscription.endDate || subscription.end_date || null;
+
       return {
         hasActiveSubscription: true,
+        has_active_subscription: true,
         plan: {
           id: plan.id,
           name: plan.name,
-          displayName: plan.display_name,
-          price: plan.price,
+          displayName: plan.display_name || plan.displayName,
+          display_name: plan.display_name || plan.displayName,
+          price: parseFloat(plan.price),
           currency: plan.currency,
           billingPeriod: plan.billingPeriod || plan.billing_period || 'monthly',
           billing_period: plan.billingPeriod || plan.billing_period || 'monthly'
         },
-        status: subscription.status,
-        isTrial: isTrial,
-        trialDaysRemaining: trialDaysRemaining,
-        trialEndsAt: trialEndsAt,
+        status: subscription.status || 'active',
+        isTrial: false,
+        is_trial: false,
+        trialDaysRemaining: null,
+        trialEndsAt: null,
+        expiresAt: expirationDate,
+        expires_at: expirationDate,
+        subscriptionExpiresAt: expirationDate,
+        subscription_expires_at: expirationDate,
         limits: {
           maxListings: plan.max_listings,
           maxGroupBuys: plan.max_group_buys,
@@ -107,21 +116,9 @@ class SubscriptionStatusChecker {
           maxDailyDms: plan.max_daily_dms,
           maxDailyNotifications: plan.max_daily_notifications,
           maxArProducts: plan.max_ar_products,
-          // Use calculated boost limit (with fallback logic)
           maxPromotionalBoosts: boostsLimit,
-          // Handle top placements and spotlights limits
-          // Since max_top_placements and max_spotlights columns don't exist in DB,
-          // we determine limits based on plan name and has_unlimited_features flag
-          maxTopPlacements: (plan.has_unlimited_features || plan.name === 'surge')
-            ? -1  // Unlimited for surge plan
-            : plan.name === 'tide'
-              ? 1  // TIDE: 1 top placement/month
-              : 0, // DRIFT/WAVE: Not available
-          maxSpotlights: (plan.has_unlimited_features || plan.name === 'surge')
-            ? -1  // Unlimited for surge plan
-            : plan.name === 'tide'
-              ? 1  // TIDE: 1 spotlight/month
-              : 0  // DRIFT/WAVE: Not available
+          maxTopPlacements: (plan.has_unlimited_features || plan.name === 'surge') ? -1 : (plan.name === 'tide' ? 1 : 0),
+          maxSpotlights: (plan.has_unlimited_features || plan.name === 'surge') ? -1 : (plan.name === 'tide' ? 1 : 0)
         },
         features: {
           canCreateGroupBuy: plan.can_create_group_buy,
@@ -136,20 +133,18 @@ class SubscriptionStatusChecker {
           hasUnlimitedFeatures: plan.has_unlimited_features
         },
         usage: usage ? {
-          listingsCreated: usage.listings_created,
-          groupBuysCreated: usage.group_buys_created,
-          swapDealsCreated: usage.swap_deals_created,
-          auctionsCreated: usage.auctions_created,
-          distressSalesCreated: usage.distress_sales_created,
-          dmsSent: usage.dms_sent,
-          notificationsReceived: usage.notifications_received,
-          arProductsUsed: usage.ar_products_used,
-          promotionalBoostsUsed: usage.promotional_boosts_used,
-          // Add top placements and spotlights usage from PromotionUsage
+          listingsCreated: usage.listings_created || usage.listingsCreated || 0,
+          groupBuysCreated: usage.group_buys_created || usage.groupBuysCreated || 0,
+          swapDealsCreated: usage.swap_deals_created || usage.swapDealsCreated || 0,
+          auctionsCreated: usage.auctions_created || usage.auctionsCreated || 0,
+          distressSalesCreated: usage.distress_sales_created || usage.distressSalesCreated || 0,
+          dmsSent: usage.dms_sent || usage.dmsSent || 0,
+          notificationsReceived: usage.notifications_received || usage.notificationsReceived || 0,
+          arProductsUsed: usage.ar_products_used || usage.arProductsUsed || 0,
+          promotionalBoostsUsed: usage.promotional_boosts_used || usage.promotionalBoostsUsed || 0,
           topPlacementsUsed: topPlacementsUsed,
           spotlightsUsed: spotlightsUsed
         } : {
-          // Return default usage object even if daily usage is null
           listingsCreated: 0,
           groupBuysCreated: 0,
           swapDealsCreated: 0,
@@ -162,7 +157,7 @@ class SubscriptionStatusChecker {
           topPlacementsUsed: topPlacementsUsed,
           spotlightsUsed: spotlightsUsed
         },
-        expiresAt: subscription.end_date
+        expiresAt: expirationDate
       };
     } catch (error) {
       console.error('Error getting user subscription status:', error);
