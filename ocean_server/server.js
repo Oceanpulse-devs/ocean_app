@@ -136,6 +136,18 @@ app.get('/.well-known/apple-app-site-association', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', '.well-known', 'apple-app-site-association'));
 });
 
+// Serve Static Web Pages (Privacy Policy, Terms of Service, Account Deletion)
+app.get('/privacy-policy', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'privacy-policy.html'));
+});
+app.get('/privacy', (req, res) => res.redirect('/privacy-policy'));
+
+app.get('/terms-of-service', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'terms-of-service.html'));
+});
+app.get('/terms', (req, res) => res.redirect('/terms-of-service'));
+app.get('/terms-and-conditions', (req, res) => res.redirect('/terms-of-service'));
+
 // Session configuration for OAuth (Redis store in production to avoid MemoryStore warning)
 const sessionConfig = {
     secret: process.env.SESSION_SECRET || 'your-secret-key',
