@@ -320,6 +320,23 @@ class DistressSaleController {
         }
       };
 
+      // 🔒 Block Exclusion: Filter out distress sales from blocked sellers
+      if (req.user && req.user.id) {
+        const { getBlockedUserIds } = require('../utils/userBlockHelper');
+        const blockedUserIds = await getBlockedUserIds(req.user.id);
+        if (blockedUserIds.length > 0) {
+          const blockedSellers = await db.SellersTable.findAll({
+            where: { userId: { [Op.in]: blockedUserIds } },
+            attributes: ['id'],
+            raw: true
+          });
+          const blockedSellerIds = blockedSellers.map(s => s.id);
+          if (blockedSellerIds.length > 0) {
+            whereClause.sellerId = { [Op.notIn]: blockedSellerIds };
+          }
+        }
+      }
+
       if (urgencyLevel) {
         whereClause.urgencyLevel = urgencyLevel;
       }

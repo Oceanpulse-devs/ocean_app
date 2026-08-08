@@ -986,6 +986,7 @@ app.use('/api/distress-sales', distressSaleRoutes);
 app.use('/api/heavy-distributors', heavyDistributorRoutes);
 app.use('/api/seller-verification', sellerVerificationRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
+app.use('/api/users', require('./src/routes/userBlockRoutes'));
 app.use('/', requestRoomRoutes);
 
 // Subscription HTML pages (root level for web testing)

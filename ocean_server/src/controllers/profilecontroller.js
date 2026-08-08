@@ -250,6 +250,15 @@ const getUserProfileById = async(req, res) => {
         return res.status(404).json({ message: "User or seller not found" });
       }
     }
+
+    // 🔒 Block Check: Hide profile if either user has blocked the other
+    if (req.user && req.user.id && actualUserId) {
+      const { getBlockedUserIds } = require('../utils/userBlockHelper');
+      const blockedIds = await getBlockedUserIds(req.user.id);
+      if (blockedIds.includes(actualUserId)) {
+        return res.status(404).json({ message: "User profile unavailable" });
+      }
+    }
     
     // Use actualUserId for all subsequent queries
     const alsoSeller = await SellersTable.findOne({ where: { userId: actualUserId } });

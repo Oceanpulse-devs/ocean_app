@@ -708,6 +708,18 @@ class GroupBuyController {
       // Include promotion fields and sort by promotion priority
       mappedGroupBuys = PromotionHelperService.processItemsForResponse(mappedGroupBuys);
 
+      // 🔒 Block Exclusion: Filter out group buys created by blocked users
+      if (currentUserId) {
+        const { getBlockedUserIds } = require('../utils/userBlockHelper');
+        const blockedUserIds = await getBlockedUserIds(currentUserId);
+        if (blockedUserIds.length > 0) {
+          mappedGroupBuys = mappedGroupBuys.filter(gb => {
+            const creatorId = gb.creator_id || gb.creatorId || gb.seller?.user?.id || gb.seller?.userId;
+            return !creatorId || !blockedUserIds.includes(creatorId);
+          });
+        }
+      }
+
       const responseData = {
         success: true,
         data: mappedGroupBuys,

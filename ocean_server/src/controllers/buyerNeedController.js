@@ -275,6 +275,22 @@ class BuyerNeedController {
       if (userAccountType === 'buyer' || userAccountType === 'pending-seller') {
         whereClause.buyer_id = currentUserId;
       }
+
+      // 🔒 Block Exclusion: Filter out buyer needs from blocked users
+      if (currentUserId) {
+        const { getBlockedUserIds } = require('../utils/userBlockHelper');
+        const blockedUserIds = await getBlockedUserIds(currentUserId);
+        if (blockedUserIds.length > 0) {
+          if (whereClause.buyer_id) {
+            // If buyer_id is already set, ensure it's not blocked
+            if (Array.isArray(blockedUserIds) && blockedUserIds.includes(whereClause.buyer_id)) {
+              whereClause.buyer_id = null; // Forces 0 results
+            }
+          } else {
+            whereClause.buyer_id = { [Op.notIn]: blockedUserIds };
+          }
+        }
+      }
       // Sellers and admins can see all buyer needs (no additional filter)
 
       const { count, rows } = await db.BuyerNeed.findAndCountAll({

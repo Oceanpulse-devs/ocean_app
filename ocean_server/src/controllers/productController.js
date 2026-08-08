@@ -81,6 +81,18 @@ const getProducts = async (req, res) => {
         // Include promotion fields and sort by promotion priority
         mappedProducts = PromotionHelperService.processItemsForResponse(mappedProducts);
 
+        // 🔒 Block Exclusion: Filter out products listed by blocked sellers
+        if (currentUserId) {
+            const { getBlockedUserIds } = require('../utils/userBlockHelper');
+            const blockedUserIds = await getBlockedUserIds(currentUserId);
+            if (blockedUserIds.length > 0) {
+                mappedProducts = mappedProducts.filter(p => {
+                    const sellerUserId = p.seller?.user?.id || p.seller?.userId;
+                    return !sellerUserId || !blockedUserIds.includes(sellerUserId);
+                });
+            }
+        }
+
 
 
         // Wrap products in proper structure {data: {products: [...], pagination: {...}}}

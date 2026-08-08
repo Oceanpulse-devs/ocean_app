@@ -360,6 +360,16 @@ class SwapDealController {
       }
 
       let whereClause = { status: 'active' };
+
+      // 🔒 Block Exclusion: Filter out swap deals created by blocked users
+      if (req.user && req.user.id) {
+        const { getBlockedUserIds } = require('../utils/userBlockHelper');
+        const blockedUserIds = await getBlockedUserIds(req.user.id);
+        if (blockedUserIds.length > 0) {
+          whereClause.userId = { [Op.notIn]: blockedUserIds };
+        }
+      }
+
       const additionalConditions = [];
 
       // Category filter - case-insensitive matching on categoryToSwap

@@ -218,6 +218,20 @@ class StoryController {
             // Include current user's own stories
             followingIds.push(userId);
 
+            // 🔒 Block Exclusion: Filter out stories from blocked users
+            if (userId) {
+                const { getBlockedUserIds } = require('../utils/userBlockHelper');
+                const blockedIds = await getBlockedUserIds(userId);
+                if (blockedIds.length > 0) {
+                    const blockedSet = new Set(blockedIds);
+                    for (let i = followingIds.length - 1; i >= 0; i--) {
+                        if (blockedSet.has(followingIds[i])) {
+                            followingIds.splice(i, 1);
+                        }
+                    }
+                }
+            }
+
             // Get stories from followed users and own stories that haven't expired
             const stories = await Story.findAll({
                 where: {

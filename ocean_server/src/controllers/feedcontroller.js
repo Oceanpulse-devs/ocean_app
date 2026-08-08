@@ -152,6 +152,15 @@ const getHomeFeed = async (req, res) => {
         if (region) {
             postWhereClause.userRegion = region;
         }
+
+        // 🔒 Block Exclusion: Filter out posts from blocked users
+        if (currentUserId && currentUserId !== 'guest') {
+            const { getBlockedUserIds } = require('../utils/userBlockHelper');
+            const blockedUserIds = await getBlockedUserIds(currentUserId);
+            if (blockedUserIds.length > 0) {
+                postWhereClause.userId = { [Op.notIn]: blockedUserIds };
+            }
+        }
         
         const posts = await Post.findAndCountAll({
             where: postWhereClause,

@@ -342,6 +342,23 @@ const getAuctions = async (req, res) => {
       // Default: show active auctions (new auctions are created as active)
       whereClause.status = 'active';
     }
+
+    // 🔒 Block Exclusion: Filter out auctions from blocked sellers
+    if (req.user && req.user.id) {
+      const { getBlockedUserIds } = require('../utils/userBlockHelper');
+      const blockedUserIds = await getBlockedUserIds(req.user.id);
+      if (blockedUserIds.length > 0) {
+        const blockedSellers = await SellersTable.findAll({
+          where: { userId: { [Op.in]: blockedUserIds } },
+          attributes: ['id'],
+          raw: true
+        });
+        const blockedSellerIds = blockedSellers.map(s => s.id);
+        if (blockedSellerIds.length > 0) {
+          whereClause.sellerId = { [Op.notIn]: blockedSellerIds };
+        }
+      }
+    }
     
     // Build array of additional conditions
     const additionalConditions = [];
