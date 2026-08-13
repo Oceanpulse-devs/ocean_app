@@ -3,6 +3,7 @@ const router = express.Router();
 const multer = require('multer');
 const VideoController = require('../controllers/videoController');
 const authMiddleware = require('../middleware/authMiddleware');
+const optionalAuthMiddleware = require('../middleware/optionalAuthMiddleware');
 
 // Configure multer for video uploads
 const upload = multer({
@@ -21,14 +22,17 @@ const upload = multer({
 });
 
 // Video routes
+// Public / Guest accessible GET routes (optional authentication)
+router.get('/', optionalAuthMiddleware, VideoController.getVideos);
+router.get('/user/:userId', optionalAuthMiddleware, VideoController.getUserVideos);
+router.get('/:id', optionalAuthMiddleware, VideoController.getVideoById);
+router.get('/:id/comments', optionalAuthMiddleware, VideoController.getComments);
+
+// Protected write actions (authentication required)
 router.post('/', authMiddleware, upload.single('video'), VideoController.createVideo);
-router.get('/', authMiddleware, VideoController.getVideos);
-router.get('/user/:userId', authMiddleware, VideoController.getUserVideos);
-router.get('/:id', authMiddleware, VideoController.getVideoById);
 router.post('/:id/like', authMiddleware, VideoController.likeVideo);
 router.post('/:id/view', authMiddleware, VideoController.viewVideo);
 router.post('/:id/comments', authMiddleware, VideoController.addComment);
-router.get('/:id/comments', authMiddleware, VideoController.getComments);
 router.post('/comments/:commentId/like', authMiddleware, VideoController.likeComment);
 router.put('/:id', authMiddleware, VideoController.updateVideo);
 router.delete('/:id', authMiddleware, VideoController.deleteVideo);
