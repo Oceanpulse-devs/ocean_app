@@ -99,6 +99,8 @@ class SubscriptionStatusChecker {
           billing_period: plan.billingPeriod || plan.billing_period || 'monthly'
         },
         status: subscription.status || 'active',
+        autoRenew: subscription.autoRenew !== undefined ? subscription.autoRenew : (subscription.auto_renew !== undefined ? subscription.auto_renew : true),
+        auto_renew: subscription.autoRenew !== undefined ? subscription.autoRenew : (subscription.auto_renew !== undefined ? subscription.auto_renew : true),
         isTrial: false,
         is_trial: false,
         trialDaysRemaining: null,

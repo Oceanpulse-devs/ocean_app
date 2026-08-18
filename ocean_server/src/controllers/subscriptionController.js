@@ -1145,7 +1145,11 @@ class SubscriptionController {
 
         res.json({
           success: true,
-          message: 'Subscription cancelled successfully'
+          message: 'Subscription auto-renewal cancelled successfully. You will maintain full access until your billing period ends.',
+          data: {
+            autoRenew: false,
+            expiresAt: currentSubscriptionStatus.expiresAt
+          }
         });
       } else {
         res.status(400).json({

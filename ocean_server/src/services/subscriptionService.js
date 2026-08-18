@@ -244,31 +244,17 @@ class SubscriptionService {
         throw new Error('No active subscription found');
       }
 
-      // Cancel the subscription
+      // Stop auto-renewal, record cancellation details, but keep status 'active' until endDate
       await subscription.update({
-        status: 'cancelled',
+        auto_renew: false,
+        autoRenew: false,
         cancellation_reason: reason,
+        cancellationReason: reason,
         cancelled_at: new Date(),
-        auto_renew: false
+        cancelledAt: new Date()
       });
 
-      // Update user's subscription status
-      await this.updateUserSubscriptionStatus(userId, 'cancelled', null, null);
-
-      // Revoke verified badge if plan had verified badge feature
-      try {
-        const plan = await SubscriptionPlan.findByPk(subscription.planId);
-        if (plan && plan.hasVerifiedBadge) {
-          await this.updateSellerVerificationFromSubscription(
-            userId,
-            plan,
-            'revoke'
-          );
-        }
-      } catch (error) {
-        // Don't fail cancellation if verification update fails
-        console.error('Error revoking verified badge during cancellation:', error);
-      }
+      console.log(`✅ Subscription auto-renewal cancelled for user ${userId}. Access will remain active until end_date: ${subscription.endDate || subscription.end_date}`);
 
       return true;
     } catch (error) {

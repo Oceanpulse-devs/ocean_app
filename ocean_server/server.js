@@ -1773,10 +1773,9 @@ console.log('✅ Monthly promotion reset cron job initialized (runs on 1st of ea
 // console.log('✅ Subscription reminder cron job initialized (runs daily at 9:00 AM)');
 
 // Initialize subscription expiration cron job (marks expired subscriptions and sends emails)
-// DISABLED: Not needed for auto-renewing subscriptions (Flutterwave handles renewals automatically)
-// const SubscriptionExpirationJob = require('./src/jobs/subscriptionExpirationJob');
-// SubscriptionExpirationJob.start();
-// console.log('✅ Subscription expiration cron job initialized (runs daily at 10:00 AM)');
+const SubscriptionExpirationJob = require('./src/jobs/subscriptionExpirationJob');
+SubscriptionExpirationJob.start();
+console.log('✅ Subscription expiration cron job initialized (runs daily at 10:00 AM)');
 
 
 }
