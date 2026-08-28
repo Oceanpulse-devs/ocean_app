@@ -85,6 +85,8 @@ const SellerFeedbackResponse = require('./SellerFeedbackResponse');
 const SellerFeedbackResponseLike = require('./SellerFeedbackResponseLike');
 const Report = require('./Report');
 const UserFcmToken = require('./UserFcmToken');
+const SellerSocialAccount = require('./SellerSocialAccount');
+const SocialPostLog = require('./SocialPostLog');
 
 // Initialize all models
 db.UserTable = UserTable(sequelize, Sequelize.DataTypes);
@@ -157,6 +159,8 @@ db.ShareStats = ShareStats(sequelize, Sequelize.DataTypes);
   db.SellerFeedbackResponseLike = SellerFeedbackResponseLike(sequelize, Sequelize.DataTypes);
   db.Report = Report(sequelize, Sequelize.DataTypes);
   db.UserFcmToken = UserFcmToken(sequelize, Sequelize.DataTypes);
+  db.SellerSocialAccount = SellerSocialAccount(sequelize, Sequelize.DataTypes);
+  db.SocialPostLog = SocialPostLog(sequelize, Sequelize.DataTypes);
 
 // Set up associations
 const setupAssociations = () => {

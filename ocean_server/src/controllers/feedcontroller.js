@@ -1078,6 +1078,19 @@ const createPost = async (req, res) => {
         // Buyers should now create buyer needs directly instead of posts
         // Only sellers can create posts, and posts are for products/announcements
 
+        // Trigger background social auto-post if requested or default
+        const { autoPostSocials, targetPlatforms, socialCaption } = formData;
+        if (autoPostSocials !== false && autoPostSocials !== 'false') {
+            const socialAutoPostService = require('../services/socialAutoPostService');
+            socialAutoPostService.triggerAutoPost({
+                sellerId: userId,
+                itemType: 'post',
+                itemData: createdPost,
+                targetPlatforms,
+                customCaption: socialCaption
+            });
+        }
+
         res.status(201).json({
             success: true,
             message: "Post created successfully",

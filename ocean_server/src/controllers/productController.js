@@ -456,6 +456,19 @@ const createProduct = async (req, res) => {
             };
         }
 
+        // Trigger background social auto-post if requested or default
+        const { autoPostSocials, targetPlatforms, socialCaption } = req.body;
+        if (autoPostSocials !== false && autoPostSocials !== 'false') {
+            const socialAutoPostService = require('../services/socialAutoPostService');
+            socialAutoPostService.triggerAutoPost({
+                sellerId: seller.id,
+                itemType: 'product',
+                itemData: createdProduct,
+                targetPlatforms,
+                customCaption: socialCaption
+            });
+        }
+
         res.status(201).json({
             message: "Product created successfully",
             data: mappedProduct

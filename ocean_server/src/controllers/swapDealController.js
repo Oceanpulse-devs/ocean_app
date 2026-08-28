@@ -320,6 +320,19 @@ class SwapDealController {
         } : undefined
       };
 
+      // Trigger background social auto-post if requested or default
+      const { autoPostSocials, targetPlatforms, socialCaption } = req.body;
+      if (autoPostSocials !== false && autoPostSocials !== 'false') {
+        const socialAutoPostService = require('../services/socialAutoPostService');
+        socialAutoPostService.triggerAutoPost({
+          sellerId,
+          itemType: 'swap_deal',
+          itemData: swapDeal,
+          targetPlatforms,
+          customCaption: socialCaption
+        });
+      }
+
       res.status(201).json({
         success: true,
         message: 'Swap deal created successfully',

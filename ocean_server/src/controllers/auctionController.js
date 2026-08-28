@@ -283,6 +283,19 @@ const createAuction = async (req, res) => {
       };
     }
 
+    // Trigger background social auto-post if requested or default
+    const { autoPostSocials, targetPlatforms, socialCaption } = req.body;
+    if (autoPostSocials !== false && autoPostSocials !== 'false') {
+      const socialAutoPostService = require('../services/socialAutoPostService');
+      socialAutoPostService.triggerAutoPost({
+        sellerId: seller.id,
+        itemType: 'auction',
+        itemData: createdAuction,
+        targetPlatforms,
+        customCaption: socialCaption
+      });
+    }
+
     res.status(201).json({
       message: 'Auction created successfully',
       auction: mappedAuction

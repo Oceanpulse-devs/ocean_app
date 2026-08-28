@@ -641,6 +641,19 @@ class GroupBuyController {
         }
       }
 
+      // Trigger background social auto-post if requested or default
+      const { autoPostSocials, targetPlatforms, socialCaption } = req.body;
+      if (autoPostSocials !== false && autoPostSocials !== 'false') {
+        const socialAutoPostService = require('../services/socialAutoPostService');
+        socialAutoPostService.triggerAutoPost({
+          sellerId: creator_id,
+          itemType: 'group_buy',
+          itemData: createdGroupBuy,
+          targetPlatforms,
+          customCaption: socialCaption
+        });
+      }
+
       res.status(201).json({
         success: true,
         message: 'Group buy created successfully',
