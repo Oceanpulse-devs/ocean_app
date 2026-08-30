@@ -62,7 +62,14 @@ class ZernioService {
       } catch (postErr) {
         console.error('❌ POST /v1/profiles Error Details:', postErr.response?.data || postErr.message);
 
-        // Fallback: Try fetching existing profiles from Zernio GET /v1/profiles
+        // 1. Direct check: Zernio returns existingProfileId in details on name conflict!
+        const existingIdFromErr = postErr.response?.data?.details?.existingProfileId;
+        if (existingIdFromErr) {
+          console.log(`✅ Using existing Zernio Profile ID from error details: ${existingIdFromErr}`);
+          return existingIdFromErr;
+        }
+
+        // 2. Fallback: Fetch existing profiles from Zernio GET /v1/profiles
         try {
           console.log('Fetching profiles list from GET /v1/profiles...');
           const listResponse = await axios.get(
