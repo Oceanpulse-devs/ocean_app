@@ -403,16 +403,22 @@ class SellerSocialController {
       }
 
       // Event 3: Post Status Updates
-      if (event === 'post.published' || event === 'post.platform.published' || event === 'post_published' || event === 'post.failed' || event === 'post.platform.failed' || zernioPostId) {
-        const isSuccess = event === 'post.published' || event === 'post.platform.published' || status === 'success' || status === 'published';
-        const log = await SocialPostLog.findOne({ where: { zernioPostId } });
-        if (log) {
-          await log.update({
-            status: isSuccess ? 'success' : 'failed',
-            errorMessage: isSuccess ? null : (error || 'Publication failed'),
-            publishedAt: isSuccess ? new Date() : log.publishedAt
-          });
-          console.log(`✅ [Zernio Webhook] Updated log for post ${zernioPostId}: ${isSuccess ? 'success' : 'failed'}`);
+      const targetZernioPostId = zernioPostId || payload.postId || payload.post?.id || payload.post?._id;
+      if (targetZernioPostId || (event && event.startsWith('post.'))) {
+        const isSuccess = event === 'post.published' || event === 'post.platform.published' || event === 'post_published' || status === 'success' || status === 'published' || payload.platform?.status === 'published';
+        
+        if (targetZernioPostId) {
+          const log = await SocialPostLog.findOne({ where: { zernioPostId: targetZernioPostId } });
+          if (log) {
+            await log.update({
+              status: isSuccess ? 'success' : 'failed',
+              errorMessage: isSuccess ? null : (error || 'Publication failed'),
+              publishedAt: isSuccess ? new Date() : log.publishedAt
+            });
+            console.log(`✅ [Zernio Webhook] Updated log for post ${targetZernioPostId}: ${isSuccess ? 'success' : 'failed'}`);
+          } else {
+            console.log(`ℹ️ [Zernio Webhook] Log not found for post ID ${targetZernioPostId} (event: ${event})`);
+          }
         }
       }
 

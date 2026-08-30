@@ -241,7 +241,7 @@ class ZernioService {
    */
   async publishPost(zernioProfileId, payload) {
     try {
-      const { caption, mediaUrls = [], platform, link } = payload;
+      const { caption, mediaUrls = [], platform, link, accountId } = payload;
 
       if (!this.apiKey) {
         console.log(`[Zernio Simulated Publish] Platform: ${platform}, Profile: ${zernioProfileId}, Link: ${link}`);
@@ -252,32 +252,48 @@ class ZernioService {
         };
       }
 
+      // Convert mediaUrls to Zernio expected mediaItems array structure [{ url, type }]
+      const mediaItems = (mediaUrls || []).map(url => ({
+        url: url,
+        type: (typeof url === 'string' && url.match(/\.(mp4|mov|avi|webm)$/i)) ? 'video' : 'image'
+      }));
+
+      // Construct platforms array payload expected by Zernio POST /v1/posts
+      const platformItem = { platform: (platform || 'facebook').toLowerCase() };
+      if (accountId) {
+        platformItem.accountId = accountId;
+      }
+      const platformsArray = [platformItem];
+
+      console.log(`📡 Publishing to Zernio: Profile=${zernioProfileId}, Platform=${platform}, AccountId=${accountId}...`);
+
       const response = await axios.post(
-        `${this.baseUrl}/posts/publish`,
+        `${this.baseUrl}/posts`,
         {
           profileId: zernioProfileId,
-          platform,
-          caption,
-          mediaUrls,
-          link
+          content: caption,
+          mediaItems: mediaItems.length > 0 ? mediaItems : undefined,
+          platforms: platformsArray,
+          publishNow: true
         },
         { headers: this.getHeaders(), timeout: 30000 }
       );
 
-      if (response.data && (response.data.success || response.data.id)) {
-        return {
-          success: true,
-          zernioPostId: response.data.id || response.data.postId || `zernio_${Date.now()}`,
-          status: 'success'
-        };
-      } else {
-        throw new Error(response.data?.message || 'Publication failed via Zernio');
-      }
+      console.log('✅ Zernio Publish Response:', response.data);
+
+      const postObj = response.data?.post || response.data;
+      const zernioPostId = postObj?._id || postObj?.id || response.data?.id || `zernio_${Date.now()}`;
+
+      return {
+        success: true,
+        zernioPostId: zernioPostId,
+        status: response.data?.status || 'published'
+      };
     } catch (error) {
       console.error(`Error publishing to Zernio (${payload.platform}):`, error.response?.data || error.message);
       return {
         success: false,
-        error: error.response?.data?.message || error.message
+        error: error.response?.data?.error || error.response?.data?.message || error.message
       };
     }
   }

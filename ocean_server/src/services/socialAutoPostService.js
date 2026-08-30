@@ -85,6 +85,7 @@ class SocialAutoPostService {
           caption,
           mediaUrls,
           platform: account.platform,
+          accountId: account.accountId,
           link: deepLink
         });
 
