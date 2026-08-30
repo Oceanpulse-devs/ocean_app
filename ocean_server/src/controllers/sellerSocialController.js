@@ -352,28 +352,53 @@ class SellerSocialController {
 
       const { SellerSocialAccount, SocialPostLog } = db;
 
+      // Extract Zernio profile ID from various possible webhook payload structures
+      const targetProfileId = zernioProfileId || payload.profileId || payload.profile_id || 
+                              (typeof payload.account?.profileId === 'object' ? payload.account?.profileId?._id : payload.account?.profileId);
+      
+      let targetSellerId = sellerId || payload.seller_id;
+
+      // If sellerId wasn't passed directly in webhook, lookup sellerId via existing zernioProfileId
+      if (!targetSellerId && targetProfileId) {
+        const existingAcc = await SellerSocialAccount.findOne({ where: { zernioProfileId: targetProfileId } });
+        if (existingAcc) {
+          targetSellerId = existingAcc.sellerId;
+        }
+      }
+
       // Event 1: Social Account Connected
-      if (event === 'account.connected' || event === 'account_connected' || (zernioProfileId && sellerId && platform)) {
-        await SellerSocialAccount.upsert({
-          sellerId,
-          zernioProfileId,
-          platform: (platform || 'facebook').toLowerCase(),
-          accountName: accountName || `${platform} Account`,
-          accountId: accountId || zernioProfileId,
-          isConnected: true,
-          autoPostDefault: true
-        });
-        console.log(`✅ [Zernio Webhook] Social account connected for seller ${sellerId}: ${platform}`);
+      if (event === 'account.connected' || event === 'account_connected') {
+        if (targetSellerId && targetProfileId) {
+          await SellerSocialAccount.upsert({
+            sellerId: targetSellerId,
+            zernioProfileId: targetProfileId,
+            platform: (platform || payload.account?.platform || 'facebook').toLowerCase(),
+            accountName: accountName || payload.account?.displayName || payload.account?.username || `${platform || 'Social'} Account`,
+            accountId: accountId || payload.account?._id || targetProfileId,
+            isConnected: true,
+            autoPostDefault: true
+          });
+          console.log(`✅ [Zernio Webhook] Social account connected for seller ${targetSellerId}: ${platform || 'social'}`);
+        } else if (targetProfileId) {
+          await SellerSocialAccount.update(
+            { isConnected: true },
+            { where: { zernioProfileId: targetProfileId } }
+          );
+          console.log(`✅ [Zernio Webhook] Social account connected for profile ${targetProfileId}`);
+        } else {
+          console.warn('⚠️ [Zernio Webhook] account.connected event skipped due to missing profileId/sellerId');
+        }
       }
 
       // Event 2: Social Account Disconnected
       if (event === 'account.disconnected' || event === 'account_disconnected') {
-        if (zernioProfileId || accountId) {
+        const profileIdToDisconnect = targetProfileId || accountId;
+        if (profileIdToDisconnect) {
           await SellerSocialAccount.update(
             { isConnected: false },
-            { where: { zernioProfileId: zernioProfileId || accountId } }
+            { where: { zernioProfileId: profileIdToDisconnect } }
           );
-          console.log(`⚠️ [Zernio Webhook] Social account disconnected: ${zernioProfileId || accountId}`);
+          console.log(`⚠️ [Zernio Webhook] Social account disconnected: ${profileIdToDisconnect}`);
         }
       }
 
