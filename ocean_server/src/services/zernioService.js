@@ -45,6 +45,8 @@ class ZernioService {
       const profileName = seller.businessName || seller.fullName || `Seller_${seller.id.substring(0, 8)}`;
       console.log(`📡 Creating Zernio Profile for seller ${seller.id} (Name: "${profileName}")...`);
 
+      let profileId = null;
+
       try {
         const response = await axios.post(
           `${this.baseUrl}/profiles`,
@@ -54,43 +56,59 @@ class ZernioService {
 
         console.log('✅ Zernio Profile Created:', response.data);
         const profileObj = response.data?.profile || response.data;
-        const profileId = profileObj?._id || profileObj?.id || profileObj?.profileId;
-
-        if (profileId) {
-          return profileId;
-        }
+        profileId = profileObj?._id || profileObj?.id || profileObj?.profileId;
       } catch (postErr) {
-        console.error('❌ POST /v1/profiles Error Details:', postErr.response?.data || postErr.message);
-
-        // 1. Direct check: Zernio returns existingProfileId in details on name conflict!
+        // Check if Zernio returned existingProfileId on profile_name_conflict
         const existingIdFromErr = postErr.response?.data?.details?.existingProfileId;
+
         if (existingIdFromErr) {
-          console.log(`✅ Using existing Zernio Profile ID from error details: ${existingIdFromErr}`);
-          return existingIdFromErr;
-        }
+          console.log(`ℹ️ Profile "${profileName}" already exists on Zernio. Using existingProfileId: ${existingIdFromErr}`);
+          profileId = existingIdFromErr;
+        } else {
+          console.error('❌ POST /v1/profiles Error Details:', postErr.response?.data || postErr.message);
 
-        // 2. Fallback: Fetch existing profiles from Zernio GET /v1/profiles
-        try {
-          console.log('Fetching profiles list from GET /v1/profiles...');
-          const listResponse = await axios.get(
-            `${this.baseUrl}/profiles`,
-            { headers: this.getHeaders(), timeout: 15000 }
-          );
+          // Fallback: Fetch existing profiles from Zernio GET /v1/profiles
+          try {
+            console.log('Fetching profiles list from GET /v1/profiles...');
+            const listResponse = await axios.get(
+              `${this.baseUrl}/profiles`,
+              { headers: this.getHeaders(), timeout: 15000 }
+            );
 
-          const profiles = listResponse.data?.profiles || listResponse.data?.data || listResponse.data || [];
-          if (Array.isArray(profiles) && profiles.length > 0) {
-            const matched = profiles.find(p => p.name === profileName) || profiles[0];
-            const profileId = matched?._id || matched?.id || matched?.profileId;
-            if (profileId) {
-              console.log(`✅ Using existing Zernio Profile ID: ${profileId}`);
-              return profileId;
+            const profiles = listResponse.data?.profiles || listResponse.data?.data || listResponse.data || [];
+            if (Array.isArray(profiles) && profiles.length > 0) {
+              const matched = profiles.find(p => p.name === profileName) || profiles[0];
+              profileId = matched?._id || matched?.id || matched?.profileId;
+              if (profileId) {
+                console.log(`✅ Using existing Zernio Profile ID from list: ${profileId}`);
+              }
             }
+          } catch (listErr) {
+            console.error('❌ GET /v1/profiles Error Details:', listErr.response?.data || listErr.message);
           }
-        } catch (listErr) {
-          console.error('❌ GET /v1/profiles Error Details:', listErr.response?.data || listErr.message);
-        }
 
-        throw postErr;
+          if (!profileId) {
+            throw postErr;
+          }
+        }
+      }
+
+      // Persist zernioProfileId in DB so future requests skip calling POST /v1/profiles
+      if (profileId) {
+        try {
+          await SellerSocialAccount.upsert({
+            sellerId: seller.id,
+            zernioProfileId: profileId,
+            platform: 'facebook',
+            accountName: `${profileName}`,
+            accountId: profileId,
+            isConnected: false,
+            autoPostDefault: true
+          });
+        } catch (dbErr) {
+          console.warn('Non-blocking DB profile saving:', dbErr.message);
+        }
+        return profileId;
       }
 
       throw new Error('Failed to create or retrieve Zernio profile ID');
