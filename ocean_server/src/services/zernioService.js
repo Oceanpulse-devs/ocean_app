@@ -21,7 +21,7 @@ class ZernioService {
    * Get or create a Zernio profile for a seller
    * POST /v1/profiles
    * @param {Object} seller - Seller object
-   * @returns {Promise<string>} Zernio profileId
+   * @returns {Promise<string>} Zernio profileId (_id)
    */
   async getOrCreateProfile(seller) {
     try {
@@ -53,7 +53,8 @@ class ZernioService {
         );
 
         console.log('✅ Zernio Profile Created:', response.data);
-        const profileId = response.data?.id || response.data?.profileId || response.data?.data?.id;
+        const profileObj = response.data?.profile || response.data;
+        const profileId = profileObj?._id || profileObj?.id || profileObj?.profileId;
 
         if (profileId) {
           return profileId;
@@ -72,7 +73,7 @@ class ZernioService {
           const profiles = listResponse.data?.profiles || listResponse.data?.data || listResponse.data || [];
           if (Array.isArray(profiles) && profiles.length > 0) {
             const matched = profiles.find(p => p.name === profileName) || profiles[0];
-            const profileId = matched?.id || matched?.profileId;
+            const profileId = matched?._id || matched?.id || matched?.profileId;
             if (profileId) {
               console.log(`✅ Using existing Zernio Profile ID: ${profileId}`);
               return profileId;
@@ -107,7 +108,7 @@ class ZernioService {
         throw new Error('ZERNIO_API_KEY is not configured in environment variables');
       }
 
-      // Step 1: Get or create Zernio Profile ID (returned by POST /v1/profiles)
+      // Step 1: Get or create Zernio Profile ID (returned by POST /v1/profiles as `_id`)
       let profileId;
       if (typeof seller === 'object' && seller.id) {
         profileId = await this.getOrCreateProfile(seller);
@@ -119,52 +120,25 @@ class ZernioService {
 
       console.log(`📡 Requesting Zernio connect URL: Platform=${normalizedPlatform}, ProfileId=${profileId}, RedirectUrl=${redirectUrl}`);
 
-      // Step 2: Call GET /v1/connect/{platform} passing profileId & redirect_url
-      let response;
-      try {
-        response = await axios.get(
-          `${this.baseUrl}/connect/${normalizedPlatform}`,
-          {
-            headers: this.getHeaders(),
-            params: {
-              profileId: profileId,
-              redirect_url: redirectUrl,
-              redirectUri: redirectUrl,
-              redirect_uri: redirectUrl
-            },
-            timeout: 15000
-          }
-        );
-      } catch (getErr) {
-        console.error(`❌ GET /v1/connect/${normalizedPlatform} Error Details:`, getErr.response?.data || getErr.message);
-        console.warn(`Retrying with POST /v1/connect/${normalizedPlatform}...`);
-
-        try {
-          response = await axios.post(
-            `${this.baseUrl}/connect/${normalizedPlatform}`,
-            {
-              profileId: profileId,
-              redirect_url: redirectUrl,
-              redirectUri: redirectUrl
-            },
-            {
-              headers: this.getHeaders(),
-              timeout: 15000
-            }
-          );
-        } catch (postErr) {
-          console.error(`❌ POST /v1/connect/${normalizedPlatform} Error Details:`, postErr.response?.data || postErr.message);
-          throw postErr;
+      // Step 2: Call GET /v1/connect/{platform}?profileId={profileId}&redirect_url={redirectUrl}
+      const response = await axios.get(
+        `${this.baseUrl}/connect/${normalizedPlatform}`,
+        {
+          headers: this.getHeaders(),
+          params: {
+            profileId: profileId,
+            redirect_url: redirectUrl
+          },
+          timeout: 15000
         }
-      }
+      );
 
       console.log(`✅ Zernio Connect API Response:`, response.data);
 
       const authUrl = response.data?.authUrl || 
                       response.data?.url || 
                       response.data?.connectUrl || 
-                      response.data?.data?.authUrl || 
-                      response.data?.data?.url;
+                      response.data?.data?.authUrl;
 
       if (!authUrl) {
         throw new Error(`Zernio response missing authUrl: ${JSON.stringify(response.data)}`);
@@ -181,7 +155,7 @@ class ZernioService {
       console.error('Zernio getConnectUrl Error:', errorDetails);
       return {
         success: false,
-        error: error.response?.data?.message || (typeof errorDetails === 'object' ? JSON.stringify(errorDetails) : errorDetails)
+        error: error.response?.data?.error || error.response?.data?.message || (typeof errorDetails === 'object' ? JSON.stringify(errorDetails) : errorDetails)
       };
     }
   }
