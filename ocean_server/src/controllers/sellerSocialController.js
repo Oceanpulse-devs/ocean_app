@@ -95,12 +95,20 @@ class SellerSocialController {
 
       const result = await zernioService.getConnectUrl(seller.id, platform.toLowerCase());
 
+      if (!result.success) {
+        return res.status(400).json({
+          success: false,
+          message: result.error || 'Failed to fetch Zernio connect URL'
+        });
+      }
+
       return res.status(200).json({
         success: true,
         message: `Connect URL generated for ${platform}`,
         data: {
           platform: platform.toLowerCase(),
-          connectUrl: result.connectUrl
+          connectUrl: result.connectUrl || result.authUrl,
+          authUrl: result.authUrl || result.connectUrl
         }
       });
     } catch (error) {
@@ -110,6 +118,63 @@ class SellerSocialController {
         message: 'Failed to generate connection URL',
         error: error.message
       });
+    }
+  }
+
+  /**
+   * GET /api/seller/social/callback
+   * Handle OAuth redirect callback from Zernio
+   */
+  async handleOAuthCallback(req, res) {
+    try {
+      console.log('📡 [Zernio OAuth Callback Received]:', req.query);
+      const { seller_id, sellerId, zernio_profile_id, profileId, platform, account_name, accountName } = req.query;
+
+      const targetSellerId = sellerId || seller_id;
+      const targetProfileId = profileId || zernio_profile_id;
+      const targetPlatform = platform || 'facebook';
+
+      if (targetSellerId && targetProfileId) {
+        const { SellerSocialAccount } = db;
+        await SellerSocialAccount.upsert({
+          sellerId: targetSellerId,
+          zernioProfileId: targetProfileId,
+          platform: targetPlatform.toLowerCase(),
+          accountName: accountName || account_name || `${targetPlatform} Account`,
+          accountId: targetProfileId,
+          isConnected: true,
+          autoPostDefault: true
+        });
+      }
+
+      res.send(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Social Account Connected</title>
+          <meta name="viewport" content="width=device-width, initial-scale=1">
+          <style>
+            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; background: #0f172a; color: #fff; text-align: center; }
+            .card { background: #1e293b; padding: 2rem; border-radius: 16px; max-width: 90%; width: 360px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.5); }
+            .icon { font-size: 48px; margin-bottom: 12px; }
+            h2 { margin: 0 0 8px 0; font-size: 20px; color: #38bdf8; }
+            p { color: #94a3b8; font-size: 14px; margin-bottom: 24px; }
+            button { background: #0284c7; color: white; border: none; padding: 12px 24px; border-radius: 8px; font-weight: 600; font-size: 15px; cursor: pointer; }
+          </style>
+        </head>
+        <body>
+          <div class="card">
+            <div class="icon">✅</div>
+            <h2>Account Connected!</h2>
+            <p>Your social account was linked to Bluewhale Marketplace successfully.</p>
+            <button onclick="window.close()">Return to App</button>
+          </div>
+        </body>
+        </html>
+      `);
+    } catch (error) {
+      console.error('Error handling OAuth callback:', error);
+      res.status(500).send('Error completing social connection.');
     }
   }
 
@@ -322,5 +387,6 @@ module.exports = {
   updateSocialSettings: controller.updateSocialSettings.bind(controller),
   disconnectAccount: controller.disconnectAccount.bind(controller),
   getAutoPostLogs: controller.getAutoPostLogs.bind(controller),
-  handleZernioWebhook: controller.handleZernioWebhook.bind(controller)
+  handleZernioWebhook: controller.handleZernioWebhook.bind(controller),
+  handleOAuthCallback: controller.handleOAuthCallback.bind(controller)
 };

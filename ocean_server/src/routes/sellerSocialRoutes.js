@@ -4,6 +4,7 @@ const sellerSocialController = require('../controllers/sellerSocialController');
 const authMiddleware = require('../middleware/authMiddleware');
 
 // Public Zernio Webhook endpoints (no authentication middleware)
+router.get('/callback', sellerSocialController.handleOAuthCallback);
 router.post('/webhooks/zernio', sellerSocialController.handleZernioWebhook);
 router.get('/webhooks/zernio', (req, res) => {
   res.status(200).json({

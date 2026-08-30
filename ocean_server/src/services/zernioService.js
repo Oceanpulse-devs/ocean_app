@@ -25,34 +25,68 @@ class ZernioService {
    */
   async getConnectUrl(sellerId, platform) {
     try {
-      if (!this.apiKey) {
-        console.warn('⚠️ ZERNIO_API_KEY not configured in .env. Returning simulated connect URL.');
-        return {
-          success: true,
-          connectUrl: `https://zernio.com/oauth/connect?seller_id=${sellerId}&platform=${platform}&app_id=ocean_bluewhale`
-        };
+      const normalizedPlatform = (platform || 'facebook').toLowerCase().trim();
+      const apiKey = this.apiKey ? this.apiKey.trim() : '';
+
+      if (!apiKey) {
+        throw new Error('ZERNIO_API_KEY is not configured in environment variables');
       }
 
-      const response = await axios.post(
-        `${this.baseUrl}/oauth/connect-url`,
-        {
-          sellerId,
-          platform,
-          redirectUri: `${process.env.BACKEND_URL || 'https://bluewhalemarketplace.com'}/api/seller/social/callback`
-        },
-        { headers: this.getHeaders(), timeout: 15000 }
-      );
+      console.log(`📡 Requesting Zernio connect URL for seller ${sellerId}, platform: ${normalizedPlatform}`);
+      const redirectUri = `${process.env.BACKEND_URL}/api/seller/social/callback`;
+
+      let response;
+      try {
+        // Try GET https://api.zernio.com/v1/connect/{platform}
+        response = await axios.get(
+          `${this.baseUrl}/connect/${normalizedPlatform}`,
+          {
+            headers: this.getHeaders(),
+            params: {
+              sellerId: sellerId,
+              redirectUri: redirectUri
+            },
+            timeout: 15000
+          }
+        );
+      } catch (getErr) {
+        console.warn(`GET /connect/${normalizedPlatform} failed (${getErr.message}). Retrying with POST...`);
+        // Fallback POST https://api.zernio.com/v1/connect/{platform}
+        response = await axios.post(
+          `${this.baseUrl}/connect/${normalizedPlatform}`,
+          {
+            sellerId: sellerId,
+            redirectUri: redirectUri
+          },
+          {
+            headers: this.getHeaders(),
+            timeout: 15000
+          }
+        );
+      }
+
+      console.log(`✅ Zernio connect URL API response:`, response.data);
+
+      const authUrl = response.data?.authUrl || 
+                      response.data?.url || 
+                      response.data?.connectUrl || 
+                      response.data?.data?.authUrl || 
+                      response.data?.data?.url;
+
+      if (!authUrl) {
+        throw new Error(`Zernio did not return a valid connection URL: ${JSON.stringify(response.data)}`);
+      }
 
       return {
         success: true,
-        connectUrl: response.data.connectUrl || response.data.url
+        connectUrl: authUrl,
+        authUrl: authUrl
       };
     } catch (error) {
       console.error('Zernio getConnectUrl error:', error.response?.data || error.message);
-      // Return fallback connection link
       return {
-        success: true,
-        connectUrl: `https://zernio.com/oauth/connect?seller_id=${sellerId}&platform=${platform}`
+        success: false,
+        error: error.response?.data?.message || error.message || 'Failed to fetch Zernio connect URL'
       };
     }
   }
