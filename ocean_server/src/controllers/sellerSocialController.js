@@ -31,6 +31,13 @@ class SellerSocialController {
         });
       }
 
+      // Sync live connected accounts from Zernio before fetching
+      try {
+        await zernioService.syncConnectedAccounts(seller.id);
+      } catch (syncErr) {
+        console.warn('Non-blocking social sync error:', syncErr.message);
+      }
+
       const { SellerSocialAccount } = db;
       const accounts = await SellerSocialAccount.findAll({
         where: { sellerId: seller.id },
@@ -133,23 +140,25 @@ class SellerSocialController {
   async handleOAuthCallback(req, res) {
     try {
       console.log('📡 [Zernio OAuth Callback Received]:', req.query);
-      const { seller_id, sellerId, zernio_profile_id, profileId, platform, account_name, accountName } = req.query;
+      const { seller_id, sellerId, zernio_profile_id, profileId, state } = req.query;
 
-      const targetSellerId = sellerId || seller_id;
-      const targetProfileId = profileId || zernio_profile_id;
-      const targetPlatform = platform || 'facebook';
+      let extractedProfileId = profileId || zernio_profile_id;
+      let extractedSellerId = sellerId || seller_id;
 
-      if (targetSellerId && targetProfileId) {
-        const { SellerSocialAccount } = db;
-        await SellerSocialAccount.upsert({
-          sellerId: targetSellerId,
-          zernioProfileId: targetProfileId,
-          platform: targetPlatform.toLowerCase(),
-          accountName: accountName || account_name || `${targetPlatform} Account`,
-          accountId: targetProfileId,
-          isConnected: true,
-          autoPostDefault: true
-        });
+      if (state && typeof state === 'string' && state.includes('-')) {
+        const parts = state.split('-');
+        if (parts.length >= 2) {
+          if (!extractedSellerId) extractedSellerId = parts[0];
+          if (!extractedProfileId) extractedProfileId = parts[1];
+        }
+      }
+
+      if (extractedSellerId) {
+        try {
+          await zernioService.syncConnectedAccounts(extractedSellerId);
+        } catch (syncErr) {
+          console.warn('Sync on callback error:', syncErr.message);
+        }
       }
 
       res.send(`
@@ -158,13 +167,18 @@ class SellerSocialController {
         <head>
           <title>Social Account Connected</title>
           <meta name="viewport" content="width=device-width, initial-scale=1">
+          <script>
+            setTimeout(function() {
+              window.location.href = "bluewhalemarketplace://social-connected";
+            }, 1000);
+          </script>
           <style>
             body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; background: #0f172a; color: #fff; text-align: center; }
             .card { background: #1e293b; padding: 2rem; border-radius: 16px; max-width: 90%; width: 360px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.5); }
             .icon { font-size: 48px; margin-bottom: 12px; }
             h2 { margin: 0 0 8px 0; font-size: 20px; color: #38bdf8; }
             p { color: #94a3b8; font-size: 14px; margin-bottom: 24px; }
-            button { background: #0284c7; color: white; border: none; padding: 12px 24px; border-radius: 8px; font-weight: 600; font-size: 15px; cursor: pointer; }
+            button { background: #0284c7; color: white; border: none; padding: 12px 24px; border-radius: 8px; font-weight: 600; font-size: 15px; cursor: pointer; width: 100%; }
           </style>
         </head>
         <body>

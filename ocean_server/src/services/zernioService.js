@@ -116,7 +116,8 @@ class ZernioService {
         profileId = seller;
       }
 
-      const redirectUrl = `${process.env.BACKEND_URL || 'https://bluewhalemarketplace.com'}/api/seller/social/callback`;
+      const backendBase = process.env.BACKEND_URL || process.env.BASE_URL || 'https://mainserver-production-7ad9.up.railway.app';
+      const redirectUrl = `${backendBase.replace(/\/$/, '')}/api/seller/social/callback`;
 
       console.log(`📡 Requesting Zernio connect URL: Platform=${normalizedPlatform}, ProfileId=${profileId}, RedirectUrl=${redirectUrl}`);
 
@@ -157,6 +158,53 @@ class ZernioService {
         success: false,
         error: error.response?.data?.error || error.response?.data?.message || (typeof errorDetails === 'object' ? JSON.stringify(errorDetails) : errorDetails)
       };
+    }
+  }
+
+  /**
+   * Fetch connected accounts from Zernio API for a seller and sync DB
+   * GET /v1/accounts
+   */
+  async syncConnectedAccounts(sellerId) {
+    try {
+      if (!this.apiKey) return;
+      const { SellerSocialAccount } = require('../../models');
+
+      const existing = await SellerSocialAccount.findOne({ where: { sellerId } });
+      const zernioProfileId = existing?.zernioProfileId;
+
+      if (!zernioProfileId) {
+        // Seller has not generated a Zernio profile yet
+        return;
+      }
+
+      const response = await axios.get(
+        `${this.baseUrl}/accounts`,
+        { headers: this.getHeaders(), timeout: 10000 }
+      );
+
+      const accounts = response.data?.accounts || response.data?.data || response.data || [];
+      if (Array.isArray(accounts)) {
+        for (const acc of accounts) {
+          const profileObj = acc.profileId;
+          const accProfileId = typeof profileObj === 'object' ? profileObj?._id : profileObj;
+
+          if (accProfileId && accProfileId === zernioProfileId) {
+            await SellerSocialAccount.upsert({
+              sellerId: sellerId,
+              zernioProfileId: accProfileId,
+              platform: (acc.platform || 'facebook').toLowerCase(),
+              accountName: acc.displayName || acc.username || `${acc.platform} Account`,
+              accountId: acc._id || acc.platformUserId || accProfileId,
+              isConnected: acc.isActive !== false,
+              autoPostDefault: true
+            });
+            console.log(`✅ Synced connected social account for seller ${sellerId}: ${acc.platform} (${acc.displayName || acc.username})`);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error syncing Zernio connected accounts:', error.message);
     }
   }
 
