@@ -18,12 +18,87 @@ class ZernioService {
   }
 
   /**
-   * Generate Zernio OAuth connection URL for seller
-   * @param {string} sellerId - Seller ID
-   * @param {string} platform - Target platform ('facebook', 'instagram', 'whatsapp')
-   * @returns {Promise<Object>} Object with connectUrl
+   * Get or create a Zernio profile for a seller
+   * POST /v1/profiles
+   * @param {Object} seller - Seller object
+   * @returns {Promise<string>} Zernio profileId
    */
-  async getConnectUrl(sellerId, platform) {
+  async getOrCreateProfile(seller) {
+    try {
+      const apiKey = this.apiKey ? this.apiKey.trim() : '';
+      if (!apiKey) {
+        throw new Error('ZERNIO_API_KEY is not configured in environment variables');
+      }
+
+      // Check if seller already has a profile stored in database
+      const { SellerSocialAccount } = require('../../models');
+      const existingAccount = await SellerSocialAccount.findOne({
+        where: { sellerId: seller.id }
+      });
+
+      if (existingAccount && existingAccount.zernioProfileId) {
+        console.log(`✅ Found existing Zernio profileId for seller ${seller.id}: ${existingAccount.zernioProfileId}`);
+        return existingAccount.zernioProfileId;
+      }
+
+      // Profile name for Zernio
+      const profileName = seller.businessName || seller.fullName || `Seller_${seller.id.substring(0, 8)}`;
+      console.log(`📡 Creating Zernio Profile for seller ${seller.id} (Name: "${profileName}")...`);
+
+      try {
+        const response = await axios.post(
+          `${this.baseUrl}/profiles`,
+          { name: profileName },
+          { headers: this.getHeaders(), timeout: 15000 }
+        );
+
+        console.log('✅ Zernio Profile Created:', response.data);
+        const profileId = response.data?.id || response.data?.profileId || response.data?.data?.id;
+
+        if (profileId) {
+          return profileId;
+        }
+      } catch (postErr) {
+        console.error('❌ POST /v1/profiles Error Details:', postErr.response?.data || postErr.message);
+
+        // Fallback: Try fetching existing profiles from Zernio GET /v1/profiles
+        try {
+          console.log('Fetching profiles list from GET /v1/profiles...');
+          const listResponse = await axios.get(
+            `${this.baseUrl}/profiles`,
+            { headers: this.getHeaders(), timeout: 15000 }
+          );
+
+          const profiles = listResponse.data?.profiles || listResponse.data?.data || listResponse.data || [];
+          if (Array.isArray(profiles) && profiles.length > 0) {
+            const matched = profiles.find(p => p.name === profileName) || profiles[0];
+            const profileId = matched?.id || matched?.profileId;
+            if (profileId) {
+              console.log(`✅ Using existing Zernio Profile ID: ${profileId}`);
+              return profileId;
+            }
+          }
+        } catch (listErr) {
+          console.error('❌ GET /v1/profiles Error Details:', listErr.response?.data || listErr.message);
+        }
+
+        throw postErr;
+      }
+
+      throw new Error('Failed to create or retrieve Zernio profile ID');
+    } catch (error) {
+      console.error('getOrCreateProfile Error:', error.response?.data || error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Generate Zernio OAuth connection URL for seller
+   * @param {Object|string} seller - Seller object or profileId
+   * @param {string} platform - Target platform ('facebook', 'instagram', 'whatsapp')
+   * @returns {Promise<Object>} Object with connectUrl and authUrl
+   */
+  async getConnectUrl(seller, platform) {
     try {
       const normalizedPlatform = (platform || 'facebook').toLowerCase().trim();
       const apiKey = this.apiKey ? this.apiKey.trim() : '';
@@ -32,40 +107,58 @@ class ZernioService {
         throw new Error('ZERNIO_API_KEY is not configured in environment variables');
       }
 
-      console.log(`📡 Requesting Zernio connect URL for seller ${sellerId}, platform: ${normalizedPlatform}`);
-      const redirectUri = `${process.env.BACKEND_URL}/api/seller/social/callback`;
+      // Step 1: Get or create Zernio Profile ID (returned by POST /v1/profiles)
+      let profileId;
+      if (typeof seller === 'object' && seller.id) {
+        profileId = await this.getOrCreateProfile(seller);
+      } else {
+        profileId = seller;
+      }
 
+      const redirectUrl = `${process.env.BACKEND_URL || 'https://bluewhalemarketplace.com'}/api/seller/social/callback`;
+
+      console.log(`📡 Requesting Zernio connect URL: Platform=${normalizedPlatform}, ProfileId=${profileId}, RedirectUrl=${redirectUrl}`);
+
+      // Step 2: Call GET /v1/connect/{platform} passing profileId & redirect_url
       let response;
       try {
-        // Try GET https://api.zernio.com/v1/connect/{platform}
         response = await axios.get(
           `${this.baseUrl}/connect/${normalizedPlatform}`,
           {
             headers: this.getHeaders(),
             params: {
-              sellerId: sellerId,
-              redirectUri: redirectUri
+              profileId: profileId,
+              redirect_url: redirectUrl,
+              redirectUri: redirectUrl,
+              redirect_uri: redirectUrl
             },
             timeout: 15000
           }
         );
       } catch (getErr) {
-        console.warn(`GET /connect/${normalizedPlatform} failed (${getErr.message}). Retrying with POST...`);
-        // Fallback POST https://api.zernio.com/v1/connect/{platform}
-        response = await axios.post(
-          `${this.baseUrl}/connect/${normalizedPlatform}`,
-          {
-            sellerId: sellerId,
-            redirectUri: redirectUri
-          },
-          {
-            headers: this.getHeaders(),
-            timeout: 15000
-          }
-        );
+        console.error(`❌ GET /v1/connect/${normalizedPlatform} Error Details:`, getErr.response?.data || getErr.message);
+        console.warn(`Retrying with POST /v1/connect/${normalizedPlatform}...`);
+
+        try {
+          response = await axios.post(
+            `${this.baseUrl}/connect/${normalizedPlatform}`,
+            {
+              profileId: profileId,
+              redirect_url: redirectUrl,
+              redirectUri: redirectUrl
+            },
+            {
+              headers: this.getHeaders(),
+              timeout: 15000
+            }
+          );
+        } catch (postErr) {
+          console.error(`❌ POST /v1/connect/${normalizedPlatform} Error Details:`, postErr.response?.data || postErr.message);
+          throw postErr;
+        }
       }
 
-      console.log(`✅ Zernio connect URL API response:`, response.data);
+      console.log(`✅ Zernio Connect API Response:`, response.data);
 
       const authUrl = response.data?.authUrl || 
                       response.data?.url || 
@@ -74,19 +167,21 @@ class ZernioService {
                       response.data?.data?.url;
 
       if (!authUrl) {
-        throw new Error(`Zernio did not return a valid connection URL: ${JSON.stringify(response.data)}`);
+        throw new Error(`Zernio response missing authUrl: ${JSON.stringify(response.data)}`);
       }
 
       return {
         success: true,
         connectUrl: authUrl,
-        authUrl: authUrl
+        authUrl: authUrl,
+        profileId: profileId
       };
     } catch (error) {
-      console.error('Zernio getConnectUrl error:', error.response?.data || error.message);
+      const errorDetails = error.response?.data || error.message;
+      console.error('Zernio getConnectUrl Error:', errorDetails);
       return {
         success: false,
-        error: error.response?.data?.message || error.message || 'Failed to fetch Zernio connect URL'
+        error: error.response?.data?.message || (typeof errorDetails === 'object' ? JSON.stringify(errorDetails) : errorDetails)
       };
     }
   }

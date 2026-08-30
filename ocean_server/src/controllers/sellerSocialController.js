@@ -93,12 +93,14 @@ class SellerSocialController {
         });
       }
 
-      const result = await zernioService.getConnectUrl(seller.id, platform.toLowerCase());
+      // Pass seller object so zernioService can fetch/create Zernio profileId (POST /v1/profiles)
+      const result = await zernioService.getConnectUrl(seller, platform.toLowerCase());
 
       if (!result.success) {
         return res.status(400).json({
           success: false,
-          message: result.error || 'Failed to fetch Zernio connect URL'
+          message: result.error || 'Failed to fetch Zernio connect URL',
+          details: result.error
         });
       }
 
@@ -108,15 +110,18 @@ class SellerSocialController {
         data: {
           platform: platform.toLowerCase(),
           connectUrl: result.connectUrl || result.authUrl,
-          authUrl: result.authUrl || result.connectUrl
+          authUrl: result.authUrl || result.connectUrl,
+          profileId: result.profileId
         }
       });
     } catch (error) {
-      console.error('Error generating social connect URL:', error);
+      const errorData = error.response?.data || error.message;
+      console.error('Error generating social connect URL:', errorData);
       return res.status(500).json({
         success: false,
         message: 'Failed to generate connection URL',
-        error: error.message
+        error: error.response?.data?.message || error.message,
+        details: errorData
       });
     }
   }
