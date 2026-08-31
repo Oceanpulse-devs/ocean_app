@@ -301,7 +301,7 @@ class VideoController {
                 });
             }
 
-            // Fetch from database
+            // Dynamic random ordering for video feed (bypasses static cache for fresh video mix)
             const videos = await Video.findAndCountAll({
                 where: {
                     status: 'active'
@@ -319,7 +319,10 @@ class VideoController {
                         }]
                     }
                 ],
-                order: [['createdAt', 'DESC']],
+                order: [
+                    [Sequelize.fn('RAND')],
+                    ['createdAt', 'DESC']
+                ],
                 limit: parseInt(limit),
                 offset: parseInt(offset),
                 distinct: true

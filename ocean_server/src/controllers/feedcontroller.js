@@ -622,12 +622,15 @@ const getHomeFeed = async (req, res) => {
             hasPrevPage: 'hasPreviousPage'
         });
 
+        // Interleave random video cards into posts list (every 10 items)
+        const finalPostsList = await interleaveVideoCards(formattedPosts, 10);
+
         const responseData = {
             success: true,
             message: "Home feed retrieved successfully",
             data: {
                 stories: formattedStories,
-                posts: formattedPosts,
+                posts: finalPostsList,
                 pagination: frontendPagination
             }
         };
@@ -645,6 +648,98 @@ const getHomeFeed = async (req, res) => {
     } catch (error) {
         console.error('Get home feed error:', error);
         res.status(500).json({ message: "Error retrieving home feed", error: error.message });
+    }
+};
+
+// Helper: Interleave random video cards into feed array after every interval (default 10 items)
+const interleaveVideoCards = async (postsList, interval = 10) => {
+    if (!postsList || !Array.isArray(postsList) || postsList.length < interval) {
+        return postsList;
+    }
+
+    try {
+        const { Video, UserTable, SellersTable } = require('../../models');
+        
+        const requiredVideoCount = Math.floor(postsList.length / interval);
+        if (requiredVideoCount <= 0) return postsList;
+
+        const randomVideos = await Video.findAll({
+            where: { status: 'active' },
+            include: [{
+                model: UserTable,
+                as: 'user',
+                attributes: ['id', 'fullName', 'profilePicture', 'accountStatus'],
+                include: [{
+                    model: SellersTable,
+                    as: 'seller',
+                    attributes: ['businessName', 'verificationStatus'],
+                    required: false
+                }]
+            }],
+            order: [[Sequelize.fn('RAND')]],
+            limit: requiredVideoCount
+        });
+
+        if (!randomVideos || randomVideos.length === 0) return postsList;
+
+        const result = [];
+        let videoIdx = 0;
+
+        for (let i = 0; i < postsList.length; i++) {
+            result.push(postsList[i]);
+
+            if ((i + 1) % interval === 0 && videoIdx < randomVideos.length) {
+                const vid = randomVideos[videoIdx++].toJSON();
+                
+                const videoFeedCard = {
+                    id: `feed_video_${vid.id}`,
+                    type: 'video',
+                    category: 'video',
+                    contentType: 'video',
+                    createdAt: vid.createdAt,
+                    updatedAt: vid.updatedAt,
+                    user: {
+                        id: vid.user?.id || '',
+                        name: vid.user?.seller?.businessName || vid.user?.fullName || 'Creator',
+                        businessName: vid.user?.seller?.businessName || null,
+                        avatar: vid.user?.profilePicture || '👤',
+                        verified: vid.user?.accountStatus === 'verified' || vid.user?.seller?.verificationStatus === 'approved',
+                        role: vid.user?.seller ? 'seller' : 'user'
+                    },
+                    caption: vid.description || '',
+                    media: [{
+                        id: `vid_media_${vid.id}`,
+                        type: 'video',
+                        url: vid.videoUrl,
+                        thumbnailUrl: vid.thumbnailUrl || vid.videoUrl,
+                        order: 0
+                    }],
+                    videoUrl: vid.videoUrl,
+                    thumbnailUrl: vid.thumbnailUrl,
+                    likesCount: vid.likeCount || 0,
+                    commentsCount: vid.commentCount || 0,
+                    sharesCount: vid.shareCount || 0,
+                    savesCount: 0,
+                    timeAgo: getTimeAgo(vid.createdAt),
+                    isLiked: false,
+                    isSaved: false,
+                    videoData: {
+                        id: vid.id,
+                        ctaEnabled: vid.ctaEnabled,
+                        ctaType: vid.ctaType,
+                        ctaLabel: vid.ctaLabel,
+                        duration: vid.duration
+                    }
+                };
+
+                result.push(videoFeedCard);
+            }
+        }
+
+        return result;
+    } catch (err) {
+        console.error('Error interleaving video cards into feed:', err.message);
+        return postsList;
     }
 };
 
@@ -836,11 +931,14 @@ const getFeed = async (req, res) => {
             hasPrevPage: 'hasPreviousPage'
         });
 
+        // Interleave random video cards into posts list (every 10 items)
+        const finalPostsList = await interleaveVideoCards(postsWithEngagement, 10);
+
         const responseData = {
             success: true,
             message: "Feed retrieved successfully",
             data: {
-                posts: postsWithEngagement,
+                posts: finalPostsList,
                 pagination: frontendPagination
             }
         };
