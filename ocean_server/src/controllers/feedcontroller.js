@@ -668,11 +668,11 @@ const interleaveVideoCards = async (postsList, interval = 10) => {
             include: [{
                 model: UserTable,
                 as: 'user',
-                attributes: ['id', 'fullName', 'profilePicture', 'accountStatus'],
+                attributes: ['id', 'fullName', 'email', 'profilePicture', 'accountStatus', 'location'],
                 include: [{
                     model: SellersTable,
                     as: 'seller',
-                    attributes: ['businessName', 'verificationStatus'],
+                    attributes: ['id', 'userId', 'businessName', 'email', 'phoneNumber', 'businessAddress', 'businessDescription', 'selectedCategories', 'selectedSubcategories', 'verificationStatus'],
                     required: false
                 }]
             }],
@@ -690,7 +690,16 @@ const interleaveVideoCards = async (postsList, interval = 10) => {
 
             if ((i + 1) % interval === 0 && videoIdx < randomVideos.length) {
                 const vid = randomVideos[videoIdx++].toJSON();
-                
+                const u = vid.user || {};
+                const s = u.seller || {};
+                const validUserId = u.id || vid.userId || null;
+                const businessPhone = s.phoneNumber || s.businessPhone || u.phoneNumber || null;
+                const businessEmail = s.email || u.email || null;
+                const businessAddress = s.businessAddress || u.address || null;
+                const businessDescription = s.businessDescription || null;
+                const selectedCategories = s.selectedCategories || [];
+                const locationStr = u.location || (u.city && u.country ? `${u.city}, ${u.country}` : 'Lagos, Nigeria');
+
                 const videoFeedCard = {
                     id: `feed_video_${vid.id}`,
                     type: 'video',
@@ -698,14 +707,12 @@ const interleaveVideoCards = async (postsList, interval = 10) => {
                     contentType: 'video',
                     createdAt: vid.createdAt,
                     updatedAt: vid.updatedAt,
-                    user: {
-                        id: vid.user?.id || '',
-                        name: vid.user?.seller?.businessName || vid.user?.fullName || 'Creator',
-                        businessName: vid.user?.seller?.businessName || null,
-                        avatar: vid.user?.profilePicture || '👤',
-                        verified: vid.user?.accountStatus === 'verified' || vid.user?.seller?.verificationStatus === 'approved',
-                        role: vid.user?.seller ? 'seller' : 'user'
-                    },
+                    userId: validUserId,
+                    creatorId: validUserId,
+                    creatorName: s.businessName || u.fullName || 'Creator',
+                    creatorAvatar: u.profilePicture || '👤',
+                    videoUrl: vid.videoUrl,
+                    thumbnailUrl: vid.thumbnailUrl || vid.videoUrl,
                     caption: vid.description || '',
                     media: [{
                         id: `vid_media_${vid.id}`,
@@ -714,8 +721,6 @@ const interleaveVideoCards = async (postsList, interval = 10) => {
                         thumbnailUrl: vid.thumbnailUrl || vid.videoUrl,
                         order: 0
                     }],
-                    videoUrl: vid.videoUrl,
-                    thumbnailUrl: vid.thumbnailUrl,
                     likesCount: vid.likeCount || 0,
                     commentsCount: vid.commentCount || 0,
                     sharesCount: vid.shareCount || 0,
@@ -729,7 +734,36 @@ const interleaveVideoCards = async (postsList, interval = 10) => {
                         ctaType: vid.ctaType,
                         ctaLabel: vid.ctaLabel,
                         duration: vid.duration
-                    }
+                    },
+                    // Full user & seller objects as requested by mobile frontend
+                    user: {
+                        id: validUserId,
+                        fullName: u.fullName || 'Unknown',
+                        businessName: s.businessName || u.fullName || null,
+                        businessPhone: businessPhone,
+                        businessEmail: businessEmail,
+                        businessAddress: businessAddress,
+                        businessDescription: businessDescription,
+                        website: s.website || null,
+                        selectedCategories: selectedCategories,
+                        verificationStatus: s.verificationStatus || u.accountStatus || 'approved',
+                        profilePicture: u.profilePicture || null,
+                        accountStatus: u.accountStatus || 'active',
+                        role: s.id ? 'seller' : (u.accountType || 'user')
+                    },
+                    seller: s.id ? {
+                        id: s.id,
+                        userId: validUserId,
+                        businessName: s.businessName || 'Business Store',
+                        businessLocation: locationStr,
+                        businessPhone: businessPhone,
+                        businessEmail: businessEmail,
+                        businessAddress: businessAddress,
+                        businessDescription: businessDescription,
+                        website: s.website || null,
+                        selectedCategories: selectedCategories,
+                        verificationStatus: s.verificationStatus || 'approved'
+                    } : null
                 };
 
                 result.push(videoFeedCard);

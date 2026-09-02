@@ -310,11 +310,11 @@ class VideoController {
                     {
                         model: UserTable,
                         as: 'user',
-                        attributes: ['id', 'fullName', 'profilePicture', 'accountStatus'],
+                        attributes: ['id', 'fullName', 'email', 'profilePicture', 'accountStatus', 'location'],
                         include: [{
                             model: SellersTable,
                             as: 'seller',
-                            attributes: ['businessName', 'verificationStatus', 'businessPhone'],
+                            attributes: ['id', 'userId', 'businessName', 'email', 'phoneNumber', 'businessAddress', 'businessDescription', 'selectedCategories', 'selectedSubcategories', 'verificationStatus'],
                             required: false
                         }]
                     }
@@ -339,30 +339,71 @@ class VideoController {
 
             const likedVideoIds = new Set(userLikes.map(like => like.videoId));
 
-            // Format videos for frontend
+            // Format videos for frontend with full user and seller relation
             const formattedVideos = videos.rows.map(video => {
                 const videoData = video.toJSON();
+                const u = videoData.user || {};
+                const s = u.seller || {};
+                const validUserId = u.id || videoData.userId || null;
+                const businessPhone = s.phoneNumber || s.businessPhone || u.phoneNumber || null;
+                const businessEmail = s.email || u.email || null;
+                const businessAddress = s.businessAddress || u.address || null;
+                const businessDescription = s.businessDescription || null;
+                const selectedCategories = s.selectedCategories || [];
+                const locationStr = u.location || (u.city && u.country ? `${u.city}, ${u.country}` : 'Lagos, Nigeria');
+
                 return {
                     id: videoData.id,
                     videoUrl: videoData.videoUrl,
                     thumbnailUrl: videoData.thumbnailUrl,
                     description: videoData.description,
-                    creatorId: videoData.user?.id || null,
-                    creatorName: videoData.user?.seller?.businessName || videoData.user?.fullName || 'Unknown',
-                    creatorAvatar: videoData.user?.profilePicture || null,
+                    userId: validUserId,
+                    creatorId: validUserId,
+                    creatorName: s.businessName || u.fullName || 'Unknown',
+                    creatorAvatar: u.profilePicture || null,
                     category: videoData.videoRole === 'seller' ? 'seller' : 'buyer',
-                    location: videoData.user?.location || null,
+                    location: locationStr,
                     likeCount: videoData.likeCount,
                     commentCount: videoData.commentCount,
                     shareCount: videoData.shareCount,
                     isSponsored: videoData.isSponsored,
                     ctaType: videoData.ctaType,
                     ctaLabel: videoData.ctaLabel,
-                    businessPhone: videoData.user?.seller?.businessPhone || null,
+                    businessPhone: businessPhone,
                     isBuyerNeed: videoData.videoRole === 'buyer',
                     isLiked: likedVideoIds.has(videoData.id),
                     isSaved: false, // TODO: Implement saved videos
-                    createdAt: videoData.createdAt
+                    createdAt: videoData.createdAt,
+
+                    // Nested full user & seller objects requested by mobile frontend
+                    user: {
+                        id: validUserId,
+                        fullName: u.fullName || 'Unknown',
+                        businessName: s.businessName || u.fullName || null,
+                        businessPhone: businessPhone,
+                        businessEmail: businessEmail,
+                        businessAddress: businessAddress,
+                        businessDescription: businessDescription,
+                        website: s.website || null,
+                        selectedCategories: selectedCategories,
+                        verificationStatus: s.verificationStatus || u.accountStatus || 'approved',
+                        profilePicture: u.profilePicture || null,
+                        accountStatus: u.accountStatus || 'active',
+                        role: s.id ? 'seller' : (u.accountType || 'user')
+                    },
+                    seller: s.id ? {
+                        id: s.id,
+                        userId: validUserId,
+                        businessName: s.businessName || 'Business Store',
+                        businessLocation: locationStr,
+                        businessPhone: businessPhone,
+                        businessEmail: businessEmail,
+                        businessAddress: businessAddress,
+                        businessDescription: businessDescription,
+                        website: s.website || null,
+                        selectedCategories: selectedCategories,
+                        verificationStatus: s.verificationStatus || 'approved'
+                    } : null
                 };
             });
 
