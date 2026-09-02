@@ -322,6 +322,39 @@ class ZernioService {
       return { success: false, error: error.message };
     }
   }
+
+  /**
+   * Disconnect/Delete an account from Zernio API
+   * DELETE /v1/accounts/{accountId}
+   * @param {string} accountId - Zernio account ID / platform user ID
+   */
+  async disconnectAccount(accountId) {
+    try {
+      if (!this.apiKey || !accountId) {
+        return { success: false, message: 'Missing API key or account ID' };
+      }
+
+      console.log(`📡 Requesting Zernio account disconnection for account ID: ${accountId}...`);
+
+      const response = await axios.delete(
+        `${this.baseUrl}/accounts/${accountId}`,
+        { headers: this.getHeaders(), timeout: 15000 }
+      );
+
+      console.log(`✅ Zernio Account Disconnected:`, response.data);
+
+      return {
+        success: true,
+        message: response.data?.message || 'Account disconnected successfully from Zernio'
+      };
+    } catch (error) {
+      console.error(`Error disconnecting Zernio account (${accountId}):`, error.response?.data || error.message);
+      return {
+        success: false,
+        error: error.response?.data?.message || error.message
+      };
+    }
+  }
 }
 
 module.exports = new ZernioService();

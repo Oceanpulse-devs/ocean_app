@@ -275,11 +275,21 @@ class SellerSocialController {
         });
       }
 
+      // Call Zernio API to disconnect account from Zernio.com
+      const targetZernioAccountId = account.accountId || account.zernioProfileId || accountId;
+      if (targetZernioAccountId) {
+        try {
+          await zernioService.disconnectAccount(targetZernioAccountId);
+        } catch (zernioErr) {
+          console.warn('Non-blocking Zernio API account disconnect warning:', zernioErr.message);
+        }
+      }
+
       await account.destroy();
 
       return res.status(200).json({
         success: true,
-        message: 'Social account disconnected successfully'
+        message: 'Social account disconnected successfully from Zernio and Marketplace'
       });
     } catch (error) {
       console.error('Error disconnecting social account:', error);
