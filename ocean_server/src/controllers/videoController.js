@@ -357,6 +357,7 @@ class VideoController {
                     videoUrl: videoData.videoUrl,
                     thumbnailUrl: videoData.thumbnailUrl,
                     description: videoData.description,
+                    caption: videoData.description || '',
                     userId: validUserId,
                     creatorId: validUserId,
                     creatorName: s.businessName || u.fullName || 'Unknown',

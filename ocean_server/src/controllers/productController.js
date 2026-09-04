@@ -1322,24 +1322,39 @@ const getSellerProducts = async (req, res) => {
         const offset = (page - 1) * limit;
         const currentUserId = req.user?.id;
 
-        // Check if seller exists
-        const seller = await SellersTable.findByPk(sellerId, {
+        // Check if seller exists by SellersTable ID first, or UsersTable ID fallback
+        let seller = await SellersTable.findByPk(sellerId, {
             include: [
                 {
                     model: UserTable,
                     as: 'user',
-                    attributes: ['id', 'fullName', 'email', 'profilePicture', 'accountType', 'accountStatus']
+                    attributes: ['id', 'fullName', 'email', 'profilePicture', 'accountType', 'accountStatus', 'location']
                 }
             ]
         });
 
         if (!seller) {
-            return res.status(404).json({ message: "Seller not found" });
+            seller = await SellersTable.findOne({
+                where: { userId: sellerId },
+                include: [
+                    {
+                        model: UserTable,
+                        as: 'user',
+                        attributes: ['id', 'fullName', 'email', 'profilePicture', 'accountType', 'accountStatus', 'location']
+                    }
+                ]
+            });
         }
+
+        if (!seller) {
+            return res.status(404).json({ success: false, message: "Seller not found" });
+        }
+
+        const actualSellerId = seller.id;
 
         const products = await Product.findAndCountAll({
             where: { 
-                sellerId, 
+                sellerId: actualSellerId, 
                 status: 'active', 
                 isAvailable: true 
             },
@@ -1389,24 +1404,68 @@ const getSellerProducts = async (req, res) => {
         // Include promotion fields and sort by promotion priority
         productsWithEngagement = PromotionHelperService.processItemsForResponse(productsWithEngagement);
 
+        // Calculate seller aggregated stats for store header
+        const sellerData = seller.toJSON();
+        const sellerUser = sellerData.user || {};
+        const totalProductsCount = products.count;
+
+        const [productViews] = await db.sequelize.query(
+            `SELECT COALESCE(SUM(views), 0) as total FROM products WHERE sellerId = :sellerId`,
+            { replacements: { sellerId: actualSellerId }, type: Sequelize.QueryTypes.SELECT }
+        );
+        const [auctionViews] = await db.sequelize.query(
+            `SELECT COALESCE(SUM(views), 0) as total FROM auctions WHERE sellerId = :sellerId`,
+            { replacements: { sellerId: actualSellerId }, type: Sequelize.QueryTypes.SELECT }
+        );
+        const totalViews = parseInt(productViews?.total || 0) + parseInt(auctionViews?.total || 0);
+
+        const productLikesCount = await ProductLike.count({
+            include: [{
+                model: Product,
+                as: 'product',
+                where: { sellerId: actualSellerId },
+                required: true
+            }]
+        });
+
+        const formattedSeller = {
+            id: sellerData.id,
+            userId: sellerData.userId,
+            businessName: sellerData.businessName || sellerUser.fullName || 'Seller Store',
+            businessDescription: sellerData.businessDescription || 'Leading seller on BlueWhale Marketplace',
+            businessEmail: sellerData.email || sellerData.businessEmail || sellerUser.email || null,
+            businessPhone: sellerData.phoneNumber || sellerData.businessPhone || null,
+            businessAddress: sellerData.businessAddress || 'Not specified',
+            businessLocation: sellerData.businessAddress || sellerData.state || sellerUser.location || 'Lagos, Nigeria',
+            businessWebsite: sellerData.website || null,
+            country: sellerData.country || 'Nigeria',
+            state: sellerData.state || 'Lagos',
+            verificationStatus: sellerData.verificationStatus || 'approved',
+            selectedCategories: sellerData.selectedCategories || [],
+            totalViews: totalViews,
+            totalLikes: productLikesCount,
+            productsCount: totalProductsCount,
+            rating: parseFloat(sellerData.rating) || 4.9
+        };
+
         res.status(200).json({
-            message: "Seller products retrieved successfully",
+            success: true,
+            message: "Seller products fetched",
             data: {
-                seller,
+                seller: formattedSeller,
                 products: productsWithEngagement,
                 pagination: {
-                    currentPage: parseInt(page),
-                    totalPages: Math.ceil(products.count / limit),
-                    totalProducts: products.count,
-                    hasNextPage: offset + limit < products.count,
-                    hasPrevPage: page > 1
+                    page: parseInt(page),
+                    limit: parseInt(limit),
+                    total: products.count,
+                    totalPages: Math.ceil(products.count / limit)
                 }
             }
         });
 
     } catch (error) {
         console.error('Get seller products error:', error);
-        res.status(500).json({ message: "Error retrieving seller products", error: error.message });
+        res.status(500).json({ success: false, message: "Error retrieving seller products", error: error.message });
     }
 };
 

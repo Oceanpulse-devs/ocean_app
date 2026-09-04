@@ -237,17 +237,20 @@ const getUserProfileById = async(req, res) => {
     let user = await UserTable.findOne({ where: { id: userId } });
     let actualUserId = userId; // Will be set to User ID
     
-    // If not found as User ID, try as Seller Table ID
+    // If not found as User ID, try as Seller Table ID or Seller Table userId
     if (!user) {
-      const seller = await SellersTable.findByPk(userId);
+      let seller = await SellersTable.findByPk(userId);
+      if (!seller) {
+        seller = await SellersTable.findOne({ where: { userId: userId } });
+      }
       if (seller) {
         actualUserId = seller.userId; // Get User ID from seller record
         user = await UserTable.findOne({ where: { id: actualUserId } });
         if (!user) {
-          return res.status(404).json({ message: "User associated with seller not found" });
+          return res.status(404).json({ success: false, message: "User associated with seller not found" });
         }
       } else {
-        return res.status(404).json({ message: "User or seller not found" });
+        return res.status(404).json({ success: false, message: "User or seller not found" });
       }
     }
 
@@ -256,7 +259,7 @@ const getUserProfileById = async(req, res) => {
       const { getBlockedUserIds } = require('../utils/userBlockHelper');
       const blockedIds = await getBlockedUserIds(req.user.id);
       if (blockedIds.includes(actualUserId)) {
-        return res.status(404).json({ message: "User profile unavailable" });
+        return res.status(404).json({ success: false, message: "User profile unavailable" });
       }
     }
     
@@ -357,7 +360,6 @@ const getUserProfileById = async(req, res) => {
                     parseInt(swapDealViews?.total || 0));
       
       // Calculate total likes from all seller items
-      // Count ProductLike records (not SUM of likes field)
       const productLikesCount = await ProductLike.count({
         include: [{
           model: Product,
@@ -386,43 +388,48 @@ const getUserProfileById = async(req, res) => {
     // Basic profile info for all users with actual database values
     const profileInfo = {
       id: user.id,
+      email: user.email || null,
       fullName, 
-      role,
+      phoneNumber: user.phoneNumber || (alsoSeller ? (alsoSeller.phoneNumber || alsoSeller.businessPhone) : null),
+      role: role || (alsoSeller ? 'seller' : 'user'),
       accountStatus,
       createdAt,
       joinDate,
-      verificationStatus,
+      verificationStatus: verificationStatus || 'approved',
       followersCount,
       followingCount,
-      postsCount, // NEW: Count of posts created by user (all users)
+      postsCount,
       productsCount,
       isFollowing,
-      // Use actual database values with fallbacks
       profilePicture: user.profilePicture || "/default-avatar.jpg",
       coverPicture: user.coverPicture || "/default-cover.jpg",
       bio: user.bio || (role === "seller" ? "Professional seller on BlueWhale" : "BlueWhale user"),
       location: user.location || "Not specified",
       website: user.website || null
-    }
+    };
 
     // Add seller-specific info if user is a seller
-    if(role === "seller" && alsoSeller){
-      profileInfo.businessName = user.businessName || alsoSeller.businessName || fullName;
-      profileInfo.businessAddress = alsoSeller.businessAddress;
-      profileInfo.businessDescription = alsoSeller.businessDescription;
-      profileInfo.sellerType = alsoSeller.sellerType;
-      profileInfo.selectedCategories = alsoSeller.selectedCategories || [];
-      profileInfo.selectedSubcategories = alsoSeller.selectedSubcategories || {};
-      profileInfo.businessEmail = alsoSeller.businessEmail;
-      profileInfo.businessPhone = alsoSeller.businessPhone;
-      profileInfo.category = alsoSeller.category;
-      profileInfo.country = alsoSeller.country;
-      profileInfo.state = alsoSeller.state;
-      profileInfo.rating = alsoSeller.rating || 0;
-      profileInfo.totalSales = alsoSeller.totalSales || 0;
-      profileInfo.bio = alsoSeller.businessDescription || "Professional seller on BlueWhale";
+    if (role === "seller" || alsoSeller) {
+      profileInfo.sellerId = alsoSeller ? alsoSeller.id : null;
+      profileInfo.businessName = alsoSeller?.businessName || user.businessName || fullName;
+      profileInfo.businessDescription = alsoSeller?.businessDescription || "Leading seller on BlueWhale Marketplace";
+      profileInfo.businessEmail = alsoSeller?.email || alsoSeller?.businessEmail || user.email || null;
+      profileInfo.businessPhone = alsoSeller?.phoneNumber || alsoSeller?.businessPhone || user.phoneNumber || null;
+      profileInfo.businessAddress = alsoSeller?.businessAddress || "Not specified";
+      profileInfo.businessLocation = alsoSeller?.businessAddress || alsoSeller?.state || user.location || "Not specified";
+      profileInfo.businessWebsite = alsoSeller?.website || user.website || null;
+      profileInfo.country = alsoSeller?.country || "Nigeria";
+      profileInfo.state = alsoSeller?.state || "Lagos";
+      profileInfo.sellerType = alsoSeller?.sellerType || "retailer";
+      profileInfo.selectedCategories = alsoSeller?.selectedCategories || [];
+      profileInfo.selectedSubcategories = alsoSeller?.selectedSubcategories || {};
+      profileInfo.category = alsoSeller?.category || null;
+      profileInfo.rating = parseFloat(alsoSeller?.rating) || 4.9;
+      profileInfo.totalReviews = alsoSeller?.totalReviews || 0;
+      profileInfo.totalSales = alsoSeller?.totalSales || 0;
+      profileInfo.bio = alsoSeller?.businessDescription || "Professional seller on BlueWhale";
       
-      // NEW: Add seller-specific tab counts
+      // Seller tab counts and totals
       profileInfo.auctionsCount = auctionsCount;
       profileInfo.bulkPurchaseCount = bulkPurchaseCount;
       profileInfo.distressSalesCount = distressSalesCount;
@@ -432,7 +439,8 @@ const getUserProfileById = async(req, res) => {
     }
     
     return res.status(200).json({ 
-      message: "Profile retrieved successfully",
+      success: true,
+      message: "User profile fetched",
       data: profileInfo 
     });
     
