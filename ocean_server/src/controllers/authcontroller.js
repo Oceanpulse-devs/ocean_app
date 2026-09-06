@@ -1053,7 +1053,8 @@ const googleMobileAuth = async (req, res) => {
         // Get all valid Google Client IDs (web, Android, iOS)
         const getValidClientIds = () => {
             const clientIds = [
-                process.env.GOOGLE_CLIENT_ID,           // Web client ID
+                process.env.GOOGLE_WEB_CLIENT_ID,       // Web client ID
+                process.env.GOOGLE_CLIENT_ID,           // Web client ID fallback
                 process.env.GOOGLE_ANDROID_CLIENT_ID,   // Android client ID
                 process.env.GOOGLE_IOS_CLIENT_ID        // iOS client ID
             ].filter(Boolean); // Remove undefined/null values
