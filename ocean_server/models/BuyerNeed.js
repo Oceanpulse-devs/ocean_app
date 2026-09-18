@@ -30,6 +30,11 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: true,
       comment: 'Category name (string) - stored directly, not using ProductCategory table anymore'
     },
+    subcategory: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+      comment: 'Subcategory name (string) - e.g. Automotive Services'
+    },
     status: {
       type: DataTypes.ENUM('active', 'in_progress', 'fulfilled', 'expired', 'cancelled'),
       defaultValue: 'active',

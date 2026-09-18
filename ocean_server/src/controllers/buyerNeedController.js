@@ -6,6 +6,28 @@ const imageCompressionService = require('../services/imageCompressionService');
 const redisClient = require('../config/redisdb');
 const { createNotification } = require('./notificationController');
 
+// Automatically ensure subcategory column exists in MySQL buyer_needs table
+let isSubcategoryColumnChecked = false;
+const ensureSubcategoryColumnExists = async () => {
+  if (isSubcategoryColumnChecked) return;
+  try {
+    await db.sequelize.query(`
+      ALTER TABLE buyer_needs ADD COLUMN IF NOT EXISTS subcategory VARCHAR(255) NULL AFTER category;
+    `);
+    isSubcategoryColumnChecked = true;
+    console.log('✅ Checked/Ensured buyer_needs.subcategory column in database');
+  } catch (err) {
+    try {
+      await db.sequelize.query(`
+        ALTER TABLE buyer_needs ADD COLUMN subcategory VARCHAR(255) NULL AFTER category;
+      `);
+      isSubcategoryColumnChecked = true;
+    } catch (e) {
+      isSubcategoryColumnChecked = true;
+    }
+  }
+};
+
 // Helper function to map buyer need response to match post structure
 const mapBuyerNeedResponse = (buyerNeed) => {
   const mapped = buyerNeed.toJSON ? buyerNeed.toJSON() : { ...buyerNeed };
@@ -15,7 +37,11 @@ const mapBuyerNeedResponse = (buyerNeed) => {
     id: mapped.id,
     caption: mapped.description || mapped.title,  // Use caption only (matches post structure)
     reach_limit: mapped.reach_limit || 5,
+    current_reach: mapped.current_reach || 0,
     category: mapped.category || null,  // Store category as string name directly
+    subcategory: mapped.subcategory || null, // Subcategory name (e.g. Automotive Services)
+    country: mapped.country || null,
+    state: mapped.state || null,
     user: mapped.buyer ? {
       id: mapped.buyer.id,
       fullName: mapped.buyer.fullName,
@@ -34,6 +60,8 @@ class BuyerNeedController {
   // Create a new buyer need (matches post structure - accepts content/caption, reach_limit, category (string), images)
   async createBuyerNeed(req, res) {
     try {
+      await ensureSubcategoryColumnExists();
+
       // Parse form data - handle both multer parsed and raw FormData
       let formData = {};
       if (!req.files && req.body._parts) {
@@ -53,6 +81,7 @@ class BuyerNeedController {
         caption,  // Accept caption as alternative to content
         reach_limit, 
         category,  // Accept category as string name (not category_id)
+        subcategory, // Accept subcategory as string name (e.g. "Automotive Services")
         country,
         state
       } = formData;
@@ -80,8 +109,9 @@ class BuyerNeedController {
         }
       }
 
-      // Store category as string (accept category name directly)
+      // Store category & subcategory as strings
       const categoryName = category ? category.trim() : null;
+      const subcategoryName = subcategory ? subcategory.trim() : null;
 
       // Optionally map category name to category_id internally for seller matching
       let mappedCategoryId = null;
@@ -110,6 +140,7 @@ class BuyerNeedController {
         description: finalContent.trim(),  // Also store as description for backward compatibility
         buyer_id,
         category: categoryName,  // Store category as string name directly
+        subcategory: subcategoryName, // Store subcategory name directly (e.g. Automotive Services)
         category_id: mappedCategoryId,  // Store mapped ID for internal use (optional)
         reach_limit: parsedReachLimit,
         expires_at: expirationDate,
@@ -1048,11 +1079,13 @@ class BuyerNeedController {
       }
 
       const categoryName = buyerNeed.category;
+      const subcategoryName = buyerNeed.subcategory;
       if (!categoryName) return;
 
       console.log(`📡 [DEBUG routeNextBatch] Starting matching engine for BuyerNeed ID: ${buyerNeedId}`);
       console.log(`   - Title: "${buyerNeed.title}"`);
       console.log(`   - Category: "${categoryName}"`);
+      console.log(`   - Subcategory: "${subcategoryName || 'N/A'}"`);
       console.log(`   - Location: Country = "${buyerNeed.country}", State = "${buyerNeed.state}"`);
 
       // Find sellers already routed in previous batches (to exclude them)
@@ -1066,24 +1099,83 @@ class BuyerNeedController {
       excludedSellerIds.push(buyerNeed.buyer_id);
       console.log(`   - Excluded User IDs (previously notified + buyer):`, excludedSellerIds);
 
-      // Query active, verified sellers matching the category
-      const matchingSellers = await db.SellersTable.findAll({
-        where: {
-          verificationStatus: { [Op.in]: ['approved', 'active'] },
-          userId: { [Op.notIn]: excludedSellerIds },
-          [Op.or]: [
-            db.sequelize.literal(`JSON_CONTAINS(selectedCategories, JSON_QUOTE('${categoryName}'))`),
-            db.sequelize.literal(`selectedCategories LIKE '%${categoryName}%'`)
-          ]
-        },
-        include: [
-          {
-            model: db.UserTable,
-            as: 'user',
-            attributes: ['id', 'email', 'accountStatus', 'currentPlanId']
-          }
+      // Base query condition for active/approved sellers in category
+      const baseCategoryWhere = {
+        verificationStatus: { [Op.in]: ['approved', 'active'] },
+        userId: { [Op.notIn]: excludedSellerIds },
+        [Op.or]: [
+          db.sequelize.literal(`JSON_CONTAINS(selectedCategories, JSON_QUOTE('${categoryName}'))`),
+          db.sequelize.literal(`selectedCategories LIKE '%${categoryName}%'`)
         ]
-      });
+      };
+
+      let matchingSellers = [];
+
+      // Step A: If subcategory is provided, try exact subcategory match first
+      if (subcategoryName && subcategoryName.trim() !== '') {
+        const cleanSub = subcategoryName.trim();
+        const subWhere = {
+          ...baseCategoryWhere,
+          [Op.or]: [
+            db.sequelize.literal(`JSON_CONTAINS(selectedSubcategories, JSON_QUOTE('${cleanSub}'))`),
+            db.sequelize.literal(`selectedSubcategories LIKE '%${cleanSub}%'`)
+          ]
+        };
+
+        const subcategorySellers = await db.SellersTable.findAll({
+          where: subWhere,
+          include: [
+            {
+              model: db.UserTable,
+              as: 'user',
+              attributes: ['id', 'email', 'accountStatus', 'currentPlanId']
+            }
+          ]
+        });
+
+        console.log(`   - Subcategory Matching Sellers found in DB: ${subcategorySellers.length}`);
+        matchingSellers = [...subcategorySellers];
+
+        // Step B: Fallback if subcategory matches < 5
+        if (matchingSellers.length < 5) {
+          console.log(`   - Subcategory matches (${matchingSellers.length}) < 5. Querying category fallback sellers...`);
+          const existingMatchedUserIds = matchingSellers.map(s => s.userId);
+          const fallbackExcludedIds = [...excludedSellerIds, ...existingMatchedUserIds];
+
+          const fallbackSellers = await db.SellersTable.findAll({
+            where: {
+              verificationStatus: { [Op.in]: ['approved', 'active'] },
+              userId: { [Op.notIn]: fallbackExcludedIds },
+              [Op.or]: [
+                db.sequelize.literal(`JSON_CONTAINS(selectedCategories, JSON_QUOTE('${categoryName}'))`),
+                db.sequelize.literal(`selectedCategories LIKE '%${categoryName}%'`)
+              ]
+            },
+            include: [
+              {
+                model: db.UserTable,
+                as: 'user',
+                attributes: ['id', 'email', 'accountStatus', 'currentPlanId']
+              }
+            ]
+          });
+
+          console.log(`   - Category Fallback Sellers found: ${fallbackSellers.length}`);
+          matchingSellers = [...matchingSellers, ...fallbackSellers];
+        }
+      } else {
+        // No subcategory provided - match by main category
+        matchingSellers = await db.SellersTable.findAll({
+          where: baseCategoryWhere,
+          include: [
+            {
+              model: db.UserTable,
+              as: 'user',
+              attributes: ['id', 'email', 'accountStatus', 'currentPlanId']
+            }
+          ]
+        });
+      }
 
       console.log(`   - Raw Matching Sellers found in DB: ${matchingSellers.length}`);
       matchingSellers.forEach(s => {
@@ -1282,6 +1374,7 @@ class BuyerNeedController {
           title: demand.title,
           description: demand.description,
           category: demand.category,
+          subcategory: demand.subcategory || null,
           country: demand.country,
           state: demand.state,
           reachLimit: demand.reach_limit,
@@ -1348,6 +1441,7 @@ class BuyerNeedController {
           id: demand.id,
           title: demand.title,
           category: demand.category,
+          subcategory: demand.subcategory || null,
           acceptedAt: match.updatedAt,
           buyer: demand.buyer ? {
             id: demand.buyer.id,

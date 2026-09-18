@@ -496,7 +496,8 @@ const getHomeFeed = async (req, res) => {
                             title: postData.feedMetadata?.title || postData.productName || 'Product Demand',
                             description: postData.feedMetadata?.description || 
                                         (postData.content || '').replace(/^Product Demand:\s*/, '').trim() || '',
-                            category: postData.feedMetadata?.category || null,
+                            category: postData.feedMetadata?.category || postData.category || null,
+                            subcategory: postData.feedMetadata?.subcategory || postData.subcategory || null,
                             reachLimit: postData.feedMetadata?.reach_limit || 5,
                             currentReach: postData.feedMetadata?.current_reach || 0,
                             reachExceeded: postData.feedMetadata?.reach_exceeded || false,
@@ -2688,6 +2689,7 @@ const getLikedPosts = async (req, res) => {
                             description: postData.feedMetadata?.description || 
                                         (postData.content || '').replace(/^Product Demand:\s*/, '').trim() || '',
                             category: postData.feedMetadata?.category || postData.category || null,
+                            subcategory: postData.feedMetadata?.subcategory || postData.subcategory || null,
                             status: postData.feedMetadata?.status || 'active',
                             reach_limit: postData.feedMetadata?.reach_limit || 5,
                             current_reach: postData.feedMetadata?.current_reach || 0,
