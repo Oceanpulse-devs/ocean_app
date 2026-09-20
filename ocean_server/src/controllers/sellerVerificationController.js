@@ -1,6 +1,19 @@
 const db = require('../../models');
 const { Op } = require('sequelize');
 const cloudinaryService = require('../services/cloudinaryService');
+const dojahService = require('../services/dojahService');
+
+// Automatically ensure seller_verification_logs table exists
+const ensureSellerVerificationLogTableExists = async () => {
+  try {
+    if (db.SellerVerificationLog) {
+      await db.SellerVerificationLog.sync({ alter: false });
+    }
+  } catch (err) {
+    console.warn('⚠️ Could not sync seller_verification_logs table:', err.message);
+  }
+};
+ensureSellerVerificationLogTableExists();
 
 class SellerVerificationController {
   // Submit verification application
@@ -752,6 +765,221 @@ class SellerVerificationController {
       res.status(500).json({
         success: false,
         message: 'Failed to get verification statistics',
+        error: error.message
+      });
+    }
+  }
+
+  // Verify NIN automatically via Dojah API & Auto-approve seller
+  async verifySellerNinWithDojah(req, res) {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: 'Authentication required'
+        });
+      }
+
+      const {
+        nin,
+        firstName: reqFirstName,
+        lastName: reqLastName,
+        dateOfBirth: reqDob,
+        businessName,
+        businessAddress,
+        businessDescription,
+        country = 'Nigeria',
+        state = 'Lagos',
+        selectedCategories,
+        selectedSubcategories
+      } = req.body;
+
+      if (!nin) {
+        return res.status(400).json({
+          success: false,
+          message: 'NIN (National Identification Number) is required'
+        });
+      }
+
+      const user = await db.UserTable.findByPk(userId);
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          message: 'User profile not found'
+        });
+      }
+
+      // Check or find existing seller record
+      let seller = await db.SellersTable.findOne({ where: { userId } });
+
+      console.log(`🔍 Processing automated Dojah NIN verification for user ${userId} (${user.email})...`);
+
+      // Call Dojah Service
+      const dojahRes = await dojahService.verifyNin(nin);
+
+      if (!dojahRes.success) {
+        // Log failed verification attempt
+        if (db.SellerVerificationLog) {
+          await db.SellerVerificationLog.create({
+            userId,
+            sellerId: seller ? seller.id : null,
+            verificationType: 'NIN_DOJAH',
+            ninNumber: String(nin).trim(),
+            status: 'failed',
+            failureReason: dojahRes.error || 'Dojah API call failed',
+            rawResponse: dojahRes.raw || null
+          });
+        }
+
+        return res.status(dojahRes.statusCode || 400).json({
+          success: false,
+          message: dojahRes.error || 'Failed to verify NIN with National Identity Database',
+          isMock: dojahRes.isMock || false
+        });
+      }
+
+      const nimcData = dojahRes.data;
+
+      // Extract NIMC details
+      const nimcFirstName = nimcData.first_name || '';
+      const nimcLastName = nimcData.last_name || '';
+      const nimcDob = nimcData.dob || '';
+      const nimcPhone = nimcData.mobile || '';
+      const nimcState = nimcData.residence_state || '';
+      const trackingId = nimcData.tracking_id || `DOJAH-${Date.now()}`;
+
+      // Calculate confidence score comparing user profile / request name with NIMC
+      const targetFirstName = reqFirstName || user.fullName?.split(' ')[0] || '';
+      const targetLastName = reqLastName || user.fullName?.split(' ').slice(1).join(' ') || '';
+      const fullTargetName = `${targetFirstName} ${targetLastName}`.trim();
+      const fullNimcName = `${nimcFirstName} ${nimcLastName}`.trim();
+
+      const nameScore = dojahService.calculateNameMatchScore(fullTargetName, fullNimcName);
+      console.log(`   - Target Name: "${fullTargetName}", NIMC Name: "${fullNimcName}", Match Score: ${nameScore}%`);
+
+      const isApproved = nameScore >= 40 || dojahRes.isMock;
+      const statusOutcome = isApproved ? 'approved' : 'flagged_mismatch';
+
+      // 1. Create audit log in database
+      let logRecord = null;
+      if (db.SellerVerificationLog) {
+        logRecord = await db.SellerVerificationLog.create({
+          userId,
+          sellerId: seller ? seller.id : null,
+          verificationType: 'NIN_DOJAH',
+          ninNumber: String(nin).trim(),
+          nimcFirstName,
+          nimcLastName,
+          nimcDob,
+          nimcPhone,
+          nimcState,
+          nimcPhotoUrl: nimcData.photo || null,
+          dojahReferenceId: trackingId,
+          confidenceScore: nameScore,
+          status: statusOutcome,
+          failureReason: isApproved ? null : `Name mismatch score too low (${nameScore}%)`,
+          rawResponse: nimcData
+        });
+      }
+
+      // 2. Create or Update Seller Record
+      if (!seller) {
+        seller = await db.SellersTable.create({
+          userId,
+          fullName: user.fullName || `${targetFirstName} ${targetLastName}`.trim() || 'Seller',
+          businessName: businessName || `${user.fullName || 'Seller'}'s Store`,
+          email: user.email,
+          phoneNumber: user.phoneNumber || nimcPhone || 'N/A',
+          businessAddress: businessAddress || nimcState || 'Nigeria',
+          businessDescription: businessDescription || 'Verified seller on BlueWhale Marketplace',
+          country: country || 'Nigeria',
+          state: state || nimcState || 'Lagos',
+          selectedCategories: selectedCategories || [],
+          selectedSubcategories: selectedSubcategories || {},
+          isVerified: isApproved,
+          verificationStatus: isApproved ? 'approved' : 'pending',
+          verifiedAt: isApproved ? new Date() : null,
+          verificationScore: isApproved ? 95 : 50,
+          verificationLevel: 'basic',
+          verificationNotes: isApproved
+            ? `Auto-verified via Dojah NIN (Tracking ID: ${trackingId})`
+            : `Flagged for manual review due to low name similarity score (${nameScore}%)`
+        });
+
+        if (logRecord) {
+          await logRecord.update({ sellerId: seller.id });
+        }
+      } else {
+        await seller.update({
+          isVerified: isApproved ? true : seller.isVerified,
+          verificationStatus: isApproved ? 'approved' : seller.verificationStatus,
+          verifiedAt: isApproved ? new Date() : seller.verifiedAt,
+          verificationScore: isApproved ? 95 : seller.verificationScore,
+          verificationNotes: isApproved
+            ? `Auto-verified via Dojah NIN (Tracking ID: ${trackingId})`
+            : seller.verificationNotes
+        });
+      }
+
+      // 3. Update UserTable accountStatus & role
+      if (isApproved) {
+        await user.update({
+          accountStatus: 'verified',
+          role: 'seller'
+        });
+
+        // 4. Create/update SellerDocument record for NIN
+        if (db.SellerDocument) {
+          const existingDoc = await db.SellerDocument.findOne({
+            where: { sellerId: seller.id, documentType: 'NIN' }
+          });
+
+          if (!existingDoc) {
+            await db.SellerDocument.create({
+              sellerId: seller.id,
+              documentType: 'NIN',
+              documentNumber: String(nin).trim(),
+              status: 'approved',
+              submittedAt: new Date(),
+              verifiedAt: new Date(),
+              verificationNotes: `Auto-verified via Dojah (NIMC database match score: ${nameScore}%)`
+            });
+          } else {
+            await existingDoc.update({
+              status: 'approved',
+              verifiedAt: new Date(),
+              verificationNotes: `Auto-verified via Dojah (NIMC database match score: ${nameScore}%)`
+            });
+          }
+        }
+      }
+
+      return res.status(200).json({
+        success: true,
+        message: isApproved
+          ? 'NIN verification successful! Your seller account is now fully verified.'
+          : 'NIN lookup completed. Application routed to admin review due to name variation.',
+        data: {
+          sellerId: seller.id,
+          userId: user.id,
+          isVerified: isApproved,
+          verificationStatus: isApproved ? 'approved' : 'pending',
+          confidenceScore: nameScore,
+          dojahReferenceId: trackingId,
+          isMock: dojahRes.isMock || false,
+          nimcDetails: {
+            firstName: nimcFirstName,
+            lastName: nimcLastName,
+            state: nimcState
+          }
+        }
+      });
+    } catch (error) {
+      console.error('Error in verifySellerNinWithDojah:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Internal server error during automated NIN verification',
         error: error.message
       });
     }

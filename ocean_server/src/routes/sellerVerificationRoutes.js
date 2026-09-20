@@ -24,6 +24,8 @@ const upload = multer({
 router.get('/requirements', (req, res) => sellerVerificationController.getVerificationRequirements(req, res));
 
 // Protected routes (authentication required)
+router.post('/verify-nin', authMiddleware, (req, res) => sellerVerificationController.verifySellerNinWithDojah(req, res));
+router.post('/nin', authMiddleware, (req, res) => sellerVerificationController.verifySellerNinWithDojah(req, res));
 router.post('/submit', authMiddleware, upload.fields([
   { name: 'businessDocument', maxCount: 1 },
   { name: 'personalId', maxCount: 1 }

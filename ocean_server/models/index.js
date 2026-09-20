@@ -87,6 +87,7 @@ const Report = require('./Report');
 const UserFcmToken = require('./UserFcmToken');
 const SellerSocialAccount = require('./SellerSocialAccount');
 const SocialPostLog = require('./SocialPostLog');
+const SellerVerificationLog = require('./SellerVerificationLog');
 
 // Initialize all models
 db.UserTable = UserTable(sequelize, Sequelize.DataTypes);
@@ -112,6 +113,7 @@ db.MessageReaction = MessageReaction(sequelize, Sequelize.DataTypes);
 db.Notification = Notification(sequelize, Sequelize.DataTypes);
 db.SellerDocument = SellerDocument(sequelize, Sequelize.DataTypes);
 db.SellersTable = SellersTable(sequelize, Sequelize.DataTypes);
+db.SellerVerificationLog = SellerVerificationLog(sequelize, Sequelize.DataTypes);
 db.ShareStats = ShareStats(sequelize, Sequelize.DataTypes);
   db.GroupBuy = GroupBuy(sequelize, Sequelize.DataTypes);
   db.GroupBuyParticipant = GroupBuyParticipant(sequelize, Sequelize.DataTypes);
