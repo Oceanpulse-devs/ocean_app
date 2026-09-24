@@ -770,7 +770,7 @@ class SellerVerificationController {
     }
   }
 
-  // Verify NIN automatically via Dojah API & Auto-approve seller
+  // Verify NIN automatically via Dojah Facial Recognition API & Auto-approve seller
   async verifySellerNinWithDojah(req, res) {
     try {
       const userId = req.user?.id;
@@ -783,9 +783,7 @@ class SellerVerificationController {
 
       const {
         nin,
-        firstName: reqFirstName,
-        lastName: reqLastName,
-        dateOfBirth: reqDob,
+        selfieImage,
         businessName,
         businessAddress,
         businessDescription,
@@ -802,6 +800,13 @@ class SellerVerificationController {
         });
       }
 
+      if (!selfieImage) {
+        return res.status(400).json({
+          success: false,
+          message: 'Selfie image (selfieImage) is required for facial verification'
+        });
+      }
+
       const user = await db.UserTable.findByPk(userId);
       if (!user) {
         return res.status(404).json({
@@ -813,62 +818,57 @@ class SellerVerificationController {
       // Check or find existing seller record
       let seller = await db.SellersTable.findOne({ where: { userId } });
 
-      console.log(`🔍 Processing automated Dojah NIN verification for user ${userId} (${user.email})...`);
+      console.log(`🔍 Processing Dojah Biometric Facial Verification for user ${userId} (${user.email})...`);
 
-      // Call Dojah Service
-      const dojahRes = await dojahService.verifyNin(nin);
+      // Call Dojah Facial Verification Service (NIN + Selfie Match)
+      const dojahRes = await dojahService.verifyNinWithFace(nin, selfieImage);
 
-      if (!dojahRes.success) {
-        // Log failed verification attempt
+      // Handle Facial Match Failure or API Error
+      if (!dojahRes.success || !dojahRes.faceMatched) {
+        const failureMsg = dojahRes.error || 'Face verification failed. The selfie provided does not match the photo on your NIMC record.';
+
+        // Log failed verification attempt in database
         if (db.SellerVerificationLog) {
           await db.SellerVerificationLog.create({
             userId,
             sellerId: seller ? seller.id : null,
-            verificationType: 'NIN_DOJAH',
-            ninNumber: String(nin).trim(),
-            status: 'failed',
-            failureReason: dojahRes.error || 'Dojah API call failed',
-            rawResponse: dojahRes.raw || null
+            verificationType: 'NIN_FACIAL_DOJAH',
+            ninNumber: dojahService.encryptNin(nin),
+            confidenceScore: Math.round(dojahRes.confidenceValue || 0),
+            status: 'rejected',
+            failureReason: failureMsg,
+            rawResponse: dojahRes.raw || dojahRes.data || null
           });
         }
 
         return res.status(dojahRes.statusCode || 400).json({
           success: false,
-          message: dojahRes.error || 'Failed to verify NIN with National Identity Database',
+          message: failureMsg,
           isMock: dojahRes.isMock || false
         });
       }
 
-      const nimcData = dojahRes.data;
-
-      // Extract NIMC details
+      const nimcData = dojahRes.data || {};
       const nimcFirstName = nimcData.first_name || '';
       const nimcLastName = nimcData.last_name || '';
       const nimcDob = nimcData.dob || '';
       const nimcPhone = nimcData.mobile || '';
       const nimcState = nimcData.residence_state || '';
-      const trackingId = nimcData.tracking_id || `DOJAH-${Date.now()}`;
+      const trackingId = nimcData.tracking_id || `DOJAH-FACE-${Date.now()}`;
+      const confidenceScore = Math.round(dojahRes.confidenceValue || 95);
 
-      // Calculate confidence score comparing user profile / request name with NIMC
-      const targetFirstName = reqFirstName || user.fullName?.split(' ')[0] || '';
-      const targetLastName = reqLastName || user.fullName?.split(' ').slice(1).join(' ') || '';
-      const fullTargetName = `${targetFirstName} ${targetLastName}`.trim();
-      const fullNimcName = `${nimcFirstName} ${nimcLastName}`.trim();
+      // 1. Encrypt NIN for secure database storage
+      const encryptedNin = dojahService.encryptNin(nin);
+      const maskedNin = dojahService.maskNin(nin);
 
-      const nameScore = dojahService.calculateNameMatchScore(fullTargetName, fullNimcName);
-      console.log(`   - Target Name: "${fullTargetName}", NIMC Name: "${fullNimcName}", Match Score: ${nameScore}%`);
-
-      const isApproved = nameScore >= 40 || dojahRes.isMock;
-      const statusOutcome = isApproved ? 'approved' : 'flagged_mismatch';
-
-      // 1. Create audit log in database
+      // 2. Create Audit Log in SellerVerificationLog
       let logRecord = null;
       if (db.SellerVerificationLog) {
         logRecord = await db.SellerVerificationLog.create({
           userId,
           sellerId: seller ? seller.id : null,
-          verificationType: 'NIN_DOJAH',
-          ninNumber: String(nin).trim(),
+          verificationType: 'NIN_FACIAL_DOJAH',
+          ninNumber: encryptedNin,
           nimcFirstName,
           nimcLastName,
           nimcDob,
@@ -876,18 +876,18 @@ class SellerVerificationController {
           nimcState,
           nimcPhotoUrl: nimcData.photo || null,
           dojahReferenceId: trackingId,
-          confidenceScore: nameScore,
-          status: statusOutcome,
-          failureReason: isApproved ? null : `Name mismatch score too low (${nameScore}%)`,
+          confidenceScore: confidenceScore,
+          status: 'approved',
+          failureReason: null,
           rawResponse: nimcData
         });
       }
 
-      // 2. Create or Update Seller Record
+      // 3. Create or Update Seller Record in SellersTable
       if (!seller) {
         seller = await db.SellersTable.create({
           userId,
-          fullName: user.fullName || `${targetFirstName} ${targetLastName}`.trim() || 'Seller',
+          fullName: user.fullName || `${nimcFirstName} ${nimcLastName}`.trim() || 'Seller',
           businessName: businessName || `${user.fullName || 'Seller'}'s Store`,
           email: user.email,
           phoneNumber: user.phoneNumber || nimcPhone || 'N/A',
@@ -897,14 +897,12 @@ class SellerVerificationController {
           state: state || nimcState || 'Lagos',
           selectedCategories: selectedCategories || [],
           selectedSubcategories: selectedSubcategories || {},
-          isVerified: isApproved,
-          verificationStatus: isApproved ? 'approved' : 'pending',
-          verifiedAt: isApproved ? new Date() : null,
-          verificationScore: isApproved ? 95 : 50,
+          isVerified: true,
+          verificationStatus: 'approved',
+          verifiedAt: new Date(),
+          verificationScore: 95,
           verificationLevel: 'basic',
-          verificationNotes: isApproved
-            ? `Auto-verified via Dojah NIN (Tracking ID: ${trackingId})`
-            : `Flagged for manual review due to low name similarity score (${nameScore}%)`
+          verificationNotes: `Auto-verified via Dojah Facial Recognition (NIMC Photo Match ${confidenceScore}%, Tracking ID: ${trackingId})`
         });
 
         if (logRecord) {
@@ -912,60 +910,55 @@ class SellerVerificationController {
         }
       } else {
         await seller.update({
-          isVerified: isApproved ? true : seller.isVerified,
-          verificationStatus: isApproved ? 'approved' : seller.verificationStatus,
-          verifiedAt: isApproved ? new Date() : seller.verifiedAt,
-          verificationScore: isApproved ? 95 : seller.verificationScore,
-          verificationNotes: isApproved
-            ? `Auto-verified via Dojah NIN (Tracking ID: ${trackingId})`
-            : seller.verificationNotes
+          isVerified: true,
+          verificationStatus: 'approved',
+          verifiedAt: new Date(),
+          verificationScore: 95,
+          verificationNotes: `Auto-verified via Dojah Facial Recognition (NIMC Photo Match ${confidenceScore}%, Tracking ID: ${trackingId})`
         });
       }
 
-      // 3. Update UserTable accountStatus & role
-      if (isApproved) {
-        await user.update({
-          accountStatus: 'verified',
-          role: 'seller'
+      // 4. Update UserTable accountStatus & role
+      await user.update({
+        accountStatus: 'verified',
+        role: 'seller'
+      });
+
+      // 5. Create or Update SellerDocument record for NIN
+      if (db.SellerDocument) {
+        const existingDoc = await db.SellerDocument.findOne({
+          where: { sellerId: seller.id, documentType: 'NIN' }
         });
 
-        // 4. Create/update SellerDocument record for NIN
-        if (db.SellerDocument) {
-          const existingDoc = await db.SellerDocument.findOne({
-            where: { sellerId: seller.id, documentType: 'NIN' }
+        if (!existingDoc) {
+          await db.SellerDocument.create({
+            sellerId: seller.id,
+            documentType: 'NIN',
+            documentNumber: maskedNin,
+            status: 'approved',
+            submittedAt: new Date(),
+            verifiedAt: new Date(),
+            verificationNotes: `Auto-verified via Dojah Facial Recognition (NIMC Photo Match Confidence: ${confidenceScore}%)`
           });
-
-          if (!existingDoc) {
-            await db.SellerDocument.create({
-              sellerId: seller.id,
-              documentType: 'NIN',
-              documentNumber: String(nin).trim(),
-              status: 'approved',
-              submittedAt: new Date(),
-              verifiedAt: new Date(),
-              verificationNotes: `Auto-verified via Dojah (NIMC database match score: ${nameScore}%)`
-            });
-          } else {
-            await existingDoc.update({
-              status: 'approved',
-              verifiedAt: new Date(),
-              verificationNotes: `Auto-verified via Dojah (NIMC database match score: ${nameScore}%)`
-            });
-          }
+        } else {
+          await existingDoc.update({
+            documentNumber: maskedNin,
+            status: 'approved',
+            verifiedAt: new Date(),
+            verificationNotes: `Auto-verified via Dojah Facial Recognition (NIMC Photo Match Confidence: ${confidenceScore}%)`
+          });
         }
       }
 
       return res.status(200).json({
         success: true,
-        message: isApproved
-          ? 'NIN verification successful! Your seller account is now fully verified.'
-          : 'NIN lookup completed. Application routed to admin review due to name variation.',
+        message: 'NIN verification successful! Your selfie matched your official NIMC record and your seller account is now fully verified.',
         data: {
           sellerId: seller.id,
           userId: user.id,
-          isVerified: isApproved,
-          verificationStatus: isApproved ? 'approved' : 'pending',
-          confidenceScore: nameScore,
+          isVerified: true,
+          verificationStatus: 'approved',
+          confidenceScore: confidenceScore,
           dojahReferenceId: trackingId,
           isMock: dojahRes.isMock || false,
           nimcDetails: {
