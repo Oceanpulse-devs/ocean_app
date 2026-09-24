@@ -857,9 +857,21 @@ class SellerVerificationController {
       const trackingId = nimcData.tracking_id || `DOJAH-FACE-${Date.now()}`;
       const confidenceScore = Math.round(dojahRes.confidenceValue || 95);
 
-      // 1. Encrypt NIN for secure database storage
+      // 1. Encrypt NIN for secure database storage & Upload selfie to Cloudinary
       const encryptedNin = dojahService.encryptNin(nin);
       const maskedNin = dojahService.maskNin(nin);
+
+      let selfieCloudinaryUrl = nimcData.photo || null;
+      if (selfieImage && typeof selfieImage === 'string' && selfieImage !== 'MOCK_SELFIE' && selfieImage !== 'FAIL_FACE') {
+        try {
+          const uploadRes = await cloudinaryService.uploadFile(selfieImage, 'ocean-app/kyc_selfies');
+          if (uploadRes && uploadRes.secure_url) {
+            selfieCloudinaryUrl = uploadRes.secure_url;
+          }
+        } catch (uploadErr) {
+          console.warn('⚠️ Cloudinary selfie upload warning:', uploadErr.message);
+        }
+      }
 
       // 2. Create Audit Log in SellerVerificationLog
       let logRecord = null;
@@ -874,7 +886,7 @@ class SellerVerificationController {
           nimcDob,
           nimcPhone,
           nimcState,
-          nimcPhotoUrl: nimcData.photo || null,
+          nimcPhotoUrl: selfieCloudinaryUrl,
           dojahReferenceId: trackingId,
           confidenceScore: confidenceScore,
           status: 'approved',
@@ -935,6 +947,7 @@ class SellerVerificationController {
             sellerId: seller.id,
             documentType: 'NIN',
             documentNumber: maskedNin,
+            documentImage: selfieCloudinaryUrl,
             status: 'approved',
             submittedAt: new Date(),
             verifiedAt: new Date(),
@@ -943,6 +956,7 @@ class SellerVerificationController {
         } else {
           await existingDoc.update({
             documentNumber: maskedNin,
+            documentImage: selfieCloudinaryUrl || existingDoc.documentImage,
             status: 'approved',
             verifiedAt: new Date(),
             verificationNotes: `Auto-verified via Dojah Facial Recognition (NIMC Photo Match Confidence: ${confidenceScore}%)`
