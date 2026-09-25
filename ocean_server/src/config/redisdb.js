@@ -9,10 +9,15 @@ const isTls = redisUrl.startsWith('rediss://');
 // Create Redis client with proper configuration
 const redisClient = redis.createClient({
   url: redisUrl,
+  pingInterval: 15000, // Periodically ping server to keep Aiven TLS socket alive and prevent idle timeouts
   socket: {
     tls: isTls,
     rejectUnauthorized: false, // Required for self-signed/Aiven certificates
-    reconnectStrategy: (retries) => Math.min(retries * 50, 1000)
+    keepAlive: 10000, // Enable TCP keep-alive (10 seconds)
+    reconnectStrategy: (retries) => {
+      // Exponential backoff reconnect strategy for cloud Redis (max 3s)
+      return Math.min(retries * 100, 3000);
+    }
   }
 });
 

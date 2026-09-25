@@ -246,6 +246,13 @@ module.exports = (sequelize, DataTypes) => {
       as: 'seller'
     });
 
+    if (models.UserTable) {
+      models.UserTable.hasMany(SwapDeal, {
+        foreignKey: 'sellerId',
+        as: 'swapDeals'
+      });
+    }
+
     // SwapDeal has many SwapProposals
     SwapDeal.hasMany(models.SwapProposal, {
       foreignKey: 'swapDealId',

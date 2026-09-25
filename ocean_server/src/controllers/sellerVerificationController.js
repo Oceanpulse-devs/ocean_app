@@ -932,7 +932,7 @@ class SellerVerificationController {
 
       // 4. Update UserTable accountStatus & role
       await user.update({
-        accountStatus: 'verified',
+        accountStatus: 'active',
         role: 'seller'
       });
 

@@ -292,6 +292,7 @@ const setupAssociations = () => {
   
   // SwapDeal associations (updated for simplified system)
   db.SwapDeal.belongsTo(db.UserTable, { foreignKey: 'sellerId', as: 'seller' });
+  db.UserTable.hasMany(db.SwapDeal, { foreignKey: 'sellerId', as: 'swapDeals' });
   db.SwapDeal.hasMany(db.SwapProposal, { foreignKey: 'swapDealId', as: 'proposals' });
 
   // SwapProposal associations
