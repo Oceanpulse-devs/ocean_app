@@ -68,10 +68,6 @@ module.exports = (sequelize) => {
       type: DataTypes.INTEGER,
       defaultValue: 0
     },
-    saves: {
-      type: DataTypes.INTEGER,
-      defaultValue: 0
-    },
     savedCount: {
       type: DataTypes.INTEGER,
       defaultValue: 0,

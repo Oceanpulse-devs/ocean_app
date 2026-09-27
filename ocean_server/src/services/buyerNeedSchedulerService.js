@@ -7,7 +7,7 @@ class BuyerNeedSchedulerService {
     static async checkAndProcessExpiredBatches() {
         try {
             console.log('⏰ Running check for expired buyer need routing batches...');
-            const threeMinutesAgo = new Date(Date.now() - 3 * 60 * 1000);
+            const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
 
             // Find all active, unfulfilled buyer demands that have timed out
             const expiredNeeds = await BuyerNeed.findAll({
@@ -15,7 +15,7 @@ class BuyerNeedSchedulerService {
                     status: 'active',
                     reach_exceeded: false,
                     batch_started_at: {
-                        [Op.lt]: threeMinutesAgo
+                        [Op.lt]: fiveMinutesAgo
                     }
                 }
             });
@@ -48,17 +48,17 @@ class BuyerNeedSchedulerService {
         }
     }
 
-    // Schedule check to run every 60 seconds
+    // Schedule check to run every 10 seconds for high-precision batch expiration processing
     static scheduleMatchingRunner() {
         // Run check immediately
         this.checkAndProcessExpiredBatches();
 
-        // Run check every 60 seconds
+        // Run check every 10 seconds
         setInterval(() => {
             this.checkAndProcessExpiredBatches();
-        }, 60 * 1000); // 60 seconds
+        }, 10 * 1000); // 10 seconds high-precision tick
 
-        console.log('⏰ Buyer Needs intelligent dispatcher cron loop started (60s tick)');
+        console.log('⏰ Buyer Needs intelligent dispatcher cron loop started (10s high-precision tick)');
     }
 }
 

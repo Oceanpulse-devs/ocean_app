@@ -3,7 +3,8 @@ dotenv.config();
 
 const redis = require('redis');
 
-const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
+const redisUrlRaw = process.env.REDIS_URL || 'redis://localhost:6379';
+const redisUrl = redisUrlRaw.trim().replace(/^["']|["']$/g, '');
 const isTls = redisUrl.startsWith('rediss://');
 
 // Create Redis client with proper configuration

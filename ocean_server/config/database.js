@@ -1,14 +1,16 @@
 const { Sequelize } = require('sequelize');
 
+const cleanStr = (val) => (val ? String(val).trim().replace(/^["']|["']$/g, '') : val);
+
 // Get environment variables with fallbacks
 const getConfig = () => {
   if (process.env.NODE_ENV === 'production') {
     return {
-      username: process.env.DB_USERNAME,
-      password: process.env.DB_PASSWORD,
-      database: process.env.DB_NAME,
-      host: process.env.DB_HOST,
-      port: process.env.DB_PORT || 3306,
+      username: cleanStr(process.env.DB_USERNAME),
+      password: cleanStr(process.env.DB_PASSWORD),
+      database: cleanStr(process.env.DB_NAME),
+      host: cleanStr(process.env.DB_HOST),
+      port: parseInt(cleanStr(process.env.DB_PORT) || '3306', 10),
       dialect: 'mysql',
       logging: false, // Disable logging in production
       pool: {
@@ -21,11 +23,11 @@ const getConfig = () => {
   } else {
     // Development configuration - use environment variables if available, otherwise fallback to defaults
     return {
-      username: process.env.DB_USERNAME || 'root',
-      password: process.env.DB_PASSWORD || 'j@123098',
-      database: process.env.DB_NAME || 'ocean_app_db',
-      host: process.env.DB_HOST || '127.0.0.1',
-      port: process.env.DB_PORT || 3306,
+      username: cleanStr(process.env.DB_USERNAME) || 'root',
+      password: cleanStr(process.env.DB_PASSWORD) || 'j@123098',
+      database: cleanStr(process.env.DB_NAME) || 'ocean_app_db',
+      host: cleanStr(process.env.DB_HOST) || '127.0.0.1',
+      port: parseInt(cleanStr(process.env.DB_PORT) || '3306', 10),
       dialect: 'mysql',
       logging: console.log
     };

@@ -930,10 +930,11 @@ class SellerVerificationController {
         });
       }
 
-      // 4. Update UserTable accountStatus & role
+      // 4. Update UserTable accountStatus, accountType & sellerId
       await user.update({
         accountStatus: 'active',
-        role: 'seller'
+        accountType: 'seller',
+        sellerId: seller.id
       });
 
       // 5. Create or Update SellerDocument record for NIN

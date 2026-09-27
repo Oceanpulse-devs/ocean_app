@@ -242,17 +242,15 @@ module.exports = (sequelize, DataTypes) =>{
                 'system_alert'
             ];
 
-            const seedPromises = defaultCategories.map(category => {
-                return sequelize.models.UserNotificationPreference.create({
-                    user_id: user.id,
-                    notification_type: category,
-                    is_enabled: true,
-                    delivery_methods: ['in_app', 'email', 'push'],
-                    priority_threshold: 'low'
-                });
-            });
+            const defaultRecords = defaultCategories.map(category => ({
+                user_id: user.id,
+                notification_type: category,
+                is_enabled: true,
+                delivery_methods: ['in_app', 'email', 'push'],
+                priority_threshold: 'low'
+            }));
 
-            await Promise.all(seedPromises);
+            await sequelize.models.UserNotificationPreference.bulkCreate(defaultRecords);
             console.log(`✅ Seeded default notification preferences for user ID: ${user.id}`);
         } catch (err) {
             console.error(`⚠️ Failed to seed notification preferences for user ID: ${user.id}`, err);

@@ -438,7 +438,7 @@ class SubscriptionAwareSearchService {
    */
   static calculateTrendingScore(product) {
     const views = product.views || 0;
-    const saves = product.saves || 0;
+    const saves = product.savedCount || product.saves || 0;
     const likes = product.likes || 0;
     const daysSinceCreated = Math.max(1, Math.ceil((new Date() - product.createdAt) / (1000 * 60 * 60 * 24)));
     

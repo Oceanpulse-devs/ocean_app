@@ -1432,11 +1432,8 @@ async function syncDatabase() {
         for (const modelName of modelNames) {
             try {
                 const model = sequelizeModels[modelName];
-                // Sync individual model - auto-update schema for key models to append new columns
-                const alterModels = ['Notification', 'BuyerNeed', 'BuyerNeedMatch', 'BuyerSearchInsight', 'SellerDailySlot', 'RequestRoom', 'RequestRoomSeller'];
-                const syncOptions = alterModels.includes(modelName)
-                    ? { force: false, alter: true }
-                    : { force: false, alter: false };
+                // Sync individual model (alter: false to rely on explicit migrations for production safety and instant boot time)
+                const syncOptions = { force: false, alter: false };
                 await model.sync(syncOptions);
                 successCount++;
                 if (successCount % 10 === 0) {

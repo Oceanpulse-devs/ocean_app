@@ -226,13 +226,12 @@ class BuyerNeedController {
       // Map buyer need response to match post structure
       const mappedBuyerNeed = mapBuyerNeedResponse(createdBuyerNeed);
 
-      // Notify matching sellers about the new buyer need
-      try {
-        await this.notifyMatchingSellers(buyerNeed, categoryName);
-      } catch (notifyError) {
-        console.error('Error notifying matching sellers:', notifyError);
-        // Don't fail the request if notification fails
-      }
+      // Notify matching sellers about the new buyer need asynchronously (non-blocking)
+      setImmediate(() => {
+        this.notifyMatchingSellers(buyerNeed, categoryName).catch(notifyError => {
+          console.error('Error notifying matching sellers:', notifyError);
+        });
+      });
 
       res.status(201).json({
         success: true,
@@ -1196,6 +1195,25 @@ class BuyerNeedController {
       const eligibleSellers = [];
       const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
+      // Perform a SINGLE bulk GROUP BY query for all candidate sellers to eliminate N+1 query loop delay
+      const candidateUserIds = matchingSellers.map(s => s.userId).filter(Boolean);
+      const dailyCountsMap = {};
+      if (candidateUserIds.length > 0) {
+        const rawCounts = await db.BuyerNeedMatch.findAll({
+          attributes: ['seller_id', [db.sequelize.fn('COUNT', db.sequelize.col('id')), 'count']],
+          where: {
+            seller_id: { [Op.in]: candidateUserIds },
+            created_at: { [Op.gt]: oneDayAgo }
+          },
+          group: ['seller_id'],
+          raw: true
+        });
+
+        rawCounts.forEach(item => {
+          dailyCountsMap[item.seller_id] = parseInt(item.count || 0, 10);
+        });
+      }
+
       for (const seller of matchingSellers) {
         console.log(`\n   🔍 Evaluating eligibility for Seller: "${seller.fullName}" (UserId: ${seller.userId})`);
         const user = seller.user;
@@ -1220,13 +1238,8 @@ class BuyerNeedController {
           continue;
         }
 
-        // 📊 Enforce Daily Limits dynamically from the database
-        const matchCountToday = await db.BuyerNeedMatch.count({
-          where: {
-            seller_id: user.id,
-            created_at: { [Op.gt]: oneDayAgo }
-          }
-        });
+        // 📊 Enforce Daily Limits dynamically from pre-fetched bulk map
+        const matchCountToday = dailyCountsMap[user.id] || 0;
         console.log(`     - Matching leads routed in past 24h: ${matchCountToday} (Limit: ${dailyLimit})`);
 
         if (matchCountToday >= dailyLimit) {
@@ -1297,7 +1310,7 @@ class BuyerNeedController {
           await createNotification(
             item.seller.userId,
             'New Product Demand Match',
-            `A buyer in ${buyerNeed.state || 'your area'} is looking for "${buyerNeed.title}". Accept within 3 minutes!`,
+            `A buyer in ${buyerNeed.state || 'your area'} is looking for "${buyerNeed.title}". Accept within 5 minutes!`,
             'info',
             'buyer_need_match',
             {
@@ -1306,7 +1319,7 @@ class BuyerNeedController {
               buyerNeedId: buyerNeed.id,
               buyerNeedTitle: buyerNeed.title,
               category: categoryName,
-              expiresAt: new Date(Date.now() + 3 * 60 * 1000).toISOString()
+              expiresAt: new Date(Date.now() + 5 * 60 * 1000).toISOString()
             }
           );
         } catch (pushErr) {
@@ -1358,7 +1371,7 @@ class BuyerNeedController {
 
       for (const match of activeMatches) {
         const notifiedTime = new Date(match.notifiedAt);
-        const expiresTime = new Date(notifiedTime.getTime() + 3 * 60 * 1000); // 3 minutes timeout
+        const expiresTime = new Date(notifiedTime.getTime() + 5 * 60 * 1000); // 5 minutes timeout
         const secondsRemaining = Math.max(0, Math.floor((expiresTime - now) / 1000));
 
         if (secondsRemaining <= 0) {
