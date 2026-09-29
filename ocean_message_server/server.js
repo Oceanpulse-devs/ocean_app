@@ -508,7 +508,7 @@ testConnection()
   });
 
 function startServer() {
-  server.listen(PORT, () => {
+  server.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 BlueWhale Message Server running on port ${PORT}`);
     console.log(`📡 WebSocket server ready for connections`);
     console.log(`🔗 Health check: http://localhost:${PORT}/health`);

@@ -1783,7 +1783,7 @@ console.log('✅ Subscription expiration cron job initialized (runs daily at 10:
 if (process.env.NODE_ENV !== 'test' && require.main === module) {
     // Give sync time to complete (it's async, so this ensures server starts after)
     setTimeout(() => {
-        server.listen(port, () => {
+        server.listen(port, '0.0.0.0', () => {
             console.log(`● Server running on port ${port} ✅`);
             console.log(`● WebSocket server initialized for real-time auction updates ✅`);
 
