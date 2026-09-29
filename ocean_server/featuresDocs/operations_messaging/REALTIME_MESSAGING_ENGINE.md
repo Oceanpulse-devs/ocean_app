@@ -72,21 +72,35 @@ sequenceDiagram
 
 | Endpoint Path | Method | Description |
 | :--- | :--- | :--- |
-| `/api/conversations` | `GET` | Fetch authenticated user's active conversations |
-| `/api/conversations/direct` | `POST` | Create or fetch existing 1-on-1 direct conversation |
-| `/api/conversations/:id` | `GET` | Get single conversation details with participants |
+| `/api/conversations` | `GET` | Fetch authenticated user's conversations (hydrated with Redis `isOnline` & `lastSeen`, `isBlocked` flag, `?excludeBlocked=true`) |
+| `/api/conversations` | `POST` | Create conversation or atomically append story/market item reply message |
+| `/api/conversations/:id` | `GET` | Get single conversation details with hydrated presence & participant roles |
+| `/api/conversations/:id/messages` | `GET` | Alias for message history pagination (`page`, `limit`, `before=<messageId>`) |
+| `/api/conversations/:id/messages` | `DELETE` | Clear chat history for requesting user (App Store Guideline 1.2 compliant) |
+| `/api/conversations/:id` | `DELETE` | Remove conversation from requesting user's inbox |
 
 ### Message Routes
 
 | Endpoint Path | Method | Description |
 | :--- | :--- | :--- |
-| `/api/messages/:conversationId` | `GET` | Fetch paginated chat history for a conversation |
-| `/api/messages/:conversationId/read` | `POST` | Mark messages in conversation as read |
-| `/api/messages/:messageId` | `DELETE` | Delete a message for authenticated user |
+| `/api/messages/:conversationId` | `GET` | Fetch paginated chat history (`page`, `limit`, `before=<messageId>`) |
+| `/api/messages` | `POST` | Send message with support for `recipientId`, story/market metadata, and 403 `USER_BLOCKED` checks |
+| `/api/messages/:messageId` | `PUT` | Edit a message sent by authenticated user |
+| `/api/messages/:messageId` | `DELETE` | Soft-delete a message for authenticated user |
+| `/api/messages/:messageId/reactions` | `POST` / `DELETE` | Add or remove emoji reactions |
+
+### User Presence Routes
+
+| Endpoint Path | Method | Description |
+| :--- | :--- | :--- |
+| `/api/users/presence` | `POST` | Batch query real-time presence for an array of user IDs (`{ userIds: [...] }`) |
 
 ---
 
 ## 🛠️ Audit Summary & Status
 
-1. **Microservice Decoupling Verified**: Confirmed socketHandler running on Port 5001 with JWT token verification.
-2. **Context Linkage Supported**: Links direct chats directly to products, buyer demands, group buys, and swap deals.
+1. **Microservice Decoupling Verified**: Socket.IO handler running on Port 5001 with JWT token verification and Redis backing.
+2. **Context Linkage Supported**: Links direct chats directly to products, buyer demands, group buys, swap deals, stories, and market updates.
+3. **App Store Guideline 1.2 Compliant**: 403 `USER_BLOCKED` enforcement on send, per-user chat clearing, and inbox deletion.
+4. **Presence Store**: Redis Set (`user_connections:<id>`) and Hash (`user_presence:<id>`) with 15-second disconnect grace period to eliminate mobile app-switching flicker.
+5. **FCM Deep-Linking**: Active socket room suppression with rich data payload (`type: "chat_message"`, `click_action: "FLUTTER_NOTIFICATION_CLICK"`).
