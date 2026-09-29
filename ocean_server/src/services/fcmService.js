@@ -156,29 +156,34 @@ const sendPushNotification = async (userId, notification, data = {}) => {
     relatedEntityId: data.relatedEntityId || entityId
   };
 
+  const clickAction = data.click_action || data.clickAction || 'FLUTTER_NOTIFICATION_CLICK';
+
   const payload = {
     notification: {
       title: notification.title || 'Notification',
       body: notification.body || ''
     },
-    data: stringifyData({ ...unifiedData, ...data }),
+    data: stringifyData({ ...unifiedData, click_action: clickAction, ...data }),
     android: {
       priority: 'high',
       notification: {
         sound: 'default',
-        channelId: 'default'
+        channelId: 'default',
+        clickAction: clickAction
       }
     },
     apns: {
       payload: {
         aps: {
           sound: 'default',
-          badge: 1
+          badge: 1,
+          category: clickAction
         }
       },
       headers: { 'apns-priority': '10' }
     }
   };
+
 
   const results = await Promise.allSettled(
     tokens.map((token) => admin.messaging().send({ ...payload, token }))

@@ -1,14 +1,18 @@
 const { Conversation, ConversationParticipant, UserReference, Message } = require('../../models');
 const { Op } = require('sequelize');
 const axios = require('axios');
+const PresenceService = require('../services/presenceService');
+const { getBlockedUserIds, checkBlockRelationship } = require('../utils/userBlockHelper');
 
-// Helper function to format participant with both userId and sellerId
-const formatParticipant = (participant) => {
+// Helper function to format participant with both userId, sellerId, Redis presence and block status
+const formatParticipant = (participant, presenceMap = {}, blockedIds = []) => {
   const user = participant.user || participant;
   const userData = user.toJSON ? user.toJSON() : user;
   
   // Use businessName if it exists (only approved sellers have it), otherwise use fullName
   const displayName = userData.businessName || userData.fullName;
+  const presence = presenceMap[userData.id] || { isOnline: false, lastSeen: null };
+  const isBlocked = blockedIds.includes(userData.id);
   
   const formatted = {
     userId: userData.id,  // User Table ID
@@ -18,12 +22,17 @@ const formatParticipant = (participant) => {
     accountType: userData.accountType || 'buyer',
     businessName: userData.businessName || null, // Will be null for rejected sellers
     displayName: displayName, // Use businessName for approved sellers, fullName otherwise
-    isOnline: false, // TODO: Add online status tracking if available
+    isOnline: Boolean(presence.isOnline),
+    lastSeen: presence.lastSeen || null,
+    isBlocked: Boolean(isBlocked),
     user: {
       id: userData.id,
       fullName: userData.fullName,
       profilePicture: userData.profilePicture || null,
-      sellerId: userData.sellerId || null  // Also in nested object
+      sellerId: userData.sellerId || null,  // Also in nested object
+      isOnline: Boolean(presence.isOnline),
+      lastSeen: presence.lastSeen || null,
+      isBlocked: Boolean(isBlocked)
     }
   };
   
@@ -237,11 +246,14 @@ const getConversations = async (req, res) => {
   try {
     const userId = req.user.id;
     console.log('🔍 Fetching conversations for user:', userId);
-    const { page = 1, limit = 20 } = req.query;
+    const { page = 1, limit = 20, excludeBlocked } = req.query;
 
     const offset = (page - 1) * limit;
 
     console.log('📥 Query params: page=' + page + ', limit=' + limit + ', offset=' + offset);
+
+    // Retrieve blocked user IDs for current user (Requirement 5)
+    const blockedUserIds = await getBlockedUserIds(userId);
 
     const participants = await ConversationParticipant.findAndCountAll({
       where: { userId, isActive: true },
@@ -281,10 +293,21 @@ const getConversations = async (req, res) => {
     });
 
     console.log('📊 Found ' + participants.count + ' conversations for user ' + userId);
-    console.log('📋 Returning ' + participants.rows.length + ' conversations');
+
+    // Collect all participant user IDs across all conversations
+    const allParticipantIds = [];
+    participants.rows.forEach(p => {
+      if (p.conversation && p.conversation.participants) {
+        p.conversation.participants.forEach(cp => {
+          if (cp.userId) allParticipantIds.push(cp.userId);
+        });
+      }
+    });
+
+    const presenceMap = await PresenceService.getBatchPresence(allParticipantIds);
 
     // Calculate actual unread count for each conversation and format participants
-    const conversationsWithUnread = await Promise.all(participants.rows.map(async (p) => {
+    let conversationsWithUnread = await Promise.all(participants.rows.map(async (p) => {
       let unreadCount = 0;
       
       if (p.lastReadMessageId) {
@@ -305,23 +328,40 @@ const getConversations = async (req, res) => {
         });
       }
       
-      // Format participants with both userId and sellerId
+      // Check if conversation involves a blocked user
+      let isConvBlocked = false;
+      if (p.conversation.participants) {
+        for (const cp of p.conversation.participants) {
+          if (cp.userId !== userId && blockedUserIds.includes(cp.userId)) {
+            isConvBlocked = true;
+            break;
+          }
+        }
+      }
+
+      // Format participants with both userId, sellerId, Redis presence and block status
       const formattedParticipants = p.conversation.participants 
-        ? p.conversation.participants.map(participant => formatParticipant(participant))
+        ? p.conversation.participants.map(participant => formatParticipant(participant, presenceMap, blockedUserIds))
         : [];
       
       return {
         ...p.conversation.toJSON(),
+        isBlocked: isConvBlocked,
         participants: formattedParticipants,
         unreadCount
       };
     }));
 
+    // Filter blocked users if requested (Requirement 5)
+    if (excludeBlocked === 'true') {
+      conversationsWithUnread = conversationsWithUnread.filter(c => !c.isBlocked);
+    }
+
     res.json({
       conversations: conversationsWithUnread,
-      total: participants.count,
+      total: excludeBlocked === 'true' ? conversationsWithUnread.length : participants.count,
       currentPage: parseInt(page),
-      totalPages: Math.ceil(participants.count / limit)
+      totalPages: Math.ceil((excludeBlocked === 'true' ? conversationsWithUnread.length : participants.count) / limit)
     });
 
   } catch (error) {
@@ -388,16 +428,27 @@ const getConversation = async (req, res) => {
       });
     }
 
-    // Format participants with both userId and sellerId
+    // Retrieve blocked user IDs
+    const blockedUserIds = await getBlockedUserIds(userId);
+
+    // Fetch batch presence for participants in single conversation
+    const participantIds = conversation.participants ? conversation.participants.map(p => p.userId) : [];
+    const singleConvPresenceMap = await PresenceService.getBatchPresence(participantIds);
+
+    // Format participants with both userId, sellerId and Redis presence
     const formattedParticipants = conversation.participants 
-      ? conversation.participants.map(p => formatParticipant(p))
+      ? conversation.participants.map(p => formatParticipant(p, singleConvPresenceMap, blockedUserIds))
       : [];
+
+    const isConvBlocked = formattedParticipants.some(p => p.userId !== userId && p.isBlocked);
 
     res.json({
       conversation: {
         ...conversation.toJSON(),
+        isBlocked: isConvBlocked,
         participants: formattedParticipants
       },
+      isBlocked: isConvBlocked,
       unreadCount: participant.lastReadMessageId ? 
         (conversation.lastMessageId === participant.lastReadMessageId ? 0 : 1) : 
         (conversation.lastMessageId ? 1 : 0)
@@ -415,7 +466,22 @@ const getConversation = async (req, res) => {
 // Create new conversation
 const createConversation = async (req, res) => {
   try {
-    const { type = 'direct', name, description, participants, metadata } = req.body;
+    const { 
+      type = 'direct', 
+      name, 
+      description, 
+      participants, 
+      metadata, 
+      initialMessage,
+      content,
+      referenceType,
+      referenceId,
+      referenceTitle,
+      referenceCategory,
+      storyMetadata,
+      marketMetadata
+    } = req.body;
+
     const isInternalCall = req.user?.isInternal;
     const userId = isInternalCall ? null : req.user.id;
 
@@ -427,12 +493,9 @@ const createConversation = async (req, res) => {
     }
 
     // For internal calls creating direct conversations, don't add creator to participants
-    // The participants array already contains exactly 2 participants (seller and winner)
-    // For regular calls or group conversations, add creator if not already included
     if (!isInternalCall || type !== 'direct') {
-      // Add creator to participants if not already included (for regular calls or group conversations)
       if (userId && !participants.includes(userId)) {
-      participants.push(userId);
+        participants.push(userId);
       }
     }
 
@@ -443,12 +506,35 @@ const createConversation = async (req, res) => {
       });
     }
 
+    // Block enforcement before creating/accessing conversation (Requirement 5)
+    if (type === 'direct' && userId) {
+      const otherParticipantId = participants.find(id => id !== userId);
+      if (otherParticipantId) {
+        const blockCheck = await checkBlockRelationship(userId, otherParticipantId);
+        if (blockCheck.isBlocked) {
+          return res.status(403).json({
+            message: 'You cannot message this user',
+            code: 'USER_BLOCKED'
+          });
+        }
+      }
+    }
+
+    // Check if an initial message payload was provided
+    const rawInitialMessage = initialMessage || (content ? {
+      content,
+      referenceType,
+      referenceId,
+      referenceTitle,
+      referenceCategory,
+      storyMetadata,
+      marketMetadata
+    } : null);
+
     // Check if direct conversation already exists
     if (type === 'direct') {
       console.log('🔍 Checking for existing direct conversation with participants:', participants);
       
-      // For direct conversations, we need to find if there's already a conversation
-      // with exactly these two participants
       const existingConversations = await Conversation.findAll({
         where: { type: 'direct' },
         include: [
@@ -462,29 +548,77 @@ const createConversation = async (req, res) => {
 
       console.log('📋 Found existing conversations:', existingConversations.length);
       
-      // Check if any existing conversation has exactly these two participants
       for (const conv of existingConversations) {
-        console.log('🔍 Checking conversation:', conv.id, 'with participants:', conv.participants.map(p => p.userId));
-        
         if (conv.participants.length === 2) {
           const convParticipantIds = conv.participants.map(p => p.userId).sort();
           const requestedParticipantIds = participants.sort();
           
-          console.log('📊 Comparing:', convParticipantIds, 'vs', requestedParticipantIds);
-          
-          // Check if the participants match exactly
           if (convParticipantIds.length === 2 && 
               requestedParticipantIds.length === 2 &&
               convParticipantIds[0] === requestedParticipantIds[0] && 
               convParticipantIds[1] === requestedParticipantIds[1]) {
             
-            console.log('❌ Found duplicate conversation:', conv.id);
+            console.log('✅ Found existing conversation:', conv.id);
             
-            // If metadata is provided, always update it (allows updating with new product info)
+            // If metadata is provided, update it
             if (metadata) {
-              console.log('📦 Updating existing conversation with metadata');
               await conv.update({ metadata });
               await conv.reload();
+            }
+
+            const otherId = participants.find(id => id !== userId);
+            let sentInitialMessage = null;
+
+            // If initialMessage was sent (e.g. story reply / market update reply), append to existing conversation (Requirement 4)
+            if (rawInitialMessage && userId) {
+              const msgContent = typeof rawInitialMessage === 'string' ? rawInitialMessage : rawInitialMessage.content;
+              const msgRefType = (typeof rawInitialMessage === 'object' && rawInitialMessage.referenceType) || referenceType;
+              const msgRefId = (typeof rawInitialMessage === 'object' && rawInitialMessage.referenceId) || referenceId;
+              const msgRefTitle = (typeof rawInitialMessage === 'object' && rawInitialMessage.referenceTitle) || referenceTitle;
+              const msgRefCat = (typeof rawInitialMessage === 'object' && rawInitialMessage.referenceCategory) || referenceCategory;
+              const msgStoryMeta = (typeof rawInitialMessage === 'object' && rawInitialMessage.storyMetadata) || storyMetadata;
+              const msgMarketMeta = (typeof rawInitialMessage === 'object' && rawInitialMessage.marketMetadata) || marketMetadata;
+
+              let combinedMeta = {};
+              if (msgStoryMeta) combinedMeta.storyMetadata = msgStoryMeta;
+              if (msgMarketMeta) combinedMeta.marketMetadata = msgMarketMeta;
+
+              const createdMsg = await Message.create({
+                conversationId: conv.id,
+                senderId: userId,
+                content: msgContent || 'Replied to item',
+                type: (typeof rawInitialMessage === 'object' && rawInitialMessage.type) || 'text',
+                referenceType: msgRefType === 'demand' ? 'buyer_need' : msgRefType,
+                referenceId: msgRefId,
+                referenceTitle: msgRefTitle,
+                referenceCategory: msgRefCat,
+                metadata: Object.keys(combinedMeta).length > 0 ? combinedMeta : null,
+                ipAddress: req.ip,
+                userAgent: req.get('User-Agent')
+              });
+
+              await conv.update({
+                lastMessageAt: new Date(),
+                lastMessageId: createdMsg.id
+              });
+
+              sentInitialMessage = await Message.findByPk(createdMsg.id, {
+                include: [
+                  {
+                    model: UserReference,
+                    as: 'sender',
+                    attributes: ['id', 'fullName', 'profilePicture', 'businessName', 'accountType', 'sellerId']
+                  }
+                ]
+              });
+
+              const io = req.app.get('io');
+              if (io) {
+                io.to(`conversation:${conv.id}`).emit('new_message', {
+                  message: sentInitialMessage,
+                  conversationId: conv.id
+                });
+              }
             }
             
             // Load conversation with participants to return full data
@@ -509,22 +643,29 @@ const createConversation = async (req, res) => {
               ]
             });
             
-            // Format participants
+            const blockedUserIds = userId ? await getBlockedUserIds(userId) : [];
             const formattedParticipants = existingConv.participants 
-              ? existingConv.participants.map(p => formatParticipant(p))
+              ? existingConv.participants.map(p => formatParticipant(p, {}, blockedUserIds))
               : [];
             
             const responseData = {
               ...existingConv.toJSON(),
               participants: formattedParticipants
             };
+
+            // If initialMessage was appended, return 200/201 success response
+            if (sentInitialMessage) {
+              return res.status(200).json({
+                message: 'Message appended to existing conversation',
+                conversationId: conv.id,
+                conversation: responseData,
+                data: responseData,
+                initialMessage: sentInitialMessage,
+                isExisting: true
+              });
+            }
             
-            console.log('📤 Returning 400 with full conversation data:', {
-              conversationId: conv.id,
-              hasMetadata: !!existingConv.metadata,
-              metadata: existingConv.metadata
-            });
-            
+            // Backward compatibility when no message is sent: return 400 with data
             return res.status(400).json({
               message: 'Direct conversation already exists',
               conversationId: conv.id,
@@ -539,14 +680,9 @@ const createConversation = async (req, res) => {
 
     // Create conversation
     console.log('🚀 Creating new conversation with type:', type, 'and participants:', participants);
-    if (metadata) {
-      console.log('📦 Conversation metadata:', JSON.stringify(metadata));
-    }
     
-    // For internal calls, use first participant as creator (usually the seller)
-    // For regular calls, use the authenticated user
     const createdBy = isInternalCall && type === 'direct' 
-      ? participants[0]  // Use first participant (seller) as creator for internal direct conversations
+      ? participants[0] 
       : userId;
     
     const conversation = await Conversation.create({
@@ -559,39 +695,24 @@ const createConversation = async (req, res) => {
     console.log('✅ Conversation created with ID:', conversation.id);
 
     // Sync all participants to ensure they exist in the messaging system
-    console.log('🔄 Syncing participants before adding to conversation...');
-    console.log('📋 Total participants to sync:', participants.length);
-    console.log('📋 Participant IDs:', participants);
-    
     const syncedParticipants = [];
-    
     for (const participantId of participants) {
-      console.log(`🔄 Attempting to sync participant: ${participantId}`);
       try {
-        const syncedUser = await syncUserFromMainServer(participantId);
+        await syncUserFromMainServer(participantId);
         syncedParticipants.push(participantId);
-        console.log(`✅ Successfully synced participant: ${participantId}`);
       } catch (error) {
         console.error(`❌ Failed to sync participant ${participantId}:`, error.message);
-        // Continue with other participants even if one fails
       }
     }
 
-    console.log('📊 Summary: Successfully synced ${syncedParticipants.length} out of ${participants.length} participants');
-
-    // Only add participants that were successfully synced
     if (syncedParticipants.length === 0) {
-      console.error('❌ No participants could be synced, aborting conversation creation');
       return res.status(400).json({
         message: 'No participants could be synced'
       });
     }
 
-    // Add participants
-    // For internal calls creating direct conversations, make first participant (seller) admin
-    // For regular calls, make the creator admin
     const adminUserId = isInternalCall && type === 'direct' 
-      ? participants[0]  // First participant (seller) is admin for internal direct conversations
+      ? participants[0] 
       : userId;
     
     const participantData = syncedParticipants.map(participantId => ({
@@ -600,9 +721,60 @@ const createConversation = async (req, res) => {
       role: participantId === adminUserId ? 'admin' : 'member'
     }));
 
-    console.log('👥 Adding participants:', participantData);
     await ConversationParticipant.bulkCreate(participantData);
-    console.log('✅ Participants added successfully');
+
+    // If initialMessage is provided, create it atomically (Requirement 4)
+    let initialMessageRecord = null;
+    if (rawInitialMessage && userId) {
+      const msgContent = typeof rawInitialMessage === 'string' ? rawInitialMessage : rawInitialMessage.content;
+      const msgRefType = (typeof rawInitialMessage === 'object' && rawInitialMessage.referenceType) || referenceType;
+      const msgRefId = (typeof rawInitialMessage === 'object' && rawInitialMessage.referenceId) || referenceId;
+      const msgRefTitle = (typeof rawInitialMessage === 'object' && rawInitialMessage.referenceTitle) || referenceTitle;
+      const msgRefCat = (typeof rawInitialMessage === 'object' && rawInitialMessage.referenceCategory) || referenceCategory;
+      const msgStoryMeta = (typeof rawInitialMessage === 'object' && rawInitialMessage.storyMetadata) || storyMetadata;
+      const msgMarketMeta = (typeof rawInitialMessage === 'object' && rawInitialMessage.marketMetadata) || marketMetadata;
+
+      let combinedMeta = {};
+      if (msgStoryMeta) combinedMeta.storyMetadata = msgStoryMeta;
+      if (msgMarketMeta) combinedMeta.marketMetadata = msgMarketMeta;
+
+      const createdMsg = await Message.create({
+        conversationId: conversation.id,
+        senderId: userId,
+        content: msgContent || 'Replied to item',
+        type: (typeof rawInitialMessage === 'object' && rawInitialMessage.type) || 'text',
+        referenceType: msgRefType === 'demand' ? 'buyer_need' : msgRefType,
+        referenceId: msgRefId,
+        referenceTitle: msgRefTitle,
+        referenceCategory: msgRefCat,
+        metadata: Object.keys(combinedMeta).length > 0 ? combinedMeta : null,
+        ipAddress: req.ip,
+        userAgent: req.get('User-Agent')
+      });
+
+      await conversation.update({
+        lastMessageAt: new Date(),
+        lastMessageId: createdMsg.id
+      });
+
+      initialMessageRecord = await Message.findByPk(createdMsg.id, {
+        include: [
+          {
+            model: UserReference,
+            as: 'sender',
+            attributes: ['id', 'fullName', 'profilePicture', 'businessName', 'accountType', 'sellerId']
+          }
+        ]
+      });
+
+      const io = req.app.get('io');
+      if (io) {
+        io.to(`conversation:${conversation.id}`).emit('new_message', {
+          message: initialMessageRecord,
+          conversationId: conversation.id
+        });
+      }
+    }
 
     // Load conversation with participants
     const conversationWithParticipants = await Conversation.findByPk(conversation.id, {
@@ -626,17 +798,23 @@ const createConversation = async (req, res) => {
       ]
     });
 
-    // Format participants with both userId and sellerId
+    const blockedUserIds = userId ? await getBlockedUserIds(userId) : [];
     const formattedParticipants = conversationWithParticipants.participants 
-      ? conversationWithParticipants.participants.map(p => formatParticipant(p))
+      ? conversationWithParticipants.participants.map(p => formatParticipant(p, {}, blockedUserIds))
       : [];
 
     res.status(201).json({
       message: 'Conversation created successfully',
+      conversationId: conversation.id,
       data: {
         ...conversationWithParticipants.toJSON(),
         participants: formattedParticipants
-      }
+      },
+      conversation: {
+        ...conversationWithParticipants.toJSON(),
+        participants: formattedParticipants
+      },
+      initialMessage: initialMessageRecord
     });
 
   } catch (error) {
@@ -903,6 +1081,106 @@ const markAsRead = async (req, res) => {
   }
 };
 
+// Clear message history for the requesting user (Requirement 5: does not delete for other participant)
+const clearMessages = async (req, res) => {
+  try {
+    const { conversationId } = req.params;
+    const userId = req.user.id;
+
+    const participant = await ConversationParticipant.findOne({
+      where: { conversationId, userId, isActive: true }
+    });
+
+    if (!participant) {
+      return res.status(403).json({
+        message: 'You are not a participant in this conversation'
+      });
+    }
+
+    let meta = {};
+    if (participant.metadata) {
+      try {
+        meta = typeof participant.metadata === 'string'
+          ? JSON.parse(participant.metadata)
+          : { ...participant.metadata };
+      } catch (e) {
+        meta = {};
+      }
+    }
+
+    const clearedAt = new Date().toISOString();
+    meta.clearedAt = clearedAt;
+
+    await participant.update({
+      metadata: meta
+    });
+
+    res.json({
+      success: true,
+      message: 'Chat history cleared successfully',
+      conversationId,
+      clearedAt
+    });
+
+  } catch (error) {
+    console.error('Error clearing messages:', error);
+    res.status(500).json({
+      message: 'Error clearing message history',
+      error: error.message
+    });
+  }
+};
+
+// Delete conversation (Requirement 5: removes from user's inbox)
+const deleteConversation = async (req, res) => {
+  try {
+    const { conversationId } = req.params;
+    const userId = req.user.id;
+
+    const participant = await ConversationParticipant.findOne({
+      where: { conversationId, userId }
+    });
+
+    if (!participant) {
+      return res.status(404).json({
+        message: 'Conversation not found or you are not a participant'
+      });
+    }
+
+    let meta = {};
+    if (participant.metadata) {
+      try {
+        meta = typeof participant.metadata === 'string'
+          ? JSON.parse(participant.metadata)
+          : { ...participant.metadata };
+      } catch (e) {
+        meta = {};
+      }
+    }
+
+    meta.clearedAt = new Date().toISOString();
+
+    await participant.update({
+      isActive: false,
+      leftAt: new Date(),
+      metadata: meta
+    });
+
+    res.json({
+      success: true,
+      message: 'Conversation removed from inbox successfully',
+      conversationId
+    });
+
+  } catch (error) {
+    console.error('Error deleting conversation:', error);
+    res.status(500).json({
+      message: 'Error removing conversation from inbox',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   getConversations,
   getConversation,
@@ -910,5 +1188,8 @@ module.exports = {
   addParticipant,
   removeParticipant,
   updateConversation,
-  markAsRead
-}; 
+  markAsRead,
+  clearMessages,
+  deleteConversation
+};
+ 

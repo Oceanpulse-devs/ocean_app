@@ -6,6 +6,9 @@ const userController = require('../controllers/userController');
 // Get online users
 router.get('/online', authMiddleware, userController.getOnlineUsers);
 
+// Batch user presence query (for app foregrounding)
+router.post('/presence', authMiddleware, userController.getBatchUserPresence);
+
 // Search users
 router.get('/search', authMiddleware, userController.searchUsers);
 

@@ -46,6 +46,9 @@ const PORT = process.env.PORT || 5001;
 // Trust proxy for Railway deployment - only trust the first proxy
 app.set('trust proxy', 1);
 
+// Share io with Express app routes/controllers
+app.set('io', io);
+
 // Security middleware
 app.use(helmet({
   crossOriginEmbedderPolicy: false,

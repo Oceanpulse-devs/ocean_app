@@ -117,12 +117,12 @@ module.exports = (sequelize) => {
       allowNull: true
     },
     referenceType: {
-      type: DataTypes.ENUM('buyer_need', 'product', 'swap_deal', 'distress_sale', 'auction'),
+      type: DataTypes.ENUM('buyer_need', 'product', 'swap_deal', 'distress_sale', 'auction', 'story', 'market_update'),
       allowNull: true,
       field: 'reference_type'
     },
     referenceId: {
-      type: DataTypes.UUID,
+      type: DataTypes.STRING(255),
       allowNull: true,
       field: 'reference_id'
     },

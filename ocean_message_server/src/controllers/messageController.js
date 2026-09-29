@@ -1,6 +1,25 @@
 const { Message, Conversation, ConversationParticipant, UserReference, MessageReaction, Notification } = require('../../models');
 const { Op } = require('sequelize');
 const axios = require('axios');
+const { checkBlockRelationship } = require('../utils/userBlockHelper');
+
+// Helper: check if target user is currently in the conversation socket room
+const isUserInConversationRoom = (io, conversationId, targetUserId) => {
+  if (!io || !conversationId || !targetUserId) return false;
+  try {
+    const room = io.sockets.adapter.rooms.get(`conversation:${conversationId}`);
+    if (!room) return false;
+    for (const socketId of room) {
+      const s = io.sockets.sockets.get(socketId);
+      if (s && String(s.userId) === String(targetUserId)) {
+        return true;
+      }
+    }
+  } catch (err) {
+    console.error('Error checking user in socket room:', err.message);
+  }
+  return false;
+};
 
 // Helper: call main server to send FCM push (non-blocking)
 const sendPushViaMainServer = async (userId, title, body, data) => {
@@ -49,7 +68,7 @@ const createNotification = async (userId, title, message, type = 'info', categor
 const getMessages = async (req, res) => {
   try {
     const { conversationId } = req.params;
-    const { page = 1, limit = 50, beforeId } = req.query;
+    const { page = 1, limit = 50, before, beforeId } = req.query;
     const userId = req.user.id;
 
     // Check if user is participant
@@ -63,16 +82,48 @@ const getMessages = async (req, res) => {
       });
     }
 
-    const offset = (page - 1) * limit;
-    const whereClause = {
-      conversationId,
-      isDeleted: false
-    };
+    const parsedLimit = parseInt(limit, 10) || 50;
+    const parsedPage = parseInt(page, 10) || 1;
+    const offset = (parsedPage - 1) * parsedLimit;
 
-    // If beforeId is provided, get messages before that ID
-    if (beforeId) {
-      whereClause.id = { [Op.lt]: beforeId };
+    const whereConditions = [
+      { conversationId },
+      { isDeleted: false }
+    ];
+
+    // Check if user has cleared messages in this conversation (Requirement 5)
+    let clearedAt = null;
+    if (participant.metadata) {
+      try {
+        const meta = typeof participant.metadata === 'string'
+          ? JSON.parse(participant.metadata)
+          : participant.metadata;
+        if (meta && meta.clearedAt) {
+          clearedAt = new Date(meta.clearedAt);
+        }
+      } catch (e) {
+        // ignore parse error
+      }
     }
+
+    if (clearedAt) {
+      whereConditions.push({ createdAt: { [Op.gt]: clearedAt } });
+    }
+
+    // Cursor-based pagination: before=<messageId> or beforeId=<messageId> (Requirement 2)
+    const targetBefore = before || beforeId;
+    if (targetBefore) {
+      const refMessage = await Message.findByPk(targetBefore);
+      if (refMessage) {
+        whereConditions.push({ createdAt: { [Op.lt]: refMessage.createdAt } });
+      } else {
+        whereConditions.push({ id: { [Op.lt]: targetBefore } });
+      }
+    }
+
+    const whereClause = {
+      [Op.and]: whereConditions
+    };
 
     const messages = await Message.findAndCountAll({
       where: whereClause,
@@ -80,17 +131,17 @@ const getMessages = async (req, res) => {
         {
           model: UserReference,
           as: 'sender',
-          attributes: ['id', 'fullName', 'profilePicture', 'businessName', 'accountType']
+          attributes: ['id', 'fullName', 'profilePicture', 'businessName', 'accountType', 'sellerId']
         },
         {
           model: Message,
           as: 'replyTo',
           include: [
-        {
-          model: UserReference,
-          as: 'sender',
-          attributes: ['id', 'fullName', 'businessName', 'accountType']
-        }
+            {
+              model: UserReference,
+              as: 'sender',
+              attributes: ['id', 'fullName', 'businessName', 'accountType', 'sellerId']
+            }
           ]
         },
         {
@@ -106,8 +157,8 @@ const getMessages = async (req, res) => {
         }
       ],
       order: [['createdAt', 'DESC']],
-      limit: parseInt(limit),
-      offset: parseInt(offset)
+      limit: parsedLimit,
+      offset: targetBefore ? 0 : offset
     });
 
     // Update last read
@@ -118,12 +169,25 @@ const getMessages = async (req, res) => {
       });
     }
 
+    const totalPages = Math.ceil(messages.count / parsedLimit);
+    const hasMore = messages.count > offset + messages.rows.length;
+
+    // Messages must be ordered chronologically (oldest first) within the page
+    const chronologicalMessages = messages.rows.reverse();
+
     res.json({
-      messages: messages.rows.reverse(), // Reverse to get chronological order
+      messages: chronologicalMessages,
+      pagination: {
+        currentPage: parsedPage,
+        totalPages,
+        totalMessages: messages.count,
+        hasMore
+      },
+      // Backward compatibility for existing Flutter mobile app
       total: messages.count,
-      currentPage: parseInt(page),
-      totalPages: Math.ceil(messages.count / limit),
-      hasMore: messages.count > offset + messages.rows.length
+      currentPage: parsedPage,
+      totalPages,
+      hasMore
     });
 
   } catch (error) {
@@ -138,27 +202,76 @@ const getMessages = async (req, res) => {
 // Send a message
 const sendMessage = async (req, res) => {
   try {
-    const { 
+    let { 
       conversationId, 
+      recipientId,
+      receiverId,
       content, 
       type = 'text', 
       replyToId, 
       mediaUrl, 
       mediaType,
-      // Reference fields for context tracking
+      // Reference fields for context tracking (Requirement 4)
       referenceType,
       referenceId,
       referenceTitle,
       referenceCategory,
+      storyMetadata,
+      marketMetadata,
+      metadata,
       buyerNeedId, // Special field to indicate if message is from buyer needs page
       senderId: overrideSenderId
     } = req.body;
+
     const isInternalCall = req.user?.isInternal;
     const userId = isInternalCall ? overrideSenderId : req.user.id;
     
     if (!userId) {
       return res.status(400).json({
         message: 'Sender ID is required.'
+      });
+    }
+
+    // Support recipientId / receiverId if conversationId is not passed
+    const targetRecipientId = recipientId || receiverId;
+    if (!conversationId && targetRecipientId) {
+      console.log(`🔍 Finding or creating direct conversation between ${userId} and ${targetRecipientId}`);
+      // Find existing direct conversation
+      const participants = await ConversationParticipant.findAll({
+        where: { userId: [userId, targetRecipientId], isActive: true }
+      });
+
+      const conversationCounts = {};
+      for (const p of participants) {
+        conversationCounts[p.conversationId] = (conversationCounts[p.conversationId] || 0) + 1;
+        if (conversationCounts[p.conversationId] === 2) {
+          const directConv = await Conversation.findOne({
+            where: { id: p.conversationId, type: 'direct' }
+          });
+          if (directConv) {
+            conversationId = directConv.id;
+            break;
+          }
+        }
+      }
+
+      // If still not found, create new direct conversation atomically
+      if (!conversationId) {
+        const newConv = await Conversation.create({
+          type: 'direct',
+          createdBy: userId
+        });
+        await ConversationParticipant.bulkCreate([
+          { conversationId: newConv.id, userId, role: 'admin' },
+          { conversationId: newConv.id, userId: targetRecipientId, role: 'member' }
+        ]);
+        conversationId = newConv.id;
+      }
+    }
+
+    if (!conversationId) {
+      return res.status(400).json({
+        message: 'conversationId or recipientId is required'
       });
     }
 
@@ -173,6 +286,33 @@ const sendMessage = async (req, res) => {
       });
     }
 
+    // Fetch other active participants in this conversation
+    const otherParticipants = await ConversationParticipant.findAll({
+      where: { 
+        conversationId, 
+        userId: { [Op.ne]: userId }, 
+        isActive: true 
+      },
+      include: [
+        {
+          model: UserReference,
+          as: 'user',
+          attributes: ['id', 'fullName', 'profilePicture', 'businessName', 'accountType']
+        }
+      ]
+    });
+
+    // Check user block enforcement (Requirement 5)
+    for (const other of otherParticipants) {
+      const blockCheck = await checkBlockRelationship(userId, other.userId);
+      if (blockCheck.isBlocked) {
+        return res.status(403).json({
+          message: 'You cannot message this user',
+          code: 'USER_BLOCKED'
+        });
+      }
+    }
+
     // Validate content
     if (!content && !mediaUrl) {
       return res.status(400).json({
@@ -183,6 +323,22 @@ const sendMessage = async (req, res) => {
     // Normalize referenceType: frontend may send 'demand', DB stores 'buyer_need'
     const normalizedReferenceType = referenceType === 'demand' ? 'buyer_need' : referenceType;
 
+    // Build unified metadata object for story / market item previews
+    let combinedMetadata = {};
+    if (metadata) {
+      try {
+        combinedMetadata = typeof metadata === 'string' ? JSON.parse(metadata) : { ...metadata };
+      } catch (e) {
+        combinedMetadata = {};
+      }
+    }
+    if (storyMetadata) {
+      combinedMetadata.storyMetadata = storyMetadata;
+    }
+    if (marketMetadata) {
+      combinedMetadata.marketMetadata = marketMetadata;
+    }
+
     // Create message
     const message = await Message.create({
       conversationId,
@@ -192,11 +348,12 @@ const sendMessage = async (req, res) => {
       replyToId,
       mediaUrl,
       mediaType,
-      // Reference fields for context tracking
+      // Reference fields for context tracking (Requirement 4)
       referenceType: normalizedReferenceType,
       referenceId,
       referenceTitle,
       referenceCategory,
+      metadata: Object.keys(combinedMetadata).length > 0 ? combinedMetadata : null,
       ipAddress: req.ip,
       userAgent: req.get('User-Agent')
     });
@@ -214,17 +371,14 @@ const sendMessage = async (req, res) => {
     if (buyerNeedId && (referenceType === 'buyer_need' || referenceType === 'demand')) {
       try {
         console.log(`📈 Incrementing reach for buyer need: ${buyerNeedId}`);
-        
-        // Make API call to main server to increment reach
-        const axios = require('axios');
-        const mainServerUrl = process.env.MAIN_SERVER_URL || 'http://localhost:3000';
+        const mainServerUrl = process.env.MAIN_SERVER_URL || 'http://localhost:5000';
         
         const reachResponse = await axios.post(
           `${mainServerUrl}/api/buyer-needs/${buyerNeedId}/increment-reach`,
           {},
           {
             headers: {
-              'Authorization': req.headers.authorization, // Forward the auth token
+              'Authorization': req.headers.authorization,
               'Content-Type': 'application/json'
             }
           }
@@ -232,8 +386,6 @@ const sendMessage = async (req, res) => {
         
         if (reachResponse.data.success) {
           console.log(`✅ Reach incremented successfully: ${reachResponse.data.currentReach}/${reachResponse.data.reachLimit}`);
-          
-          // Update notification metadata to include reach info
           const reachInfo = {
             currentReach: reachResponse.data.currentReach,
             reachLimit: reachResponse.data.reachLimit,
@@ -241,60 +393,48 @@ const sendMessage = async (req, res) => {
             canContact: reachResponse.data.canContact
           };
           
-          // Store reach info in message metadata for later use
+          combinedMetadata.reachInfo = reachInfo;
           await message.update({
-            metadata: JSON.stringify({ reachInfo })
+            metadata: combinedMetadata
           });
         }
       } catch (reachError) {
         console.error('❌ Error incrementing reach:', reachError.message);
-        // Don't fail the message sending if reach increment fails
       }
     }
 
-    // Send notifications to other participants (not the sender)
-    const otherParticipants = await ConversationParticipant.findAll({
-      where: { 
-        conversationId, 
-        userId: { [Op.ne]: userId }, 
-        isActive: true 
-      },
-      include: [
-        {
-          model: UserReference,
-          as: 'user',
-          attributes: ['id', 'fullName', 'profilePicture']
-        }
-      ]
-    });
-
-    // Get sender info for notifications
+    // Get sender info for notifications and response
     const sender = await UserReference.findByPk(userId, {
-      attributes: ['id', 'fullName', 'profilePicture', 'businessName', 'accountType']
+      attributes: ['id', 'fullName', 'profilePicture', 'businessName', 'accountType', 'sellerId']
     });
 
-    // Send notification to each participant
+    const senderDisplayName = sender?.businessName || sender?.fullName || 'Someone';
+    const messagePreviewText = content 
+      ? (content.length > 50 ? content.substring(0, 50) + '...' : content) 
+      : 'Sent a media message';
+
+    const io = req.app.get('io');
+
+    // Send notifications to other participants (not the sender)
     for (const participant of otherParticipants) {
       const notificationMetadata = { 
-        conversationId: conversationId,
+        conversationId,
         messageId: message.id,
         senderId: userId,
-        senderName: sender.businessName || sender.fullName,
+        senderName: senderDisplayName,
         messagePreview: content ? content.substring(0, 100) : 'Media message',
         messageType: type
       };
 
-      // Add reference information if available
-      if (referenceType && referenceId) {
+      if (normalizedReferenceType && referenceId) {
         notificationMetadata.reference = {
-          type: referenceType,
+          type: normalizedReferenceType,
           id: referenceId,
           title: referenceTitle,
           category: referenceCategory
         };
       }
 
-      // Add reach information if this is a buyer need message (demand = buyer_need)
       if (buyerNeedId && (referenceType === 'buyer_need' || referenceType === 'demand')) {
         notificationMetadata.buyerNeedId = buyerNeedId;
         notificationMetadata.isBuyerNeedMessage = true;
@@ -303,28 +443,41 @@ const sendMessage = async (req, res) => {
       const notification = await createNotification(
         participant.userId,
         'New Message Received',
-        `${sender.businessName || sender.fullName}: ${content ? content.substring(0, 50) + (content.length > 50 ? '...' : '') : 'Sent a media message'}`,
+        `${senderDisplayName}: ${messagePreviewText}`,
         'info',
         'message',
         notificationMetadata
       );
 
-      // Send push via main server (non-blocking)
-      if (notification) {
+      // Check if user is currently active in the socket room (Requirement 6)
+      const userIsActiveInRoom = isUserInConversationRoom(io, conversationId, participant.userId);
+
+      if (!userIsActiveInRoom) {
+        // FCM Data Payload for chat messages conforming to frontend spec (Requirement 6)
         const pushData = {
-          ...notificationMetadata,
-          type: 'message',
+          type: 'chat_message',
+          conversationId: String(conversationId),
+          senderId: String(userId),
+          senderName: senderDisplayName,
+          senderAvatar: sender?.profilePicture || '',
+          messageId: String(message.id),
+          messagePreview: content ? content.substring(0, 100) : 'Media message',
+          referenceType: normalizedReferenceType || '',
+          referenceId: referenceId ? String(referenceId) : '',
+          click_action: 'FLUTTER_NOTIFICATION_CLICK',
           category: 'message',
-          notificationId: notification.id,
-          createdAt: notification.createdAt ? new Date(notification.createdAt).toISOString() : new Date().toISOString(),
-          relatedEntityId: conversationId
+          notificationId: notification ? String(notification.id) : '',
+          relatedEntityId: String(conversationId)
         };
+
         sendPushViaMainServer(
           participant.userId,
-          'New Message Received',
-          `${sender.businessName || sender.fullName}: ${content ? content.substring(0, 50) + (content.length > 50 ? '...' : '') : 'Sent a media message'}`,
+          senderDisplayName,
+          messagePreviewText,
           pushData
         );
+      } else {
+        console.log(`📱 User ${participant.userId} is active in conversation room. Push suppressed.`);
       }
     }
 
@@ -334,21 +487,29 @@ const sendMessage = async (req, res) => {
         {
           model: UserReference,
           as: 'sender',
-          attributes: ['id', 'fullName', 'profilePicture', 'businessName', 'accountType']
+          attributes: ['id', 'fullName', 'profilePicture', 'businessName', 'accountType', 'sellerId']
         },
         {
           model: Message,
           as: 'replyTo',
           include: [
-        {
-          model: UserReference,
-          as: 'sender',
-          attributes: ['id', 'fullName', 'businessName', 'accountType']
-        }
+            {
+              model: UserReference,
+              as: 'sender',
+              attributes: ['id', 'fullName', 'businessName', 'accountType', 'sellerId']
+            }
           ]
         }
       ]
     });
+
+    // Broadcast new_message event via Socket.IO if io is available
+    if (io) {
+      io.to(`conversation:${conversationId}`).emit('new_message', {
+        message: messageWithSender,
+        conversationId
+      });
+    }
 
     res.status(201).json({
       message: 'Message sent successfully',

@@ -283,10 +283,36 @@ const getConversationStats = async (req, res) => {
   }
 };
 
+// Batch presence query endpoint (POST /api/users/presence)
+const getBatchUserPresence = async (req, res) => {
+  try {
+    const { userIds } = req.body;
+    if (!Array.isArray(userIds)) {
+      return res.status(400).json({
+        message: 'userIds must be an array of user IDs'
+      });
+    }
+
+    const PresenceService = require('../services/presenceService');
+    const presenceMap = await PresenceService.getBatchPresence(userIds);
+
+    // Return mapped presence dictionary as requested by frontend
+    return res.status(200).json(presenceMap);
+  } catch (error) {
+    console.error('Error getting batch user presence:', error);
+    res.status(500).json({
+      message: 'Error retrieving user presence',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   getOnlineUsers,
   searchUsers,
   getUserProfile,
   getRecentContacts,
-  getConversationStats
-}; 
+  getConversationStats,
+  getBatchUserPresence
+};
+ 
