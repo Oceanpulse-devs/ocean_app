@@ -1417,22 +1417,27 @@ async function syncDatabase() {
     }
     
     try {
-        // CRITICAL: Disable foreign key checks during sync to avoid constraint errors
-        // This allows tables to be created in any order
+        console.log('🔄 Syncing database tables in topological dependency order...');
+        try {
+            await db.sequelize.sync({ force: false });
+            console.log('✅ Dependency-ordered sequelize.sync completed successfully');
+        } catch (topSyncErr) {
+            console.warn('⚠️ Dependency sync warning (will verify individually):', topSyncErr.message);
+        }
+
+        // Disable foreign key checks during individual verification to avoid constraint errors
         await db.sequelize.query('SET FOREIGN_KEY_CHECKS = 0');
-        console.log('🔓 Foreign key checks disabled for sync');
+        console.log('🔓 Foreign key checks disabled for model sync verification');
         
         // Sync models individually to handle errors gracefully
-        // This allows us to continue even if some models fail
         let successCount = 0;
         let failCount = 0;
         const failedModels = [];
         
-        console.log('🔄 Syncing models individually...');
+        console.log('🔄 Verifying and syncing individual models...');
         for (const modelName of modelNames) {
             try {
                 const model = sequelizeModels[modelName];
-                // Sync individual model (alter: false to rely on explicit migrations for production safety and instant boot time)
                 const syncOptions = { force: false, alter: false };
                 await model.sync(syncOptions);
                 successCount++;
@@ -1443,7 +1448,6 @@ async function syncDatabase() {
                 failCount++;
                 failedModels.push({ model: modelName, error: error.message });
                 console.log(`   ⚠️  Failed to sync ${modelName}: ${error.message.substring(0, 60)}...`);
-                // Continue with next model
             }
         }
         
