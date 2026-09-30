@@ -34,10 +34,16 @@ class TriggerManager {
           .replace(/DELIMITER\s*;/gi, '')
           .trim();
 
-        if (!stmt) continue;
+        // Strip comments to inspect the actual SQL command
+        const cleanedStmt = stmt
+          .replace(/\/\*[\s\S]*?\*\//g, '')
+          .replace(/--.*$/gm, '')
+          .trim();
 
-        // Skip verification queries embedded in the file
-        if (/^(SHOW|SELECT)\s+/i.test(stmt)) {
+        if (!cleanedStmt) continue;
+
+        // Skip verification queries or anything that is not CREATE / DROP TRIGGER
+        if (!/^(CREATE|DROP)\s+TRIGGER/i.test(cleanedStmt)) {
           continue;
         }
 
