@@ -1,5 +1,6 @@
 const cloudinary = require('cloudinary').v2;
 const { Readable } = require('stream');
+const r2StorageService = require('./r2StorageService');
 
 class CloudinaryService {
     constructor() {
@@ -12,13 +13,25 @@ class CloudinaryService {
     }
 
     /**
-     * Upload a single, file to Cloudinary
+     * Check if Cloudflare R2 is set as the active storage provider
+     * @returns {boolean}
+     */
+    isR2Active() {
+        const provider = (process.env.STORAGE_PROVIDER || 'cloudinary').trim().toLowerCase();
+        return (provider === 'r2' || provider === 'rs') && r2StorageService.isR2Configured();
+    }
+
+    /**
+     * Upload a single file to Cloudinary (or Cloudflare R2 if STORAGE_PROVIDER=r2)
      * @param {Buffer|string} file - File buffer or base64 string
-     * @param {string} folder - Folder path in Cloudinary
+     * @param {string} folder - Folder path in storage
      * @param {Object} options - Additional upload options
      * @returns {Promise<Object>} Upload result
      */
     async uploadFile(file, folder = 'ocean-app', options = {}) {
+        if (this.isR2Active()) {
+            return await r2StorageService.uploadFile(file, folder, options);
+        }
         try {
             const uploadOptions = {
                 folder,
@@ -368,6 +381,10 @@ class CloudinaryService {
      * @returns {string} Thumbnail URL
      */
     generateThumbnailUrl(originalUrl, resourceType, publicId = null) {
+        if (this.isR2Active() || (originalUrl && (originalUrl.includes('r2.cloudflarestorage.com') || (process.env.CLOUDFLARE_R2_PUBLIC_URL && originalUrl.includes(process.env.CLOUDFLARE_R2_PUBLIC_URL))))) {
+            return originalUrl;
+        }
+
         if (resourceType === 'video') {
             // Generate video thumbnail by extracting frame at 5 seconds
             // Transformation: so_5 = start offset 5 seconds, convert to JPG
@@ -389,11 +406,16 @@ class CloudinaryService {
     }
 
     /**
-     * Delete file from Cloudinary
+     * Delete file from Cloudinary (or Cloudflare R2 if active)
      * @param {string} publicId - Public ID of the file to delete
      * @returns {Promise<Object>} Deletion result
      */
     async deleteFile(publicId) {
+        if (this.isR2Active()) {
+            const r2Result = await r2StorageService.deleteFile(publicId);
+            if (r2Result.success) return r2Result;
+        }
+
         try {
             const result = await cloudinary.uploader.destroy(publicId);
             return {
@@ -410,11 +432,15 @@ class CloudinaryService {
     }
 
     /**
-     * Get file information from Cloudinary
+     * Get file information from Cloudinary (or Cloudflare R2 if active)
      * @param {string} publicId - Public ID of the file
      * @returns {Promise<Object>} File information
      */
     async getFileInfo(publicId) {
+        if (this.isR2Active()) {
+            return await r2StorageService.getFileInfo(publicId);
+        }
+
         try {
             const result = await cloudinary.api.resource(publicId);
             return {

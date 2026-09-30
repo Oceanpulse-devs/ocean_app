@@ -1,9 +1,11 @@
 const awsS3Service = require('./awsS3Service');
 const cloudinaryService = require('./cloudinaryService');
+const r2StorageService = require('./r2StorageService');
 
 /**
  * Unified video upload service
- * - Uses Cloudinary as primary (auto thumbnails, video processing)
+ * - If STORAGE_PROVIDER=r2: Uses Cloudflare R2
+ * - Otherwise: Uses Cloudinary as primary (auto thumbnails, video processing)
  * - If Cloudinary fails → falls back to AWS S3 (if configured)
  * - Returns consistent response format
  */
@@ -16,8 +18,24 @@ class VideoUploadService {
      * @returns {Promise<Object>} Upload result
      */
     async uploadVideo(fileBuffer, folder = 'ocean-app/videos', options = {}) {
-        // Try Cloudinary first (primary - has auto thumbnails and video processing)
-        console.log('📹 Using Cloudinary for video upload (primary)');
+        const provider = (process.env.STORAGE_PROVIDER || 'cloudinary').trim().toLowerCase();
+        const isR2 = provider === 'r2' || provider === 'rs';
+        
+        if (isR2 && r2StorageService.isR2Configured()) {
+            console.log('📹 Using Cloudflare R2 for video upload');
+            const result = await r2StorageService.uploadFile(fileBuffer, folder, {
+                resource_type: 'video',
+                mimetype: options.mimetype || 'video/mp4',
+                ...options
+            });
+            if (result.success) {
+                return result;
+            }
+            console.warn('⚠️ R2 video upload failed, attempting fallback:', result.error);
+        }
+
+        // Try Cloudinary (primary for non-R2 - has auto thumbnails and video processing)
+        console.log('📹 Using Cloudinary for video upload');
         try {
             const result = await this.uploadToCloudinary(fileBuffer, folder, options);
             if (result.success) {
@@ -100,6 +118,14 @@ class VideoUploadService {
      * @returns {Promise<Object>} Deletion result
      */
     async deleteVideo(publicId, url) {
+        // Check if URL is from Cloudflare R2
+        if (url && (url.includes('r2.cloudflarestorage.com') || (process.env.CLOUDFLARE_R2_PUBLIC_URL && url.includes(process.env.CLOUDFLARE_R2_PUBLIC_URL)))) {
+            if (r2StorageService.isR2Configured()) {
+                console.log('🗑️ Deleting video from Cloudflare R2');
+                return await r2StorageService.deleteFile(publicId);
+            }
+        }
+
         // Check if URL is from AWS S3
         if (url && url.includes('amazonaws.com')) {
             if (awsS3Service.isAwsConfigured()) {

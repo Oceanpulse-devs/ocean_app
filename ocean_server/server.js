@@ -174,7 +174,7 @@ app.use(passport.session());
 app.use(responseWrapper);
 
 // Health check endpoint (Railway / monitoring / browsers)
-app.get('/health', async (req, res) => {
+app.get(['/health', '/api/health'], async (req, res) => {
     const baseHealth = {
         status: 'OK', 
         service: 'BlueWhale Backend API',

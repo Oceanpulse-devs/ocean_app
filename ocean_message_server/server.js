@@ -96,7 +96,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/public', express.static(path.join(__dirname, 'public')));
 
 // Health check endpoint (monitoring / browser)
-app.get('/health', (req, res) => {
+app.get(['/health', '/api/health'], (req, res) => {
   const health = {
     status: 'OK',
     service: 'BlueWhale Message Server',

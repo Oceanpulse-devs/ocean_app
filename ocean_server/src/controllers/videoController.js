@@ -52,14 +52,18 @@ class VideoController {
             const cloudinaryFreeLimit = 40 * 1024 * 1024; // 40MB
             const fileSizeMB = videoFile.size / (1024 * 1024);
             
-            // Compress video if it exceeds Cloudinary free tier limit
-            // This maintains 720p/1080p quality while reducing file size
+            // Check active storage provider
+            const activeProvider = (process.env.STORAGE_PROVIDER || 'cloudinary').trim().toLowerCase();
+            const isR2 = activeProvider === 'r2' || activeProvider === 'rs';
+
             let videoBuffer = videoFile.buffer;
             
-            if (videoFile.size > cloudinaryFreeLimit) {
+            // Only compress when using Cloudinary to bypass its free tier 40MB sync limit.
+            // On Cloudflare R2, there is no 40MB limit, so full 1080p original video quality is preserved!
+            if (!isR2 && videoFile.size > cloudinaryFreeLimit) {
                 try {
-                    console.log(`📹 Video size (${fileSizeMB.toFixed(2)}MB) exceeds Cloudinary free tier limit (40MB)`);
-                    console.log('📹 Compressing video while maintaining quality...');
+                    console.log(`📹 [Cloudinary] Video size (${fileSizeMB.toFixed(2)}MB) exceeds Cloudinary free tier limit (40MB)`);
+                    console.log('📹 Compressing video for Cloudinary while maintaining quality...');
                     
                     // Compress to 35MB target (safety margin under 40MB limit)
                     videoBuffer = await videoCompressionService.compressVideoSmart(videoFile.buffer, 35);
@@ -74,6 +78,8 @@ class VideoController {
                         error: compressionError.message
                     });
                 }
+            } else if (isR2) {
+                console.log(`🚀 [Cloudflare R2] Preserving full original video quality (${fileSizeMB.toFixed(2)}MB)`);
             }
 
             // Upload video using unified service (AWS S3 if configured, otherwise Cloudinary)

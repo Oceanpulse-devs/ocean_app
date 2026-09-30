@@ -6,7 +6,7 @@ const cleanStr = (val) => (val ? String(val).trim().replace(/^["']|["']$/g, '') 
 const getConfig = () => {
   if (process.env.NODE_ENV === 'production') {
     return {
-      username: cleanStr(process.env.DB_USERNAME),
+      username: cleanStr(process.env.DB_USERNAME || process.env.DB_USER),
       password: cleanStr(process.env.DB_PASSWORD),
       database: cleanStr(process.env.DB_NAME),
       host: cleanStr(process.env.DB_HOST),
@@ -23,7 +23,7 @@ const getConfig = () => {
   } else {
     // Development configuration - use environment variables if available, otherwise fallback to defaults
     return {
-      username: cleanStr(process.env.DB_USERNAME) || 'root',
+      username: cleanStr(process.env.DB_USERNAME || process.env.DB_USER) || 'root',
       password: cleanStr(process.env.DB_PASSWORD) || 'j@123098',
       database: cleanStr(process.env.DB_NAME) || 'ocean_app_db',
       host: cleanStr(process.env.DB_HOST) || '127.0.0.1',
