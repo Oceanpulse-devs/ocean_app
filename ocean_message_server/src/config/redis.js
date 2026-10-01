@@ -22,11 +22,8 @@ const redisClient = redis.createClient({
     rejectUnauthorized: false,
     keepAlive: 10000,
     reconnectStrategy: (retries) => {
-      if (retries > 8) {
-        console.warn('● Messaging Server Redis reconnect: max retries reached.');
-        return false; // Stop reconnecting
-      }
-      return Math.min(retries * 500, 5000);
+      // Exponential backoff reconnect strategy (max 3s) - never abort
+      return Math.min(retries * 100, 3000);
     }
   }
 });
