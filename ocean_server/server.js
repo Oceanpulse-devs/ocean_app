@@ -1782,14 +1782,51 @@ console.log('✅ Subscription expiration cron job initialized (runs daily at 10:
 
 }
 
+async function verifyMessageServerConnectivity() {
+    const axios = require('axios');
+    let msgUrl = process.env.MESSAGE_SERVER_URL;
+    if (!msgUrl) {
+        console.log('ℹ️ MESSAGE_SERVER_URL is not set (skipping cross-server connectivity check)');
+        return;
+    }
+
+    msgUrl = msgUrl.trim().replace(/\/+$/, '');
+    if (!/^https?:\/\//i.test(msgUrl)) {
+        msgUrl = `https://${msgUrl}`;
+    }
+
+    console.log(`🔍 Checking connectivity to Message Server at ${msgUrl}...`);
+
+    for (let attempt = 1; attempt <= 2; attempt++) {
+        try {
+            const response = await axios.get(`${msgUrl}/health`, { timeout: 4000 });
+            if (response.status === 200) {
+                console.log(`● Message Server connection verified ✅ (${msgUrl})`);
+                return;
+            }
+        } catch (err) {
+            if (attempt === 1) {
+                await new Promise(r => setTimeout(r, 2000));
+                continue;
+            }
+            console.warn(`⚠️ Cross-Server Warning: Cannot reach Message Server at ${msgUrl}`);
+            console.warn(`   Error: ${err.message}`);
+            console.warn(`💡 Check MESSAGE_SERVER_URL in your environment variables.`);
+        }
+    }
+}
+
 // Only start server if not in test environment and file is run directly
 // Start server AFTER sync completes (with delay to ensure sync finishes)
 if (process.env.NODE_ENV !== 'test' && require.main === module) {
     // Give sync time to complete (it's async, so this ensures server starts after)
     setTimeout(() => {
-        server.listen(port, '0.0.0.0', () => {
+        server.listen(port, '0.0.0.0', async () => {
             console.log(`● Server running on port ${port} ✅`);
             console.log(`● WebSocket server initialized for real-time auction updates ✅`);
+
+            // Verify connectivity to Message Server
+            await verifyMessageServerConnectivity();
 
             // After startup logs print, mute subsequent verbose console.log in production
             if (process.env.NODE_ENV === 'production') {

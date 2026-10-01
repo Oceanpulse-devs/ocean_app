@@ -510,11 +510,48 @@ testConnection()
     process.exit(1);
   });
 
+async function verifyMainServerConnectivity() {
+  const axios = require('axios');
+  let mainUrl = process.env.MAIN_SERVER_URL;
+  if (!mainUrl) {
+    console.log('ℹ️ MAIN_SERVER_URL is not set (skipping cross-server connectivity check)');
+    return;
+  }
+
+  mainUrl = mainUrl.trim().replace(/\/+$/, '');
+  if (!/^https?:\/\//i.test(mainUrl)) {
+    mainUrl = `https://${mainUrl}`;
+  }
+
+  console.log(`🔍 Checking connectivity to Main Server at ${mainUrl}...`);
+
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    try {
+      const response = await axios.get(`${mainUrl}/health`, { timeout: 4000 });
+      if (response.status === 200) {
+        console.log(`● Main Server connection verified ✅ (${mainUrl})`);
+        return;
+      }
+    } catch (err) {
+      if (attempt === 1) {
+        await new Promise(r => setTimeout(r, 2000));
+        continue;
+      }
+      console.warn(`⚠️ Cross-Server Warning: Cannot reach Main Server at ${mainUrl}`);
+      console.warn(`   Error: ${err.message}`);
+      console.warn(`💡 Check MAIN_SERVER_URL in your environment variables.`);
+    }
+  }
+}
+
 function startServer() {
-  server.listen(PORT, '0.0.0.0', () => {
+  server.listen(PORT, '0.0.0.0', async () => {
     console.log(`🚀 BlueWhale Message Server running on port ${PORT}`);
     console.log(`📡 WebSocket server ready for connections`);
     console.log(`🔗 Health check: http://localhost:${PORT}/health`);
+
+    // Verify connectivity to Main Server
+    await verifyMainServerConnectivity();
 
     // After startup logs print, mute subsequent verbose console.log in production
     if (process.env.NODE_ENV === 'production') {
