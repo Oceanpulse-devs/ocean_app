@@ -705,11 +705,86 @@ const removeReaction = async (req, res) => {
   }
 };
 
+// Security helper: verify binary magic numbers so executables/scripts masked as images are rejected
+const validateImageMagicBytes = (buffer) => {
+  if (!buffer || buffer.length < 12) return false;
+
+  // JPEG: FF D8 FF
+  if (buffer[0] === 0xFF && buffer[1] === 0xD8 && buffer[2] === 0xFF) return true;
+
+  // PNG: 89 50 4E 47 0D 0A 1A 0A
+  if (buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4E && buffer[3] === 0x47) return true;
+
+  // GIF: 47 49 46 38 ('GIF8')
+  if (buffer[0] === 0x47 && buffer[1] === 0x49 && buffer[2] === 0x46 && buffer[3] === 0x38) return true;
+
+  // WEBP: 52 49 46 46 (RIFF) ... 57 45 42 50 (WEBP)
+  if (
+    buffer[0] === 0x52 && buffer[1] === 0x49 && buffer[2] === 0x46 && buffer[3] === 0x46 &&
+    buffer[8] === 0x57 && buffer[9] === 0x45 && buffer[10] === 0x42 && buffer[11] === 0x50
+  ) return true;
+
+  // HEIC / HEIF (ftyp)
+  if (buffer.length >= 12 && buffer.toString('ascii', 4, 8) === 'ftyp') {
+    const brand = buffer.toString('ascii', 8, 12).toLowerCase();
+    if (['heic', 'heix', 'hevc', 'mif1', 'msf1'].includes(brand)) return true;
+  }
+
+  return false;
+};
+
+// Upload media attachment for chat messages (POST /api/messages/upload) - strictly images only
+const uploadMedia = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: 'No file uploaded. Please provide an image file in the "media" field.'
+      });
+    }
+
+    // Security validation: verify binary content is a genuine safe image (no executables, documents, audio, or scripts)
+    if (!validateImageMagicBytes(req.file.buffer)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Security validation failed: Only safe image files (JPEG, PNG, WEBP, GIF, HEIC) are permitted.'
+      });
+    }
+
+    const storageService = require('../services/storageService');
+    const uploadResult = await storageService.uploadFile(
+      req.file.buffer,
+      'ocean_app/chat_media',
+      {
+        resource_type: 'image',
+        filename: req.file.originalname,
+        mimetype: req.file.mimetype
+      }
+    );
+
+    return res.status(200).json({
+      success: true,
+      mediaUrl: uploadResult.url,
+      mediaType: req.file.mimetype,
+      publicId: uploadResult.publicId || null,
+      size: req.file.size
+    });
+  } catch (error) {
+    console.error('Error uploading message media:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to upload media attachment',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   getMessages,
   sendMessage,
   editMessage,
   deleteMessage,
   addReaction,
-  removeReaction
+  removeReaction,
+  uploadMedia
 }; 

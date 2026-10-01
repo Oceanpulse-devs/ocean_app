@@ -340,7 +340,68 @@ FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
 
 ---
 
-## 7. Automated Migration Note for Databases
+## 7. Chat Image Upload Endpoint (End-to-End Image Sharing)
+
+### Endpoint Specification:
+- **Method:** `POST`
+- **Path:** `/api/messages/upload`
+- **Base URL:** `https://messages.bluewhalemarketplace.com` *(or localhost:5001 in dev)*
+- **Headers:**
+  - `Authorization: Bearer <JWT_USER_TOKEN>`
+  - `Content-Type: multipart/form-data`
+- **Body (Multipart Form-Data):**
+  - `media`: `<Binary Image File>` *(Field name `file` or `image` also accepted)*
+- **Allowed Formats:** Strictly **images only** (`.jpg`, `.jpeg`, `.png`, `.webp`, `.gif`, `.heic`). Documents, audio, and executable files are rejected.
+- **Max File Size:** `10 MB`
+- **Security Check:** Deep binary magic-byte validation is enforced. Renamed or corrupted non-image files are rejected with `400 Bad Request`.
+
+### Success Response (`200 OK`):
+```json
+{
+  "success": true,
+  "mediaUrl": "https://res.cloudinary.com/dh753xlhq/image/upload/v1727788888/ocean_app/chat_media/img_12345.jpg",
+  "mediaType": "image/jpeg",
+  "publicId": "ocean_app/chat_media/img_12345",
+  "size": 245120
+}
+```
+
+### End-to-End Flow for Frontend Developers:
+
+#### Step 1: User picks an image from gallery / camera
+Upload the file to the message server:
+```dart
+// Flutter / Dart Example
+var request = http.MultipartRequest(
+  'POST', 
+  Uri.parse('https://messages.bluewhalemarketplace.com/api/messages/upload')
+);
+request.headers['Authorization'] = 'Bearer $userJwtToken';
+request.files.add(await http.MultipartFile.fromPath('media', imageFile.path));
+
+var response = await request.send();
+var responseData = jsonDecode(await response.stream.bytesToString());
+String mediaUrl = responseData['mediaUrl'];
+```
+
+#### Step 2: Send the message via Socket.IO
+Pass the returned `mediaUrl` with `type: "image"`:
+```javascript
+// Socket.IO Example
+socket.emit("send_message", {
+  conversationId: "uuid-conv-1",
+  type: "image",
+  content: "Check this out!", // Optional caption
+  mediaUrl: mediaUrl,
+  mediaType: "image/jpeg"
+});
+```
+
+*(Alternatively, you can also send it via HTTP `POST /api/messages` with the exact same payload).*
+
+---
+
+## 8. Automated Migration Note for Databases
 
 We added the automated Sequelize CLI migration file:  
 `ocean_server/migrations/20260929200000-add-story-market-update-to-messages-enum.js`
