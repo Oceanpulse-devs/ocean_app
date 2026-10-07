@@ -23,6 +23,9 @@
     "test:buyerneed": "node scripts/runTestWithLog.js buyerNeedController",
     "test:clear-logs": "node -e \"require('fs').rmSync('test-logs', {recursive: true, force: true}); console.log('✅ Logs cleared')\""
   },
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "author": "",
   "license": "ISC",
   "description": "",

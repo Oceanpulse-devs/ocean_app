@@ -16,6 +16,9 @@
     "chat",
     "bluewhale"
   ],
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "author": "BlueWhale Team",
   "license": "ISC",
   "dependencies": {
