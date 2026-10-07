@@ -173,8 +173,88 @@ app.use(passport.session());
 // Apply response wrapper middleware to all routes
 app.use(responseWrapper);
 
-// Health check endpoint (Railway / monitoring / browsers)
+// Message Server link check cache (20s TTL to prevent healthcheck latency and recursive loops)
+let messageServerCheckCache = {
+    status: 'unknown',
+    target: null,
+    latencyMs: null,
+    lastChecked: null,
+    _timestamp: 0,
+    error: null
+};
+
+async function getMessageServerHealth(skipFetch = false) {
+    let msgUrl = process.env.MESSAGE_SERVER_URL;
+    if (!msgUrl) {
+        return {
+            status: 'not_configured',
+            target: null,
+            latencyMs: null,
+            lastChecked: new Date().toISOString()
+        };
+    }
+
+    msgUrl = msgUrl.trim().replace(/\/+$/, '');
+    if (!/^https?:\/\//i.test(msgUrl)) {
+        msgUrl = `https://${msgUrl}`;
+    }
+
+    const now = Date.now();
+    if (skipFetch || (messageServerCheckCache.lastChecked && (now - messageServerCheckCache._timestamp < 20000))) {
+        return {
+            status: messageServerCheckCache.status,
+            target: msgUrl,
+            latencyMs: messageServerCheckCache.latencyMs,
+            lastChecked: messageServerCheckCache.lastChecked || new Date().toISOString(),
+            ...(messageServerCheckCache.error ? { error: messageServerCheckCache.error } : {})
+        };
+    }
+
+    const axios = require('axios');
+    const startTime = Date.now();
+    try {
+        const response = await axios.get(`${msgUrl}/health`, {
+            timeout: 2500,
+            headers: {
+                'Accept': 'application/json',
+                'User-Agent': 'BlueWhale-HealthCheck/1.0',
+                'X-Internal-Health-Ping': 'true'
+            }
+        });
+        const latencyMs = Date.now() - startTime;
+        messageServerCheckCache = {
+            status: response.status === 200 ? 'connected' : 'degraded',
+            target: msgUrl,
+            latencyMs,
+            lastChecked: new Date().toISOString(),
+            _timestamp: now,
+            error: null
+        };
+    } catch (err) {
+        const latencyMs = Date.now() - startTime;
+        messageServerCheckCache = {
+            status: 'disconnected',
+            target: msgUrl,
+            latencyMs,
+            lastChecked: new Date().toISOString(),
+            _timestamp: now,
+            error: err.code === 'ECONNABORTED' ? 'Timeout (2.5s)' : (err.message || 'Connection failed')
+        };
+    }
+
+    return {
+        status: messageServerCheckCache.status,
+        target: msgUrl,
+        latencyMs: messageServerCheckCache.latencyMs,
+        lastChecked: messageServerCheckCache.lastChecked,
+        ...(messageServerCheckCache.error ? { error: messageServerCheckCache.error } : {})
+    };
+}
+
+// Health check endpoint (Railway / VPS / monitoring / browsers)
 app.get(['/health', '/api/health'], async (req, res) => {
+    const isInternalPing = req.headers['x-internal-health-ping'] === 'true';
+
     const baseHealth = {
         status: 'OK', 
         service: 'BlueWhale Backend API',
@@ -219,8 +299,26 @@ app.get(['/health', '/api/health'], async (req, res) => {
         baseHealth.status = 'DEGRADED';
     }
 
+    // Message Server link health (cached 20s)
+    const msgLinkStatus = await getMessageServerHealth(isInternalPing);
+
+    // Active Storage Provider (safe public info)
+    const rawStorage = (process.env.STORAGE_PROVIDER || 'cloudinary').trim().toLowerCase();
+    const isR2 = rawStorage === 'r2' || rawStorage === 'rs';
+    const storageStatus = {
+        provider: isR2 ? 'cloudflare_r2' : 'cloudinary',
+        status: 'configured',
+        maxUploadMb: 10
+    };
+
     const health = {
         ...baseHealth,
+        services: {
+            database: dbStatus,
+            redis: redisStatus,
+            messageServerLink: msgLinkStatus,
+            storage: storageStatus
+        },
         db: dbStatus,
         redis: redisStatus
     };
@@ -229,7 +327,7 @@ app.get(['/health', '/api/health'], async (req, res) => {
         req.query.format === 'html' ||
         (req.headers.accept && req.headers.accept.includes('text/html'));
 
-    // Default: JSON for Railway/monitoring/CLI tools
+    // Default: JSON for monitoring/CLI tools
     if (!wantsHtml) {
         return res.status(200).json(health);
     }
@@ -250,11 +348,11 @@ app.get(['/health', '/api/health'], async (req, res) => {
     };
 
     const getStatusDisplay = (status) => {
-        if (status === 'up') {
-            return { text: 'Up', color: '#22c55e', cssClass: 'status-up' };
+        if (status === 'up' || status === 'connected' || status === 'configured') {
+            return { text: status === 'connected' ? 'Connected' : (status === 'configured' ? 'Configured' : 'Up'), color: '#22c55e', cssClass: 'status-up' };
         }
-        if (status === 'down') {
-            return { text: 'Down', color: '#ef4444', cssClass: 'status-down' };
+        if (status === 'down' || status === 'disconnected') {
+            return { text: status === 'disconnected' ? 'Disconnected' : 'Down', color: '#ef4444', cssClass: 'status-down' };
         }
         if (status === 'degraded') {
             return { text: 'Degraded', color: '#eab308', cssClass: 'status-degraded' };
@@ -263,8 +361,9 @@ app.get(['/health', '/api/health'], async (req, res) => {
     };
 
     const statusBadge = getStatusBadge(health.status);
-    const dbStatusDisplay = getStatusDisplay(health.db.status);
-    const redisStatusDisplay = getStatusDisplay(health.redis.status);
+    const dbStatusDisplay = getStatusDisplay(health.services.database.status);
+    const redisStatusDisplay = getStatusDisplay(health.services.redis.status);
+    const msgLinkDisplay = getStatusDisplay(health.services.messageServerLink.status);
 
     const html = `<!DOCTYPE html>
 <html lang="en">
@@ -299,7 +398,7 @@ app.get(['/health', '/api/health'], async (req, res) => {
     }
     .container {
       width: 100%;
-      max-width: 960px;
+      max-width: 1080px;
       background: linear-gradient(145deg, rgba(15,23,42,0.98), rgba(15,23,42,0.92));
       border-radius: 18px;
       border: 1px solid rgba(148,163,184,0.2);
@@ -409,7 +508,7 @@ app.get(['/health', '/api/health'], async (req, res) => {
     .grid {
       margin-top: 20px;
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
       gap: 16px;
       position: relative;
       z-index: 1;
@@ -479,6 +578,11 @@ app.get(['/health', '/api/health'], async (req, res) => {
       color: var(--text);
       font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
       font-size: 0.78rem;
+      max-width: 60%;
+      text-align: right;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
     .footer {
       margin-top: 18px;
@@ -538,10 +642,10 @@ app.get(['/health', '/api/health'], async (req, res) => {
         <h1>
           <img src="/public/bluewhale.png" alt="BlueWhale" style="width: 36px; height: 36px; object-fit: contain; border-radius: 8px; vertical-align: middle; margin-right: 8px;" />
           BlueWhale Backend Health
-          <span class="title-pill">Status Endpoint</span>
+          <span class="title-pill">Core API</span>
         </h1>
         <p class="subtitle">
-          Operational status and runtime metrics for the BlueWhale backend API service.
+          Operational status, infrastructure checks, and cross-server connectivity diagnostics.
         </p>
       </div>
       <div>
@@ -576,11 +680,11 @@ app.get(['/health', '/api/health'], async (req, res) => {
 
       <article class="card">
         <div class="card-header">
-          <h2 class="card-title">Uptime & Process</h2>
-          <span class="card-badge">Runtime</span>
+          <h2 class="card-title">Runtime & Process</h2>
+          <span class="card-badge">Process</span>
         </div>
         <p class="metric-main">${uptimeHours}h ${uptimeMinutes % 60}m</p>
-        <p class="metric-sub">${uptimeSeconds}s total</p>
+        <p class="metric-sub">${uptimeSeconds}s total uptime</p>
         <div class="key-value">
           <span>PID</span>
           <span>${health.pid}</span>
@@ -597,54 +701,79 @@ app.get(['/health', '/api/health'], async (req, res) => {
 
       <article class="card">
         <div class="card-header">
-          <h2 class="card-title">Health Summary</h2>
-          <span class="card-badge">Status</span>
+          <h2 class="card-title">Infrastructure</h2>
+          <span class="card-badge">Data Layer</span>
         </div>
-        <p class="metric-main">Status: ${health.status}</p>
-        <p class="metric-sub">
-          ${health.status === 'OK'
-            ? 'All core checks are passing.'
-            : 'Some services are experiencing issues.'}
-        </p>
+        <p class="metric-main">${health.status === 'OK' ? 'Healthy' : 'Degraded'}</p>
+        <p class="metric-sub">Database & Cache subsystem</p>
         <div class="key-value">
-          <span>API</span>
+          <span>API Gateway</span>
           <span class="status-indicator status-up">
-            <span
-              class="status-indicator-dot"
-              style="background: #22c55e;"
-            ></span>
+            <span class="status-indicator-dot" style="background: #22c55e;"></span>
             <span>Online</span>
           </span>
         </div>
         <div class="key-value">
-          <span>Database</span>
+          <span>MySQL DB</span>
           <span class="status-indicator ${dbStatusDisplay.cssClass}">
-            <span
-              class="status-indicator-dot"
-              style="background: ${dbStatusDisplay.color};"
-            ></span>
-            <span>
-              ${dbStatusDisplay.text}
-              ${health.db.error ? `(${health.db.error})` : ''}
-            </span>
+            <span class="status-indicator-dot" style="background: ${dbStatusDisplay.color};"></span>
+            <span>${dbStatusDisplay.text} ${health.services.database.error ? `(${health.services.database.error})` : ''}</span>
           </span>
         </div>
         <div class="key-value">
-          <span>Redis</span>
+          <span>Redis Cache</span>
           <span class="status-indicator ${redisStatusDisplay.cssClass}">
-            <span
-              class="status-indicator-dot"
-              style="background: ${redisStatusDisplay.color};"
-            ></span>
-            <span>
-              ${redisStatusDisplay.text}
-              ${health.redis.error ? `(${health.redis.error})` : ''}
-            </span>
+            <span class="status-indicator-dot" style="background: ${redisStatusDisplay.color};"></span>
+            <span>${redisStatusDisplay.text} ${health.services.redis.error ? `(${health.services.redis.error})` : ''}</span>
+          </span>
+        </div>
+      </article>
+
+      <article class="card">
+        <div class="card-header">
+          <h2 class="card-title">Message Server Link</h2>
+          <span class="card-badge">Interconnect</span>
+        </div>
+        <p class="metric-main">${msgLinkDisplay.text}</p>
+        <p class="metric-sub">${health.services.messageServerLink.latencyMs !== null ? `${health.services.messageServerLink.latencyMs}ms latency` : 'Cross-link inactive'}</p>
+        <div class="key-value">
+          <span>Status</span>
+          <span class="status-indicator ${msgLinkDisplay.cssClass}">
+            <span class="status-indicator-dot" style="background: ${msgLinkDisplay.color};"></span>
+            <span>${msgLinkDisplay.text}</span>
           </span>
         </div>
         <div class="key-value">
-          <span>Last Updated</span>
-          <span>${health.timestamp}</span>
+          <span>Target</span>
+          <span title="${health.services.messageServerLink.target || 'None'}">${health.services.messageServerLink.target || 'None'}</span>
+        </div>
+        <div class="key-value">
+          <span>Last Synced</span>
+          <span>${health.services.messageServerLink.lastChecked ? health.services.messageServerLink.lastChecked.substring(11, 19) + ' UTC' : 'Never'}</span>
+        </div>
+      </article>
+
+      <article class="card">
+        <div class="card-header">
+          <h2 class="card-title">Media Storage</h2>
+          <span class="card-badge">Storage</span>
+        </div>
+        <p class="metric-main">${health.services.storage.provider === 'cloudflare_r2' ? 'Cloudflare R2' : 'Cloudinary'}</p>
+        <p class="metric-sub">Max upload: ${health.services.storage.maxUploadMb} MB</p>
+        <div class="key-value">
+          <span>Engine</span>
+          <span>${health.services.storage.provider}</span>
+        </div>
+        <div class="key-value">
+          <span>Status</span>
+          <span class="status-indicator status-up">
+            <span class="status-indicator-dot" style="background: #22c55e;"></span>
+            <span>Configured</span>
+          </span>
+        </div>
+        <div class="key-value">
+          <span>Type</span>
+          <span>${health.services.storage.provider === 'cloudflare_r2' ? 'S3 Object Storage' : 'Cloud CDN Store'}</span>
         </div>
       </article>
     </section>
@@ -1787,6 +1916,14 @@ async function verifyMessageServerConnectivity() {
     let msgUrl = process.env.MESSAGE_SERVER_URL;
     if (!msgUrl) {
         console.log('ℹ️ MESSAGE_SERVER_URL is not set (skipping cross-server connectivity check)');
+        messageServerCheckCache = {
+            status: 'not_configured',
+            target: null,
+            latencyMs: null,
+            lastChecked: new Date().toISOString(),
+            _timestamp: Date.now(),
+            error: null
+        };
         return;
     }
 
@@ -1798,13 +1935,31 @@ async function verifyMessageServerConnectivity() {
     console.log(`🔍 Checking connectivity to Message Server at ${msgUrl}...`);
 
     for (let attempt = 1; attempt <= 2; attempt++) {
+        const startTime = Date.now();
         try {
-            const response = await axios.get(`${msgUrl}/health`, { timeout: 4000 });
+            const response = await axios.get(`${msgUrl}/health`, {
+                timeout: 4000,
+                headers: {
+                    'Accept': 'application/json',
+                    'User-Agent': 'BlueWhale-BootCheck/1.0',
+                    'X-Internal-Health-Ping': 'true'
+                }
+            });
+            const latencyMs = Date.now() - startTime;
             if (response.status === 200) {
-                console.log(`● Message Server connection verified ✅ (${msgUrl})`);
+                console.log(`● Message Server connection verified ✅ (${msgUrl} - ${latencyMs}ms)`);
+                messageServerCheckCache = {
+                    status: 'connected',
+                    target: msgUrl,
+                    latencyMs,
+                    lastChecked: new Date().toISOString(),
+                    _timestamp: Date.now(),
+                    error: null
+                };
                 return;
             }
         } catch (err) {
+            const latencyMs = Date.now() - startTime;
             if (attempt === 1) {
                 await new Promise(r => setTimeout(r, 2000));
                 continue;
@@ -1812,6 +1967,14 @@ async function verifyMessageServerConnectivity() {
             console.warn(`⚠️ Cross-Server Warning: Cannot reach Message Server at ${msgUrl}`);
             console.warn(`   Error: ${err.message}`);
             console.warn(`💡 Check MESSAGE_SERVER_URL in your environment variables.`);
+            messageServerCheckCache = {
+                status: 'disconnected',
+                target: msgUrl,
+                latencyMs,
+                lastChecked: new Date().toISOString(),
+                _timestamp: Date.now(),
+                error: err.code === 'ECONNABORTED' ? 'Timeout (4s)' : (err.message || 'Connection failed')
+            };
         }
     }
 }
