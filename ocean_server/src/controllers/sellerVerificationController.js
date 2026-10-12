@@ -787,6 +787,11 @@ class SellerVerificationController {
         businessName,
         businessAddress,
         businessDescription,
+        businessEmail,
+        businessPhone,
+        phoneNumber,
+        sellerTypes,
+        sellerType,
         country = 'Nigeria',
         state = 'Lagos',
         selectedCategories,
@@ -895,6 +900,41 @@ class SellerVerificationController {
         });
       }
 
+      // Parse sellerTypes (could be array or JSON string)
+      let parsedSellerTypes = sellerTypes;
+      if (typeof sellerTypes === 'string') {
+        try {
+          parsedSellerTypes = JSON.parse(sellerTypes);
+        } catch (e) {
+          parsedSellerTypes = [sellerTypes];
+        }
+      }
+      const primarySellerType = Array.isArray(parsedSellerTypes) && parsedSellerTypes.length > 0
+        ? parsedSellerTypes[0]
+        : (sellerType || 'retailer');
+
+      // Parse categories if sent as JSON string
+      let parsedCategories = selectedCategories;
+      if (typeof selectedCategories === 'string') {
+        try {
+          parsedCategories = JSON.parse(selectedCategories);
+        } catch (e) {
+          parsedCategories = [selectedCategories];
+        }
+      }
+
+      let parsedSubcategories = selectedSubcategories;
+      if (typeof selectedSubcategories === 'string') {
+        try {
+          parsedSubcategories = JSON.parse(selectedSubcategories);
+        } catch (e) {
+          parsedSubcategories = {};
+        }
+      }
+
+      // Resolve contact phone: Prioritize form-submitted phone over user account, with nimcPhone as last resort
+      const contactPhone = businessPhone || phoneNumber || user.phoneNumber || nimcPhone || 'N/A';
+
       // 3. Create or Update Seller Record in SellersTable
       if (!seller) {
         seller = await db.SellersTable.create({
@@ -902,13 +942,16 @@ class SellerVerificationController {
           fullName: user.fullName || `${nimcFirstName} ${nimcLastName}`.trim() || 'Seller',
           businessName: businessName || `${user.fullName || 'Seller'}'s Store`,
           email: user.email,
-          phoneNumber: user.phoneNumber || nimcPhone || 'N/A',
+          businessEmail: businessEmail || null,
+          phoneNumber: contactPhone,
+          businessPhone: businessPhone || contactPhone,
           businessAddress: businessAddress || nimcState || 'Nigeria',
           businessDescription: businessDescription || 'Verified seller on BlueWhale Marketplace',
           country: country || 'Nigeria',
           state: state || nimcState || 'Lagos',
-          selectedCategories: selectedCategories || [],
-          selectedSubcategories: selectedSubcategories || {},
+          sellerType: primarySellerType,
+          selectedCategories: parsedCategories || [],
+          selectedSubcategories: parsedSubcategories || {},
           isVerified: true,
           verificationStatus: 'approved',
           verifiedAt: new Date(),
@@ -921,21 +964,40 @@ class SellerVerificationController {
           await logRecord.update({ sellerId: seller.id });
         }
       } else {
-        await seller.update({
+        const updateData = {
           isVerified: true,
           verificationStatus: 'approved',
           verifiedAt: new Date(),
           verificationScore: 95,
           verificationNotes: `Auto-verified via Dojah Facial Recognition (NIMC Photo Match ${confidenceScore}%, Tracking ID: ${trackingId})`
-        });
+        };
+        if (businessName) updateData.businessName = businessName;
+        if (businessAddress) updateData.businessAddress = businessAddress;
+        if (businessDescription) updateData.businessDescription = businessDescription;
+        if (businessEmail) updateData.businessEmail = businessEmail;
+        if (businessPhone || phoneNumber) {
+          updateData.businessPhone = businessPhone || phoneNumber;
+          updateData.phoneNumber = contactPhone;
+        }
+        if (primarySellerType) updateData.sellerType = primarySellerType;
+        if (parsedCategories) updateData.selectedCategories = parsedCategories;
+        if (parsedSubcategories) updateData.selectedSubcategories = parsedSubcategories;
+        if (country) updateData.country = country;
+        if (state) updateData.state = state;
+
+        await seller.update(updateData);
       }
 
       // 4. Update UserTable accountStatus, accountType & sellerId
-      await user.update({
+      const userUpdates = {
         accountStatus: 'active',
         accountType: 'seller',
         sellerId: seller.id
-      });
+      };
+      if (!user.phoneNumber && (businessPhone || phoneNumber)) {
+        userUpdates.phoneNumber = businessPhone || phoneNumber;
+      }
+      await user.update(userUpdates);
 
       // 5. Create or Update SellerDocument record for NIN
       if (db.SellerDocument) {

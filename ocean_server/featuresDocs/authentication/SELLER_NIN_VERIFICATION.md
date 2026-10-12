@@ -159,8 +159,8 @@ Dojah returns NIMC identity records alongside a **nested `selfie_verification` o
 
 | HTTP Method | Endpoint Path | Payload / Query | Description |
 | :--- | :--- | :--- | :--- |
-| `POST` | `/api/seller-verification/verify-nin` | `{ nin, selfieImage, businessName, businessAddress, state }` | Primary automated NIN & facial recognition verification |
-| `POST` | `/api/seller-verification/nin` | `{ nin, selfieImage, businessName, businessAddress, state }` | Alias endpoint for backward compatibility |
+| `POST` | `/api/seller-verification/verify-nin` | `{ nin, selfieImage, businessName, businessEmail, businessPhone, sellerTypes, businessAddress, state }` | Primary automated NIN & facial recognition verification |
+| `POST` | `/api/seller-verification/nin` | `{ nin, selfieImage, businessName, businessEmail, businessPhone, sellerTypes, businessAddress, state }` | Alias endpoint for backward compatibility |
 | `POST` | `/api/seller-verification/submit` | Multipart: `businessDocument`, `personalId`, text fields | Manual document submission for admin review |
 | `GET` | `/api/seller-verification/status` | Header: `Authorization: Bearer <token>` | Fetch seller's current verification status & score |
 | `GET` | `/api/seller-verification/requirements` | Public | Fetch verification levels requirements list |
