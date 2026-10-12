@@ -86,7 +86,7 @@ class DojahService {
     }
 
     // Clean base64 string if Data URL prefix is included
-    const cleanSelfie = String(selfieImage).trim().replace(/^data:image\/[a-z]+;base64,/, '');
+    const cleanSelfie = String(selfieImage).trim().replace(/^data:image\/[^;]+;base64,/, '');
 
     // 2. Mock Test Triggers for Frontend Testing & Environments without Active Dojah Keys
     if (!this.appId || !this.secretKey || cleanNin === '12345678901' || cleanSelfie === 'MOCK_SELFIE') {
@@ -141,11 +141,13 @@ class DojahService {
 
     // 3. Live Dojah API Facial Verification Call
     try {
+      const threshold = parseInt(process.env.DOJAH_MATCH_THRESHOLD, 10) || 70;
       const response = await axios.post(
         `${this.baseUrl}/api/v1/kyc/nin/verify`,
         {
           nin: cleanNin,
-          selfie_image: cleanSelfie
+          selfie_image: cleanSelfie,
+          threshold
         },
         {
           headers: {
@@ -159,12 +161,38 @@ class DojahService {
       );
 
       const resData = response.data;
-      if (resData && resData.entity) {
-        const entity = resData.entity;
+      if (resData && (resData.entity || resData.data)) {
+        const entity = resData.entity || resData.data;
         
-        // Evaluate facial match
-        const isMatch = entity.match === true || (typeof entity.confidence_value === 'number' && entity.confidence_value >= 60.0);
-        const confidence = entity.confidence_value || (isMatch ? 90.0 : 30.0);
+        // Dojah returns facial comparison nested in selfie_verification: { match: boolean, confidence_value: number }
+        const selfieVerif = entity.selfie_verification || resData.selfie_verification || {};
+        
+        // Extract match boolean
+        const matchVal = selfieVerif.match !== undefined 
+          ? selfieVerif.match 
+          : (entity.match !== undefined ? entity.match : resData.match);
+
+        // Extract confidence value
+        const confRaw = selfieVerif.confidence_value !== undefined 
+          ? selfieVerif.confidence_value 
+          : (entity.confidence_value !== undefined ? entity.confidence_value : resData.confidence_value);
+        
+        const parsedConf = typeof confRaw === 'number' ? confRaw : parseFloat(confRaw);
+        
+        // Evaluate facial match:
+        // 1. match is explicitly true
+        // 2. OR confidence value is >= 60.0%
+        const isMatch = matchVal === true || matchVal === 'true' || (!isNaN(parsedConf) && parsedConf >= 60.0);
+        const confidence = !isNaN(parsedConf) ? parsedConf : (isMatch ? 90.0 : 30.0);
+
+        console.log(`🔍 Dojah NIN Facial Verification result for NIN ${this.maskNin(cleanNin)}:`, {
+          isMatch,
+          confidence,
+          selfieVerifMatch: selfieVerif.match,
+          selfieVerifConfidence: selfieVerif.confidence_value
+        });
+
+        const selfieError = selfieVerif.error || selfieVerif.message || entity.error || null;
 
         return {
           success: true,
@@ -172,7 +200,7 @@ class DojahService {
           faceMatched: isMatch,
           confidenceValue: confidence,
           data: entity,
-          error: isMatch ? null : 'Face verification failed. The selfie provided does not match the photo on your NIMC record.'
+          error: isMatch ? null : (selfieError || 'Face verification failed. The selfie provided does not match the photo on your NIMC record.')
         };
       } else {
         return {

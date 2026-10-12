@@ -65,24 +65,91 @@ sequenceDiagram
     participant DB as MySQL Database
 
     Seller->>API: POST /api/seller-verification/verify-nin (nin, selfieImage, businessName, etc.)
-    API->>API: Validate 11-digit NIN & Selfie file/base64 payload
-    API->>Cloudinary: Upload selfie image to seller-documents/selfies/
-    Cloudinary-->>API: Return secure_url
-    API->>Dojah: verifyNinWithFace(nin, selfieCloudinaryUrl)
-    alt Dojah Service Success
-        Dojah-->>API: Return { match: true, confidence: 94.8, trackingId, nimcData }
+    API->>API: Validate 11-digit NIN & Clean base64 selfie payload
+    API->>Dojah: verifyNinWithFace(nin, cleanSelfie, threshold: 70)
+    alt Dojah Service Success (Match Confirmed)
+        Dojah-->>API: 200 OK: entity.selfie_verification { match: true, confidence_value: 98.5 }
+        API->>Cloudinary: Upload selfie to ocean-app/kyc_selfies
+        Cloudinary-->>API: Return secure_url
         API->>API: Encrypt NIN via AES-256 (encryptNin) & Mask NIN (123****8901)
-        API->>DB: Log attempt in seller_verification_logs (status: 'approved')
+        API->>DB: Log attempt in seller_verification_logs (status: 'approved', confidenceScore)
         API->>DB: Create/Update SellersTable (isVerified: true, verificationStatus: 'approved')
         API->>DB: Update UserTable (accountStatus: 'active', accountType: 'seller', sellerId: seller.id)
         API->>DB: Upsert SellerDocument (documentType: 'NIN', documentImage: selfieUrl)
         API-->>Seller: 200 OK (Verification Successful, Seller Account Active)
     else Face Mismatch or Failed Confidence
-        Dojah-->>API: Return { match: false, confidence: 32.1, trackingId }
+        Dojah-->>API: entity.selfie_verification { match: false, confidence_value: 32.1 }
         API->>DB: Log attempt in seller_verification_logs (status: 'rejected')
         API-->>Seller: 400 Bad Request ("Face verification failed. The selfie provided does not match...")
     end
 ```
+
+---
+
+## 🔑 Dojah API Integration & Response Structure
+
+### 1. Request Schema
+- **Endpoint**: `POST https://api.dojah.io/api/v1/kyc/nin/verify`
+- **Headers**:
+  - `AppId`: Your Dojah application App ID
+  - `Authorization`: Raw Secret Key (no `Bearer` prefix)
+  - `Content-Type`: `application/json`
+- **Body**:
+  ```json
+  {
+    "nin": "20652577715",
+    "selfie_image": "<clean_base64_string>",
+    "threshold": 70
+  }
+  ```
+
+### 2. Response Schema & Nested Object Extraction
+Dojah returns NIMC identity records alongside a **nested `selfie_verification` object**:
+
+```json
+{
+  "entity": {
+    "nin": "20652577715",
+    "firstname": "RINFWANG",
+    "surname": "DASPAN",
+    "gender": "m",
+    "birthdate": "1995-08-20",
+    "telephoneno": "08012345678",
+    "residence_state": "Plateau",
+    "selfie_verification": {
+      "confidence_value": 98.51,
+      "match": true
+    }
+  }
+}
+```
+
+> [!IMPORTANT]
+> **Nested Extraction Requirement**:
+> Facial verification results (`match` and `confidence_value`) are contained inside `entity.selfie_verification`. The backend checks `entity.selfie_verification.match` and `entity.selfie_verification.confidence_value` with resilient fallbacks to ensure compatibility.
+
+### 3. Field Mapping Reference
+
+| NIMC Profile Data | Dojah Primary Field | Fallback Aliases Supported |
+| :--- | :--- | :--- |
+| **First Name** | `firstname` | `first_name` |
+| **Last Name / Surname** | `surname` | `last_name` |
+| **Date of Birth** | `birthdate` | `dob` |
+| **Phone Number** | `telephoneno` | `mobile`, `phone_number` |
+| **State of Residence** | `residence_state` | `state` |
+| **Face Match Boolean** | `selfie_verification.match` | `match` |
+| **Match Confidence Score** | `selfie_verification.confidence_value` | `confidence_value` |
+
+---
+
+## ⚙️ Environment Variables Reference
+
+| Variable Name | Default Value | Description |
+| :--- | :--- | :--- |
+| `DOJAH_BASE_URL` | `https://api.dojah.io` | Base URL for Dojah production API |
+| `DOJAH_APP_ID` | *Required* | Dojah Application ID from dashboard |
+| `DOJAH_SECRET_KEY` | *Required* | Dojah API Secret Key |
+| `DOJAH_MATCH_THRESHOLD` | `70` | Biometric match tolerance threshold (50–100). Defaults to 70 for optimal real-world selfie recognition |
 
 ---
 
@@ -110,6 +177,10 @@ sequenceDiagram
 ## 🛠️ Audit Summary & Improvements Made
 
 During the system audit of Seller Verification:
-1. **Fixed `accountType` Update Bug**: Corrected `user.update({ accountStatus: 'active', role: 'seller' })` to `user.update({ accountStatus: 'active', accountType: 'seller', sellerId: seller.id })`. This ensures the user's role is properly updated in MySQL database schemas.
-2. **Account Status ENUM Alignment**: Aligned `accountStatus` ENUM values across `UserTable` (`'active'`, `'pending'`, `'suspended'`, `'deactivated'`) to eliminate MySQL ENUM data truncation errors.
-3. **AES-256 Storage Security**: Confirmed that `encryptNin` and `decryptNin` use AES-256-CBC encryption to guarantee raw government NIN numbers are protected at rest.
+1. **Fixed Dojah Facial Response Parser**: Resolved an issue where facial match was read from `entity.match` instead of Dojah's nested `entity.selfie_verification.match`, which previously caused successful Dojah lookups to report false facial mismatches.
+2. **Threshold Calibration**: Added `DOJAH_MATCH_THRESHOLD=70` (down from Dojah's strict default of 90) to ensure high-accuracy selfie matches are not falsely rejected due to minor room lighting or camera differences.
+3. **NIMC Field Extraction**: Unified name, date of birth, and telephone extraction across both standard Dojah fields (`firstname`, `surname`, `birthdate`, `telephoneno`) and legacy aliases (`first_name`, `last_name`, `dob`, `mobile`).
+4. **Base64 Sanitization**: Enhanced Data URL prefix stripping to handle all standard image mime types (`image/jpeg`, `image/png`, `image/webp`).
+5. **Fixed `accountType` Update Bug**: Corrected `user.update({ accountStatus: 'active', role: 'seller' })` to `user.update({ accountStatus: 'active', accountType: 'seller', sellerId: seller.id })`.
+6. **AES-256 Storage Security**: Confirmed that `encryptNin` and `decryptNin` use AES-256-CBC encryption to guarantee raw government NIN numbers are protected at rest.
+

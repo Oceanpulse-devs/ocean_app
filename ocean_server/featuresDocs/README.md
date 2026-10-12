@@ -23,7 +23,7 @@ Click on any category or module below to open its complete technical documentati
 
 ### 1. 🛡️ Authentication & Verification
 - 📄 [**Authentication & User Management**](file:///Users/mac/Desktop/Folders/ocean_app/ocean_server/featuresDocs/authentication/AUTHENTICATION_AND_USER_MANAGEMENT.md): Signup, Login, JWT + HTTP-Only cookies, Redis session invalidation (`session:<userId>:<sessionId>`), password security, and account anonymization.
-- 📄 [**Seller Identity & NIN Verification**](file:///Users/mac/Desktop/Folders/ocean_app/ocean_server/featuresDocs/authentication/SELLER_NIN_VERIFICATION.md): Dojah Biometric Facial Recognition, AES-256 NIN encryption, NIN masking (`123****8901`), and automatic seller role upgrades.
+- 📄 [**Seller Identity & NIN Verification**](file:///Users/mac/Desktop/Folders/ocean_app/ocean_server/featuresDocs/authentication/SELLER_NIN_VERIFICATION.md): Dojah Biometric Facial Recognition (`selfie_verification`), `threshold: 70` match calibration, AES-256 NIN encryption, NIN masking (`123****8901`), and automatic seller role upgrades.
 
 ### 2. 🛒 Commerce & Discovery Engine
 - 📄 [**Product Demand Distribution System**](file:///Users/mac/Desktop/Folders/ocean_app/ocean_server/featuresDocs/commerce_discovery/PRODUCT_DEMAND_DISTRIBUTION_SYSTEM.md): Batch-routed demand matching, 5-minute countdown window, instant candidate replacement on decline, and 10s high-precision scheduler loop.

@@ -849,11 +849,11 @@ class SellerVerificationController {
       }
 
       const nimcData = dojahRes.data || {};
-      const nimcFirstName = nimcData.first_name || '';
-      const nimcLastName = nimcData.last_name || '';
-      const nimcDob = nimcData.dob || '';
-      const nimcPhone = nimcData.mobile || '';
-      const nimcState = nimcData.residence_state || '';
+      const nimcFirstName = nimcData.firstname || nimcData.first_name || '';
+      const nimcLastName = nimcData.surname || nimcData.last_name || '';
+      const nimcDob = nimcData.birthdate || nimcData.dob || '';
+      const nimcPhone = nimcData.telephoneno || nimcData.mobile || nimcData.phone_number || '';
+      const nimcState = nimcData.residence_state || nimcData.state || '';
       const trackingId = nimcData.tracking_id || `DOJAH-FACE-${Date.now()}`;
       const confidenceScore = Math.round(dojahRes.confidenceValue || 95);
 
