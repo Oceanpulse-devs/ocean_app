@@ -66,6 +66,20 @@ class R2StorageService {
     }
 
     /**
+     * Convert any legacy or raw S3 R2 URL into the public CDN URL
+     * @param {string} url - Stored URL
+     * @returns {string} Public URL
+     */
+    sanitizePublicUrl(url) {
+        if (!url || typeof url !== 'string') return url;
+        if (this.publicUrl && url.includes('r2.cloudflarestorage.com')) {
+            const pattern = new RegExp(`https?://[^/]+\\.r2\\.cloudflarestorage\\.com/${this.bucketName}/`, 'i');
+            return url.replace(pattern, `${this.publicUrl.replace(/\/+$/, '')}/`);
+        }
+        return url;
+    }
+
+    /**
      * Detect MIME type from buffer magic numbers or filename
      * @param {Buffer} buffer - File buffer
      * @param {string} [filename=''] - Optional filename

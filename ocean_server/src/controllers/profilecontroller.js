@@ -1,7 +1,8 @@
 const { where, Op, Sequelize } = require('sequelize');
 const db = require('../../models');
-const {UserTable, SellersTable, UserFollows, Product, Post, Auction, GroupBuy, SwapDeal, PostLike, ProductLike} = require('../../models');
-const { mapRequestFields, mapResponseFields } = require('../../utils/fieldMapper')
+const { UserTable, SellersTable, UserFollows, Product, Post, Auction, GroupBuy, SwapDeal, PostLike, ProductLike } = require('../../models');
+const { mapRequestFields, mapResponseFields } = require('../../utils/fieldMapper');
+const r2StorageService = require('../services/r2StorageService');
 
 const currentUserprofile = async(req,res)=>{
   try {
@@ -175,8 +176,8 @@ const currentUserprofile = async(req,res)=>{
      productsCount,
      featuredProducts,
      // Use actual database values with fallbacks
-     profilePicture: currentUser.profilePicture || "/default-avatar.jpg",
-     coverPicture: currentUser.coverPicture || "/default-cover.jpg",
+     profilePicture: r2StorageService.sanitizePublicUrl(currentUser.profilePicture) || "/default-avatar.jpg",
+     coverPicture: r2StorageService.sanitizePublicUrl(currentUser.coverPicture) || "/default-cover.jpg",
      bio: currentUser.bio || (role === "seller" ? "Professional seller on BlueWhale" : "BlueWhale user"),
      location: currentUser.location || "Not specified",
      website: currentUser.website || null,
@@ -401,8 +402,8 @@ const getUserProfileById = async(req, res) => {
       postsCount,
       productsCount,
       isFollowing,
-      profilePicture: user.profilePicture || "/default-avatar.jpg",
-      coverPicture: user.coverPicture || "/default-cover.jpg",
+      profilePicture: r2StorageService.sanitizePublicUrl(user.profilePicture) || "/default-avatar.jpg",
+      coverPicture: r2StorageService.sanitizePublicUrl(user.coverPicture) || "/default-cover.jpg",
       bio: user.bio || (role === "seller" ? "Professional seller on BlueWhale" : "BlueWhale user"),
       location: user.location || "Not specified",
       website: user.website || null
