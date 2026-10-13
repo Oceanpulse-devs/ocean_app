@@ -854,27 +854,32 @@ class SellerVerificationController {
       }
 
       const nimcData = dojahRes.data || {};
-      const nimcFirstName = nimcData.firstname || nimcData.first_name || '';
-      const nimcLastName = nimcData.surname || nimcData.last_name || '';
-      const nimcDob = nimcData.birthdate || nimcData.dob || '';
-      const nimcPhone = nimcData.telephoneno || nimcData.mobile || nimcData.phone_number || '';
-      const nimcState = nimcData.residence_state || nimcData.state || '';
+      const nimcFirstName = nimcData.firstname || nimcData.first_name || nimcData.firstName || '';
+      const nimcLastName = nimcData.surname || nimcData.last_name || nimcData.lastName || '';
+      const nimcDob = nimcData.birthdate || nimcData.dob || nimcData.date_of_birth || nimcData.birth_date || '';
+      const nimcPhone = nimcData.telephoneno || nimcData.telephone_no || nimcData.mobile || nimcData.phone_number || nimcData.phone || '';
+      const nimcState = nimcData.residence_state || nimcData.state || nimcData.state_of_origin || nimcData.residenceState || '';
       const trackingId = nimcData.tracking_id || `DOJAH-FACE-${Date.now()}`;
       const confidenceScore = Math.round(dojahRes.confidenceValue || 95);
 
-      // 1. Encrypt NIN for secure database storage & Upload selfie to Cloudinary
+      // 1. Encrypt NIN for secure database storage & Upload selfie to storage (Cloudflare R2 / Cloudinary)
       const encryptedNin = dojahService.encryptNin(nin);
       const maskedNin = dojahService.maskNin(nin);
 
-      let selfieCloudinaryUrl = nimcData.photo || null;
+      let selfieCloudinaryUrl = nimcData.photo || nimcData.image || null;
       if (selfieImage && typeof selfieImage === 'string' && selfieImage !== 'MOCK_SELFIE' && selfieImage !== 'FAIL_FACE') {
         try {
-          const uploadRes = await cloudinaryService.uploadFile(selfieImage, 'ocean-app/kyc_selfies');
-          if (uploadRes && uploadRes.secure_url) {
-            selfieCloudinaryUrl = uploadRes.secure_url;
+          const uploadRes = await cloudinaryService.uploadFile(
+            selfieImage, 
+            `ocean-app/kyc_selfies/${userId}`,
+            { resource_type: 'image' }
+          );
+          const uploadedUrl = uploadRes?.url || uploadRes?.secure_url || null;
+          if (uploadedUrl) {
+            selfieCloudinaryUrl = uploadedUrl;
           }
         } catch (uploadErr) {
-          console.warn('⚠️ Cloudinary selfie upload warning:', uploadErr.message);
+          console.warn('⚠️ Selfie KYC upload warning:', uploadErr.message);
         }
       }
 
