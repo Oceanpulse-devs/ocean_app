@@ -2020,23 +2020,43 @@ class SubscriptionController {
               rawJson = decoded;
             }
           } catch (e) {
-            // Not Base64, proceed with rawJson
+            // Not Base64
           }
         }
 
-        // Parse JSON (with fallback for escaped quotes)
+        // 1. Direct JSON.parse
         try {
           credentials = JSON.parse(rawJson);
-        } catch (firstErr) {
-          if (rawJson.includes('\\"')) {
+        } catch (e1) {
+          // 2. Try unescaping escaped double quotes (\")
+          try {
             credentials = JSON.parse(rawJson.replace(/\\"/g, '"'));
-          } else {
-            throw firstErr;
+          } catch (e2) {
+            // 3. Try unescaping single quotes and converting single quotes to double quotes
+            try {
+              credentials = JSON.parse(rawJson.replace(/\\'/g, "'").replace(/'/g, '"'));
+            } catch (e3) {
+              // 4. Safe JS object literal fallback
+              try {
+                if (rawJson.startsWith('{') && rawJson.endsWith('}')) {
+                  const fn = new Function('return ' + rawJson);
+                  const res = fn();
+                  if (res && typeof res === 'object') credentials = res;
+                }
+              } catch (e4) {
+                console.error('DEBUG GOOGLE_PLAY_SERVICE_ACCOUNT_JSON snippet:', JSON.stringify(rawJson.substring(0, 40)));
+                throw e1;
+              }
+            }
           }
+        }
+
+        if (!credentials) {
+          throw new Error('Parsed credentials object is empty');
         }
 
         // Ensure private key has valid real newlines for GoogleAuth RSA parser
-        if (credentials && credentials.private_key && credentials.private_key.includes('\\n')) {
+        if (credentials.private_key && credentials.private_key.includes('\\n')) {
           credentials.private_key = credentials.private_key.replace(/\\n/g, '\n');
         }
       } catch (parseError) {
