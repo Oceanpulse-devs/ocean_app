@@ -2,6 +2,7 @@ const { Message, Conversation, ConversationParticipant, UserReference, MessageRe
 const { Op } = require('sequelize');
 const axios = require('axios');
 const { checkBlockRelationship } = require('../utils/userBlockHelper');
+const { sanitizeProfilePicture } = require('../utils/urlHelper');
 
 // Helper: check if target user is currently in the conversation socket room
 const isUserInConversationRoom = (io, conversationId, targetUserId) => {
@@ -173,7 +174,18 @@ const getMessages = async (req, res) => {
     const hasMore = messages.count > offset + messages.rows.length;
 
     // Messages must be ordered chronologically (oldest first) within the page
-    const chronologicalMessages = messages.rows.reverse();
+    const chronologicalMessages = messages.rows.reverse().map(msg => {
+      const m = msg.toJSON ? msg.toJSON() : { ...msg };
+      if (m.sender) {
+        m.sender.profilePicture = sanitizeProfilePicture(m.sender.profilePicture);
+        m.sender.avatar = m.sender.profilePicture;
+      }
+      if (m.replyTo && m.replyTo.sender) {
+        m.replyTo.sender.profilePicture = sanitizeProfilePicture(m.replyTo.sender.profilePicture);
+        m.replyTo.sender.avatar = m.replyTo.sender.profilePicture;
+      }
+      return m;
+    });
 
     res.json({
       messages: chronologicalMessages,
@@ -459,7 +471,7 @@ const sendMessage = async (req, res) => {
           conversationId: String(conversationId),
           senderId: String(userId),
           senderName: senderDisplayName,
-          senderAvatar: sender?.profilePicture || '',
+          senderAvatar: sanitizeProfilePicture(sender?.profilePicture) || '',
           messageId: String(message.id),
           messagePreview: content ? content.substring(0, 100) : 'Media message',
           referenceType: normalizedReferenceType || '',
@@ -503,17 +515,27 @@ const sendMessage = async (req, res) => {
       ]
     });
 
+    const formattedMsg = messageWithSender ? (messageWithSender.toJSON ? messageWithSender.toJSON() : { ...messageWithSender }) : messageWithSender;
+    if (formattedMsg && formattedMsg.sender) {
+      formattedMsg.sender.profilePicture = sanitizeProfilePicture(formattedMsg.sender.profilePicture);
+      formattedMsg.sender.avatar = formattedMsg.sender.profilePicture;
+    }
+    if (formattedMsg && formattedMsg.replyTo && formattedMsg.replyTo.sender) {
+      formattedMsg.replyTo.sender.profilePicture = sanitizeProfilePicture(formattedMsg.replyTo.sender.profilePicture);
+      formattedMsg.replyTo.sender.avatar = formattedMsg.replyTo.sender.profilePicture;
+    }
+
     // Broadcast new_message event via Socket.IO if io is available
     if (io) {
       io.to(`conversation:${conversationId}`).emit('new_message', {
-        message: messageWithSender,
+        message: formattedMsg,
         conversationId
       });
     }
 
     res.status(201).json({
       message: 'Message sent successfully',
-      data: messageWithSender
+      data: formattedMsg
     });
 
   } catch (error) {

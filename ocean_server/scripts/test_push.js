@@ -170,6 +170,16 @@ async function run() {
     console.log(`   User found: ${user.fullName || user.username} (${user.email}) | ID: ${user.id}`);
     console.log(`   Notification: "${title}" - "${body}"`);
 
+    // Check if user has tokens (active or inactive)
+    const userTokens = await db.UserFcmToken.findAll({ where: { userId: user.id } });
+    const inactiveCount = userTokens.filter(t => !t.isActive).length;
+    if (inactiveCount > 0) {
+      console.log(`\nℹ️ Found ${inactiveCount} token(s) currently marked inactive (isActive: 0).`);
+      console.log('   Re-activating token(s) now so the push can reach your device...');
+      await db.UserFcmToken.update({ isActive: true }, { where: { userId: user.id } });
+      console.log('   ✅ Token(s) re-activated to isActive: 1!');
+    }
+
     // 5. Send push notification
     console.log('\n4. Dispatching push notification via fcmService...');
     const result = await fcmService.sendPushNotification(user.id, {

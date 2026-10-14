@@ -39,7 +39,7 @@ const registerFcmToken = async (req, res) => {
       }
     });
 
-    if (record.token !== token || record.platform !== platform) {
+    if (record.token !== token || record.platform !== platform || !record.isActive) {
       await record.update({ token, platform, isActive: true });
     }
 

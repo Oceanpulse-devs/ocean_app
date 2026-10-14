@@ -3,6 +3,7 @@ const { Op } = require('sequelize');
 const axios = require('axios');
 const PresenceService = require('../services/presenceService');
 const { getBlockedUserIds, checkBlockRelationship } = require('../utils/userBlockHelper');
+const { sanitizeProfilePicture } = require('../utils/urlHelper');
 
 // Helper function to format participant with both userId, sellerId, Redis presence and block status
 const formatParticipant = (participant, presenceMap = {}, blockedIds = []) => {
@@ -13,12 +14,14 @@ const formatParticipant = (participant, presenceMap = {}, blockedIds = []) => {
   const displayName = userData.businessName || userData.fullName;
   const presence = presenceMap[userData.id] || { isOnline: false, lastSeen: null };
   const isBlocked = blockedIds.includes(userData.id);
-  
+  const cleanPic = sanitizeProfilePicture(userData.profilePicture);
+
   const formatted = {
     userId: userData.id,  // User Table ID
     sellerId: userData.sellerId || null,  // Seller Table ID (if seller)
     fullName: userData.fullName,
-    profilePicture: userData.profilePicture || null,
+    profilePicture: cleanPic,
+    avatar: cleanPic,
     accountType: userData.accountType || 'buyer',
     businessName: userData.businessName || null, // Will be null for rejected sellers
     displayName: displayName, // Use businessName for approved sellers, fullName otherwise
@@ -28,7 +31,8 @@ const formatParticipant = (participant, presenceMap = {}, blockedIds = []) => {
     user: {
       id: userData.id,
       fullName: userData.fullName,
-      profilePicture: userData.profilePicture || null,
+      profilePicture: cleanPic,
+      avatar: cleanPic,
       sellerId: userData.sellerId || null,  // Also in nested object
       isOnline: Boolean(presence.isOnline),
       lastSeen: presence.lastSeen || null,
@@ -151,7 +155,7 @@ const syncUserFromMainServer = async (userId) => {
             id: sellerData.userId || sellerData.id || userId,
             fullName: sellerData.fullName || displayName || 'Unknown Seller',
             email: sellerData.businessEmail || `${userId}@temp.com`,
-            profilePicture: sellerData.businessLogo || null,
+            profilePicture: sanitizeProfilePicture(sellerData.businessLogo || sellerData.profilePicture) || null,
             role: 'seller',
             accountStatus: 'active',
             businessName: (sellerData.verificationStatus === 'approved' && sellerData.businessName) 
@@ -173,7 +177,7 @@ const syncUserFromMainServer = async (userId) => {
         fullName: userData.fullName || `User ${userId.substring(0, 8)}`,
         email: userData.email || `${userId}@temp.com`,
         password: 'temp_password', // Required field
-        profilePicture: userData.profilePicture || null,
+        profilePicture: sanitizeProfilePicture(userData.profilePicture) || null,
         accountType: userData.role || 'buyer',
         accountStatus: userData.accountStatus || 'active',
         username: userData.username || null,

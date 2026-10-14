@@ -1,5 +1,6 @@
 const { UserReference, Conversation, ConversationParticipant } = require('../../models');
 const { Op } = require('sequelize');
+const { sanitizeProfilePicture } = require('../utils/urlHelper');
 
 // Get online users
 const getOnlineUsers = async (req, res) => {
@@ -23,12 +24,14 @@ const getOnlineUsers = async (req, res) => {
     // Format users with both userId and sellerId
     const formattedUsers = users.rows.map(user => {
       const userData = user.toJSON ? user.toJSON() : user;
+      const cleanPic = sanitizeProfilePicture(userData.profilePicture);
       return {
         id: userData.id,
         userId: userData.id,
         sellerId: userData.sellerId || null,
         fullName: userData.fullName,
-        profilePicture: userData.profilePicture,
+        profilePicture: cleanPic,
+        avatar: cleanPic,
         accountType: userData.accountType,
         businessName: userData.businessName || null
       };
@@ -82,12 +85,14 @@ const searchUsers = async (req, res) => {
     // Format users with both userId and sellerId
     const formattedUsers = users.rows.map(user => {
       const userData = user.toJSON ? user.toJSON() : user;
+      const cleanPic = sanitizeProfilePicture(userData.profilePicture);
       return {
         id: userData.id,
         userId: userData.id,
         sellerId: userData.sellerId || null,
         fullName: userData.fullName,
-        profilePicture: userData.profilePicture,
+        profilePicture: cleanPic,
+        avatar: cleanPic,
         accountType: userData.accountType,
         businessName: userData.businessName || null
       };
@@ -151,13 +156,15 @@ const getUserProfile = async (req, res) => {
     );
 
     const userData = user.toJSON ? user.toJSON() : user;
+    const cleanPic = sanitizeProfilePicture(userData.profilePicture);
     res.json({
       user: {
         id: userData.id,
         userId: userData.id,
         sellerId: userData.sellerId || null,
         fullName: userData.fullName,
-        profilePicture: userData.profilePicture,
+        profilePicture: cleanPic,
+        avatar: cleanPic,
         accountType: userData.accountType,
         businessName: userData.businessName || null
       },
@@ -215,12 +222,14 @@ const getRecentContacts = async (req, res) => {
         if (!user) return null;
         
         const userData = user.toJSON ? user.toJSON() : user;
+        const cleanPic = sanitizeProfilePicture(userData.profilePicture);
         return {
           id: userData.id,
           userId: userData.id,
           sellerId: userData.sellerId || null,
           fullName: userData.fullName,
-          profilePicture: userData.profilePicture,
+          profilePicture: cleanPic,
+          avatar: cleanPic,
           accountType: userData.accountType,
           businessName: userData.businessName || null
         };

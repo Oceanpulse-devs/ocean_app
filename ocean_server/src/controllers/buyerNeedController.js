@@ -5,6 +5,7 @@ const videoUploadService = require('../services/videoUploadService');
 const imageCompressionService = require('../services/imageCompressionService');
 const redisClient = require('../config/redisdb');
 const { createNotification } = require('./notificationController');
+const r2StorageService = require('../services/r2StorageService');
 
 // Automatically ensure subcategory column exists in MySQL buyer_needs table
 let isSubcategoryColumnChecked = false;
@@ -45,7 +46,8 @@ const mapBuyerNeedResponse = (buyerNeed) => {
     user: mapped.buyer ? {
       id: mapped.buyer.id,
       fullName: mapped.buyer.fullName,
-      profilePicture: mapped.buyer.profilePicture,
+      profilePicture: (mapped.buyer.profilePicture && mapped.buyer.profilePicture !== '👤') ? r2StorageService.sanitizePublicUrl(mapped.buyer.profilePicture) : null,
+      avatar: (mapped.buyer.profilePicture && mapped.buyer.profilePicture !== '👤') ? r2StorageService.sanitizePublicUrl(mapped.buyer.profilePicture) : null,
       accountType: mapped.buyer.accountType,
       accountStatus: mapped.buyer.accountStatus
     } : null,

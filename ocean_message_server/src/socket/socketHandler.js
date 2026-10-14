@@ -3,6 +3,7 @@ const { Op } = require('sequelize');
 const axios = require('axios');
 const PresenceService = require('../services/presenceService');
 const { checkBlockRelationship } = require('../utils/userBlockHelper');
+const { sanitizeProfilePicture } = require('../utils/urlHelper');
 
 // Helper: send push via main server from socket events
 const sendPushViaMainServer = async (userId, title, body, data) => {
@@ -192,9 +193,19 @@ const socketHandler = (io, socket) => {
         { where: { id: conversationId } }
       );
 
+      const formattedMsg = messageWithSender ? (messageWithSender.toJSON ? messageWithSender.toJSON() : { ...messageWithSender }) : messageWithSender;
+      if (formattedMsg && formattedMsg.sender) {
+        formattedMsg.sender.profilePicture = sanitizeProfilePicture(formattedMsg.sender.profilePicture);
+        formattedMsg.sender.avatar = formattedMsg.sender.profilePicture;
+      }
+      if (formattedMsg && formattedMsg.replyTo && formattedMsg.replyTo.sender) {
+        formattedMsg.replyTo.sender.profilePicture = sanitizeProfilePicture(formattedMsg.replyTo.sender.profilePicture);
+        formattedMsg.replyTo.sender.avatar = formattedMsg.replyTo.sender.profilePicture;
+      }
+
       // Emit to conversation room (Requirement 3: new_message event)
       io.to(`conversation:${conversationId}`).emit('new_message', {
-        message: messageWithSender,
+        message: formattedMsg,
         conversationId
       });
 
@@ -219,7 +230,7 @@ const socketHandler = (io, socket) => {
             conversationId: String(conversationId),
             senderId: String(socket.userId),
             senderName: senderDisplayName,
-            senderAvatar: messageWithSender.sender?.profilePicture || '',
+            senderAvatar: sanitizeProfilePicture(messageWithSender.sender?.profilePicture) || '',
             messageId: String(message.id),
             messagePreview: content ? content.substring(0, 100) : 'Media message',
             referenceType: normalizedReferenceType || '',
