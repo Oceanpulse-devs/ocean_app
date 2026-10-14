@@ -19,7 +19,27 @@ const initializeFirebase = () => {
   }
 
   try {
-    const formattedKey = privateKey.replace(/\\n/g, '\n');
+    let formattedKey = privateKey.trim();
+
+    // 1. Strip wrapping quotes if present
+    if ((formattedKey.startsWith('"') && formattedKey.endsWith('"')) || 
+        (formattedKey.startsWith("'") && formattedKey.endsWith("'"))) {
+      formattedKey = formattedKey.slice(1, -1).trim();
+    }
+
+    // 2. Auto-detect and decode Base64 if not starting with PEM header
+    if (!formattedKey.startsWith('-----BEGIN')) {
+      try {
+        const decoded = Buffer.from(formattedKey, 'base64').toString('utf8').trim();
+        if (decoded.startsWith('-----BEGIN')) {
+          formattedKey = decoded;
+        }
+      } catch (e) {}
+    }
+
+    // 3. Normalize all escaped newlines (both \\n and \n)
+    formattedKey = formattedKey.replace(/\\\\n/g, '\n').replace(/\\n/g, '\n');
+
     admin.initializeApp({
       credential: admin.credential.cert({
         projectId,
@@ -28,7 +48,7 @@ const initializeFirebase = () => {
       })
     });
     firebaseInitialized = true;
-    console.log('FCM: Firebase Admin initialized');
+    console.log('FCM: Firebase Admin initialized successfully ✅');
     return true;
   } catch (err) {
     console.error('FCM: Firebase init failed', err.message);
