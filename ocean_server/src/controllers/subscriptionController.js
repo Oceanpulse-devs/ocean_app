@@ -2003,69 +2003,7 @@ class SubscriptionController {
         });
       }
 
-      let credentials;
-      try {
-        let rawJson = (process.env.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON || '').trim();
-
-        // Strip surrounding single or double quotes if added by shell or Coolify
-        if ((rawJson.startsWith("'") && rawJson.endsWith("'")) || (rawJson.startsWith('"') && rawJson.endsWith('"'))) {
-          rawJson = rawJson.slice(1, -1).trim();
-        }
-
-        // If Base64 encoded, decode it
-        if (!rawJson.startsWith('{')) {
-          try {
-            const decoded = Buffer.from(rawJson, 'base64').toString('utf8').trim();
-            if (decoded.startsWith('{')) {
-              rawJson = decoded;
-            }
-          } catch (e) {
-            // Not Base64
-          }
-        }
-
-        // 1. Direct JSON.parse
-        try {
-          credentials = JSON.parse(rawJson);
-        } catch (e1) {
-          // 2. Try unescaping escaped double quotes (\")
-          try {
-            credentials = JSON.parse(rawJson.replace(/\\"/g, '"'));
-          } catch (e2) {
-            // 3. Try unescaping single quotes and converting single quotes to double quotes
-            try {
-              credentials = JSON.parse(rawJson.replace(/\\'/g, "'").replace(/'/g, '"'));
-            } catch (e3) {
-              // 4. Safe JS object literal fallback
-              try {
-                if (rawJson.startsWith('{') && rawJson.endsWith('}')) {
-                  const fn = new Function('return ' + rawJson);
-                  const res = fn();
-                  if (res && typeof res === 'object') credentials = res;
-                }
-              } catch (e4) {
-                console.error('DEBUG GOOGLE_PLAY_SERVICE_ACCOUNT_JSON snippet:', JSON.stringify(rawJson.substring(0, 40)));
-                throw e1;
-              }
-            }
-          }
-        }
-
-        if (!credentials) {
-          throw new Error('Parsed credentials object is empty');
-        }
-
-        // Ensure private key has valid real newlines for GoogleAuth RSA parser
-        if (credentials.private_key && credentials.private_key.includes('\\n')) {
-          credentials.private_key = credentials.private_key.replace(/\\n/g, '\n');
-        }
-      } catch (parseError) {
-        console.error('❌ Failed to parse GOOGLE_PLAY_SERVICE_ACCOUNT_JSON:', parseError.message);
-        return res.status(500).json({
-          success: false,
-          message: `Invalid Google Play Service Account JSON format: ${parseError.message}`
-        });
-      }
+      const credentials = JSON.parse(process.env.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON.trim());
       const { google } = require('googleapis');
       
       const auth = new google.auth.GoogleAuth({
