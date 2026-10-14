@@ -1,5 +1,6 @@
 const { UserTable, UserFollows, SellersTable, ProductCategory } = require('../../models');
 const { createNotification } = require('./notificationController');
+const r2StorageService = require('../services/r2StorageService');
 
 // Follow a user
 const followUser = async (req, res) => {
@@ -178,7 +179,7 @@ const getFollowers = async (req, res) => {
                     id: followerData.id,
                     name: followerData.fullName,
                     username: followerData.username || `@${followerData.fullName.toLowerCase().replace(/\s+/g, '_')}`,
-                    avatar: followerData.profilePicture || '👤',
+                    avatar: (followerData.profilePicture && followerData.profilePicture !== '👤') ? r2StorageService.sanitizePublicUrl(followerData.profilePicture) : null,
                     lastActive: followerData.lastActive ? 
                         `${new Date(followerData.lastActive).getDate()}${getOrdinalSuffix(new Date(followerData.lastActive).getDate())} ${new Date(followerData.lastActive).toLocaleDateString('en-US', { month: 'long' })}, ${new Date(followerData.lastActive).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}` :
                         'Recently',
@@ -272,7 +273,7 @@ const getFollowing = async (req, res) => {
                 id: userData.id,
                 name: userData.fullName,
                 username: userData.username || `@${userData.fullName.toLowerCase().replace(/\s+/g, '_')}`,
-                avatar: userData.profilePicture || '👤',
+                avatar: (userData.profilePicture && userData.profilePicture !== '👤') ? r2StorageService.sanitizePublicUrl(userData.profilePicture) : null,
                 lastActive: userData.lastActive ? 
                     `${new Date(userData.lastActive).getDate()}${getOrdinalSuffix(new Date(userData.lastActive).getDate())} ${new Date(userData.lastActive).toLocaleDateString('en-US', { month: 'long' })}, ${new Date(userData.lastActive).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}` :
                     'Recently',

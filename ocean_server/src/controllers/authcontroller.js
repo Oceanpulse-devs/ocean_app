@@ -747,7 +747,7 @@ const sellerRegistration = async (req, res) => {
                 sellerId: newSeller.id,
                 documentType,
                 documentNumber: documentNumber?.trim(),
-                documentImage: businessDocUpload.secure_url,
+                documentImage: businessDocUpload.url || businessDocUpload.secure_url,
                 status: 'pending'
             });
 
@@ -767,7 +767,7 @@ const sellerRegistration = async (req, res) => {
                     sellerId: newSeller.id,
                     documentType: personalIdType,
                     documentNumber: personalIdNumber?.trim(),
-                    documentImage: personalIdUpload.secure_url,
+                    documentImage: personalIdUpload.url || personalIdUpload.secure_url,
                     status: 'pending'
                 });
             }

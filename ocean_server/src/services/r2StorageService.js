@@ -73,7 +73,8 @@ class R2StorageService {
     sanitizePublicUrl(url) {
         if (!url || typeof url !== 'string') return url;
         if (this.publicUrl && url.includes('r2.cloudflarestorage.com')) {
-            const pattern = new RegExp(`https?://[^/]+\\.r2\\.cloudflarestorage\\.com/${this.bucketName}/`, 'i');
+            const bucketPattern = this.bucketName ? `(?:${this.bucketName}/)?` : '';
+            const pattern = new RegExp(`https?://[^/]+\\.r2\\.cloudflarestorage\\.com/${bucketPattern}`, 'i');
             return url.replace(pattern, `${this.publicUrl.replace(/\/+$/, '')}/`);
         }
         return url;
@@ -269,6 +270,7 @@ class R2StorageService {
                 success: true,
                 publicId: key,
                 url: publicUrl,
+                secure_url: publicUrl, // Backwards-compatible with Cloudinary callers
                 thumbnailUrl: publicUrl,
                 format: format,
                 resourceType: resourceType,

@@ -6,6 +6,7 @@ const imageCompressionService = require('../services/imageCompressionService');
 const { mapNestedFields } = require('../../utils/fieldMapper');
 const redisClient = require('../config/redisdb');
 const { createNotification } = require('./notificationController');
+const r2StorageService = require('../services/r2StorageService');
 
 // Helper: Standardize user object across all post types
 const standardizeUserObject = (postData) => {
@@ -20,11 +21,14 @@ const standardizeUserObject = (postData) => {
         location = postData.user.location;
     }
     
+    const rawAvatar = postData.user?.profilePicture;
+    const sanitizedAvatar = (rawAvatar && rawAvatar !== '👤') ? r2StorageService.sanitizePublicUrl(rawAvatar) : null;
+    
     return {
         id: postData.user?.id || '',
         name: displayName,
         businessName: postData.user?.seller?.businessName || null,
-        avatar: postData.user?.profilePicture || '👤',
+        avatar: sanitizedAvatar || null,
         verified: postData.user?.accountStatus === 'verified' || postData.user?.seller?.verificationStatus === 'approved',
         role: role,
         location: location
@@ -40,23 +44,26 @@ const standardizeMediaArray = (mediaList, postId) => {
     return mediaList.map((item, index) => {
         if (typeof item === 'string') {
             // Simple URL string
+            const sanitizedUrl = r2StorageService.sanitizePublicUrl(item);
             return {
                 id: `${postId}_media_${index}`,
                 type: item.toLowerCase().includes('.mp4') || item.toLowerCase().includes('.mov') ? 'video' : 'image',
-                url: item,
-                thumbnailUrl: item,
+                url: sanitizedUrl,
+                thumbnailUrl: sanitizedUrl,
                 order: index
             };
         } else if (item && typeof item === 'object') {
             // Object with mediaUrl or url
-            const url = item.url || item.mediaUrl || item.thumbnailUrl || '';
+            const rawUrl = item.url || item.mediaUrl || item.thumbnailUrl || '';
+            const sanitizedUrl = r2StorageService.sanitizePublicUrl(rawUrl);
+            const sanitizedThumbnail = item.thumbnailUrl ? r2StorageService.sanitizePublicUrl(item.thumbnailUrl) : sanitizedUrl;
             const mediaType = item.type || item.mediaType || 'image';
             
             return {
                 id: item.id || `${postId}_media_${index}`,
                 type: mediaType.toLowerCase().includes('video') ? 'video' : 'image',
-                url: url,
-                thumbnailUrl: item.thumbnailUrl || url,
+                url: sanitizedUrl,
+                thumbnailUrl: sanitizedThumbnail,
                 order: typeof item.mediaOrder === 'number' ? item.mediaOrder : (typeof item.order === 'number' ? item.order : index)
             };
         }
@@ -125,7 +132,7 @@ const getHomeFeed = async (req, res) => {
             id: story.id,
             user: {
                 name: story.fullName,
-                avatar: story.profilePicture || '👤',
+                avatar: (story.profilePicture && story.profilePicture !== '👤') ? r2StorageService.sanitizePublicUrl(story.profilePicture) : null,
                 verified: story.accountStatus === 'verified'
             },
             hasStory: true,
@@ -711,7 +718,7 @@ const interleaveVideoCards = async (postsList, interval = 10) => {
                     userId: validUserId,
                     creatorId: validUserId,
                     creatorName: s.businessName || u.fullName || 'Creator',
-                    creatorAvatar: u.profilePicture || '👤',
+                    creatorAvatar: (u.profilePicture && u.profilePicture !== '👤') ? r2StorageService.sanitizePublicUrl(u.profilePicture) : null,
                     videoUrl: vid.videoUrl,
                     thumbnailUrl: vid.thumbnailUrl || vid.videoUrl,
                     caption: vid.description || '',
@@ -2434,14 +2441,14 @@ const getLikedPosts = async (req, res) => {
                         user: {
                             id: postData.user.id,
                             name: displayName,
-                            avatar: postData.user.profilePicture || '👤',
+                            avatar: (postData.user.profilePicture && postData.user.profilePicture !== '👤') ? r2StorageService.sanitizePublicUrl(postData.user.profilePicture) : null,
                             verified: postData.user.accountStatus === 'verified',
                             location: postData.user.location
                         },
                         sellerEntityId: postData.user?.seller?.id || null,
                         sellerMeta: {
                             businessName: postData.user?.seller?.businessName || null,
-                            profilePicture: postData.user?.profilePicture || null,
+                            profilePicture: r2StorageService.sanitizePublicUrl(postData.user?.profilePicture) || null,
                             businessEmail: postData.user?.seller?.businessEmail || null
                         },
                         product: {
@@ -2481,14 +2488,14 @@ const getLikedPosts = async (req, res) => {
                         user: {
                             id: postData.user.id,
                             name: displayName,
-                            avatar: postData.user.profilePicture || '👤',
+                            avatar: (postData.user.profilePicture && postData.user.profilePicture !== '👤') ? r2StorageService.sanitizePublicUrl(postData.user.profilePicture) : null,
                             verified: postData.user.accountStatus === 'verified',
                             location: postData.user.location
                         },
                         sellerEntityId: postData.user?.seller?.id || null,
                         sellerMeta: {
                             businessName: postData.user?.seller?.businessName || null,
-                            profilePicture: postData.user?.profilePicture || null,
+                            profilePicture: r2StorageService.sanitizePublicUrl(postData.user?.profilePicture) || null,
                             businessEmail: postData.user?.seller?.businessEmail || null
                         },
                         auction: {
@@ -2527,14 +2534,14 @@ const getLikedPosts = async (req, res) => {
                         user: {
                             id: postData.user.id,
                             name: postData.user.fullName,
-                            avatar: postData.user.profilePicture || '👤',
+                            avatar: (postData.user.profilePicture && postData.user.profilePicture !== '👤') ? r2StorageService.sanitizePublicUrl(postData.user.profilePicture) : null,
                             verified: postData.user.accountStatus === 'verified',
                             location: postData.user.location
                         },
                         sellerEntityId: postData.user?.seller?.id || null,
                         sellerMeta: {
                             businessName: postData.user?.seller?.businessName || null,
-                            profilePicture: postData.user?.profilePicture || null,
+                            profilePicture: r2StorageService.sanitizePublicUrl(postData.user?.profilePicture) || null,
                             businessEmail: postData.user?.seller?.businessEmail || null
                         },
                         groupBuy: {
@@ -2607,7 +2614,7 @@ const getLikedPosts = async (req, res) => {
                         user: {
                             id: postData.user.id,
                             name: displayName,
-                            avatar: postData.user.profilePicture || '👤',
+                            avatar: (postData.user.profilePicture && postData.user.profilePicture !== '👤') ? r2StorageService.sanitizePublicUrl(postData.user.profilePicture) : null,
                             verified: postData.user.accountStatus === 'verified',
                             location: postData.user.location
                         },
@@ -2615,7 +2622,7 @@ const getLikedPosts = async (req, res) => {
                         sellerEntityId: postData.user?.seller?.id || null,
                         sellerMeta: {
                             businessName: postData.user?.seller?.businessName || null,
-                            profilePicture: postData.user?.profilePicture || null,
+                            profilePicture: r2StorageService.sanitizePublicUrl(postData.user?.profilePicture) || null,
                             businessEmail: postData.user?.seller?.businessEmail || null
                         },
                         caption: postData.content || `Swap Deal: ${feedMetadata.product_to_swap || 'Product'}`,
@@ -2678,7 +2685,7 @@ const getLikedPosts = async (req, res) => {
                         user: {
                             id: postData.user.id,
                             name: postData.user.fullName,  // Buyer name (not seller)
-                            avatar: postData.user.profilePicture || '👤',
+                            avatar: (postData.user.profilePicture && postData.user.profilePicture !== '👤') ? r2StorageService.sanitizePublicUrl(postData.user.profilePicture) : null,
                             verified: postData.user.accountStatus === 'verified',
                             location: postData.user.location
                         },
@@ -2734,7 +2741,7 @@ const getLikedPosts = async (req, res) => {
                         user: {
                             id: postData.user.id,
                             name: displayName,
-                            avatar: postData.user.profilePicture || '👤',
+                            avatar: (postData.user.profilePicture && postData.user.profilePicture !== '👤') ? r2StorageService.sanitizePublicUrl(postData.user.profilePicture) : null,
                             verified: postData.user.accountStatus === 'verified',
                             location: postData.user.location
                         },
@@ -2742,7 +2749,7 @@ const getLikedPosts = async (req, res) => {
                         sellerEntityId: postData.user?.seller?.id || null,
                         sellerMeta: {
                             businessName: postData.user?.seller?.businessName || null,
-                            profilePicture: postData.user?.profilePicture || null,
+                            profilePicture: r2StorageService.sanitizePublicUrl(postData.user?.profilePicture) || null,
                             businessEmail: postData.user?.seller?.businessEmail || null
                         },
                         caption: postData.content,  // content → caption

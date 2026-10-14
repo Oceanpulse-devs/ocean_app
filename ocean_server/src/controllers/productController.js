@@ -13,14 +13,39 @@ const SpotlightService = require('../services/spotlightService');
 const TopPlacementService = require('../services/topPlacementService');
 const redisClient = require('../config/redisdb');
 const { createNotification } = require('./notificationController');
+const r2StorageService = require('../services/r2StorageService');
 
 // Helper function to map product field names for frontend
 const mapProductResponse = (product) => {
   const mapped = product.toJSON ? product.toJSON() : { ...product };
+  
+  // Sanitize images array
+  let sanitizedImages = mapped.images;
+  if (Array.isArray(sanitizedImages)) {
+    sanitizedImages = sanitizedImages.map(img => typeof img === 'string' ? r2StorageService.sanitizePublicUrl(img) : img);
+  } else if (typeof sanitizedImages === 'string') {
+    try {
+      const parsed = JSON.parse(sanitizedImages);
+      if (Array.isArray(parsed)) {
+        sanitizedImages = parsed.map(img => typeof img === 'string' ? r2StorageService.sanitizePublicUrl(img) : img);
+      }
+    } catch (e) {
+      sanitizedImages = [r2StorageService.sanitizePublicUrl(sanitizedImages)];
+    }
+  }
+
+  // Sanitize seller user avatar
+  if (mapped.seller?.user) {
+    const rawPic = mapped.seller.user.profilePicture;
+    mapped.seller.user.profilePicture = (rawPic && rawPic !== '👤') ? r2StorageService.sanitizePublicUrl(rawPic) : null;
+    mapped.seller.user.avatar = mapped.seller.user.profilePicture;
+  }
+
   return {
     ...mapped,
     name: mapped.title,  // Map title → name for frontend
-    arModel: mapped.arModel || null  // Include AR model URL
+    images: sanitizedImages || [],
+    arModel: mapped.arModel ? r2StorageService.sanitizePublicUrl(mapped.arModel) : null
   };
 };
 
@@ -1751,7 +1776,7 @@ const getAllSavedItems = async (req, res) => {
                 seller: {
                     id: seller.user.id,
                     name: seller.user.fullName || seller.businessName,
-                    avatar: seller.user.profilePicture || '👤',
+                    avatar: (seller.user.profilePicture && seller.user.profilePicture !== '👤') ? r2StorageService.sanitizePublicUrl(seller.user.profilePicture) : null,
                     verified: seller.user.accountStatus === 'verified',
                     rating: 4.5 // TODO: Add rating to UserTable model
                 },
@@ -1800,12 +1825,12 @@ const getAllSavedItems = async (req, res) => {
                     category: null,
                     location: null,
                 seller: {
-                        id: user.id,
+                    id: user.id,
                     name: user.fullName,
-                    avatar: user.profilePicture || '👤',
+                    avatar: (user.profilePicture && user.profilePicture !== '👤') ? r2StorageService.sanitizePublicUrl(user.profilePicture) : null,
                     verified: user.accountStatus === 'verified',
                     rating: 4.5
-                    },
+                },
                     images: mediaUrls.length > 0 ? mediaUrls : ['📱'],
                 description: post.content,
                     likes: 0,
@@ -1908,7 +1933,7 @@ const getAllSavedItems = async (req, res) => {
                     seller: {
                         id: seller.user.id,
                         name: seller.user.fullName || seller.businessName,
-                        avatar: seller.user.profilePicture || '👤',
+                        avatar: (seller.user.profilePicture && seller.user.profilePicture !== '👤') ? r2StorageService.sanitizePublicUrl(seller.user.profilePicture) : null,
                         verified: seller.user.accountStatus === 'verified',
                         rating: 4.5
                     },
@@ -1958,7 +1983,7 @@ const getAllSavedItems = async (req, res) => {
                     seller: {
                         id: seller.id,
                         name: seller.fullName,
-                        avatar: seller.profilePicture || '👤',
+                        avatar: (seller.profilePicture && seller.profilePicture !== '👤') ? r2StorageService.sanitizePublicUrl(seller.profilePicture) : null,
                         verified: seller.accountStatus === 'verified',
                         rating: 4.5
                     },
@@ -2002,7 +2027,7 @@ const getAllSavedItems = async (req, res) => {
                     seller: {
                         id: creator.id,
                         name: creator.fullName,
-                        avatar: creator.profilePicture || '👤',
+                        avatar: (creator.profilePicture && creator.profilePicture !== '👤') ? r2StorageService.sanitizePublicUrl(creator.profilePicture) : null,
                         verified: creator.accountStatus === 'verified',
                         rating: 4.5
                     },
@@ -2035,7 +2060,7 @@ const getAllSavedItems = async (req, res) => {
                     seller: {
                         id: seller.user.id,
                         name: seller.user.fullName || seller.businessName,
-                        avatar: seller.user.profilePicture || '👤',
+                        avatar: (seller.user.profilePicture && seller.user.profilePicture !== '👤') ? r2StorageService.sanitizePublicUrl(seller.user.profilePicture) : null,
                         verified: seller.user.accountStatus === 'verified',
                         rating: 4.5
                     },
