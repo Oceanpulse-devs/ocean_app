@@ -6,7 +6,8 @@ const {
   markAllNotificationsAsRead,
   markNotificationsAsRead,
   deleteNotification,
-  getUnreadCount
+  getUnreadCount,
+  testPushNotification
 } = require('../controllers/notificationController');
 const authMiddleware = require('../middleware/authMiddleware');
 
@@ -17,5 +18,6 @@ router.put('/api/notifications/mark-read', authMiddleware, markNotificationsAsRe
 router.put('/api/notifications/mark-all-read', authMiddleware, markAllNotificationsAsRead);
 router.put('/api/notifications/:notificationId/read', authMiddleware, markNotificationAsRead);
 router.delete('/api/notifications/:notificationId', authMiddleware, deleteNotification);
+router.post('/api/notifications/test-push', authMiddleware, testPushNotification);
 
 module.exports = router; 

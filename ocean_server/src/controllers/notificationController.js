@@ -625,6 +625,43 @@ const sendAdminNotification = async (businessName) => {
   }
 };
 
+// Send a test push notification to authenticated user
+const testPushNotification = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { title, body, type } = req.body || {};
+
+    const defaultTitle = 'Market Activity Update 📈';
+    const defaultBody = 'Buyers are looking for items in your area! Post a product or explore trending deals today.';
+
+    const result = await fcmService.sendPushNotification(
+      userId,
+      {
+        title: title || defaultTitle,
+        body: body || defaultBody
+      },
+      {
+        type: type || 'product',
+        category: 'marketplace',
+        navigationPath: '/marketplace',
+        notificationId: 'notif-' + Date.now()
+      }
+    );
+
+    return res.status(200).json({
+      success: true,
+      diagnostic: result
+    });
+  } catch (error) {
+    console.error('Test push error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to send test push notification',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   createNotification,
   sendEmailNotification,
@@ -637,5 +674,6 @@ module.exports = {
   sendSellerApplicationNotification,
   sendAccountStatusNotification,
   sendAdminNotification,
+  testPushNotification,
   notificationTemplates
 }; 
