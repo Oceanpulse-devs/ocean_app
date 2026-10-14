@@ -1994,16 +1994,126 @@ class SubscriptionController {
       const planPrice = targetPlan ? targetPlan.price : 0;
       const planCurrency = targetPlan ? targetPlan.currency : 'USD';
 
+// Helper: Safely parse Google Play Service Account credentials from various environment formats
+// (raw JSON, escaped quotes, single quotes, base64 encoding, or separate env variables)
+function parseGooglePlayCredentials() {
+  // 1. Check if separate env vars are provided
+  if (process.env.GOOGLE_PLAY_CLIENT_EMAIL && process.env.GOOGLE_PLAY_PRIVATE_KEY) {
+    return {
+      client_email: process.env.GOOGLE_PLAY_CLIENT_EMAIL.trim(),
+      private_key: process.env.GOOGLE_PLAY_PRIVATE_KEY.replace(/\\n/g, '\n').trim()
+    };
+  }
+
+  // 2. Check if a key file path is provided
+  const fs = require('fs');
+  const filePath = process.env.GOOGLE_PLAY_SERVICE_ACCOUNT_KEY_PATH;
+  if (filePath && fs.existsSync(filePath)) {
+    try {
+      const content = fs.readFileSync(filePath, 'utf8');
+      return cleanCredentials(JSON.parse(content));
+    } catch (e) {
+      console.error('Failed reading GOOGLE_PLAY_SERVICE_ACCOUNT_KEY_PATH:', e.message);
+    }
+  }
+
+  const envVal = process.env.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON;
+  if (!envVal || typeof envVal !== 'string') return null;
+
+  let str = envVal.trim();
+
+  // Strip wrapping outer quotes if the entire string was quoted (e.g. '...' or "...")
+  if ((str.startsWith('"') && str.endsWith('"')) || (str.startsWith("'") && str.endsWith("'"))) {
+    str = str.slice(1, -1).trim();
+  }
+
+  // Check if it's a file path
+  if (fs.existsSync(str)) {
+    try {
+      const content = fs.readFileSync(str, 'utf8');
+      return cleanCredentials(JSON.parse(content));
+    } catch (e) {}
+  }
+
+  // Check if Base64 encoded
+  if (!str.startsWith('{') && !str.startsWith('[')) {
+    try {
+      const decoded = Buffer.from(str, 'base64').toString('utf8').trim();
+      if (decoded.startsWith('{')) {
+        str = decoded;
+      }
+    } catch (e) {}
+  }
+
+  function cleanCredentials(obj) {
+    if (!obj || typeof obj !== 'object') return null;
+    if (obj.private_key && typeof obj.private_key === 'string') {
+      obj.private_key = obj.private_key.replace(/\\\\n/g, '\n').replace(/\\n/g, '\n');
+    }
+    return obj;
+  }
+
+  // Attempt 1: Standard JSON parse (handles double-stringified JSON too)
+  try {
+    let res = JSON.parse(str);
+    if (typeof res === 'string') {
+      try { res = JSON.parse(res); } catch (e) {}
+    }
+    if (typeof res === 'object' && res !== null) return cleanCredentials(res);
+  } catch (e) {}
+
+  // Attempt 2: Unescape escaped quotes (e.g. {\"type\": ...} -> {"type": ...})
+  try {
+    const unescaped = str.replace(/\\\"/g, '"');
+    let res = JSON.parse(unescaped);
+    if (typeof res === 'string') {
+      try { res = JSON.parse(res); } catch (e) {}
+    }
+    if (typeof res === 'object' && res !== null) return cleanCredentials(res);
+  } catch (e) {}
+
+  // Attempt 3: Single quotes used as JSON quotes (e.g. {'type': ...} -> {"type": ...})
+  try {
+    const doubleQuoted = str.replace(/'/g, '"');
+    let res = JSON.parse(doubleQuoted);
+    if (typeof res === 'string') {
+      try { res = JSON.parse(res); } catch (e) {}
+    }
+    if (typeof res === 'object' && res !== null) return cleanCredentials(res);
+  } catch (e) {}
+
+  // Attempt 4: Fix broken newlines/escapes inside string literals
+  try {
+    const fixedNewlines = str
+      .replace(/\\\r?\n/g, '\\n')
+      .replace(/\r?\n/g, '\\n');
+    let res = JSON.parse(fixedNewlines);
+    if (typeof res === 'object' && res !== null) return cleanCredentials(res);
+  } catch (e) {}
+
+  // Attempt 5: Combination of unescaping quotes AND fixing newlines
+  try {
+    const combined = str
+      .replace(/\\\"/g, '"')
+      .replace(/\\\r?\n/g, '\\n')
+      .replace(/\r?\n/g, '\\n');
+    let res = JSON.parse(combined);
+    if (typeof res === 'object' && res !== null) return cleanCredentials(res);
+  } catch (e) {}
+
+  return null;
+}
+
       // Initialize Google Play Developer API Client
-      if (!process.env.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON) {
-        console.error('Error: GOOGLE_PLAY_SERVICE_ACCOUNT_JSON is not configured in env variables');
+      const credentials = parseGooglePlayCredentials();
+      if (!credentials) {
+        console.error('Error: GOOGLE_PLAY_SERVICE_ACCOUNT_JSON could not be parsed or is not configured');
         return res.status(500).json({
           success: false,
-          message: 'Google Play Service Account JSON key is not configured'
+          message: 'Google Play Service Account JSON key is invalid or not configured'
         });
       }
 
-      const credentials = JSON.parse(process.env.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON.trim());
       const { google } = require('googleapis');
       
       const auth = new google.auth.GoogleAuth({
