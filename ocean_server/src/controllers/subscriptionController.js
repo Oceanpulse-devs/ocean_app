@@ -2003,7 +2003,49 @@ class SubscriptionController {
         });
       }
 
-      const credentials = JSON.parse(process.env.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON.trim());
+      let credentials;
+      try {
+        let rawJson = (process.env.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON || '').trim();
+
+        // Strip surrounding single or double quotes if added by shell or Coolify
+        if ((rawJson.startsWith("'") && rawJson.endsWith("'")) || (rawJson.startsWith('"') && rawJson.endsWith('"'))) {
+          rawJson = rawJson.slice(1, -1).trim();
+        }
+
+        // If Base64 encoded, decode it
+        if (!rawJson.startsWith('{')) {
+          try {
+            const decoded = Buffer.from(rawJson, 'base64').toString('utf8').trim();
+            if (decoded.startsWith('{')) {
+              rawJson = decoded;
+            }
+          } catch (e) {
+            // Not Base64, proceed with rawJson
+          }
+        }
+
+        // Parse JSON (with fallback for escaped quotes)
+        try {
+          credentials = JSON.parse(rawJson);
+        } catch (firstErr) {
+          if (rawJson.includes('\\"')) {
+            credentials = JSON.parse(rawJson.replace(/\\"/g, '"'));
+          } else {
+            throw firstErr;
+          }
+        }
+
+        // Ensure private key has valid real newlines for GoogleAuth RSA parser
+        if (credentials && credentials.private_key && credentials.private_key.includes('\\n')) {
+          credentials.private_key = credentials.private_key.replace(/\\n/g, '\n');
+        }
+      } catch (parseError) {
+        console.error('❌ Failed to parse GOOGLE_PLAY_SERVICE_ACCOUNT_JSON:', parseError.message);
+        return res.status(500).json({
+          success: false,
+          message: `Invalid Google Play Service Account JSON format: ${parseError.message}`
+        });
+      }
       const { google } = require('googleapis');
       
       const auth = new google.auth.GoogleAuth({
