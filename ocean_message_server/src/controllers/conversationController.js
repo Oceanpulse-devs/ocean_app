@@ -4,6 +4,7 @@ const axios = require('axios');
 const PresenceService = require('../services/presenceService');
 const { getBlockedUserIds, checkBlockRelationship } = require('../utils/userBlockHelper');
 const { sanitizeProfilePicture } = require('../utils/urlHelper');
+const { isValidUUID, syncUserFromMainServer } = require('../utils/userSyncHelper');
 
 // Helper function to format participant with both userId, sellerId, Redis presence and block status
 const formatParticipant = (participant, presenceMap = {}, blockedIds = []) => {
@@ -43,207 +44,6 @@ const formatParticipant = (participant, presenceMap = {}, blockedIds = []) => {
   return formatted;
 };
 
-// Helper function to sync user from main server
-const syncUserFromMainServer = async (userId) => {
-  try {
-    const mainServerUrl = process.env.MAIN_SERVER_URL || 'https://mainserver-production-7ad9.up.railway.app';
-    
-    // Check if user already exists in messaging system
-    const existingUser = await UserReference.findByPk(userId);
-    if (existingUser) {
-      console.log('✅ User already exists in messaging system:', userId);
-      
-      // If businessName or sellerId is missing but user is a seller, try to fetch and update it
-      if (existingUser.accountType === 'seller' && (!existingUser.businessName || !existingUser.sellerId)) {
-        console.log('🔄 Seller missing data, attempting to fetch...');
-        try {
-          const response = await axios.get(`${mainServerUrl}/api/user/${userId}`, {
-            timeout: 5000,
-            headers: { 'User-Agent': 'MessagingServer/1.0' }
-          });
-          
-          if (response.data && response.data.data) {
-            const data = response.data.data;
-            const updateData = {};
-            
-            // Only update businessName if seller is approved
-            if (data.businessName && data.verificationStatus === 'approved' && !existingUser.businessName) {
-              updateData.businessName = data.businessName;
-              console.log(`✅ Updated businessName: ${data.businessName} (approved seller)`);
-            } else if (data.verificationStatus !== 'approved' && existingUser.businessName) {
-              // Remove businessName if seller is no longer approved
-              updateData.businessName = null;
-              console.log(`🗑️ Removed businessName (seller not approved, status: ${data.verificationStatus})`);
-            }
-            
-            if (data.sellerId && !existingUser.sellerId) {
-              updateData.sellerId = data.sellerId;
-              console.log(`✅ Updated sellerId: ${data.sellerId}`);
-            }
-            
-            if (Object.keys(updateData).length > 0) {
-              await existingUser.update(updateData);
-            }
-          }
-        } catch (error) {
-          console.log('⚠️ Could not fetch seller data:', error.message);
-        }
-      }
-      
-      return existingUser;
-    }
-
-    console.log(`🔄 Fetching user ${userId} from: ${mainServerUrl}/api/user/${userId}`);
-    
-    let userData = null;
-    
-    // Try to fetch from user endpoint first (returns businessName for sellers)
-    try {
-    const response = await axios.get(`${mainServerUrl}/api/user/${userId}`, {
-      timeout: 5000,
-      headers: {
-        'User-Agent': 'MessagingServer/1.0'
-      }
-    });
-    
-    console.log(`✅ User fetch response status: ${response.status}`);
-    console.log(`📋 User data received:`, response.data);
-
-    if (response.data && response.data.data) {
-        const data = response.data.data;
-        userData = data;
-        
-        // Only store businessName if seller is approved
-        if (data.businessName && data.verificationStatus === 'approved') {
-          console.log(`🏪 Found business name: ${data.businessName} (approved seller)`);
-        } else if (data.businessName && data.verificationStatus !== 'approved') {
-          // Don't store businessName for rejected/pending sellers
-          userData.businessName = null;
-          console.log(`⚠️ Not storing businessName (verificationStatus: ${data.verificationStatus})`);
-        }
-        
-        // Extract sellerId if user is a seller
-        if ((data.accountType === 'seller' || data.role === 'seller') && data.sellerId) {
-          userData.sellerId = data.sellerId;
-          console.log(`🏪 Found sellerId: ${userData.sellerId}`);
-        }
-      }
-    } catch (userError) {
-      console.log(`⚠️ User not found in users table, trying seller endpoint...`);
-      
-      // Try to fetch from seller endpoint
-      try {
-        // First try /api/admin/sellers/:id
-        const sellerResponse = await axios.get(`${mainServerUrl}/api/admin/sellers/${userId}`, {
-          timeout: 5000,
-          headers: {
-            'User-Agent': 'MessagingServer/1.0'
-          }
-        });
-        
-        console.log(`✅ Seller fetch response status: ${sellerResponse.status}`);
-        console.log(`📋 Seller data received:`, sellerResponse.data);
-
-        if (sellerResponse.data && sellerResponse.data.data) {
-          const sellerData = sellerResponse.data.data;
-          // Only use businessName if seller is approved, otherwise use fullName
-          const displayName = (sellerData.verificationStatus === 'approved' && sellerData.businessName) 
-            ? sellerData.businessName 
-            : (sellerData.fullName || 'Unknown Seller');
-          
-          userData = {
-            id: sellerData.userId || sellerData.id || userId,
-            fullName: sellerData.fullName || displayName || 'Unknown Seller',
-            email: sellerData.businessEmail || `${userId}@temp.com`,
-            profilePicture: sanitizeProfilePicture(sellerData.businessLogo || sellerData.profilePicture) || null,
-            role: 'seller',
-            accountStatus: 'active',
-            businessName: (sellerData.verificationStatus === 'approved' && sellerData.businessName) 
-              ? sellerData.businessName 
-              : null, // Only store if approved
-            sellerId: sellerData.id || sellerData.sellerId || null // Store Seller Table ID
-          };
-        }
-      } catch (sellerError) {
-        console.log(`❌ Seller not found at /api/admin/sellers/${userId}`);
-        console.log(`   Error: ${sellerError.message}`);
-      }
-    }
-
-    // If we have user data, create the user record
-    if (userData) {
-      const newUser = await UserReference.create({
-        id: userData.id,
-        fullName: userData.fullName || `User ${userId.substring(0, 8)}`,
-        email: userData.email || `${userId}@temp.com`,
-        password: 'temp_password', // Required field
-        profilePicture: sanitizeProfilePicture(userData.profilePicture) || null,
-        accountType: userData.role || 'buyer',
-        accountStatus: userData.accountStatus || 'active',
-        username: userData.username || null,
-        bio: userData.bio || null,
-        location: userData.location || null,
-        website: userData.website || null,
-        emailVerified: userData.emailVerified || false,
-        businessName: userData.businessName || null, // Store business name for sellers
-        sellerId: userData.sellerId || null // Store Seller Table ID if seller
-      });
-
-      console.log('✅ User synced successfully:', newUser.id);
-      return newUser;
-    }
-    
-    // If no user data found, create a minimal user record as fallback
-    console.log('⚠️ No user data found, creating minimal user record');
-    const fallbackUser = await UserReference.create({
-      id: userId,
-      fullName: `User ${userId.substring(0, 8)}`,
-      email: `${userId}@temp.com`,
-      password: 'temp_password', // Required field
-      profilePicture: null,
-      accountType: 'buyer',
-      accountStatus: 'active',
-      username: null,
-      bio: null,
-      location: null,
-      website: null,
-      emailVerified: false,
-      businessName: null,
-      sellerId: null
-    });
-    
-    console.log('⚠️ Created fallback user:', fallbackUser.id);
-    return fallbackUser;
-    
-  } catch (error) {
-    console.error('❌ Error syncing user from main server:', error.message);
-    
-    // Create a minimal user record as fallback
-    try {
-      const fallbackUser = await UserReference.create({
-        id: userId,
-        fullName: `User ${userId.substring(0, 8)}`,
-        email: `${userId}@temp.com`,
-        password: 'temp_password', // Required field
-        profilePicture: null,
-        accountType: 'buyer',
-        accountStatus: 'active',
-        username: null,
-        bio: null,
-        location: null,
-        website: null,
-        emailVerified: false,
-        sellerId: null
-      });
-      
-      console.log('⚠️ Created fallback user:', fallbackUser.id);
-      return fallbackUser;
-    } catch (fallbackError) {
-      console.error('❌ Failed to create fallback user:', fallbackError.message);
-      throw new Error('Unable to sync user from main server');
-    }
-  }
-};
 
 // Get user's conversations
 const getConversations = async (req, res) => {
@@ -490,10 +290,20 @@ const createConversation = async (req, res) => {
     const userId = isInternalCall ? null : req.user.id;
 
     // Validate participants
-    if (!participants || participants.length === 0) {
+    if (!participants || !Array.isArray(participants) || participants.length === 0) {
       return res.status(400).json({
         message: 'At least one participant is required'
       });
+    }
+
+    // Validate that all participant IDs are valid UUIDs
+    for (const pId of participants) {
+      if (!isValidUUID(pId)) {
+        return res.status(400).json({
+          message: `Invalid participant ID format: "${pId}". Must be a valid UUID.`,
+          code: 'INVALID_PARTICIPANT_ID'
+        });
+      }
     }
 
     // For internal calls creating direct conversations, don't add creator to participants
@@ -503,11 +313,19 @@ const createConversation = async (req, res) => {
       }
     }
 
-    // For direct conversations, ensure only 2 participants
-    if (type === 'direct' && participants.length !== 2) {
-      return res.status(400).json({
-        message: 'Direct conversations must have exactly 2 participants'
-      });
+    // For direct conversations, ensure only 2 participants and not chatting with oneself
+    if (type === 'direct') {
+      if (participants.length !== 2) {
+        return res.status(400).json({
+          message: 'Direct conversations must have exactly 2 participants'
+        });
+      }
+      if (participants[0] === participants[1]) {
+        return res.status(400).json({
+          message: 'Cannot create a direct conversation with yourself',
+          code: 'INVALID_PARTICIPANTS'
+        });
+      }
     }
 
     // Block enforcement before creating/accessing conversation (Requirement 5)
@@ -682,11 +500,24 @@ const createConversation = async (req, res) => {
       console.log('✅ No duplicate conversation found, creating new one');
     }
 
-    // Create conversation
-    console.log('🚀 Creating new conversation with type:', type, 'and participants:', participants);
+    // Verify and sync all participants from main server BEFORE creating the conversation
+    const syncedParticipants = [];
+    for (const participantId of participants) {
+      const syncedUser = await syncUserFromMainServer(participantId);
+      if (!syncedUser) {
+        return res.status(404).json({
+          message: `Participant ${participantId} does not exist`,
+          code: 'USER_NOT_FOUND'
+        });
+      }
+      syncedParticipants.push(participantId);
+    }
+
+    // Create conversation safely after participant verification
+    console.log('🚀 Creating new conversation with type:', type, 'and participants:', syncedParticipants);
     
     const createdBy = isInternalCall && type === 'direct' 
-      ? participants[0] 
+      ? syncedParticipants[0] 
       : userId;
     
     const conversation = await Conversation.create({
@@ -698,25 +529,8 @@ const createConversation = async (req, res) => {
     });
     console.log('✅ Conversation created with ID:', conversation.id);
 
-    // Sync all participants to ensure they exist in the messaging system
-    const syncedParticipants = [];
-    for (const participantId of participants) {
-      try {
-        await syncUserFromMainServer(participantId);
-        syncedParticipants.push(participantId);
-      } catch (error) {
-        console.error(`❌ Failed to sync participant ${participantId}:`, error.message);
-      }
-    }
-
-    if (syncedParticipants.length === 0) {
-      return res.status(400).json({
-        message: 'No participants could be synced'
-      });
-    }
-
     const adminUserId = isInternalCall && type === 'direct' 
-      ? participants[0] 
+      ? syncedParticipants[0] 
       : userId;
     
     const participantData = syncedParticipants.map(participantId => ({
@@ -836,6 +650,22 @@ const addParticipant = async (req, res) => {
     const { conversationId } = req.params;
     const { userId, role = 'member' } = req.body;
     const currentUserId = req.user?.id;
+
+    if (!userId || !isValidUUID(userId)) {
+      return res.status(400).json({
+        message: `Invalid participant ID: "${userId}". Must be a valid UUID.`,
+        code: 'INVALID_PARTICIPANT_ID'
+      });
+    }
+
+    // Verify participant exists on main server
+    const targetUser = await syncUserFromMainServer(userId);
+    if (!targetUser) {
+      return res.status(404).json({
+        message: 'User does not exist',
+        code: 'USER_NOT_FOUND'
+      });
+    }
 
     // Check if this is an internal service call (using internal API token)
     const authHeader = req.headers.authorization;

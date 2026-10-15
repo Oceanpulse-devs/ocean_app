@@ -3,6 +3,7 @@ const { Op } = require('sequelize');
 const axios = require('axios');
 const { checkBlockRelationship } = require('../utils/userBlockHelper');
 const { sanitizeProfilePicture } = require('../utils/urlHelper');
+const { isValidUUID, syncUserFromMainServer } = require('../utils/userSyncHelper');
 
 // Helper: check if target user is currently in the conversation socket room
 const isUserInConversationRoom = (io, conversationId, targetUserId) => {
@@ -247,6 +248,41 @@ const sendMessage = async (req, res) => {
     // Support recipientId / receiverId if conversationId is not passed
     const targetRecipientId = recipientId || receiverId;
     if (!conversationId && targetRecipientId) {
+      if (!isValidUUID(targetRecipientId)) {
+        return res.status(400).json({
+          message: `Invalid recipient ID format: "${targetRecipientId}". Must be a valid UUID.`,
+          code: 'INVALID_RECIPIENT_ID'
+        });
+      }
+
+      if (targetRecipientId === userId) {
+        return res.status(400).json({
+          message: 'Cannot send a message to yourself',
+          code: 'INVALID_RECIPIENT'
+        });
+      }
+
+      // Check block relationship
+      const blockCheck = await checkBlockRelationship(userId, targetRecipientId);
+      if (blockCheck.isBlocked) {
+        return res.status(403).json({
+          message: 'You cannot message this user',
+          code: 'USER_BLOCKED'
+        });
+      }
+
+      // Verify recipient exists on main server
+      const recipientUser = await syncUserFromMainServer(targetRecipientId);
+      if (!recipientUser) {
+        return res.status(404).json({
+          message: 'Recipient user does not exist',
+          code: 'USER_NOT_FOUND'
+        });
+      }
+
+      // Ensure sender is synced as well
+      await syncUserFromMainServer(userId);
+
       console.log(`🔍 Finding or creating direct conversation between ${userId} and ${targetRecipientId}`);
       // Find existing direct conversation
       const participants = await ConversationParticipant.findAll({

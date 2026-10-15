@@ -152,6 +152,7 @@ class StoryController {
                 message: 'Story created successfully',
                 data: {
                     id: story.id,
+                    userId: story.userId,
                     mediaUrl: story.mediaUrl,
                     mediaType: story.mediaType,
                     caption: story.caption,
@@ -258,6 +259,7 @@ class StoryController {
                 // Format story object to match createStory response format
                 acc[userId].stories.push({
                     id: story.id,
+                    userId: story.userId,
                     mediaUrl: story.mediaUrl,
                     mediaType: story.mediaType,
                     caption: story.caption,
@@ -347,6 +349,7 @@ class StoryController {
             // Format stories to match createStory response format
             const formattedStories = stories.map(story => ({
                 id: story.id,
+                userId: story.userId,
                 mediaUrl: story.mediaUrl,
                 mediaType: story.mediaType,
                 caption: story.caption,
