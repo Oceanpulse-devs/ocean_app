@@ -1,6 +1,7 @@
 const awsS3Service = require('./awsS3Service');
 const cloudinaryService = require('./cloudinaryService');
 const r2StorageService = require('./r2StorageService');
+const videoCompressionService = require('./videoCompressionService');
 
 /**
  * Unified video upload service
@@ -23,12 +24,49 @@ class VideoUploadService {
         
         if (isR2 && r2StorageService.isR2Configured()) {
             console.log('📹 Using Cloudflare R2 for video upload');
-            const result = await r2StorageService.uploadFile(fileBuffer, folder, {
+
+            // 1. Optimize video buffer with faststart/compression if large
+            let processedBuffer = fileBuffer;
+            try {
+                if (fileBuffer.length > 8 * 1024 * 1024) {
+                    console.log('📹 Video exceeds 8MB, applying smart compression...');
+                    processedBuffer = await videoCompressionService.compressVideoSmart(fileBuffer, 25);
+                }
+            } catch (vErr) {
+                console.warn('⚠️ Video compression warning, uploading original buffer:', vErr.message);
+                processedBuffer = fileBuffer;
+            }
+
+            // 2. Extract a poster thumbnail frame
+            let posterUrl = null;
+            try {
+                const posterBuffer = await videoCompressionService.generateThumbnail(processedBuffer);
+                if (posterBuffer) {
+                    const posterResult = await r2StorageService.uploadFile(posterBuffer, `${folder}/posters`, {
+                        contentType: 'image/webp',
+                        resource_type: 'image'
+                    });
+                    if (posterResult && posterResult.success) {
+                        posterUrl = posterResult.url;
+                        console.log('✅ Generated video poster thumbnail on R2:', posterUrl);
+                    }
+                }
+            } catch (pErr) {
+                console.warn('⚠️ Video poster extraction warning:', pErr.message);
+            }
+
+            // 3. Upload video to R2
+            const result = await r2StorageService.uploadFile(processedBuffer, folder, {
                 resource_type: 'video',
                 mimetype: options.mimetype || 'video/mp4',
+                cacheControl: 'public, max-age=31536000, immutable',
                 ...options
             });
+
             if (result.success) {
+                if (posterUrl) {
+                    result.thumbnailUrl = posterUrl;
+                }
                 return result;
             }
             console.warn('⚠️ R2 video upload failed, attempting fallback:', result.error);

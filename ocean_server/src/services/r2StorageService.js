@@ -220,44 +220,116 @@ class R2StorageService {
                 contentType = 'model/gltf-binary';
             }
 
-            const fileExtension = options.extension || this.getExtension(contentType);
+            // Image Optimization Pipeline (Sharp -> WebP with context-aware sizing)
+            let uploadBuffer = buffer;
+            let finalContentType = contentType;
+            let finalExtension = fileExtension;
+            let generatedThumbnailUrl = null;
+            let width = null;
+            let height = null;
+            let format = fileExtension;
+
+            const isImage = contentType.startsWith('image/') && !contentType.includes('svg');
+
+            if (isImage) {
+                try {
+                    const cleanFolderLower = (folder || 'ocean-app').toLowerCase();
+                    const isProfile = cleanFolderLower.includes('profile-picture') || 
+                                      cleanFolderLower.includes('profiles') || 
+                                      options.isProfilePicture || 
+                                      (options.transformation && options.transformation[0]?.gravity === 'face');
+                    const isCover = cleanFolderLower.includes('cover-picture') || options.isCoverPicture;
+                    const isStory = cleanFolderLower.includes('stories') || options.isStory;
+
+                    const pipeline = sharp(buffer);
+
+                    if (isProfile) {
+                        uploadBuffer = await pipeline
+                            .resize(300, 300, { fit: 'cover', position: 'center' })
+                            .webp({ quality: 85, effort: 4 })
+                            .toBuffer();
+                        finalContentType = 'image/webp';
+                        finalExtension = 'webp';
+                    } else if (isCover) {
+                        uploadBuffer = await pipeline
+                            .resize(1200, 500, { fit: 'inside', withoutEnlargement: true })
+                            .webp({ quality: 82, effort: 4 })
+                            .toBuffer();
+                        finalContentType = 'image/webp';
+                        finalExtension = 'webp';
+                    } else if (isStory) {
+                        uploadBuffer = await pipeline
+                            .resize(1080, 1920, { fit: 'inside', withoutEnlargement: true })
+                            .webp({ quality: 82, effort: 4 })
+                            .toBuffer();
+                        finalContentType = 'image/webp';
+                        finalExtension = 'webp';
+                    } else {
+                        // General post / product / feed image
+                        uploadBuffer = await pipeline
+                            .resize(1440, 1440, { fit: 'inside', withoutEnlargement: true })
+                            .webp({ quality: 82, effort: 4 })
+                            .toBuffer();
+                        finalContentType = 'image/webp';
+                        finalExtension = 'webp';
+                    }
+
+                    const optMeta = await sharp(uploadBuffer).metadata();
+                    width = optMeta.width || null;
+                    height = optMeta.height || null;
+                    format = 'webp';
+                } catch (sharpError) {
+                    console.warn('⚠️ Sharp optimization skipped, using original image buffer:', sharpError.message);
+                    uploadBuffer = buffer;
+                }
+            }
 
             // Build unique key
             const cleanFolder = (folder || 'ocean-app').replace(/^\/+|\/+$/g, '');
-            const fileBaseName = options.public_id 
-                ? (options.public_id.includes('.') ? options.public_id : `${options.public_id}.${fileExtension}`)
-                : `${uuidv4()}.${fileExtension}`;
+            const rawBase = options.public_id 
+                ? (options.public_id.includes('.') ? options.public_id.replace(/\.[^.]+$/, '') : options.public_id)
+                : uuidv4();
+            const fileBaseName = `${rawBase}.${finalExtension}`;
             
             const key = options.keepFolderInPublicId === false 
                 ? fileBaseName 
                 : `${cleanFolder}/${fileBaseName}`;
 
-            // Send to Cloudflare R2
+            // Send main optimized object to Cloudflare R2
             const putCommand = new PutObjectCommand({
                 Bucket: this.bucketName,
                 Key: key,
-                Body: buffer,
-                ContentType: contentType,
+                Body: uploadBuffer,
+                ContentType: finalContentType,
                 CacheControl: options.cacheControl || 'public, max-age=31536000, immutable'
             });
 
             await this.s3Client.send(putCommand);
-
             const publicUrl = this.getPublicUrl(key);
 
-            // Extract image dimensions if sharp can parse it
-            let width = null;
-            let height = null;
-            let format = fileExtension;
-
-            if (contentType.startsWith('image/') && !contentType.includes('svg')) {
+            // Generate and upload lightweight thumbnail (300px WebP) for feeds, products, stories
+            if (isImage) {
                 try {
-                    const metadata = await sharp(buffer).metadata();
-                    width = metadata.width || null;
-                    height = metadata.height || null;
-                    format = metadata.format || fileExtension;
-                } catch (sharpError) {
-                    // Non-fatal if sharp cannot read dimensions
+                    const cleanFolderLower = cleanFolder.toLowerCase();
+                    const isProfile = cleanFolderLower.includes('profile-picture') || cleanFolderLower.includes('profiles');
+                    if (!isProfile) {
+                        const thumbBuffer = await sharp(uploadBuffer)
+                            .resize(300, 300, { fit: 'inside', withoutEnlargement: true })
+                            .webp({ quality: 60, effort: 3 })
+                            .toBuffer();
+
+                        const thumbKey = `${cleanFolder}/thumb_${rawBase}.webp`;
+                        await this.s3Client.send(new PutObjectCommand({
+                            Bucket: this.bucketName,
+                            Key: thumbKey,
+                            Body: thumbBuffer,
+                            ContentType: 'image/webp',
+                            CacheControl: 'public, max-age=31536000, immutable'
+                        }));
+                        generatedThumbnailUrl = this.getPublicUrl(thumbKey);
+                    }
+                } catch (thumbErr) {
+                    // Non-fatal if thumbnail creation fails
                 }
             }
 
@@ -271,10 +343,10 @@ class R2StorageService {
                 publicId: key,
                 url: publicUrl,
                 secure_url: publicUrl, // Backwards-compatible with Cloudinary callers
-                thumbnailUrl: publicUrl,
+                thumbnailUrl: generatedThumbnailUrl || publicUrl,
                 format: format,
                 resourceType: resourceType,
-                size: buffer.length,
+                size: uploadBuffer.length,
                 width: width,
                 height: height,
                 duration: null

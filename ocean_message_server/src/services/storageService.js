@@ -1,6 +1,7 @@
 const { Readable } = require('stream');
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
+const sharp = require('sharp');
 
 /**
  * Message Server Storage Service
@@ -84,8 +85,14 @@ class MessageStorageService {
     const uploadOptions = {
       folder: folder || 'ocean_app/chat_media',
       resource_type: options.resource_type || 'image',
-      quality: 'auto',
+      quality: 'auto:good',
       fetch_format: 'auto',
+      transformation: [
+        { width: 1440, height: 1440, crop: 'limit' }
+      ],
+      eager: [
+        { width: 250, height: 250, crop: 'limit', quality: 'auto:low', format: 'webp' }
+      ],
       ...options
     };
 
@@ -94,9 +101,11 @@ class MessageStorageService {
         uploadOptions,
         (error, result) => {
           if (error) return reject(error);
+          const thumbUrl = result.eager && result.eager[0] ? result.eager[0].secure_url : (result.secure_url || result.url);
           resolve({
             success: true,
             url: result.secure_url || result.url,
+            thumbnailUrl: thumbUrl,
             publicId: result.public_id,
             format: result.format,
             resourceType: result.resource_type,
@@ -109,7 +118,7 @@ class MessageStorageService {
   }
 
   /**
-   * Upload buffer to Cloudflare R2
+   * Upload buffer to Cloudflare R2 with Sharp WebP optimization and thumbnail generation
    */
   async uploadToR2(fileBuffer, folder = 'chat_media', options = {}) {
     if (!this.s3Client) {
@@ -117,15 +126,53 @@ class MessageStorageService {
     }
 
     const { PutObjectCommand } = require('@aws-sdk/client-s3');
-    const ext = options.filename ? path.extname(options.filename) : (options.mimetype ? `.${options.mimetype.split('/')[1]}` : '.jpg');
-    const filename = `${uuidv4()}${ext}`;
-    const key = `${folder}/${filename}`;
+    const id = uuidv4();
+    let uploadBuffer = fileBuffer;
+    let contentType = options.mimetype || 'image/jpeg';
+    let ext = '.jpg';
+    let thumbnailUrl = null;
+
+    // Optimize images with Sharp to modern WebP (max 1440px)
+    try {
+      uploadBuffer = await sharp(fileBuffer)
+        .resize(1440, 1440, { fit: 'inside', withoutEnlargement: true })
+        .webp({ quality: 82, effort: 4 })
+        .toBuffer();
+      contentType = 'image/webp';
+      ext = '.webp';
+
+      // Generate a lightweight 250px preview thumbnail
+      const thumbBuffer = await sharp(uploadBuffer)
+        .resize(250, 250, { fit: 'inside', withoutEnlargement: true })
+        .webp({ quality: 60, effort: 3 })
+        .toBuffer();
+
+      const thumbKey = `${folder}/thumb_${id}.webp`;
+      await this.s3Client.send(new PutObjectCommand({
+        Bucket: this.r2Bucket,
+        Key: thumbKey,
+        Body: thumbBuffer,
+        ContentType: 'image/webp',
+        CacheControl: 'public, max-age=31536000, immutable'
+      }));
+
+      thumbnailUrl = this.r2PublicUrl
+        ? `${this.r2PublicUrl.replace(/\/$/, '')}/${thumbKey}`
+        : `https://${this.r2Bucket}.${process.env.CLOUDFLARE_R2_ACCOUNT_ID}.r2.cloudflarestorage.com/${thumbKey}`;
+    } catch (sharpError) {
+      console.warn('⚠️ Sharp optimization for chat media skipped:', sharpError.message);
+      uploadBuffer = fileBuffer;
+      ext = options.filename ? path.extname(options.filename) : (options.mimetype ? `.${options.mimetype.split('/')[1]}` : '.jpg');
+    }
+
+    const key = `${folder}/${id}${ext}`;
 
     const command = new PutObjectCommand({
       Bucket: this.r2Bucket,
       Key: key,
-      Body: fileBuffer,
-      ContentType: options.mimetype || 'image/jpeg'
+      Body: uploadBuffer,
+      ContentType: contentType,
+      CacheControl: 'public, max-age=31536000, immutable'
     });
 
     await this.s3Client.send(command);
@@ -137,8 +184,10 @@ class MessageStorageService {
     return {
       success: true,
       url: publicUrl,
+      thumbnailUrl: thumbnailUrl || publicUrl,
       publicId: key,
-      key: key
+      key: key,
+      size: uploadBuffer.length
     };
   }
 }

@@ -2,6 +2,7 @@ const { exec } = require('child_process');
 const fs = require('fs').promises;
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
+const sharp = require('sharp');
 
 class VideoCompressionService {
     /**
@@ -146,6 +147,52 @@ class VideoCompressionService {
         
         // Compress with quality-preserving settings
         return await this.compressVideo(videoBuffer, targetSizeMB);
+    }
+
+    /**
+     * Extract a poster frame / thumbnail from video buffer as WebP
+     * @param {Buffer} videoBuffer
+     * @returns {Promise<Buffer|null>} WebP thumbnail buffer
+     */
+    async generateThumbnail(videoBuffer) {
+        const tempDir = path.join(__dirname, '../../temp');
+        await fs.mkdir(tempDir, { recursive: true });
+        
+        const inputPath = path.join(tempDir, `thumb_in_${uuidv4()}.mp4`);
+        const posterPath = path.join(tempDir, `thumb_out_${uuidv4()}.jpg`);
+        
+        try {
+            await fs.writeFile(inputPath, videoBuffer);
+            
+            await new Promise((resolve, reject) => {
+                exec(`ffmpeg -ss 00:00:00.500 -i "${inputPath}" -vframes 1 -q:v 2 "${posterPath}"`, (error) => {
+                    if (error) {
+                        // Fallback: grab frame 0
+                        exec(`ffmpeg -i "${inputPath}" -vframes 1 -q:v 2 "${posterPath}"`, (err2) => {
+                            if (err2) reject(err2);
+                            else resolve();
+                        });
+                    } else {
+                        resolve();
+                    }
+                });
+            });
+
+            const jpgBuffer = await fs.readFile(posterPath);
+            const webpBuffer = await sharp(jpgBuffer)
+                .resize(720, 1280, { fit: 'inside', withoutEnlargement: true })
+                .webp({ quality: 80, effort: 4 })
+                .toBuffer();
+
+            await fs.unlink(inputPath).catch(() => {});
+            await fs.unlink(posterPath).catch(() => {});
+            return webpBuffer;
+        } catch (err) {
+            console.warn('⚠️ Could not extract video thumbnail:', err.message);
+            await fs.unlink(inputPath).catch(() => {});
+            await fs.unlink(posterPath).catch(() => {});
+            return null;
+        }
     }
 }
 

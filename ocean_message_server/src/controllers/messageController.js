@@ -823,9 +823,10 @@ const uploadMedia = async (req, res) => {
     return res.status(200).json({
       success: true,
       mediaUrl: uploadResult.url,
-      mediaType: req.file.mimetype,
+      thumbnailUrl: uploadResult.thumbnailUrl || uploadResult.url,
+      mediaType: uploadResult.format ? `image/${uploadResult.format}` : req.file.mimetype,
       publicId: uploadResult.publicId || null,
-      size: req.file.size
+      size: uploadResult.size || req.file.size
     });
   } catch (error) {
     console.error('Error uploading message media:', error);
