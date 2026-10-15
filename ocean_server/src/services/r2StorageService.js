@@ -61,8 +61,10 @@ class R2StorageService {
         if (this.publicUrl) {
             return `${this.publicUrl.replace(/\/+$/, '')}/${key}`;
         }
-        // Fallback: direct R2 bucket endpoint format
-        return `${this.endpoint.replace(/\/+$/, '')}/${this.bucketName}/${key}`;
+        if (this.endpoint) {
+            return `${this.endpoint.replace(/\/+$/, '')}/${this.bucketName}/${key}`;
+        }
+        return `https://${this.bucketName}.r2.cloudflarestorage.com/${key}`;
     }
 
     /**
@@ -219,6 +221,8 @@ class R2StorageService {
             if (options.resource_type === 'raw' && (folder.includes('ar-models') || options.extension === 'glb')) {
                 contentType = 'model/gltf-binary';
             }
+
+            const fileExtension = options.extension || this.getExtension(contentType);
 
             // Image Optimization Pipeline (Sharp -> WebP with context-aware sizing)
             let uploadBuffer = buffer;
