@@ -114,22 +114,39 @@ const getConversations = async (req, res) => {
     let conversationsWithUnread = await Promise.all(participants.rows.map(async (p) => {
       let unreadCount = 0;
       
+      let clearedAt = null;
+      if (p.metadata) {
+        try {
+          const meta = typeof p.metadata === 'string' ? JSON.parse(p.metadata) : p.metadata;
+          if (meta && meta.clearedAt) {
+            clearedAt = new Date(meta.clearedAt);
+          }
+        } catch (e) {}
+      }
+
       if (p.lastReadMessageId) {
-        // Count messages after last read
+        // Count messages after last read or clearedAt, whichever is more recent
+        const afterDate = (p.lastReadAt && clearedAt && p.lastReadAt < clearedAt)
+          ? clearedAt
+          : (p.lastReadAt || clearedAt || new Date(0));
+
         unreadCount = await Message.count({
           where: {
             conversationId: p.conversationId,
-            createdAt: { [Op.gt]: p.lastReadAt || new Date(0) }
+            isDeleted: false,
+            createdAt: { [Op.gt]: afterDate }
           }
         });
       } else if (p.conversation.lastMessageId) {
-        // User hasn't read any messages, count all messages
-        unreadCount = await Message.count({
-          where: {
-            conversationId: p.conversationId,
-            isDeleted: false
-          }
-        });
+        // User hasn't read any messages, count messages after clearedAt (or all if not cleared)
+        const whereClause = {
+          conversationId: p.conversationId,
+          isDeleted: false
+        };
+        if (clearedAt) {
+          whereClause.createdAt = { [Op.gt]: clearedAt };
+        }
+        unreadCount = await Message.count({ where: whereClause });
       }
       
       // Check if conversation involves a blocked user
@@ -148,8 +165,20 @@ const getConversations = async (req, res) => {
         ? p.conversation.participants.map(participant => formatParticipant(participant, presenceMap, blockedUserIds))
         : [];
       
+      const convData = p.conversation.toJSON ? p.conversation.toJSON() : { ...p.conversation };
+
+      // Hide message preview if the last message was sent before chat was cleared
+      if (clearedAt && convData.lastMessage) {
+        const lastMsgDate = new Date(convData.lastMessage.createdAt);
+        if (lastMsgDate <= clearedAt) {
+          convData.lastMessage = null;
+          convData.lastMessageId = null;
+          convData.lastMessageAt = null;
+        }
+      }
+
       return {
-        ...p.conversation.toJSON(),
+        ...convData,
         isBlocked: isConvBlocked,
         participants: formattedParticipants,
         unreadCount
@@ -246,16 +275,53 @@ const getConversation = async (req, res) => {
 
     const isConvBlocked = formattedParticipants.some(p => p.userId !== userId && p.isBlocked);
 
+    let clearedAt = null;
+    if (participant.metadata) {
+      try {
+        const meta = typeof participant.metadata === 'string' ? JSON.parse(participant.metadata) : participant.metadata;
+        if (meta && meta.clearedAt) {
+          clearedAt = new Date(meta.clearedAt);
+        }
+      } catch (e) {}
+    }
+
+    const convData = conversation.toJSON ? conversation.toJSON() : { ...conversation };
+    if (clearedAt && convData.lastMessage) {
+      const lastMsgDate = new Date(convData.lastMessage.createdAt);
+      if (lastMsgDate <= clearedAt) {
+        convData.lastMessage = null;
+        convData.lastMessageId = null;
+        convData.lastMessageAt = null;
+      }
+    }
+
+    // Calculate unreadCount with clearedAt support
+    let singleUnread = 0;
+    if (participant.lastReadMessageId) {
+      const afterDate = (participant.lastReadAt && clearedAt && participant.lastReadAt < clearedAt)
+        ? clearedAt
+        : (participant.lastReadAt || clearedAt || new Date(0));
+      singleUnread = await Message.count({
+        where: {
+          conversationId,
+          isDeleted: false,
+          createdAt: { [Op.gt]: afterDate }
+        }
+      });
+    } else {
+      const whereClause = { conversationId, isDeleted: false };
+      if (clearedAt) whereClause.createdAt = { [Op.gt]: clearedAt };
+      singleUnread = await Message.count({ where: whereClause });
+    }
+
     res.json({
       conversation: {
-        ...conversation.toJSON(),
+        ...convData,
         isBlocked: isConvBlocked,
         participants: formattedParticipants
       },
       isBlocked: isConvBlocked,
-      unreadCount: participant.lastReadMessageId ? 
-        (conversation.lastMessageId === participant.lastReadMessageId ? 0 : 1) : 
-        (conversation.lastMessageId ? 1 : 0)
+      unreadCount: singleUnread
     });
 
   } catch (error) {
@@ -948,6 +1014,15 @@ const clearMessages = async (req, res) => {
     await participant.update({
       metadata: meta
     });
+
+    // Real-time broadcast to user's connected socket devices
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`user:${userId}`).emit('chat_cleared', {
+        conversationId,
+        clearedAt
+      });
+    }
 
     res.json({
       success: true,

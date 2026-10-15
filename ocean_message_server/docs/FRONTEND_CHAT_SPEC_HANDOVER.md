@@ -274,6 +274,18 @@ You can initiate a reply via either:
     "clearedAt": "2026-09-29T19:35:00.000Z"
   }
   ```
+- **Socket Event:** When triggered, the server also emits `chat_cleared` to the user's private socket room:
+  ```json
+  // Event: 'chat_cleared'
+  {
+    "conversationId": "uuid-conv-1",
+    "clearedAt": "2026-09-29T19:35:00.000Z"
+  }
+  ```
+- **Frontend Action Items on 200 OK or `chat_cleared` event (CRITICAL):**
+  1. **Clear In-Memory State:** Immediately wipe the local message list on screen (e.g. `setState(() => messages.clear())` or `emit(ChatCleared())`).
+  2. **Clear Offline Cache:** If messages are persisted locally (Hive / SQLite / Isar), delete cached records where `conversationId == id`. Otherwise, reopening the chat will re-render stale local data.
+  3. **Reset Inbox Snippet:** Clear the `lastMessage` preview and `unreadCount` for this conversation in the conversation list state.
 
 ### Delete Conversation Endpoint (Remove from Inbox):
 - **`DELETE /api/conversations/:conversationId`**
