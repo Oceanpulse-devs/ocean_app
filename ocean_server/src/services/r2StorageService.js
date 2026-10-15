@@ -17,7 +17,7 @@ class R2StorageService {
         this.bucketName = process.env.CLOUDFLARE_R2_BUCKET_NAME || 'bluewhale-media';
         this.endpoint = process.env.CLOUDFLARE_R2_ENDPOINT || 
             (this.accountId ? `https://${this.accountId}.r2.cloudflarestorage.com` : null);
-        this.publicUrl = process.env.CLOUDFLARE_R2_PUBLIC_URL || null;
+        this.publicUrl = process.env.CLOUDFLARE_R2_PUBLIC_URL || 'https://pub-bd6344ad34d34e088cad7d84126a205c.r2.dev';
 
         this.isConfigured = !!(
             this.accessKeyId &&

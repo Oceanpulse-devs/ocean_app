@@ -48,7 +48,7 @@ class MessageStorageService {
           }
         });
         this.r2Bucket = bucketName;
-        this.r2PublicUrl = process.env.CLOUDFLARE_R2_PUBLIC_URL || null;
+        this.r2PublicUrl = process.env.CLOUDFLARE_R2_PUBLIC_URL || 'https://pub-bd6344ad34d34e088cad7d84126a205c.r2.dev';
       }
     } catch (e) {
       // S3 package optional
@@ -120,7 +120,7 @@ class MessageStorageService {
   /**
    * Upload buffer to Cloudflare R2 with Sharp WebP optimization and thumbnail generation
    */
-  async uploadToR2(fileBuffer, folder = 'chat_media', options = {}) {
+  async uploadToR2(fileBuffer, folder = 'ocean_app/chat_media', options = {}) {
     if (!this.s3Client) {
       throw new Error('Cloudflare R2 is not configured on message server.');
     }
@@ -156,9 +156,8 @@ class MessageStorageService {
         CacheControl: 'public, max-age=31536000, immutable'
       }));
 
-      thumbnailUrl = this.r2PublicUrl
-        ? `${this.r2PublicUrl.replace(/\/$/, '')}/${thumbKey}`
-        : `https://${this.r2Bucket}.${process.env.CLOUDFLARE_R2_ACCOUNT_ID}.r2.cloudflarestorage.com/${thumbKey}`;
+      const publicBase = (this.r2PublicUrl || 'https://pub-bd6344ad34d34e088cad7d84126a205c.r2.dev').replace(/\/+$/, '');
+      thumbnailUrl = `${publicBase}/${thumbKey}`;
     } catch (sharpError) {
       console.warn('⚠️ Sharp optimization for chat media skipped:', sharpError.message);
       uploadBuffer = fileBuffer;
@@ -177,9 +176,8 @@ class MessageStorageService {
 
     await this.s3Client.send(command);
 
-    const publicUrl = this.r2PublicUrl 
-      ? `${this.r2PublicUrl.replace(/\/$/, '')}/${key}`
-      : `https://${this.r2Bucket}.${process.env.CLOUDFLARE_R2_ACCOUNT_ID}.r2.cloudflarestorage.com/${key}`;
+    const publicBase = (this.r2PublicUrl || 'https://pub-bd6344ad34d34e088cad7d84126a205c.r2.dev').replace(/\/+$/, '');
+    const publicUrl = `${publicBase}/${key}`;
 
     return {
       success: true,

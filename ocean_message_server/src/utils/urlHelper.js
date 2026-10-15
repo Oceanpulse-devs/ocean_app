@@ -17,22 +17,34 @@ const sanitizeProfilePicture = (url) => {
     return null;
   }
 
-  const publicUrl = process.env.CLOUDFLARE_R2_PUBLIC_URL || 'https://pub-bd6344ad34d34e088cad7d84126a205c.r2.dev';
+  const publicUrl = (process.env.CLOUDFLARE_R2_PUBLIC_URL || 'https://pub-bd6344ad34d34e088cad7d84126a205c.r2.dev').replace(/\/+$/, '');
+  const bucketName = process.env.CLOUDFLARE_R2_BUCKET_NAME || 'bluewhale-media';
 
-  // Fix raw Cloudflare S3 endpoints
-  if (trimmed.includes('r2.cloudflarestorage.com')) {
-    return trimmed.replace(/^https?:\/\/[^\/]+\/[^\/]+\//, `${publicUrl.replace(/\/+$/, '')}/`);
+  // Fix raw Cloudflare S3 endpoints:
+  // Handles virtual-hosted style: https://bluewhale-media.af732adc8fe86599fbe35ab3e20c28b0.r2.cloudflarestorage.com/<key>
+  // Handles path style: https://af732adc8fe86599fbe35ab3e20c28b0.r2.cloudflarestorage.com/bluewhale-media/<key>
+  let cleanUrl = trimmed;
+  if (cleanUrl.includes('r2.cloudflarestorage.com')) {
+    const bucketPattern = bucketName ? `(?:${bucketName}/)?` : '';
+    const pattern = new RegExp(`https?://[^/]+\\.r2\\.cloudflarestorage\\.com/${bucketPattern}`, 'i');
+    cleanUrl = cleanUrl.replace(pattern, `${publicUrl}/`);
+  }
+
+  // Self-heal any URLs where 'ocean_app/' was accidentally stripped from chat_media
+  if (cleanUrl.includes('/chat_media/') && !cleanUrl.includes('/ocean_app/chat_media/')) {
+    cleanUrl = cleanUrl.replace('/chat_media/', '/ocean_app/chat_media/');
   }
 
   // If not a full URL, check if it's a relative path / object key
-  if (!trimmed.startsWith('http://') && !trimmed.startsWith('https://')) {
-    if (trimmed.startsWith('/') || trimmed.includes('/')) {
-      return `${publicUrl.replace(/\/+$/, '')}/${trimmed.replace(/^\/+/, '')}`;
+  if (!cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://')) {
+    if (cleanUrl.startsWith('/') || cleanUrl.includes('/')) {
+      const normalizedPath = cleanUrl.replace(/^\/+/, '');
+      return `${publicUrl}/${normalizedPath}`;
     }
     return null;
   }
 
-  return trimmed;
+  return cleanUrl;
 };
 
 const sanitizeMediaUrl = (url) => {

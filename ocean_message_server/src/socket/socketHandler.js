@@ -3,7 +3,7 @@ const { Op } = require('sequelize');
 const axios = require('axios');
 const PresenceService = require('../services/presenceService');
 const { checkBlockRelationship } = require('../utils/userBlockHelper');
-const { sanitizeProfilePicture } = require('../utils/urlHelper');
+const { sanitizeProfilePicture, sanitizeMediaUrl } = require('../utils/urlHelper');
 
 // Helper: send push via main server from socket events
 const sendPushViaMainServer = async (userId, title, body, data) => {
@@ -144,6 +144,8 @@ const socketHandler = (io, socket) => {
       if (storyMetadata) combinedMetadata.storyMetadata = storyMetadata;
       if (marketMetadata) combinedMetadata.marketMetadata = marketMetadata;
 
+      const cleanMediaUrl = sanitizeMediaUrl(mediaUrl);
+
       // Create message
       const message = await Message.create({
         conversationId,
@@ -151,7 +153,7 @@ const socketHandler = (io, socket) => {
         content,
         type,
         replyToId,
-        mediaUrl,
+        mediaUrl: cleanMediaUrl,
         mediaType,
         referenceType: normalizedReferenceType,
         referenceId,
@@ -201,6 +203,12 @@ const socketHandler = (io, socket) => {
       if (formattedMsg && formattedMsg.replyTo && formattedMsg.replyTo.sender) {
         formattedMsg.replyTo.sender.profilePicture = sanitizeProfilePicture(formattedMsg.replyTo.sender.profilePicture);
         formattedMsg.replyTo.sender.avatar = formattedMsg.replyTo.sender.profilePicture;
+      }
+      if (formattedMsg && formattedMsg.mediaUrl) {
+        formattedMsg.mediaUrl = sanitizeMediaUrl(formattedMsg.mediaUrl);
+      }
+      if (formattedMsg && formattedMsg.replyTo && formattedMsg.replyTo.mediaUrl) {
+        formattedMsg.replyTo.mediaUrl = sanitizeMediaUrl(formattedMsg.replyTo.mediaUrl);
       }
 
       // Emit to conversation room (Requirement 3: new_message event)

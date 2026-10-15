@@ -2,7 +2,7 @@ const { Message, Conversation, ConversationParticipant, UserReference, MessageRe
 const { Op } = require('sequelize');
 const axios = require('axios');
 const { checkBlockRelationship } = require('../utils/userBlockHelper');
-const { sanitizeProfilePicture } = require('../utils/urlHelper');
+const { sanitizeProfilePicture, sanitizeMediaUrl } = require('../utils/urlHelper');
 const { isValidUUID, syncUserFromMainServer } = require('../utils/userSyncHelper');
 
 // Helper: check if target user is currently in the conversation socket room
@@ -184,6 +184,12 @@ const getMessages = async (req, res) => {
       if (m.replyTo && m.replyTo.sender) {
         m.replyTo.sender.profilePicture = sanitizeProfilePicture(m.replyTo.sender.profilePicture);
         m.replyTo.sender.avatar = m.replyTo.sender.profilePicture;
+      }
+      if (m.mediaUrl) {
+        m.mediaUrl = sanitizeMediaUrl(m.mediaUrl);
+      }
+      if (m.replyTo && m.replyTo.mediaUrl) {
+        m.replyTo.mediaUrl = sanitizeMediaUrl(m.replyTo.mediaUrl);
       }
       return m;
     });
@@ -387,6 +393,8 @@ const sendMessage = async (req, res) => {
       combinedMetadata.marketMetadata = marketMetadata;
     }
 
+    const cleanMediaUrl = sanitizeMediaUrl(mediaUrl);
+
     // Create message
     const message = await Message.create({
       conversationId,
@@ -394,7 +402,7 @@ const sendMessage = async (req, res) => {
       content,
       type,
       replyToId,
-      mediaUrl,
+      mediaUrl: cleanMediaUrl,
       mediaType,
       // Reference fields for context tracking (Requirement 4)
       referenceType: normalizedReferenceType,
@@ -559,6 +567,12 @@ const sendMessage = async (req, res) => {
     if (formattedMsg && formattedMsg.replyTo && formattedMsg.replyTo.sender) {
       formattedMsg.replyTo.sender.profilePicture = sanitizeProfilePicture(formattedMsg.replyTo.sender.profilePicture);
       formattedMsg.replyTo.sender.avatar = formattedMsg.replyTo.sender.profilePicture;
+    }
+    if (formattedMsg && formattedMsg.mediaUrl) {
+      formattedMsg.mediaUrl = sanitizeMediaUrl(formattedMsg.mediaUrl);
+    }
+    if (formattedMsg && formattedMsg.replyTo && formattedMsg.replyTo.mediaUrl) {
+      formattedMsg.replyTo.mediaUrl = sanitizeMediaUrl(formattedMsg.replyTo.mediaUrl);
     }
 
     // Broadcast new_message event via Socket.IO if io is available
@@ -822,8 +836,8 @@ const uploadMedia = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      mediaUrl: uploadResult.url,
-      thumbnailUrl: uploadResult.thumbnailUrl || uploadResult.url,
+      mediaUrl: sanitizeMediaUrl(uploadResult.url),
+      thumbnailUrl: sanitizeMediaUrl(uploadResult.thumbnailUrl || uploadResult.url),
       mediaType: uploadResult.format ? `image/${uploadResult.format}` : req.file.mimetype,
       publicId: uploadResult.publicId || null,
       size: uploadResult.size || req.file.size
