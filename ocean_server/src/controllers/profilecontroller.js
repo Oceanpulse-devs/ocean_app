@@ -416,11 +416,13 @@ const getUserProfileById = async(req, res) => {
       profileInfo.businessDescription = alsoSeller?.businessDescription || "Leading seller on BlueWhale Marketplace";
       profileInfo.businessEmail = alsoSeller?.email || alsoSeller?.businessEmail || user.email || null;
       profileInfo.businessPhone = alsoSeller?.phoneNumber || alsoSeller?.businessPhone || user.phoneNumber || null;
-      profileInfo.businessAddress = alsoSeller?.businessAddress || "Not specified";
-      profileInfo.businessLocation = alsoSeller?.businessAddress || alsoSeller?.state || user.location || "Not specified";
+      profileInfo.businessAddress = alsoSeller?.businessAddress || null;
+      profileInfo.businessLocation = alsoSeller?.state 
+        ? (alsoSeller?.country ? `${alsoSeller.state}, ${alsoSeller.country}` : `${alsoSeller.state}, Nigeria`)
+        : (user.location || alsoSeller?.businessAddress || null);
       profileInfo.businessWebsite = alsoSeller?.website || user.website || null;
       profileInfo.country = alsoSeller?.country || "Nigeria";
-      profileInfo.state = alsoSeller?.state || "Lagos";
+      profileInfo.state = alsoSeller?.state || user.location || null;
       profileInfo.sellerType = alsoSeller?.sellerType || "retailer";
       profileInfo.selectedCategories = alsoSeller?.selectedCategories || [];
       profileInfo.selectedSubcategories = alsoSeller?.selectedSubcategories || {};

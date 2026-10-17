@@ -680,7 +680,7 @@ const interleaveVideoCards = async (postsList, interval = 10) => {
                 include: [{
                     model: SellersTable,
                     as: 'seller',
-                    attributes: ['id', 'userId', 'businessName', 'email', 'phoneNumber', 'businessAddress', 'businessDescription', 'selectedCategories', 'selectedSubcategories', 'verificationStatus'],
+                    attributes: ['id', 'userId', 'businessName', 'email', 'phoneNumber', 'businessAddress', 'businessDescription', 'selectedCategories', 'selectedSubcategories', 'verificationStatus', 'state', 'country'],
                     required: false
                 }]
             }],
@@ -706,7 +706,18 @@ const interleaveVideoCards = async (postsList, interval = 10) => {
                 const businessAddress = s.businessAddress || u.address || null;
                 const businessDescription = s.businessDescription || null;
                 const selectedCategories = s.selectedCategories || [];
-                const locationStr = u.location || (u.city && u.country ? `${u.city}, ${u.country}` : 'Lagos, Nigeria');
+                let locationStr = null;
+                if (s.state && s.country) {
+                    const stateLower = s.state.toLowerCase();
+                    const countryLower = s.country.toLowerCase();
+                    locationStr = stateLower.includes(countryLower) ? s.state : `${s.state}, ${s.country}`;
+                } else if (s.state) {
+                    locationStr = `${s.state}, Nigeria`;
+                } else if (u.location) {
+                    locationStr = u.location;
+                } else if (s.businessAddress) {
+                    locationStr = s.businessAddress;
+                }
 
                 const videoFeedCard = {
                     id: `feed_video_${vid.id}`,
@@ -1086,6 +1097,23 @@ const createPost = async (req, res) => {
             return res.status(404).json({ message: "User not found" });
         }
 
+        const seller = await SellersTable.findOne({ where: { userId } });
+        let postLocation = null;
+        if (seller?.state && seller?.country) {
+            const sLower = seller.state.toLowerCase();
+            const cLower = seller.country.toLowerCase();
+            postLocation = sLower.includes(cLower) ? seller.state : `${seller.state}, ${seller.country}`;
+        } else if (seller?.state) {
+            postLocation = `${seller.state}, Nigeria`;
+        } else if (user.location) {
+            postLocation = user.location;
+        } else if (seller?.businessAddress) {
+            postLocation = seller.businessAddress;
+        }
+
+        const postRegion = user.region || seller?.state || null;
+        const postCountry = user.country || seller?.country || 'Nigeria';
+
         // Auto-fill all database columns with smart defaults
         const autoFilledData = {
             userId,
@@ -1101,15 +1129,15 @@ const createPost = async (req, res) => {
             price: null,
             currency: 'NGN',
             
-            // Use user's location or default
-            location: user.location || 'Lagos, Nigeria',
+            // Use resolved location
+            location: postLocation,
             
             // Auto-generate tags from content (simple keyword extraction)
             tags: generateTagsFromContent(content),
             
             // User location data
-            userRegion: user.region || 'Lagos',
-            userCountry: user.country || 'Nigeria',
+            userRegion: postRegion,
+            userCountry: postCountry,
             
             // Engagement counters
             likesCount: 0,

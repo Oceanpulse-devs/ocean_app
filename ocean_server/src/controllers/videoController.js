@@ -6,6 +6,27 @@ const cloudinaryService = require('../services/cloudinaryService');
 const videoCompressionService = require('../services/videoCompressionService');
 const redisClient = require('../config/redisdb');
 
+// Helper: Resolve creator's genuine location prioritizing seller state/country, user location, or address
+const resolveCreatorLocation = (user = {}, seller = {}) => {
+    if (seller.state && seller.country) {
+        const stateLower = seller.state.toLowerCase();
+        const countryLower = seller.country.toLowerCase();
+        return stateLower.includes(countryLower)
+            ? seller.state
+            : `${seller.state}, ${seller.country}`;
+    }
+    if (seller.state) {
+        return `${seller.state}, Nigeria`;
+    }
+    if (user.location) {
+        return user.location;
+    }
+    if (seller.businessAddress) {
+        return seller.businessAddress;
+    }
+    return null;
+};
+
 class VideoController {
     // Create a new video
     static async createVideo(req, res) {
@@ -265,17 +286,17 @@ class VideoController {
                             where: { videoId: video.id, userId: currentUserId }
                         }) : false;
 
-                        // If cached video doesn't have creatorId, fetch it
-                        if (!video.creatorId) {
+                        // If cached video doesn't have creatorId or has old hardcoded location, refresh it
+                        if (!video.creatorId || video.location === 'Lagos, Nigeria') {
                             const videoRecord = await Video.findByPk(video.id, {
                                 include: [{
                                     model: UserTable,
                                     as: 'user',
-                                    attributes: ['id', 'fullName', 'profilePicture'],
+                                    attributes: ['id', 'fullName', 'profilePicture', 'location'],
                                     include: [{
                                         model: SellersTable,
                                         as: 'seller',
-                                        attributes: ['businessName'],
+                                        attributes: ['businessName', 'state', 'country', 'businessAddress'],
                                         required: false
                                     }]
                                 }]
@@ -283,9 +304,12 @@ class VideoController {
                             
                             if (videoRecord) {
                                 const videoData = videoRecord.toJSON();
-                                video.creatorId = videoData.user?.id || null;
-                                video.creatorName = videoData.user?.seller?.businessName || videoData.user?.fullName || 'Unknown';
-                                video.creatorAvatar = videoData.user?.profilePicture || null;
+                                const u = videoData.user || {};
+                                const s = u.seller || {};
+                                video.creatorId = u.id || null;
+                                video.creatorName = s.businessName || u.fullName || 'Unknown';
+                                video.creatorAvatar = u.profilePicture || null;
+                                video.location = resolveCreatorLocation(u, s);
                             }
                         }
 
@@ -320,7 +344,7 @@ class VideoController {
                         include: [{
                             model: SellersTable,
                             as: 'seller',
-                            attributes: ['id', 'userId', 'businessName', 'email', 'phoneNumber', 'businessAddress', 'businessDescription', 'selectedCategories', 'selectedSubcategories', 'verificationStatus'],
+                            attributes: ['id', 'userId', 'businessName', 'email', 'phoneNumber', 'businessAddress', 'businessDescription', 'selectedCategories', 'selectedSubcategories', 'verificationStatus', 'state', 'country'],
                             required: false
                         }]
                     }
@@ -356,7 +380,7 @@ class VideoController {
                 const businessAddress = s.businessAddress || u.address || null;
                 const businessDescription = s.businessDescription || null;
                 const selectedCategories = s.selectedCategories || [];
-                const locationStr = u.location || (u.city && u.country ? `${u.city}, ${u.country}` : 'Lagos, Nigeria');
+                const locationStr = resolveCreatorLocation(u, s);
 
                 return {
                     id: videoData.id,
@@ -471,7 +495,7 @@ class VideoController {
                         include: [{
                             model: SellersTable,
                             as: 'seller',
-                            attributes: ['businessName', 'verificationStatus', 'businessPhone'],
+                            attributes: ['businessName', 'verificationStatus', 'businessPhone', 'state', 'country', 'businessAddress'],
                             required: false
                         }]
                     }
@@ -496,6 +520,10 @@ class VideoController {
             // Format videos for frontend
             const formattedVideos = videos.rows.map(video => {
                 const videoData = video.toJSON();
+                const u = videoData.user || {};
+                const s = u.seller || {};
+                const locationStr = resolveCreatorLocation(u, s);
+
                 return {
                     id: videoData.id,
                     videoUrl: videoData.videoUrl,
@@ -505,7 +533,7 @@ class VideoController {
                     creatorName: videoData.user?.seller?.businessName || videoData.user?.fullName || 'Unknown',
                     creatorAvatar: videoData.user?.profilePicture || null,
                     category: videoData.videoRole === 'seller' ? 'seller' : 'buyer',
-                    location: videoData.user?.location || null,
+                    location: locationStr,
                     likeCount: videoData.likeCount,
                     commentCount: videoData.commentCount,
                     shareCount: videoData.shareCount,
@@ -555,7 +583,7 @@ class VideoController {
                         include: [{
                             model: SellersTable,
                             as: 'seller',
-                            attributes: ['businessName', 'verificationStatus', 'businessPhone'],
+                            attributes: ['businessName', 'verificationStatus', 'businessPhone', 'state', 'country', 'businessAddress'],
                             required: false
                         }]
                     },
@@ -588,10 +616,15 @@ class VideoController {
             }) : false;
 
             const videoData = video.toJSON();
+            const u = videoData.user || {};
+            const s = u.seller || {};
+            const locationStr = resolveCreatorLocation(u, s);
+
             res.json({
                 success: true,
                 data: {
                     ...videoData,
+                    location: locationStr,
                     isLiked: !!isLiked
                 }
             });
