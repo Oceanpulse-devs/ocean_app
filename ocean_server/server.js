@@ -1698,48 +1698,7 @@ async function syncDatabase() {
             console.log('⚠️  Failed to drop free trial columns:', error.message);
         }
 
-        // Auto-heal legacy Cloudflare R2 storage URLs in database
-        try {
-            const publicUrl = (process.env.CLOUDFLARE_R2_PUBLIC_URL || '').replace(/\/+$/, '');
-            if (publicUrl) {
-                const endpointPattern = '%.r2.cloudflarestorage.com%';
-                const { UserTable } = require('./models');
-                const usersToHeal = await UserTable.findAll({
-                    where: {
-                        [Sequelize.Op.or]: [
-                            { profilePicture: { [Sequelize.Op.like]: endpointPattern } },
-                            { coverPicture: { [Sequelize.Op.like]: endpointPattern } }
-                        ]
-                    },
-                    attributes: ['id', 'profilePicture', 'coverPicture']
-                });
 
-                if (usersToHeal.length > 0) {
-                    const r2StorageService = require('./src/services/r2StorageService');
-                    for (const u of usersToHeal) {
-                        const newPic = r2StorageService.sanitizePublicUrl(u.profilePicture);
-                        const newCover = r2StorageService.sanitizePublicUrl(u.coverPicture);
-                        await u.update({ profilePicture: newPic, coverPicture: newCover });
-                    }
-                    console.log(`✅ Auto-healed ${usersToHeal.length} user avatar/cover URLs to public CDN`);
-                }
-
-                // Invalidate Redis feed caches so apps get fresh public URLs immediately
-                if (redisClient && typeof redisClient.keys === 'function') {
-                    try {
-                        const keys = await redisClient.keys('homeFeed:*');
-                        if (keys && keys.length > 0) {
-                            await redisClient.del(keys);
-                            console.log(`🧹 Flushed ${keys.length} stale Redis homeFeed cache keys`);
-                        }
-                    } catch (cacheErr) {
-                        // Non-critical
-                    }
-                }
-            }
-        } catch (healError) {
-            console.log('⚠️ Legacy R2 auto-heal notice:', healError.message);
-        }
 
 
     
