@@ -83,19 +83,27 @@ const getHomeFeed = async (req, res) => {
         const offset = (page - 1) * limit;
         const currentUserId = req.user?.id;
 
+        // Check for pull-to-refresh / bypass cache
+        const isRefresh = req.query.refresh === 'true' || 
+                          req.query.refresh === true || 
+                          req.query.isRefresh === 'true' ||
+                          req.headers['cache-control'] === 'no-cache';
+
         // Create cache key based on query parameters (v2 for new standardized structure)
         const cacheKey = `homeFeed:v2:${page}:${limit}:${country || ''}:${region || ''}:${currentUserId || 'guest'}`;
         
-        // Try to get from Redis cache first
-        try {
-            const cached = await redisClient.get(cacheKey);
-            if (cached) {
-                const cachedData = JSON.parse(cached);
-                return res.status(200).json(cachedData);
+        // Try to get from Redis cache first (bypass on pull-to-refresh to re-randomize dynamic feed)
+        if (!isRefresh) {
+            try {
+                const cached = await redisClient.get(cacheKey);
+                if (cached) {
+                    const cachedData = JSON.parse(cached);
+                    return res.status(200).json(cachedData);
+                }
+            } catch (redisError) {
+                console.error('Redis cache read failed:', redisError.message);
+                // Continue with DB query if cache fails
             }
-        } catch (redisError) {
-            console.error('Redis cache read failed:', redisError.message);
-            // Continue with DB query if cache fails
         }
 
         // Build where clause for stories (filter by country if provided)
@@ -630,8 +638,8 @@ const getHomeFeed = async (req, res) => {
             hasPrevPage: 'hasPreviousPage'
         });
 
-        // Interleave random video cards into posts list (every 10 items)
-        const finalPostsList = await interleaveVideoCards(formattedPosts, 10);
+        // Interleave random video cards into posts list (dynamic organic Instagram/TikTok-style mix)
+        const finalPostsList = await interleaveVideoCards(formattedPosts);
 
         const responseData = {
             success: true,
@@ -643,9 +651,10 @@ const getHomeFeed = async (req, res) => {
             }
         };
 
-        // Cache the response in Redis for 2 minutes
+        // Cache response: short 20s TTL for page 1 so pull-to-refresh re-randomizes dynamic feed, 120s for pagination
         try {
-            await redisClient.setEx(cacheKey, 120, JSON.stringify(responseData));
+            const ttl = parseInt(page, 10) === 1 ? 20 : 120;
+            await redisClient.setEx(cacheKey, ttl, JSON.stringify(responseData));
         } catch (redisError) {
             console.error('Redis cache write failed:', redisError.message);
             // Continue even if caching fails
@@ -659,17 +668,22 @@ const getHomeFeed = async (req, res) => {
     }
 };
 
-// Helper: Interleave random video cards into feed array after every interval (default 10 items)
-const interleaveVideoCards = async (postsList, interval = 10) => {
-    if (!postsList || !Array.isArray(postsList) || postsList.length < interval) {
-        return postsList;
+// Helper: Interleave random video cards into feed array (Organic Instagram/TikTok-style mix)
+const interleaveVideoCards = async (postsList = []) => {
+    if (!postsList || !Array.isArray(postsList)) {
+        postsList = [];
     }
 
     try {
         const { Video, UserTable, SellersTable } = require('../../models');
         
-        const requiredVideoCount = Math.floor(postsList.length / interval);
-        if (requiredVideoCount <= 0) return postsList;
+        const postCount = postsList.length;
+
+        // Dynamic organic density: target ~35% video presence with a minimum of 2 videos
+        let targetVideoCount = Math.max(2, Math.round(postCount * 0.35));
+        if (postCount === 0) {
+            targetVideoCount = 6;
+        }
 
         const randomVideos = await Video.findAll({
             where: { status: 'active' },
@@ -685,108 +699,161 @@ const interleaveVideoCards = async (postsList, interval = 10) => {
                 }]
             }],
             order: [[Sequelize.fn('RAND')]],
-            limit: requiredVideoCount
+            limit: targetVideoCount
         });
 
         if (!randomVideos || randomVideos.length === 0) return postsList;
 
-        const result = [];
-        let videoIdx = 0;
-
-        for (let i = 0; i < postsList.length; i++) {
-            result.push(postsList[i]);
-
-            if ((i + 1) % interval === 0 && videoIdx < randomVideos.length) {
-                const vid = randomVideos[videoIdx++].toJSON();
-                const u = vid.user || {};
-                const s = u.seller || {};
-                const validUserId = u.id || vid.userId || null;
-                const businessPhone = s.phoneNumber || s.businessPhone || u.phoneNumber || null;
-                const businessEmail = s.email || u.email || null;
-                const businessAddress = s.businessAddress || u.address || null;
-                const businessDescription = s.businessDescription || null;
-                const selectedCategories = s.selectedCategories || [];
-                let locationStr = null;
-                if (s.state && s.country) {
-                    const stateLower = s.state.toLowerCase();
-                    const countryLower = s.country.toLowerCase();
-                    locationStr = stateLower.includes(countryLower) ? s.state : `${s.state}, ${s.country}`;
-                } else if (s.state) {
-                    locationStr = `${s.state}, Nigeria`;
-                } else if (u.location) {
-                    locationStr = u.location;
-                } else if (s.businessAddress) {
-                    locationStr = s.businessAddress;
-                }
-
-                const videoFeedCard = {
-                    id: `feed_video_${vid.id}`,
-                    type: 'video',
-                    category: 'video',
-                    contentType: 'video',
-                    createdAt: vid.createdAt,
-                    updatedAt: vid.updatedAt,
-                    userId: validUserId,
-                    creatorId: validUserId,
-                    creatorName: s.businessName || u.fullName || 'Creator',
-                    creatorAvatar: (u.profilePicture && u.profilePicture !== '👤') ? r2StorageService.sanitizePublicUrl(u.profilePicture) : null,
-                    videoUrl: vid.videoUrl,
-                    thumbnailUrl: vid.thumbnailUrl || vid.videoUrl,
-                    caption: vid.description || '',
-                    media: [{
-                        id: `vid_media_${vid.id}`,
-                        type: 'video',
-                        url: vid.videoUrl,
-                        thumbnailUrl: vid.thumbnailUrl || vid.videoUrl,
-                        order: 0
-                    }],
-                    likesCount: vid.likeCount || 0,
-                    commentsCount: vid.commentCount || 0,
-                    sharesCount: vid.shareCount || 0,
-                    savesCount: 0,
-                    timeAgo: getTimeAgo(vid.createdAt),
-                    isLiked: false,
-                    isSaved: false,
-                    videoData: {
-                        id: vid.id,
-                        ctaEnabled: vid.ctaEnabled,
-                        ctaType: vid.ctaType,
-                        ctaLabel: vid.ctaLabel,
-                        duration: vid.duration
-                    },
-                    // Full user & seller objects as requested by mobile frontend
-                    user: {
-                        id: validUserId,
-                        fullName: u.fullName || 'Unknown',
-                        businessName: s.businessName || u.fullName || null,
-                        businessPhone: businessPhone,
-                        businessEmail: businessEmail,
-                        businessAddress: businessAddress,
-                        businessDescription: businessDescription,
-                        website: s.website || null,
-                        selectedCategories: selectedCategories,
-                        verificationStatus: s.verificationStatus || u.accountStatus || 'approved',
-                        profilePicture: u.profilePicture || null,
-                        accountStatus: u.accountStatus || 'active',
-                        role: s.id ? 'seller' : (u.accountType || 'user')
-                    },
-                    seller: s.id ? {
-                        id: s.id,
-                        userId: validUserId,
-                        businessName: s.businessName || 'Business Store',
-                        businessLocation: locationStr,
-                        businessPhone: businessPhone,
-                        businessEmail: businessEmail,
-                        businessAddress: businessAddress,
-                        businessDescription: businessDescription,
-                        website: s.website || null,
-                        selectedCategories: selectedCategories,
-                        verificationStatus: s.verificationStatus || 'approved'
-                    } : null
-                };
-
-                result.push(videoFeedCard);
+        const videoCards = randomVideos.map(rawVid => {
+            const vid = rawVid.toJSON ? rawVid.toJSON() : rawVid;
+            const u = vid.user || {};
+            const s = u.seller || {};
+            const validUserId = u.id || vid.userId || null;
+            const businessPhone = s.phoneNumber || s.businessPhone || u.phoneNumber || null;
+            const businessEmail = s.email || u.email || null;
+            const businessAddress = s.businessAddress || u.address || null;
+            const businessDescription = s.businessDescription || null;
+            const selectedCategories = s.selectedCategories || [];
+            let locationStr = null;
+            if (s.state && s.country) {
+                const stateLower = s.state.toLowerCase();
+                const countryLower = s.country.toLowerCase();
+                locationStr = stateLower.includes(countryLower) ? s.state : `${s.state}, ${s.country}`;
+            } else if (s.state) {
+                locationStr = `${s.state}, Nigeria`;
+            } else if (u.location) {
+                locationStr = u.location;
+            } else if (s.businessAddress) {
+                locationStr = s.businessAddress;
             }
+
+            return {
+                id: `feed_video_${vid.id}`,
+                type: 'video',
+                category: 'video',
+                contentType: 'video',
+                createdAt: vid.createdAt,
+                updatedAt: vid.updatedAt,
+                userId: validUserId,
+                creatorId: validUserId,
+                creatorName: s.businessName || u.fullName || 'Creator',
+                creatorAvatar: (u.profilePicture && u.profilePicture !== '👤') ? r2StorageService.sanitizePublicUrl(u.profilePicture) : null,
+                videoUrl: vid.videoUrl,
+                thumbnailUrl: vid.thumbnailUrl || vid.videoUrl,
+                caption: vid.description || '',
+                media: [{
+                    id: `vid_media_${vid.id}`,
+                    type: 'video',
+                    url: vid.videoUrl,
+                    thumbnailUrl: vid.thumbnailUrl || vid.videoUrl,
+                    order: 0
+                }],
+                likesCount: vid.likeCount || 0,
+                commentsCount: vid.commentCount || 0,
+                sharesCount: vid.shareCount || 0,
+                savesCount: 0,
+                timeAgo: getTimeAgo(vid.createdAt),
+                isLiked: false,
+                isSaved: false,
+                videoData: {
+                    id: vid.id,
+                    ctaEnabled: vid.ctaEnabled,
+                    ctaType: vid.ctaType,
+                    ctaLabel: vid.ctaLabel,
+                    duration: vid.duration
+                },
+                // Full user & seller objects as requested by mobile frontend
+                user: {
+                    id: validUserId,
+                    fullName: u.fullName || 'Unknown',
+                    businessName: s.businessName || u.fullName || null,
+                    businessPhone: businessPhone,
+                    businessEmail: businessEmail,
+                    businessAddress: businessAddress,
+                    businessDescription: businessDescription,
+                    website: s.website || null,
+                    selectedCategories: selectedCategories,
+                    verificationStatus: s.verificationStatus || u.accountStatus || 'approved',
+                    profilePicture: u.profilePicture || null,
+                    accountStatus: u.accountStatus || 'active',
+                    role: s.id ? 'seller' : (u.accountType || 'user')
+                },
+                seller: s.id ? {
+                    id: s.id,
+                    userId: validUserId,
+                    businessName: s.businessName || 'Business Store',
+                    businessLocation: locationStr,
+                    businessPhone: businessPhone,
+                    businessEmail: businessEmail,
+                    businessAddress: businessAddress,
+                    businessDescription: businessDescription,
+                    website: s.website || null,
+                    selectedCategories: selectedCategories,
+                    verificationStatus: s.verificationStatus || 'approved'
+                } : null
+            };
+        });
+
+        // If no posts to interleave with, return video cards directly
+        if (postCount === 0) {
+            return videoCards;
+        }
+
+        // --- ORGANIC INSTAGRAM / TIKTOK FEED MIX ---
+        // Group videos into clusters (size 1, 2, or 3) so users sometimes see runs of 2-3 videos at a stretch
+        const clusters = [];
+        const remainingVids = [...videoCards];
+
+        while (remainingVids.length > 0) {
+            let clusterSize = 1;
+            const rand = Math.random();
+
+            if (remainingVids.length >= 3) {
+                if (rand < 0.45) {
+                    clusterSize = 1; // 45% single video
+                } else if (rand < 0.80) {
+                    clusterSize = 2; // 35% two videos at a stretch
+                } else {
+                    clusterSize = 3; // 20% three videos at a stretch
+                }
+            } else if (remainingVids.length === 2) {
+                clusterSize = rand < 0.5 ? 1 : 2;
+            } else {
+                clusterSize = 1;
+            }
+
+            clusters.push(remainingVids.splice(0, clusterSize));
+        }
+
+        // Distribute clusters throughout the feed using zone-based random placement
+        const result = [];
+        const numClusters = clusters.length;
+        const zoneSize = Math.max(1, Math.floor(postCount / numClusters));
+        const insertionIndices = [];
+
+        for (let c = 0; c < numClusters; c++) {
+            const zoneStart = c * zoneSize;
+            const zoneEnd = Math.min(postCount, (c + 1) * zoneSize);
+            // Allow video near top or middle; leave first product on slot 0 when postCount >= 3
+            const minPos = (c === 0 && postCount >= 3) ? 1 : zoneStart;
+            const insertAt = minPos + Math.floor(Math.random() * Math.max(1, (zoneEnd - minPos + 1)));
+            insertionIndices.push(Math.min(insertAt, postCount));
+        }
+
+        insertionIndices.sort((a, b) => a - b);
+
+        let clusterIdx = 0;
+        for (let i = 0; i < postCount; i++) {
+            while (clusterIdx < numClusters && insertionIndices[clusterIdx] === i) {
+                result.push(...clusters[clusterIdx]);
+                clusterIdx++;
+            }
+            result.push(postsList[i]);
+        }
+
+        while (clusterIdx < numClusters) {
+            result.push(...clusters[clusterIdx]);
+            clusterIdx++;
         }
 
         return result;
@@ -845,19 +912,27 @@ const getFeed = async (req, res) => {
         const offset = (page - 1) * limit;
         const currentUserId = req.user?.id;
 
+        // Check for pull-to-refresh / bypass cache
+        const isRefresh = req.query.refresh === 'true' || 
+                          req.query.refresh === true || 
+                          req.query.isRefresh === 'true' ||
+                          req.headers['cache-control'] === 'no-cache';
+
         // Create cache key based on query parameters
         const cacheKey = `feed:${page}:${limit}:${region || ''}:${country || ''}:${postType || ''}:${search || ''}:${userId || ''}:${currentUserId || 'guest'}`;
         
-        // Try to get from Redis cache first
-        try {
-            const cached = await redisClient.get(cacheKey);
-            if (cached) {
-                const cachedData = JSON.parse(cached);
-                return res.status(200).json(cachedData);
+        // Try to get from Redis cache first (bypass on pull-to-refresh to re-randomize dynamic feed)
+        if (!isRefresh) {
+            try {
+                const cached = await redisClient.get(cacheKey);
+                if (cached) {
+                    const cachedData = JSON.parse(cached);
+                    return res.status(200).json(cachedData);
+                }
+            } catch (redisError) {
+                console.error('Redis cache read failed:', redisError.message);
+                // Continue with DB query if cache fails
             }
-        } catch (redisError) {
-            console.error('Redis cache read failed:', redisError.message);
-            // Continue with DB query if cache fails
         }
 
         // Build where clause
@@ -984,8 +1059,8 @@ const getFeed = async (req, res) => {
             hasPrevPage: 'hasPreviousPage'
         });
 
-        // Interleave random video cards into posts list (every 10 items)
-        const finalPostsList = await interleaveVideoCards(postsWithEngagement, 10);
+        // Interleave random video cards into posts list (dynamic organic Instagram/TikTok-style mix)
+        const finalPostsList = await interleaveVideoCards(postsWithEngagement);
 
         const responseData = {
             success: true,
@@ -996,9 +1071,10 @@ const getFeed = async (req, res) => {
             }
         };
 
-        // Cache the response in Redis for 2 minutes
+        // Cache response: short 20s TTL for page 1 so pull-to-refresh re-randomizes dynamic feed, 120s for pagination
         try {
-            await redisClient.setEx(cacheKey, 120, JSON.stringify(responseData));
+            const ttl = parseInt(page, 10) === 1 ? 20 : 120;
+            await redisClient.setEx(cacheKey, ttl, JSON.stringify(responseData));
         } catch (redisError) {
             console.error('Redis cache write failed:', redisError.message);
             // Continue even if caching fails
