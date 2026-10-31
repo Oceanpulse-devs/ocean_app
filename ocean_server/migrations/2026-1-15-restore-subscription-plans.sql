@@ -5,7 +5,8 @@
 -- Includes both NGN and USD prices
 -- =============================================
 
--- Clear any existing plans
+-- Clear any existing plans safely without breaking foreign keys
+SET FOREIGN_KEY_CHECKS = 0;
 DELETE FROM `subscription_plans` WHERE `id` > 0;
 
 -- Drift Plan (₦1,500/month or $5/month) - Startup
@@ -41,12 +42,12 @@ INSERT INTO `subscription_plans` (
 ) VALUES (
   2, 'wave', 'Wave', 3000.00, 8.00, 'NGN', 'monthly',
   5, 1, 1, 1, 4,
-  3, 0, 0, 1,
+  3, 7, 0, 1,
   TRUE, TRUE, TRUE, TRUE,
   FALSE, FALSE, FALSE, TRUE,
   FALSE, FALSE,
-  '["Up to 5 listings", "Highlighted in searches", "Create 1 group buy post", "Can initiate 1 swap deal, 4 distress sales and 1 auction", "No daily product demand (leads) notifications", "Can DM 3 individual buyer-need (product demand) posts per day", "1 free promotional boost per month"]',
-  'Basic plan for growing sellers. Up to 5 listings, highlighted in searches, 1 group buy, 1 swap deal, 4 distress sales and 1 auction, no daily buyer-need notifications, can DM 3 buyer-need (product demand) posts per day, plus 1 free promotional boost per month.',
+  '["Up to 5 listings", "Highlighted in searches", "Create 1 group buy post", "Can initiate 1 swap deal, 4 distress sales and 1 auction", "Receives and can accept up to 7 daily product demand (leads) notifications", "Can DM 3 individual buyer-need (product demand) posts per day", "1 free promotional boost per month"]',
+  'Basic plan for growing sellers. Up to 5 listings, highlighted in searches, 1 group buy, 1 swap deal, 4 distress sales and 1 auction, up to 7 daily buyer-need (product demand) notifications, can DM 3 buyer-need (product demand) posts per day, plus 1 free promotional boost per month.',
   TRUE, NOW(), NOW()
 );
 
@@ -62,12 +63,12 @@ INSERT INTO `subscription_plans` (
 ) VALUES (
   3, 'tide', 'Tide', 5500.00, 10.00, 'NGN', 'monthly',
   100, 10, 10, 10, 10,
-  20, 7, 0, 3,
+  20, 15, 0, 3,
   TRUE, TRUE, TRUE, TRUE,
   FALSE, TRUE, TRUE, TRUE,
   FALSE, FALSE,
-  '["Everything in Wave", "Up to 100 listings", "Priority visibility in buyer searches", "3 promotional boosts per month", "Verified Seller Badge", "Can DM 20 buyer-need (product demand) posts per day", "Receives up to 7 daily product demand (leads) notifications", "Up to 10 group buys, 10 distress sales, 10 auctions and 10 swap deals", "Shopfront customization (logo, banner, shop bio)", "Sales insights / advanced analytics"]',
-  'Business plan for serious vendors. Includes everything in Wave plus up to 100 listings, priority search visibility, 3 boosts/month, Verified Seller Badge, can DM 20 buyer-need (product demand) posts per day, 7 daily buyer-need notifications, 10 group buys/distress sales/auctions/swaps, full shopfront customization and sales insights analytics.',
+  '["Everything in Wave", "Up to 100 listings", "Priority visibility in buyer searches", "3 promotional boosts per month", "Verified Seller Badge", "Can DM 20 buyer-need (product demand) posts per day", "Receives and can accept up to 15 daily product demand (leads) notifications", "Up to 10 group buys, 10 distress sales, 10 auctions and 10 swap deals", "Shopfront customization (logo, banner, shop bio)", "Sales insights / advanced analytics"]',
+  'Business plan for serious vendors. Includes everything in Wave plus up to 100 listings, priority search visibility, 3 boosts/month, Verified Seller Badge, can DM 20 buyer-need (product demand) posts per day, 15 daily buyer-need notifications, 10 group buys/distress sales/auctions/swaps, full shopfront customization and sales insights analytics.',
   TRUE, NOW(), NOW()
 );
 
@@ -83,11 +84,13 @@ INSERT INTO `subscription_plans` (
 ) VALUES (
   4, 'surge', 'Surge', 7000.00, 12.00, 'NGN', 'monthly',
   999999, 999999, 999999, 999999, 999999,
-  999999, 15, 0, 999999,
+  999999, 20, 0, 999999,
   TRUE, TRUE, TRUE, TRUE,
   FALSE, TRUE, TRUE, TRUE,
   TRUE, TRUE,
-  '["Everything open and unlimited", "Unlimited listings, group buys, swap deals, distress sales and auctions", "Top ranking in search and feeds", "All products posted are treated as promotional boosts", "Verified Seller Badge", "Top priority customer service", "Access to buyer search insights", "Access to product demand trends (see what buyers could not find and what sells the most)", "Receives up to 15 daily product demand (leads) notifications, unlimited DMs", "Full advanced analytics and insights"]',
-  'Enterprise plan with everything unlimited. Unlimited listings and deal types, top ranking in search and feeds, every product acts as a promotional boost, Verified Seller Badge, top priority support, full access to buyer search insights and product demand trends, and up to 15 daily product demand (leads) notifications, unlimited DMs with advanced analytics.',
+  '["Everything open and unlimited", "Unlimited listings, group buys, swap deals, distress sales and auctions", "Top ranking in search and feeds", "All products posted are treated as promotional boosts", "Verified Seller Badge", "Top priority customer service", "Access to buyer search insights", "Access to product demand trends (see what buyers could not find and what sells the most)", "Receives and can accept up to 20 daily product demand (leads) notifications, unlimited DMs", "Full advanced analytics and insights"]',
+  'Enterprise plan with everything unlimited. Unlimited listings and deal types, top ranking in search and feeds, every product acts as a promotional boost, Verified Seller Badge, top priority support, full access to buyer search insights and product demand trends, and up to 20 daily product demand (leads) notifications, unlimited DMs with advanced analytics.',
   TRUE, NOW(), NOW()
 );
+
+SET FOREIGN_KEY_CHECKS = 1;

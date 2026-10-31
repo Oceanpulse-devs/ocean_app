@@ -47,10 +47,11 @@ Tracks individual candidate routing events per seller.
 Defines plan-level daily lead allocation limits.
 - `id` (INT)
 - `name` (VARCHAR): Plan name (`"Surge"`, `"Tide"`, `"Wave"`, `"Drift"`, `"Free"`).
-- `maxDailyNotifications` (INT): Daily limit of direct lead matches a seller can receive:
-  - **Surge**: `15` matches / 24 hours.
-  - **Tide**: `7` matches / 24 hours.
-  - **Wave / Drift / Free**: `0` matches / 24 hours.
+- `maxDailyNotifications` (INT): Daily limit of direct lead matches a seller can accept:
+  - **Surge**: `20` accepted leads / 24 hours.
+  - **Tide**: `15` accepted leads / 24 hours.
+  - **Wave**: `7` accepted leads / 24 hours.
+  - **Drift / Free**: `0` leads / 24 hours.
 
 ---
 
@@ -69,8 +70,8 @@ Queries verified sellers (`verificationStatus IN ('approved', 'active')`) matchi
 
 ### Step 3: Subscription & Daily Limit Verification
 For each candidate seller:
-1. **Plan Check**: Resolves `user.currentPlanId`. If `maxDailyNotifications <= 0` (e.g., Free, Wave, Drift), candidate is **rejected**.
-2. **Bulk Daily Limit Check**: Queries total matches routed to `seller.id` in the past 24 hours (`BuyerNeedMatch.created_at > 24h_ago`). If $\text{matchCountToday} \ge \text{maxDailyNotifications}$, candidate is **rejected**.
+1. **Plan Check**: Resolves `user.currentPlanId`. If `maxDailyNotifications <= 0` (e.g., Free, Drift), candidate is **rejected**.
+2. **Bulk Daily Accepted Limit Check**: Queries total matches accepted by `seller.id` in the past 24 hours (`BuyerNeedMatch.status = 'accepted'` AND `BuyerNeedMatch.updated_at > 24h_ago`). If $\text{acceptedCountToday} \ge \text{maxDailyNotifications}$, candidate is **rejected**.
 
 ### Step 4: Multi-Factor Sorting Equation
 Eligible sellers are sorted by 4 hierarchy tiers:
@@ -81,7 +82,8 @@ Eligible sellers are sorted by 4 hierarchy tiers:
 2. **Subscription Tier Priority** (Ascending Score):
    - `1`: `Surge` plan.
    - `2`: `Tide` plan.
-   - `3`: Standard/Other.
+   - `3`: `Wave` plan.
+   - `4`: Standard/Other.
 3. **Seller Rating** (Descending): `seller.rating` (0.0 to 5.0).
 4. **Trust Score** (Descending): `seller.trustScore` (0 to 100).
 

@@ -1198,6 +1198,7 @@ class BuyerNeedController {
       const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
       // Perform a SINGLE bulk GROUP BY query for all candidate sellers to eliminate N+1 query loop delay
+      // Only count leads that the seller actually ACCEPTED in the past 24 hours
       const candidateUserIds = matchingSellers.map(s => s.userId).filter(Boolean);
       const dailyCountsMap = {};
       if (candidateUserIds.length > 0) {
@@ -1205,7 +1206,8 @@ class BuyerNeedController {
           attributes: ['seller_id', [db.sequelize.fn('COUNT', db.sequelize.col('id')), 'count']],
           where: {
             seller_id: { [Op.in]: candidateUserIds },
-            created_at: { [Op.gt]: oneDayAgo }
+            status: 'accepted',
+            updated_at: { [Op.gt]: oneDayAgo }
           },
           group: ['seller_id'],
           raw: true
@@ -1227,26 +1229,29 @@ class BuyerNeedController {
         // Retrieve plan using user's currentPlanId
         console.log(`     - User currentPlanId: ${user.currentPlanId}`);
         const plan = user.currentPlanId ? planMap[user.currentPlanId] : null;
-        
-        // Default limit to 0 if they don't have a plan
-        const dailyLimit = plan ? plan.maxDailyNotifications : 0;
         const planName = plan ? plan.name.toLowerCase().trim() : 'free';
+        
+        // Resolve daily limit from plan (with tier fallbacks: Surge=20, Tide=15, Wave=7, Drift/Free=0)
+        const fallbackLimits = { surge: 20, tide: 15, wave: 7, drift: 0, free: 0 };
+        const dailyLimit = (plan && typeof plan.maxDailyNotifications === 'number' && plan.maxDailyNotifications > 0)
+          ? plan.maxDailyNotifications
+          : (fallbackLimits[planName] ?? 0);
         console.log(`     - Resolved Plan: name = "${planName}", maxDailyNotifications = ${dailyLimit}`);
 
-        // 🚫 RESTRICTION: Wave, Drift, and Free plans receive 0 leads (maxDailyNotifications = 0)
-        // Only plans with dailyLimit > 0 (Tide: 7, Surge: 15) are eligible
+        // 🚫 RESTRICTION: Drift and Free plans receive 0 leads (maxDailyNotifications = 0)
+        // Only plans with dailyLimit > 0 (Wave: 7, Tide: 15, Surge: 20) are eligible
         if (dailyLimit <= 0) {
           console.log(`     🚫 Rejected: plan has daily limit <= 0. Not eligible to receive direct leads.`);
           continue;
         }
 
-        // 📊 Enforce Daily Limits dynamically from pre-fetched bulk map
-        const matchCountToday = dailyCountsMap[user.id] || 0;
-        console.log(`     - Matching leads routed in past 24h: ${matchCountToday} (Limit: ${dailyLimit})`);
+        // 📊 Enforce Daily Accepted Limits dynamically from pre-fetched bulk map
+        const acceptedCountToday = dailyCountsMap[user.id] || 0;
+        console.log(`     - Accepted leads in past 24h: ${acceptedCountToday} (Limit: ${dailyLimit})`);
 
-        if (matchCountToday >= dailyLimit) {
-          console.log(`     🚫 Rejected: Daily limit reached for this user (${matchCountToday}/${dailyLimit})`);
-          continue; // Skip seller since they hit their daily lead limit
+        if (acceptedCountToday >= dailyLimit) {
+          console.log(`     🚫 Rejected: Daily accepted limit reached for this user (${acceptedCountToday}/${dailyLimit})`);
+          continue; // Skip seller since they hit their daily accepted lead limit
         }
 
         // Calculate proximity sorting priority
@@ -1262,7 +1267,7 @@ class BuyerNeedController {
 
         eligibleSellers.push({
           seller,
-          planPriority: planName === 'surge' ? 1 : (planName === 'tide' ? 2 : 3), // Surge gets priority over Tide
+          planPriority: planName === 'surge' ? 1 : (planName === 'tide' ? 2 : (planName === 'wave' ? 3 : 4)), // Surge > Tide > Wave
           locationScore,
           rating: seller.rating || 0.0,
           trustScore: seller.trustScore || 0
@@ -1517,7 +1522,50 @@ class BuyerNeedController {
         });
       }
 
-      // 2. Fetch and Lock BuyerNeed
+      // 2. Verify Seller's Daily Accepted Leads Quota based on Subscription Plan
+      const sellerUser = await db.UserTable.findByPk(sellerId, {
+        attributes: ['id', 'currentPlanId'],
+        transaction
+      });
+
+      let plan = null;
+      if (sellerUser && sellerUser.currentPlanId) {
+        plan = await db.SubscriptionPlan.findByPk(sellerUser.currentPlanId, { transaction });
+      }
+
+      const planName = plan ? plan.name.toLowerCase().trim() : 'free';
+      const fallbackLimits = { surge: 20, tide: 15, wave: 7, drift: 0, free: 0 };
+      const dailyLimit = (plan && typeof plan.maxDailyNotifications === 'number' && plan.maxDailyNotifications > 0)
+        ? plan.maxDailyNotifications
+        : (fallbackLimits[planName] ?? 0);
+
+      if (dailyLimit <= 0) {
+        await transaction.rollback();
+        return res.status(403).json({
+          success: false,
+          message: 'Your current subscription plan does not allow accepting product demand leads. Please upgrade to Wave, Tide, or Surge.'
+        });
+      }
+
+      const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      const acceptedTodayCount = await db.BuyerNeedMatch.count({
+        where: {
+          seller_id: sellerId,
+          status: 'accepted',
+          updated_at: { [Op.gt]: oneDayAgo }
+        },
+        transaction
+      });
+
+      if (acceptedTodayCount >= dailyLimit) {
+        await transaction.rollback();
+        return res.status(400).json({
+          success: false,
+          message: `You have reached your daily limit of ${dailyLimit} accepted product demand leads on your current plan. Upgrade your plan to accept more leads!`
+        });
+      }
+
+      // 3. Fetch and Lock BuyerNeed
       const buyerNeed = await db.BuyerNeed.findByPk(buyerNeedId, {
         lock: transaction.LOCK.UPDATE,
         transaction
