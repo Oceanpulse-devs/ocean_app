@@ -51,7 +51,8 @@ Defines plan-level daily lead allocation limits.
   - **Surge**: `20` accepted leads / 24 hours.
   - **Tide**: `15` accepted leads / 24 hours.
   - **Wave**: `7` accepted leads / 24 hours.
-  - **Drift / Free**: `0` leads / 24 hours.
+  - **Drift**: `4` accepted leads / 24 hours.
+  - **Free**: `0` leads / 24 hours.
 
 ---
 
@@ -70,7 +71,7 @@ Queries verified sellers (`verificationStatus IN ('approved', 'active')`) matchi
 
 ### Step 3: Subscription & Daily Limit Verification
 For each candidate seller:
-1. **Plan Check**: Resolves `user.currentPlanId`. If `maxDailyNotifications <= 0` (e.g., Free, Drift), candidate is **rejected**.
+1. **Plan Check**: Resolves `user.currentPlanId`. If `maxDailyNotifications <= 0` (e.g., Free), candidate is **rejected**.
 2. **Bulk Daily Accepted Limit Check**: Queries total matches accepted by `seller.id` in the past 24 hours (`BuyerNeedMatch.status = 'accepted'` AND `BuyerNeedMatch.updated_at > 24h_ago`). If $\text{acceptedCountToday} \ge \text{maxDailyNotifications}$, candidate is **rejected**.
 
 ### Step 4: Multi-Factor Sorting Equation
@@ -83,7 +84,8 @@ Eligible sellers are sorted by 4 hierarchy tiers:
    - `1`: `Surge` plan.
    - `2`: `Tide` plan.
    - `3`: `Wave` plan.
-   - `4`: Standard/Other.
+   - `4`: `Drift` plan.
+   - `5`: Standard/Other.
 3. **Seller Rating** (Descending): `seller.rating` (0.0 to 5.0).
 4. **Trust Score** (Descending): `seller.trustScore` (0 to 100).
 

@@ -25,7 +25,7 @@ class RequestRoomController {
         });
       }
 
-      // 2. Plan Access Check: Only Tide and Surge plans allowed
+      // 2. Plan Access Check: Drift, Wave, Tide, and Surge plans allowed
       const { getUserActiveSubscription } = require('../middleware/subscriptionMiddleware');
       let activeSub = null;
       try {
@@ -35,39 +35,46 @@ class RequestRoomController {
       }
 
       const planName = activeSub?.plan?.name?.toLowerCase() || '';
-      const isEligiblePlan = planName === 'tide' || planName === 'surge';
+      // Dynamic daily slots per subscription tier: Drift=3, Wave=6, Tide=10, Surge=Unlimited
+      const planLimits = { drift: 3, wave: 6, tide: 10, surge: 999999 };
+      const dailySlotsTotal = planLimits[planName] || 0;
 
-      if (!isEligiblePlan) {
+      if (dailySlotsTotal <= 0) {
         return res.status(403).json({
           success: false,
-          message: 'Expressing Interest is available exclusively on Tide and Surge subscription plans. Please upgrade your plan to participate.'
+          message: 'Expressing Interest is available for subscribed sellers (Drift, Wave, Tide, and Surge). Please upgrade your plan to participate.'
         });
       }
 
-      // 3. Daily Slot Quota Check (3 max per day globally)
+      // 3. Daily Slot Quota Check
       const todayDate = new Date().toISOString().split('T')[0];
       let [slotRecord] = await db.SellerDailySlot.findOrCreate({
         where: { sellerId: userId },
         defaults: {
           sellerId: userId,
-          dailySlotsTotal: 3,
+          dailySlotsTotal: dailySlotsTotal,
           dailySlotsUsed: 0,
           lastResetDate: todayDate
         }
       });
 
-      // Reset daily counter if a new day has started
+      // Reset daily counter if a new day has started or plan total changed
       if (slotRecord.lastResetDate !== todayDate) {
         await slotRecord.update({
+          dailySlotsTotal: dailySlotsTotal,
           dailySlotsUsed: 0,
           lastResetDate: todayDate
         });
+      } else if (slotRecord.dailySlotsTotal !== dailySlotsTotal) {
+        await slotRecord.update({
+          dailySlotsTotal: dailySlotsTotal
+        });
       }
 
-      if (slotRecord.dailySlotsUsed >= 3) {
+      if (planName !== 'surge' && slotRecord.dailySlotsUsed >= dailySlotsTotal) {
         return res.status(400).json({
           success: false,
-          message: 'Daily express interest slots exhausted. Maximum 3 slots per day.'
+          message: `Daily express interest slots exhausted. Maximum ${dailySlotsTotal} slots per day on your current plan.`
         });
       }
 
@@ -140,7 +147,9 @@ class RequestRoomController {
         dailySlotsUsed: slotRecord.dailySlotsUsed + 1
       });
 
-      const remainingSlots = Math.max(0, 3 - (slotRecord.dailySlotsUsed));
+      const remainingSlots = planName === 'surge'
+        ? 999999
+        : Math.max(0, dailySlotsTotal - slotRecord.dailySlotsUsed);
 
       res.status(200).json({
         success: true,
@@ -178,14 +187,17 @@ class RequestRoomController {
       }
 
       const planName = activeSub?.plan?.name?.toLowerCase() || '';
-      const isEligible = planName === 'tide' || planName === 'surge';
+      // Dynamic daily slots per subscription tier: Drift=3, Wave=6, Tide=10, Surge=Unlimited
+      const planLimits = { drift: 3, wave: 6, tide: 10, surge: 999999 };
+      const dailySlotsTotal = planLimits[planName] || 0;
+      const isEligible = dailySlotsTotal > 0;
 
       const todayDate = new Date().toISOString().split('T')[0];
       let [slotRecord] = await db.SellerDailySlot.findOrCreate({
         where: { sellerId: userId },
         defaults: {
           sellerId: userId,
-          dailySlotsTotal: 3,
+          dailySlotsTotal: dailySlotsTotal,
           dailySlotsUsed: 0,
           lastResetDate: todayDate
         }
@@ -193,20 +205,27 @@ class RequestRoomController {
 
       if (slotRecord.lastResetDate !== todayDate) {
         await slotRecord.update({
+          dailySlotsTotal: dailySlotsTotal,
           dailySlotsUsed: 0,
           lastResetDate: todayDate
+        });
+      } else if (slotRecord.dailySlotsTotal !== dailySlotsTotal) {
+        await slotRecord.update({
+          dailySlotsTotal: dailySlotsTotal
         });
       }
 
       const used = slotRecord.dailySlotsUsed;
-      const remaining = isEligible ? Math.max(0, 3 - used) : 0;
+      const remaining = planName === 'surge'
+        ? 999999
+        : (isEligible ? Math.max(0, dailySlotsTotal - used) : 0);
 
       res.json({
         success: true,
         data: {
           isEligible,
           planName: planName || 'free',
-          total: 3,
+          total: dailySlotsTotal,
           used: used,
           remaining: remaining,
           lastResetDate: slotRecord.lastResetDate
