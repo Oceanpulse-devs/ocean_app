@@ -1231,15 +1231,15 @@ class BuyerNeedController {
         const plan = user.currentPlanId ? planMap[user.currentPlanId] : null;
         const planName = plan ? plan.name.toLowerCase().trim() : 'free';
         
-        // Resolve daily limit from plan (with tier fallbacks: Surge=20, Tide=15, Wave=7, Drift=4, Free=0)
-        const fallbackLimits = { surge: 20, tide: 15, wave: 7, drift: 4, free: 0 };
+        // Resolve daily limit from plan (with tier fallbacks: Surge=20, Tide=15, Wave=7, Drift/Free=0)
+        const fallbackLimits = { surge: 20, tide: 15, wave: 7, drift: 0, free: 0 };
         const dailyLimit = (plan && typeof plan.maxDailyNotifications === 'number' && plan.maxDailyNotifications > 0)
           ? plan.maxDailyNotifications
           : (fallbackLimits[planName] ?? 0);
         console.log(`     - Resolved Plan: name = "${planName}", maxDailyNotifications = ${dailyLimit}`);
 
-        // 🚫 RESTRICTION: Free plan receives 0 leads (maxDailyNotifications = 0)
-        // Subscribed plans (Drift: 4, Wave: 7, Tide: 15, Surge: 20) are all eligible
+        // 🚫 RESTRICTION: Drift and Free plans receive 0 leads (maxDailyNotifications = 0)
+        // Only plans with dailyLimit > 0 (Wave: 7, Tide: 15, Surge: 20) are eligible
         if (dailyLimit <= 0) {
           console.log(`     🚫 Rejected: plan has daily limit <= 0. Not eligible to receive direct leads.`);
           continue;
@@ -1267,7 +1267,7 @@ class BuyerNeedController {
 
         eligibleSellers.push({
           seller,
-          planPriority: planName === 'surge' ? 1 : (planName === 'tide' ? 2 : (planName === 'wave' ? 3 : (planName === 'drift' ? 4 : 5))), // Surge > Tide > Wave > Drift
+          planPriority: planName === 'surge' ? 1 : (planName === 'tide' ? 2 : (planName === 'wave' ? 3 : 4)), // Surge > Tide > Wave
           locationScore,
           rating: seller.rating || 0.0,
           trustScore: seller.trustScore || 0
@@ -1534,7 +1534,7 @@ class BuyerNeedController {
       }
 
       const planName = plan ? plan.name.toLowerCase().trim() : 'free';
-      const fallbackLimits = { surge: 20, tide: 15, wave: 7, drift: 4, free: 0 };
+      const fallbackLimits = { surge: 20, tide: 15, wave: 7, drift: 0, free: 0 };
       const dailyLimit = (plan && typeof plan.maxDailyNotifications === 'number' && plan.maxDailyNotifications > 0)
         ? plan.maxDailyNotifications
         : (fallbackLimits[planName] ?? 0);
@@ -1543,7 +1543,7 @@ class BuyerNeedController {
         await transaction.rollback();
         return res.status(403).json({
           success: false,
-          message: 'Your current subscription plan does not allow accepting product demand leads. Please subscribe to a plan (Drift, Wave, Tide, or Surge).'
+          message: 'Your current subscription plan does not allow accepting product demand leads. Please upgrade to Wave, Tide, or Surge.'
         });
       }
 
