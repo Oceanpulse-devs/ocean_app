@@ -5,42 +5,49 @@ const env = process.env.NODE_ENV || 'development';
 
 let config;
 
+const cleanStr = (val) => (val ? String(val).trim().replace(/^["']|["']$/g, '') : val);
+
+const poolMax = parseInt(cleanStr(process.env.DB_POOL_MAX) || '20', 10);
+const poolMin = parseInt(cleanStr(process.env.DB_POOL_MIN) || '5', 10);
+const poolAcquire = parseInt(cleanStr(process.env.DB_POOL_ACQUIRE) || '60000', 10);
+const poolIdle = parseInt(cleanStr(process.env.DB_POOL_IDLE) || '10000', 10);
+
 if (env === 'production') {
-  // Production configuration (Railway)
+  // Production configuration
   config = {
-    username: process.env.DB_USER || process.env.DB_USERNAME,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME,
-    host: process.env.DB_HOST,
-    port: process.env.DB_PORT || 3306,
+    username: cleanStr(process.env.DB_USER || process.env.DB_USERNAME),
+    password: cleanStr(process.env.DB_PASSWORD),
+    database: cleanStr(process.env.DB_NAME),
+    host: cleanStr(process.env.DB_HOST),
+    port: parseInt(cleanStr(process.env.DB_PORT) || '3306', 10),
     dialect: 'mysql',
     logging: false,
     pool: {
-      max: 20,
-      min: 5,
-      acquire: 60000,
-      idle: 10000
+      max: poolMax,
+      min: poolMin,
+      acquire: poolAcquire,
+      idle: poolIdle
     },
     dialectOptions: {
-      ssl: false, // Railway internal connections don't need SSL
+      ssl: false,
       connectTimeout: 60000
     }
   };
 } else {
   // Development configuration
   config = {
-    username: process.env.DB_USER || 'root',
-    password: process.env.DB_PASSWORD || 'j@123098',
-    database: process.env.DB_NAME || 'ocean_app_db',
-    host: process.env.DB_HOST || '127.0.0.1',
-    port: process.env.DB_PORT || 3306,
+    username: cleanStr(process.env.DB_USER) || 'root',
+    password: cleanStr(process.env.DB_PASSWORD) || 'j@123098',
+    database: cleanStr(process.env.DB_NAME) || 'ocean_app_db',
+    host: cleanStr(process.env.DB_HOST) || '127.0.0.1',
+    port: parseInt(cleanStr(process.env.DB_PORT) || '3306', 10),
     dialect: 'mysql',
     logging: false,
     pool: {
-      max: 10,
-      min: 0,
-      acquire: 60000,
-      idle: 10000
+      max: poolMax,
+      min: poolMin,
+      acquire: poolAcquire,
+      idle: poolIdle
     }
   };
 }

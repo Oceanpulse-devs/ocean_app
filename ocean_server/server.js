@@ -13,7 +13,6 @@ const socketIo = require('socket.io');
 const port = process.env.PORT || 5000
 const redisClient = require('./src/config/redisdb')
 const db = require('./models')
-const pool = require('./src/config/database')
 const cookieParser = require('cookie-parser')
 const responseWrapper = require('./src/middleware/responseWrapper')
 const socketAuthMiddleware = require('./src/middleware/socketAuthMiddleware');

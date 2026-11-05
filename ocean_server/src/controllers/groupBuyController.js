@@ -138,32 +138,7 @@ const createGroupConversation = async (groupBuy, creatorId, authToken, retries =
   }
 };
 
-// Background Keep-Alive Pinger to keep the free Render message server awake 24/7
-const startMessageServerKeepAlive = () => {
-  let messageServerUrl = process.env.MESSAGE_SERVER_URL || 'https://messageserver-production-88ba.up.railway.app';
-  messageServerUrl = messageServerUrl.trim().replace(/\/$/, '');
-  if (!messageServerUrl.startsWith('http://') && !messageServerUrl.startsWith('https://')) {
-    messageServerUrl = `https://${messageServerUrl}`;
-  }
 
-  const ping = async () => {
-    try {
-      await axios.get(`${messageServerUrl}/health`, { timeout: 15000 }).catch(() => {
-        return axios.get(`${messageServerUrl}/`, { timeout: 15000 });
-      });
-      console.log('⚡ [Keep-Alive] Pinged message server to keep instance awake');
-    } catch (err) {
-      console.log('⚡ [Keep-Alive] Ping sent to message server (waking up instance)');
-    }
-  };
-
-  // Ping immediately on boot, then every 10 minutes
-  ping();
-  setInterval(ping, 10 * 60 * 1000);
-};
-
-// Start keep-alive runner
-startMessageServerKeepAlive();
 
 const updateParticipantStatus = async (participant, updates = {}, metadata = null, conversationId = null, creatorId = null) => {
   const timestampedUpdates = {

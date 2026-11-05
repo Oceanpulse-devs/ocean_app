@@ -4,6 +4,11 @@ const cleanStr = (val) => (val ? String(val).trim().replace(/^["']|["']$/g, '') 
 
 // Get environment variables with fallbacks
 const getConfig = () => {
+  const poolMax = parseInt(cleanStr(process.env.DB_POOL_MAX) || '25', 10);
+  const poolMin = parseInt(cleanStr(process.env.DB_POOL_MIN) || '5', 10);
+  const poolAcquire = parseInt(cleanStr(process.env.DB_POOL_ACQUIRE) || '60000', 10);
+  const poolIdle = parseInt(cleanStr(process.env.DB_POOL_IDLE) || '10000', 10);
+
   if (process.env.NODE_ENV === 'production') {
     return {
       username: cleanStr(process.env.DB_USERNAME || process.env.DB_USER),
@@ -14,10 +19,10 @@ const getConfig = () => {
       dialect: 'mysql',
       logging: false, // Disable logging in production
       pool: {
-        max: 5,
-        min: 0,
-        acquire: 30000,
-        idle: 10000
+        max: poolMax,
+        min: poolMin,
+        acquire: poolAcquire,
+        idle: poolIdle
       }
     };
   } else {
@@ -29,7 +34,13 @@ const getConfig = () => {
       host: cleanStr(process.env.DB_HOST) || '127.0.0.1',
       port: parseInt(cleanStr(process.env.DB_PORT) || '3306', 10),
       dialect: 'mysql',
-      logging: console.log
+      logging: console.log,
+      pool: {
+        max: poolMax,
+        min: poolMin,
+        acquire: poolAcquire,
+        idle: poolIdle
+      }
     };
   }
 };
