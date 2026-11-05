@@ -132,12 +132,23 @@ class MessageStorageService {
     let ext = '.jpg';
     let thumbnailUrl = null;
 
-    // Optimize images with Sharp to modern WebP (max 1440px)
+    // Optimize images with Sharp to modern WebP (max 1080px with size ceiling)
     try {
       uploadBuffer = await sharp(fileBuffer)
-        .resize(1440, 1440, { fit: 'inside', withoutEnlargement: true })
-        .webp({ quality: 82, effort: 4 })
+        .rotate()
+        .resize(1080, 1080, { fit: 'inside', withoutEnlargement: true })
+        .webp({ quality: 75, effort: 4 })
         .toBuffer();
+
+      // Ceiling check: if over 150KB, compress with pass-2
+      if (uploadBuffer.length > 150 * 1024) {
+        uploadBuffer = await sharp(fileBuffer)
+          .rotate()
+          .resize(960, 960, { fit: 'inside', withoutEnlargement: true })
+          .webp({ quality: 68, effort: 5 })
+          .toBuffer();
+      }
+
       contentType = 'image/webp';
       ext = '.webp';
 

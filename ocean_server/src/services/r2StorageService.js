@@ -245,35 +245,45 @@ class R2StorageService {
                     const isCover = cleanFolderLower.includes('cover-picture') || options.isCoverPicture;
                     const isStory = cleanFolderLower.includes('stories') || options.isStory;
 
-                    const pipeline = sharp(buffer);
+                    const pipeline = sharp(buffer).rotate();
 
                     if (isProfile) {
                         uploadBuffer = await pipeline
                             .resize(300, 300, { fit: 'cover', position: 'center' })
-                            .webp({ quality: 85, effort: 4 })
+                            .webp({ quality: 80, effort: 4 })
                             .toBuffer();
                         finalContentType = 'image/webp';
                         finalExtension = 'webp';
                     } else if (isCover) {
                         uploadBuffer = await pipeline
                             .resize(1200, 500, { fit: 'inside', withoutEnlargement: true })
-                            .webp({ quality: 82, effort: 4 })
+                            .webp({ quality: 75, effort: 4 })
                             .toBuffer();
                         finalContentType = 'image/webp';
                         finalExtension = 'webp';
                     } else if (isStory) {
                         uploadBuffer = await pipeline
                             .resize(1080, 1920, { fit: 'inside', withoutEnlargement: true })
-                            .webp({ quality: 82, effort: 4 })
+                            .webp({ quality: 75, effort: 4 })
                             .toBuffer();
                         finalContentType = 'image/webp';
                         finalExtension = 'webp';
                     } else {
-                        // General post / product / feed image
+                        // General post / product / feed image (mobile-first 1080px with smart size ceiling)
                         uploadBuffer = await pipeline
-                            .resize(1440, 1440, { fit: 'inside', withoutEnlargement: true })
-                            .webp({ quality: 82, effort: 4 })
+                            .resize(1080, 1350, { fit: 'inside', withoutEnlargement: true })
+                            .webp({ quality: 75, effort: 4 })
                             .toBuffer();
+                        
+                        // Size ceiling check: If > 160KB (dense camera sensors), run quick pass-2
+                        if (uploadBuffer.length > 160 * 1024) {
+                            uploadBuffer = await sharp(buffer)
+                                .rotate()
+                                .resize(960, 1200, { fit: 'inside', withoutEnlargement: true })
+                                .webp({ quality: 68, effort: 5 })
+                                .toBuffer();
+                        }
+
                         finalContentType = 'image/webp';
                         finalExtension = 'webp';
                     }
