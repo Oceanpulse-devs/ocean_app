@@ -1,5 +1,6 @@
 const subscriptionMiddleware = require('../middleware/subscriptionMiddleware');
 const redisClient = require('../config/redisdb');
+const { isSubscriptionEnabled, getFreeModeDemandLimit } = require('../config/subscriptionConfig');
 
 /**
  * Subscription Status Checker
@@ -21,6 +22,7 @@ class SubscriptionStatusChecker {
       
       if (!subscription) {
         return {
+          subscriptionEnabled: isSubscriptionEnabled(),
           hasActiveSubscription: false,
           plan: null,
           status: 'free',
@@ -185,6 +187,18 @@ class SubscriptionStatusChecker {
   static async canPerformAction(userId, actionType) {
     try {
       const result = await subscriptionMiddleware.checkSubscriptionLimit(userId, actionType);
+
+      if (!isSubscriptionEnabled()) {
+        const demandLimit = getFreeModeDemandLimit();
+        const usedToday = result.usage ? (result.usage.notificationsReceived || 0) : 0;
+        return {
+          allowed: result.allowed,
+          reason: result.reason,
+          remaining: actionType === 'notifications' ? Math.max(0, demandLimit - usedToday) : -1,
+          plan: null,
+          subscriptionEnabled: false
+        };
+      }
       
       return {
         allowed: result.allowed,
@@ -401,6 +415,23 @@ class SubscriptionStatusChecker {
    * @returns {Object} Free plan limits
    */
   static getFreePlanLimits() {
+    if (!isSubscriptionEnabled()) {
+      const demandLimit = getFreeModeDemandLimit();
+      return {
+        maxListings: -1,
+        maxGroupBuys: -1,
+        maxSwapDeals: -1,
+        maxAuctions: -1,
+        maxDistressSales: -1,
+        maxDailyDms: -1,
+        maxDailyNotifications: demandLimit,
+        maxArProducts: -1,
+        maxPromotionalBoosts: -1,
+        maxTopPlacements: -1,
+        maxSpotlights: -1
+      };
+    }
+
     return {
       maxListings: 0,
       maxGroupBuys: 0,
@@ -421,6 +452,21 @@ class SubscriptionStatusChecker {
    * @returns {Object} Free plan features
    */
   static getFreePlanFeatures() {
+    if (!isSubscriptionEnabled()) {
+      return {
+        canCreateGroupBuy: true,
+        canCreateSwapDeals: true,
+        canCreateAuctions: true,
+        canCreateDistressSales: true,
+        canUseAr: true,
+        canCustomizeShopfront: true,
+        hasVerifiedBadge: false,
+        hasPrioritySearch: false,
+        hasBuyerInsights: true,
+        hasUnlimitedFeatures: true
+      };
+    }
+
     return {
       canCreateGroupBuy: false,
       canCreateSwapDeals: false,

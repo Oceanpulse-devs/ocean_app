@@ -6,6 +6,7 @@ const imageCompressionService = require('../services/imageCompressionService');
 const redisClient = require('../config/redisdb');
 const { createNotification } = require('./notificationController');
 const r2StorageService = require('../services/r2StorageService');
+const { isSubscriptionEnabled, getFreeModeDemandLimit } = require('../config/subscriptionConfig');
 
 // Automatically ensure subcategory column exists in MySQL buyer_needs table
 let isSubcategoryColumnChecked = false;
@@ -1226,20 +1227,29 @@ class BuyerNeedController {
           continue;
         }
 
-        // Retrieve plan using user's currentPlanId
-        console.log(`     - User currentPlanId: ${user.currentPlanId}`);
-        const plan = user.currentPlanId ? planMap[user.currentPlanId] : null;
-        const planName = plan ? plan.name.toLowerCase().trim() : 'free';
-        
-        // Resolve daily limit from plan (with tier fallbacks: Surge=20, Tide=15, Wave=7, Drift/Free=0)
-        const fallbackLimits = { surge: 20, tide: 15, wave: 7, drift: 0, free: 0 };
-        const dailyLimit = (plan && typeof plan.maxDailyNotifications === 'number' && plan.maxDailyNotifications > 0)
-          ? plan.maxDailyNotifications
-          : (fallbackLimits[planName] ?? 0);
-        console.log(`     - Resolved Plan: name = "${planName}", maxDailyNotifications = ${dailyLimit}`);
+        let dailyLimit;
+        let planPriority = 1;
 
-        // 🚫 RESTRICTION: Drift and Free plans receive 0 leads (maxDailyNotifications = 0)
-        // Only plans with dailyLimit > 0 (Wave: 7, Tide: 15, Surge: 20) are eligible
+        if (!isSubscriptionEnabled()) {
+          // Open Community Mode: Every verified seller gets the same flat limit (20) and equal priority
+          dailyLimit = getFreeModeDemandLimit();
+          planPriority = 1;
+          console.log(`     - [Open Mode] Subscriptions disabled: dailyLimit = ${dailyLimit}, equal priority`);
+        } else {
+          // Retrieve plan using user's currentPlanId
+          console.log(`     - User currentPlanId: ${user.currentPlanId}`);
+          const plan = user.currentPlanId ? planMap[user.currentPlanId] : null;
+          const planName = plan ? plan.name.toLowerCase().trim() : 'free';
+          
+          // Resolve daily limit from plan (with tier fallbacks: Surge=20, Tide=15, Wave=7, Drift=4, Free=0)
+          const fallbackLimits = { surge: 20, tide: 15, wave: 7, drift: 4, free: 0 };
+          dailyLimit = (plan && typeof plan.maxDailyNotifications === 'number' && plan.maxDailyNotifications > 0)
+            ? plan.maxDailyNotifications
+            : (fallbackLimits[planName] ?? 0);
+          planPriority = planName === 'surge' ? 1 : (planName === 'tide' ? 2 : (planName === 'wave' ? 3 : (planName === 'drift' ? 4 : 5)));
+          console.log(`     - Resolved Plan: name = "${planName}", maxDailyNotifications = ${dailyLimit}`);
+        }
+
         if (dailyLimit <= 0) {
           console.log(`     🚫 Rejected: plan has daily limit <= 0. Not eligible to receive direct leads.`);
           continue;
@@ -1267,7 +1277,7 @@ class BuyerNeedController {
 
         eligibleSellers.push({
           seller,
-          planPriority: planName === 'surge' ? 1 : (planName === 'tide' ? 2 : (planName === 'wave' ? 3 : 4)), // Surge > Tide > Wave
+          planPriority,
           locationScore,
           rating: seller.rating || 0.0,
           trustScore: seller.trustScore || 0
@@ -1522,28 +1532,35 @@ class BuyerNeedController {
         });
       }
 
-      // 2. Verify Seller's Daily Accepted Leads Quota based on Subscription Plan
-      const sellerUser = await db.UserTable.findByPk(sellerId, {
-        attributes: ['id', 'currentPlanId'],
-        transaction
-      });
+      // 2. Verify Seller's Daily Accepted Leads Quota
+      let dailyLimit;
 
-      let plan = null;
-      if (sellerUser && sellerUser.currentPlanId) {
-        plan = await db.SubscriptionPlan.findByPk(sellerUser.currentPlanId, { transaction });
+      if (!isSubscriptionEnabled()) {
+        // Open Community Mode: Every verified seller has a flat limit of 20 accepted leads/day
+        dailyLimit = getFreeModeDemandLimit();
+      } else {
+        const sellerUser = await db.UserTable.findByPk(sellerId, {
+          attributes: ['id', 'currentPlanId'],
+          transaction
+        });
+
+        let plan = null;
+        if (sellerUser && sellerUser.currentPlanId) {
+          plan = await db.SubscriptionPlan.findByPk(sellerUser.currentPlanId, { transaction });
+        }
+
+        const planName = plan ? plan.name.toLowerCase().trim() : 'free';
+        const fallbackLimits = { surge: 20, tide: 15, wave: 7, drift: 4, free: 0 };
+        dailyLimit = (plan && typeof plan.maxDailyNotifications === 'number' && plan.maxDailyNotifications > 0)
+          ? plan.maxDailyNotifications
+          : (fallbackLimits[planName] ?? 0);
       }
-
-      const planName = plan ? plan.name.toLowerCase().trim() : 'free';
-      const fallbackLimits = { surge: 20, tide: 15, wave: 7, drift: 0, free: 0 };
-      const dailyLimit = (plan && typeof plan.maxDailyNotifications === 'number' && plan.maxDailyNotifications > 0)
-        ? plan.maxDailyNotifications
-        : (fallbackLimits[planName] ?? 0);
 
       if (dailyLimit <= 0) {
         await transaction.rollback();
         return res.status(403).json({
           success: false,
-          message: 'Your current subscription plan does not allow accepting product demand leads. Please upgrade to Wave, Tide, or Surge.'
+          message: 'Your current subscription plan does not allow accepting product demand leads. Please subscribe to a plan to accept leads.'
         });
       }
 
@@ -1561,7 +1578,9 @@ class BuyerNeedController {
         await transaction.rollback();
         return res.status(400).json({
           success: false,
-          message: `You have reached your daily limit of ${dailyLimit} accepted product demand leads on your current plan. Upgrade your plan to accept more leads!`
+          message: isSubscriptionEnabled()
+            ? `You have reached your daily limit of ${dailyLimit} accepted product demand leads on your current plan. Upgrade your plan to accept more leads!`
+            : `You have reached your daily limit of ${dailyLimit} accepted product demand leads for today.`
         });
       }
 

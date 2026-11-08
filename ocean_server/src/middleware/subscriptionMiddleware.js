@@ -1,5 +1,6 @@
 const { UserSubscription, SubscriptionPlan, SubscriptionUsage } = require('../../models');
 const redisClient = require('../config/redisdb');
+const { isSubscriptionEnabled, getFreeModeDemandLimit } = require('../config/subscriptionConfig');
 
 // Redis-based usage tracking (more reliable than database)
 
@@ -104,6 +105,11 @@ async function incrementUsageInRedis(userId, actionType) {
  */
 async function getUserActiveSubscription(userId) {
   try {
+    // When subscriptions are disabled, ignore any existing DB plans so all users are treated equally
+    if (!isSubscriptionEnabled()) {
+      return null;
+    }
+
     const { UserTable, SubscriptionPlan, UserSubscription } = require('../../models');
     const { Op } = require('sequelize');
 
@@ -234,6 +240,30 @@ async function getTodayUsage(userId, subscriptionId) {
  */
 async function checkSubscriptionLimit(userId, actionType) {
   try {
+    // Open Community Mode: bypass subscription plan checks
+    if (!isSubscriptionEnabled()) {
+      const usage = await getTodayUsageFromRedis(userId);
+      const demandLimit = getFreeModeDemandLimit();
+
+      if (actionType === 'notifications' && usage.notificationsReceived >= demandLimit) {
+        return {
+          allowed: false,
+          reason: `You have reached your daily limit of ${demandLimit} product demand leads.`,
+          usage: usage,
+          plan: null,
+          subscriptionEnabled: false
+        };
+      }
+
+      return {
+        allowed: true,
+        reason: 'Action allowed',
+        usage: usage,
+        plan: null,
+        subscriptionEnabled: false
+      };
+    }
+
     const subscription = await getUserActiveSubscription(userId);
     
     // If no active subscription, user is on free plan
@@ -313,6 +343,16 @@ async function checkSubscriptionLimit(userId, actionType) {
  */
 async function checkFeatureAccess(userId, featureName) {
   try {
+    // Open Community Mode: grant access to all features without a subscription plan
+    if (!isSubscriptionEnabled()) {
+      return {
+        allowed: true,
+        reason: 'Feature access granted',
+        plan: null,
+        subscriptionEnabled: false
+      };
+    }
+
     const subscription = await getUserActiveSubscription(userId);
     
     if (!subscription) {

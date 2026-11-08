@@ -2053,8 +2053,9 @@ const createComment = async (req, res) => {
         }
 
         // If parentCommentId is provided, verify it exists and belongs to the same post
+        let parentComment = null;
         if (parentCommentId) {
-            const parentComment = await PostComment.findOne({
+            parentComment = await PostComment.findOne({
                 where: { id: parentCommentId, postId, status: 'active' }
             });
             if (!parentComment) {
@@ -2109,18 +2110,41 @@ const createComment = async (req, res) => {
             );
         }
 
+        // Also notify parent comment author if this is a reply to someone else's comment
+        if (parentComment && parentComment.userId !== userId && parentComment.userId !== post.userId) {
+            await createNotification(
+                parentComment.userId,
+                'New Reply',
+                `${user?.fullName || 'Someone'} replied to your comment`,
+                'info',
+                'engagement',
+                {
+                    type: 'comment_reply',
+                    relatedEntityId: postId,
+                    commentId: comment.id,
+                    parentCommentId: parentComment.id,
+                    senderId: userId,
+                    postId,
+                    userId
+                }
+            );
+        }
+
         // Format comment to match Flutter expectations (same as getComments)
         const commentData = createdComment.toJSON();
         const formattedComment = {
             id: commentData.id,
             content: commentData.content,
+            parentCommentId: commentData.parentCommentId || null,
             createdAt: commentData.createdAt,
             updatedAt: commentData.updatedAt,
             user: {
                 id: commentData.user?.id,
                 fullName: commentData.user?.fullName,
                 profilePicture: commentData.user?.profilePicture || null
-            }
+            },
+            repliesCount: 0,
+            replies: []
         };
 
         res.status(201).json({
@@ -2161,7 +2185,7 @@ const getComments = async (req, res) => {
             });
         }
 
-        // Get top-level comments (no parent)
+        // Get top-level comments (no parent) along with their nested replies
         const { count, rows: comments } = await PostComment.findAndCountAll({
             where: {
                 postId,
@@ -2173,26 +2197,58 @@ const getComments = async (req, res) => {
                     model: UserTable,
                     as: 'user',
                     attributes: ['id', 'fullName', 'username', 'profilePicture', 'accountType', 'accountStatus']
+                },
+                {
+                    model: PostComment,
+                    as: 'replies',
+                    where: { status: 'active' },
+                    required: false,
+                    include: [
+                        {
+                            model: UserTable,
+                            as: 'user',
+                            attributes: ['id', 'fullName', 'username', 'profilePicture', 'accountType', 'accountStatus']
+                        }
+                    ],
+                    order: [['createdAt', 'ASC']]
                 }
             ],
             order: [['createdAt', 'DESC']], // Newest comments first
             limit: parseInt(limit),
-            offset: parseInt(offset)
+            offset: parseInt(offset),
+            distinct: true
         });
 
         // Format comments to match Flutter expectations
         const formattedComments = comments.map(comment => {
             const commentData = comment.toJSON();
+            const rawReplies = Array.isArray(commentData.replies) ? commentData.replies : [];
+            const formattedReplies = rawReplies.map(reply => ({
+                id: reply.id,
+                content: reply.content,
+                parentCommentId: reply.parentCommentId,
+                createdAt: reply.createdAt,
+                updatedAt: reply.updatedAt,
+                user: {
+                    id: reply.user?.id,
+                    fullName: reply.user?.fullName,
+                    profilePicture: reply.user?.profilePicture || null
+                }
+            }));
+
             return {
                 id: commentData.id,
                 content: commentData.content,
+                parentCommentId: commentData.parentCommentId || null,
                 createdAt: commentData.createdAt,
                 updatedAt: commentData.updatedAt,
                 user: {
                     id: commentData.user?.id,
                     fullName: commentData.user?.fullName,
                     profilePicture: commentData.user?.profilePicture || null
-                }
+                },
+                repliesCount: formattedReplies.length,
+                replies: formattedReplies
             };
         });
 

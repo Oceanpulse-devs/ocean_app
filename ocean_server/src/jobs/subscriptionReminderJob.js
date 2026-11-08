@@ -18,6 +18,11 @@ class SubscriptionReminderJob {
   static start() {
     // Run daily at 9:00 AM
     cron.schedule('0 9 * * *', async () => {
+      const { isSubscriptionEnabled } = require('../config/subscriptionConfig');
+      if (!isSubscriptionEnabled()) {
+        return; // Skip reminder emails when subscriptions are disabled
+      }
+
       console.log('Starting subscription reminder job...');
       
       try {

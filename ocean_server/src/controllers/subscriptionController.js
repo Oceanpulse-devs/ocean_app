@@ -4,6 +4,7 @@ const { PaymentProvider, PaymentProviderFactory } = require('../providers/Paymen
 const { SellersTable, UserTable } = require('../../models');
 const { sendEmail, emailTemplates } = require('../services/emailService');
 const { getSellerCurrency } = require('../utils/sellerCountryDetector');
+const { isSubscriptionEnabled } = require('../config/subscriptionConfig');
 
 /**
  * Subscription Controller
@@ -23,6 +24,15 @@ class SubscriptionController {
    */
   static async getAvailablePlans(req, res) {
     try {
+      if (!isSubscriptionEnabled()) {
+        return res.json({
+          success: true,
+          subscriptionEnabled: false,
+          message: 'Subscriptions are currently disabled. All seller features are open.',
+          data: []
+        });
+      }
+
       // Try to get user ID from token if present (optional auth)
       let userId = req.user?.id;
       
@@ -131,6 +141,7 @@ class SubscriptionController {
       
       res.json({
         success: true,
+        subscriptionEnabled: isSubscriptionEnabled(),
         message: 'Subscription status retrieved successfully',
         data: status
       });
@@ -150,6 +161,14 @@ class SubscriptionController {
    */
   static async subscribeToPlan(req, res) {
     try {
+      if (!isSubscriptionEnabled()) {
+        return res.status(400).json({
+          success: false,
+          subscriptionEnabled: false,
+          message: 'Subscriptions are currently turned off. All seller features are open for free!'
+        });
+      }
+
       const userId = req.user.id;
       const { planId, paymentMethod, actualPaymentMethod, skipTrial } = req.body;
       console.log('Subscribe to plan request:', { userId, planId, paymentMethod, actualPaymentMethod, skipTrial });

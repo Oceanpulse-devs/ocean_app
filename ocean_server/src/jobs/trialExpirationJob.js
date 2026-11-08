@@ -2,6 +2,7 @@ const cron = require('node-cron');
 const { UserSubscription, SubscriptionPlan, UserTable } = require('../../models');
 const { Op } = require('sequelize');
 const { sendEmail } = require('../services/emailService');
+const { isSubscriptionEnabled } = require('../config/subscriptionConfig');
 
 /**
  * Trial Expiration Job
@@ -43,6 +44,10 @@ class TrialExpirationJob {
    */
   static async processExpiringTrials() {
     try {
+      if (!isSubscriptionEnabled()) {
+        return;
+      }
+
       const now = new Date();
       
       // Send reminders for 7 days, 3 days, and 1 day before expiration
@@ -145,32 +150,34 @@ class TrialExpirationJob {
           
           console.log(`✅ Expired trial for user ${trial.userId}`);
           
-          // Send "trial ended" email
-          try {
-            await sendEmail(
-              trial.user.email,
-              `Your ${trial.plan.displayName} trial has ended`,
-              `
-                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                  <h2 style="color: #dc2626;">Your free trial has ended</h2>
-                  <p>Hi ${trial.user.fullName || trial.user.username},</p>
-                  <p>Your 30-day free trial of <strong>${trial.plan.displayName}</strong> has ended.</p>
-                  <p>To regain access to all premium features, subscribe for only <strong>₦${trial.plan.price}/month</strong>:</p>
-                  <ul>
-                    ${trial.plan.features ? trial.plan.features.map(f => `<li>${f}</li>`).join('') : ''}
-                  </ul>
-                  <p style="background-color: #eff6ff; padding: 16px; border-radius: 5px; margin: 20px 0;">
-                    <strong>To subscribe:</strong> Open the BlueWhale app → go to <strong>Settings</strong> → <strong>Subscription</strong> and choose your plan there.
-                  </p>
-                  <p style="color: #666; font-size: 12px;">
-                    Start selling with BlueWhale again today!
-                  </p>
-                </div>
-              `
-            );
-            console.log(`✅ Sent trial ended email to ${trial.user.email}`);
-          } catch (emailError) {
-            console.error(`❌ Failed to send trial ended email to ${trial.user.email}:`, emailError);
+          // Send "trial ended" email only when subscriptions are enabled
+          if (isSubscriptionEnabled()) {
+            try {
+              await sendEmail(
+                trial.user.email,
+                `Your ${trial.plan.displayName} trial has ended`,
+                `
+                  <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                    <h2 style="color: #dc2626;">Your free trial has ended</h2>
+                    <p>Hi ${trial.user.fullName || trial.user.username},</p>
+                    <p>Your 30-day free trial of <strong>${trial.plan.displayName}</strong> has ended.</p>
+                    <p>To regain access to all premium features, subscribe for only <strong>₦${trial.plan.price}/month</strong>:</p>
+                    <ul>
+                      ${trial.plan.features ? trial.plan.features.map(f => `<li>${f}</li>`).join('') : ''}
+                    </ul>
+                    <p style="background-color: #eff6ff; padding: 16px; border-radius: 5px; margin: 20px 0;">
+                      <strong>To subscribe:</strong> Open the BlueWhale app → go to <strong>Settings</strong> → <strong>Subscription</strong> and choose your plan there.
+                    </p>
+                    <p style="color: #666; font-size: 12px;">
+                      Start selling with BlueWhale again today!
+                    </p>
+                  </div>
+                `
+              );
+              console.log(`✅ Sent trial ended email to ${trial.user.email}`);
+            } catch (emailError) {
+              console.error(`❌ Failed to send trial ended email to ${trial.user.email}:`, emailError);
+            }
           }
         } catch (updateError) {
           console.error(`❌ Failed to expire trial for user ${trial.userId}:`, updateError);

@@ -1,5 +1,6 @@
 const { UserSubscription, SubscriptionPlan, PromotionUsage } = require('../../models');
 const { Op } = require('sequelize');
+const { isSubscriptionEnabled } = require('../config/subscriptionConfig');
 
 /**
  * Promotion Gating Service
@@ -20,6 +21,10 @@ class PromotionGatingService {
    */
   async getUserSubscription(userId) {
     try {
+      if (!isSubscriptionEnabled()) {
+        return null;
+      }
+
       const subscription = await UserSubscription.findOne({
         where: {
           userId: userId,

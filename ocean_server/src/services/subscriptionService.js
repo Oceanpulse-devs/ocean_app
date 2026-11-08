@@ -323,8 +323,9 @@ class SubscriptionService {
             console.error(`Error revoking verified badge for expired subscription ${subscription.id}:`, error);
           }
 
-          // Send expiration email if user and plan data available
-          if (subscription.user && subscription.plan) {
+          // Send expiration email if user and plan data available (only when subscription system is enabled)
+          const { isSubscriptionEnabled } = require('../config/subscriptionConfig');
+          if (isSubscriptionEnabled() && subscription.user && subscription.plan) {
             try {
               const user = subscription.user;
               const plan = subscription.plan;

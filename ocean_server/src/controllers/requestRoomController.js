@@ -1,5 +1,6 @@
 const db = require('../../models');
 const { Op } = require('sequelize');
+const { isSubscriptionEnabled } = require('../config/subscriptionConfig');
 
 class RequestRoomController {
   /**
@@ -25,25 +26,30 @@ class RequestRoomController {
         });
       }
 
-      // 2. Plan Access Check: Drift, Wave, Tide, and Surge plans allowed
-      const { getUserActiveSubscription } = require('../middleware/subscriptionMiddleware');
-      let activeSub = null;
-      try {
-        activeSub = await getUserActiveSubscription(userId);
-      } catch (subErr) {
-        console.warn('Subscription check warning:', subErr.message);
-      }
+      // 2. Plan Access Check
+      let planName = '';
+      let dailySlotsTotal = 999999;
 
-      const planName = activeSub?.plan?.name?.toLowerCase() || '';
-      // Dynamic daily slots per subscription tier: Drift=3, Wave=6, Tide=10, Surge=Unlimited
-      const planLimits = { drift: 3, wave: 6, tide: 10, surge: 999999 };
-      const dailySlotsTotal = planLimits[planName] || 0;
+      if (isSubscriptionEnabled()) {
+        const { getUserActiveSubscription } = require('../middleware/subscriptionMiddleware');
+        let activeSub = null;
+        try {
+          activeSub = await getUserActiveSubscription(userId);
+        } catch (subErr) {
+          console.warn('Subscription check warning:', subErr.message);
+        }
 
-      if (dailySlotsTotal <= 0) {
-        return res.status(403).json({
-          success: false,
-          message: 'Expressing Interest is available for subscribed sellers (Drift, Wave, Tide, and Surge). Please upgrade your plan to participate.'
-        });
+        planName = activeSub?.plan?.name?.toLowerCase() || '';
+        // Dynamic daily slots per subscription tier: Drift=3, Wave=6, Tide=10, Surge=Unlimited
+        const planLimits = { drift: 3, wave: 6, tide: 10, surge: 999999 };
+        dailySlotsTotal = planLimits[planName] || 0;
+
+        if (dailySlotsTotal <= 0) {
+          return res.status(403).json({
+            success: false,
+            message: 'Expressing Interest is available for subscribed sellers (Drift, Wave, Tide, and Surge). Please upgrade your plan to participate.'
+          });
+        }
       }
 
       // 3. Daily Slot Quota Check
@@ -71,7 +77,7 @@ class RequestRoomController {
         });
       }
 
-      if (planName !== 'surge' && slotRecord.dailySlotsUsed >= dailySlotsTotal) {
+      if (isSubscriptionEnabled() && planName !== 'surge' && slotRecord.dailySlotsUsed >= dailySlotsTotal) {
         return res.status(400).json({
           success: false,
           message: `Daily express interest slots exhausted. Maximum ${dailySlotsTotal} slots per day on your current plan.`
@@ -178,18 +184,24 @@ class RequestRoomController {
   async getSellerDailySlots(req, res) {
     try {
       const userId = req.user.id;
-      const { getUserActiveSubscription } = require('../middleware/subscriptionMiddleware');
-      let activeSub = null;
-      try {
-        activeSub = await getUserActiveSubscription(userId);
-      } catch (err) {
-        console.warn('Subscription check error:', err.message);
+      let planName = 'free';
+      let dailySlotsTotal = 999999;
+
+      if (isSubscriptionEnabled()) {
+        const { getUserActiveSubscription } = require('../middleware/subscriptionMiddleware');
+        let activeSub = null;
+        try {
+          activeSub = await getUserActiveSubscription(userId);
+        } catch (err) {
+          console.warn('Subscription check error:', err.message);
+        }
+
+        planName = activeSub?.plan?.name?.toLowerCase() || '';
+        // Dynamic daily slots per subscription tier: Drift=3, Wave=6, Tide=10, Surge=Unlimited
+        const planLimits = { drift: 3, wave: 6, tide: 10, surge: 999999 };
+        dailySlotsTotal = planLimits[planName] || 0;
       }
 
-      const planName = activeSub?.plan?.name?.toLowerCase() || '';
-      // Dynamic daily slots per subscription tier: Drift=3, Wave=6, Tide=10, Surge=Unlimited
-      const planLimits = { drift: 3, wave: 6, tide: 10, surge: 999999 };
-      const dailySlotsTotal = planLimits[planName] || 0;
       const isEligible = dailySlotsTotal > 0;
 
       const todayDate = new Date().toISOString().split('T')[0];
@@ -216,13 +228,14 @@ class RequestRoomController {
       }
 
       const used = slotRecord.dailySlotsUsed;
-      const remaining = planName === 'surge'
+      const remaining = (!isSubscriptionEnabled() || planName === 'surge')
         ? 999999
         : (isEligible ? Math.max(0, dailySlotsTotal - used) : 0);
 
       res.json({
         success: true,
         data: {
+          subscriptionEnabled: isSubscriptionEnabled(),
           isEligible,
           planName: planName || 'free',
           total: dailySlotsTotal,
