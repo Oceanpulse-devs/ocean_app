@@ -73,6 +73,7 @@ class SubscriptionController {
       
       res.json({
         success: true,
+        subscriptionEnabled: true,
         message: 'Subscription plans retrieved successfully',
         currency, // Include detected currency in response
         data: plans.map(plan => {

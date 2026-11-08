@@ -88,6 +88,7 @@ class SubscriptionStatusChecker {
       const expirationDate = subscription.endDate || subscription.end_date || null;
 
       return {
+        subscriptionEnabled: isSubscriptionEnabled(),
         hasActiveSubscription: true,
         has_active_subscription: true,
         plan: {
