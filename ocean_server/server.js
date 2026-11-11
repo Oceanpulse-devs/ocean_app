@@ -1115,6 +1115,7 @@ app.use('/api/heavy-distributors', heavyDistributorRoutes);
 app.use('/api/seller-verification', sellerVerificationRoutes);
 app.use('/api/seller/social', require('./src/routes/sellerSocialRoutes'));
 app.use('/api/subscriptions', subscriptionRoutes);
+app.use('/api/support', require('./src/routes/supportRoutes'));
 app.use('/api/users', require('./src/routes/userBlockRoutes'));
 app.use('/', requestRoomRoutes);
 
