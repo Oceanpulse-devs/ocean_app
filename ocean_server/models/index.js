@@ -192,6 +192,8 @@ const setupAssociations = () => {
   // PostComment associations
   db.PostComment.belongsTo(db.Post, { foreignKey: 'postId', as: 'post' });
   db.PostComment.belongsTo(db.UserTable, { foreignKey: 'userId', as: 'user' });
+  db.PostComment.belongsTo(db.PostComment, { foreignKey: 'parentCommentId', as: 'parentComment' });
+  db.PostComment.hasMany(db.PostComment, { foreignKey: 'parentCommentId', as: 'replies' });
   
   // PostLike associations
   db.PostLike.belongsTo(db.Post, { foreignKey: 'postId', as: 'post' });

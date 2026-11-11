@@ -2203,6 +2203,7 @@ const getComments = async (req, res) => {
                     as: 'replies',
                     where: { status: 'active' },
                     required: false,
+                    separate: true,
                     include: [
                         {
                             model: UserTable,
