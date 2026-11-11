@@ -3,10 +3,63 @@ const jwt = require('jsonwebtoken');
 const { UserTable, SellersTable } = require('../../models');
 
 /**
+ * Helper to build the verified Chatwoot user payload for a given user & seller record.
+ * Note: We intentionally place phone_number inside custom_attributes rather than the
+ * top-level user object because Chatwoot's Rails validator rejects the entire setUser
+ * request (422 Unprocessable Entity - dropping name & email) if phone_number is not in
+ * strict E.164 carrier format or if it collides with another test account.
+ */
+function buildChatwootUserPayload(user, seller, hmacToken) {
+  const identifier = String(user.id);
+  const identifierHash = hmacToken
+    ? crypto.createHmac('sha256', hmacToken).update(identifier).digest('hex')
+    : null;
+
+  const isVerifiedSeller = Boolean(
+    seller &&
+      (seller.isVerified ||
+        seller.verificationStatus === 'approved' ||
+        seller.verificationStatus === 'active')
+  );
+
+  const rawName = (user.fullName || user.username || 'BlueWhale User').trim();
+  const shopName = (seller?.businessName || user.businessName || '').trim();
+  const displayName =
+    isVerifiedSeller && shopName && !rawName.toLowerCase().includes(shopName.toLowerCase())
+      ? `${rawName} (${shopName})`
+      : rawName;
+
+  const phoneNumber = (seller?.phoneNumber || seller?.businessPhone || '').trim();
+  const avatarUrl =
+    user.profilePicture && user.profilePicture !== '👤' ? user.profilePicture : '';
+
+  const customAttributes = {
+    account_type: user.accountType || (seller ? 'seller' : 'buyer'),
+    username: user.username || '',
+    phone_number: phoneNumber,
+    is_verified_seller: isVerifiedSeller,
+    verification_status: seller ? seller.verificationStatus : 'none',
+    business_name: shopName,
+    seller_type: seller?.sellerType || '',
+    country: seller?.country || user.location || '',
+    state: seller?.state || ''
+  };
+
+  return {
+    identifier,
+    identifierHash,
+    identifier_hash: identifierHash,
+    name: displayName,
+    email: (user.email || '').trim(),
+    avatarUrl: avatarUrl || null,
+    avatar_url: avatarUrl || null,
+    customAttributes,
+    custom_attributes: customAttributes
+  };
+}
+
+/**
  * Support Controller (Chatwoot Customer Support Integration)
- *
- * Provides dynamic Chatwoot configuration, HMAC-SHA256 identity verification,
- * and an embeddable mobile WebView / browser test page.
  */
 class SupportController {
   /**
@@ -41,31 +94,16 @@ class SupportController {
         });
       }
 
-      const identifier = String(user.id);
-      const identifierHash = hmacToken
-        ? crypto.createHmac('sha256', hmacToken).update(identifier).digest('hex')
-        : null;
+      const userPayload = buildChatwootUserPayload(user, seller, hmacToken);
 
-      const isVerifiedSeller = Boolean(
-        seller &&
-          (seller.isVerified ||
-            seller.verificationStatus === 'approved' ||
-            seller.verificationStatus === 'active')
-      );
-
-      const customAttributes = {
-        account_type: user.accountType || 'buyer',
-        username: user.username || '',
-        is_verified_seller: isVerifiedSeller,
-        verification_status: seller ? seller.verificationStatus : 'none',
-        business_name: seller?.businessName || user.businessName || '',
-        seller_type: seller?.sellerType || '',
-        country: seller?.country || user.location || '',
-        state: seller?.state || ''
-      };
-
-      const phoneNumber = seller?.phoneNumber || seller?.businessPhone || null;
-      const avatarUrl = user.profilePicture || null;
+      // Extract raw Bearer token so we can provide a ready-to-open full-screen widgetUrl
+      const authHeader = req.headers.authorization || '';
+      const rawToken = authHeader.startsWith('Bearer ') ? authHeader.substring(7).trim() : '';
+      const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'https';
+      const host = req.get('host');
+      const widgetUrl = rawToken
+        ? `${protocol}://${host}/api/support/widget?token=${encodeURIComponent(rawToken)}`
+        : `${protocol}://${host}/api/support/widget`;
 
       return res.status(200).json({
         success: true,
@@ -74,19 +112,8 @@ class SupportController {
           provider: 'chatwoot',
           baseUrl,
           websiteToken,
-          user: {
-            identifier,
-            identifierHash,
-            identifier_hash: identifierHash,
-            name: user.fullName || user.username || 'BlueWhale User',
-            email: user.email,
-            avatarUrl,
-            avatar_url: avatarUrl,
-            phoneNumber,
-            phone_number: phoneNumber,
-            customAttributes,
-            custom_attributes: customAttributes
-          }
+          widgetUrl,
+          user: userPayload
         }
       });
     } catch (error) {
@@ -101,8 +128,8 @@ class SupportController {
 
   /**
    * GET /api/support/widget
-   * Renders a full-screen Chatwoot Support page (can be opened in a browser to test
-   * or embedded directly in the mobile app via WebView with ?token=<JWT>)
+   * Renders a full-screen Chatwoot Support interface that automatically authenticates
+   * the user via HMAC-SHA256 as soon as the widget iframe is ready.
    */
   static async renderSupportWidget(req, res) {
     try {
@@ -112,7 +139,6 @@ class SupportController {
       const websiteToken = (process.env.CHATWOOT_WEBSITE_TOKEN || '').trim();
       const hmacToken = (process.env.CHATWOOT_HMAC_TOKEN || '').trim();
 
-      // Resolve user if a JWT token is passed via ?token= or Authorization header
       let userPayload = null;
       const rawToken =
         req.query.token ||
@@ -128,52 +154,30 @@ class SupportController {
             SellersTable.findOne({ where: { userId: decoded.id } })
           ]);
           if (user) {
-            const identifier = String(user.id);
-            const identifierHash = hmacToken
-              ? crypto.createHmac('sha256', hmacToken).update(identifier).digest('hex')
-              : undefined;
-            const isVerifiedSeller = Boolean(
-              seller &&
-                (seller.isVerified ||
-                  seller.verificationStatus === 'approved' ||
-                  seller.verificationStatus === 'active')
-            );
-            userPayload = {
-              identifier,
-              identifier_hash: identifierHash,
-              name: user.fullName || user.username || 'BlueWhale User',
-              email: user.email,
-              avatar_url: user.profilePicture || '',
-              phone_number: seller?.phoneNumber || seller?.businessPhone || '',
-              custom_attributes: {
-                account_type: user.accountType || 'buyer',
-                username: user.username || '',
-                is_verified_seller: isVerifiedSeller,
-                business_name: seller?.businessName || user.businessName || '',
-                country: seller?.country || user.location || ''
-              }
-            };
+            userPayload = buildChatwootUserPayload(user, seller, hmacToken);
           }
         } catch (err) {
-          // Ignore invalid token and fall back to test/guest user if provided
+          console.warn('Support widget JWT decode warning:', err.message);
         }
       }
 
-      // Allow quick testing via query params (?name=Rinfwang&email=...)
-      if (!userPayload && (req.query.name || req.query.test === 'true')) {
-        const testId = req.query.id || 'test-seller-rinfwang-001';
+      // Allow direct query param fallback for mobile WebViews or testing (?id=...&name=...&email=...)
+      if (!userPayload && (req.query.name || req.query.email || req.query.test === 'true')) {
+        const fallbackId = String(req.query.id || req.query.identifier || 'bluewhale-test-user-01');
         const identifierHash = hmacToken
-          ? crypto.createHmac('sha256', hmacToken).update(testId).digest('hex')
-          : undefined;
+          ? crypto.createHmac('sha256', hmacToken).update(fallbackId).digest('hex')
+          : null;
         userPayload = {
-          identifier: testId,
+          identifier: fallbackId,
+          identifierHash,
           identifier_hash: identifierHash,
-          name: req.query.name || 'Rinfwang (BlueWhale Test)',
+          name: req.query.name || 'Rinfwang (BlueWhale Seller)',
           email: req.query.email || 'rinfwang4@gmail.com',
+          avatar_url: req.query.avatar || '',
           custom_attributes: {
-            account_type: 'seller',
+            account_type: req.query.role || 'seller',
             is_verified_seller: true,
-            business_name: 'BlueWhale Official Store',
+            business_name: req.query.shop || 'BlueWhale Official Store',
             country: 'Nigeria'
           }
         };
@@ -186,67 +190,88 @@ class SupportController {
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>BlueWhale Customer Support</title>
+  <title>BlueWhale Live Support</title>
   <style>
-    body {
+    * { box-sizing: border-box; }
+    html, body {
       margin: 0;
       padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #ffffff;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background: #0f172a;
-      color: #f8fafc;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
-      text-align: center;
     }
-    .loader {
-      max-width: 320px;
-      padding: 24px;
+    /* Force Chatwoot widget to fill 100% of the mobile WebView screen */
+    .woot-widget-holder,
+    .woot-widget-holder.woot-elements--right,
+    .woot-widget-holder.woot-elements--left {
+      position: fixed !important;
+      top: 0 !important;
+      left: 0 !important;
+      right: 0 !important;
+      bottom: 0 !important;
+      width: 100vw !important;
+      height: 100vh !important;
+      max-width: 100vw !important;
+      max-height: 100vh !important;
+      margin: 0 !important;
+      border-radius: 0 !important;
+      box-shadow: none !important;
+      z-index: 999999 !important;
     }
-    .loader h2 {
-      font-size: 1.2rem;
-      margin-bottom: 8px;
+    .woot-widget-holder iframe {
+      width: 100% !important;
+      height: 100% !important;
+      min-height: 100vh !important;
+      border-radius: 0 !important;
     }
-    .loader p {
-      font-size: 0.9rem;
-      color: #94a3b8;
+    /* Hide the floating launcher bubble since the chat is full-screen */
+    .woot--bubble-holder {
+      display: none !important;
     }
   </style>
 </head>
 <body>
-  <div class="loader">
-    <h2>🐳 BlueWhale Support</h2>
-    <p>Opening live support chat...</p>
-  </div>
-
   <script>
     window.chatwootSettings = {
-      hideMessageBubble: false,
+      hideMessageBubble: true,
       position: 'right',
       locale: 'en',
-      type: 'expanded_bubble',
-      launcherTitle: 'Chat with us'
+      useBrowserLanguage: false,
+      type: 'standard',
+      darkMode: 'auto'
     };
 
-    const userPayload = ${serializedUser};
+    var userPayload = ${serializedUser};
+
+    function syncUserIdentity() {
+      if (!userPayload || !window.$chatwoot) return;
+      var userObj = {
+        name: userPayload.name,
+        email: userPayload.email
+      };
+      if (userPayload.avatar_url) {
+        userObj.avatar_url = userPayload.avatar_url;
+      }
+      if (userPayload.identifier_hash) {
+        userObj.identifier_hash = userPayload.identifier_hash;
+      }
+      window.$chatwoot.setUser(userPayload.identifier, userObj);
+
+      if (userPayload.custom_attributes) {
+        window.$chatwoot.setCustomAttributes(userPayload.custom_attributes);
+      }
+    }
 
     window.addEventListener('chatwoot:ready', function () {
-      if (userPayload && window.$chatwoot) {
-        window.$chatwoot.setUser(userPayload.identifier, {
-          name: userPayload.name,
-          email: userPayload.email,
-          avatar_url: userPayload.avatar_url,
-          phone_number: userPayload.phone_number,
-          identifier_hash: userPayload.identifier_hash
-        });
-        if (userPayload.custom_attributes) {
-          window.$chatwoot.setCustomAttributes(userPayload.custom_attributes);
-        }
-      }
+      syncUserIdentity();
       if (window.$chatwoot) {
         window.$chatwoot.toggle('open');
       }
+      // Re-sync after 800ms and 2500ms to ensure identity is applied even on slow networks
+      setTimeout(syncUserIdentity, 800);
+      setTimeout(syncUserIdentity, 2500);
     });
 
     (function(d,t) {
@@ -260,8 +285,8 @@ class SupportController {
         window.chatwootSDK.run({
           websiteToken: '${websiteToken}',
           baseUrl: BASE_URL
-        })
-      }
+        });
+      };
     })(document,"script");
   </script>
 </body>
